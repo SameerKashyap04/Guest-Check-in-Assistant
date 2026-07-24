@@ -30,7 +30,7 @@ const Button = forwardRef<React.ElementRef<typeof TouchableOpacity>, ButtonProps
     const textVariants = {
       primary: "text-white",
       secondary: "text-white",
-      outline: "text-primary",
+      outline: "text-foreground",
       ghost: "text-foreground",
     };
 

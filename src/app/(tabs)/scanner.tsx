@@ -54,7 +54,7 @@ export default function ScannerScreen() {
         variant="outline"
         size="lg" 
         className="w-full"
-        icon={<FileText size={20} color="#38BDF8" className="mr-2" />}
+        icon={<FileText size={20} color="#1F2937" className="mr-2" />}
         onPress={() => router.push('/checkin/manual')}
       />
 

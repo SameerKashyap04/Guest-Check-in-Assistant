@@ -31,7 +31,7 @@ export default function SettingsScreen() {
           </View>
           <View>
             <Text className="text-2xl font-bold text-foreground mb-1">{businessName || 'Property Name'}</Text>
-            <Text className="text-sm font-medium text-primary">Owner Account</Text>
+            <Text className="text-sm font-medium text-foreground">Owner Account</Text>
           </View>
         </GlassCard>
 
@@ -76,7 +76,7 @@ export default function SettingsScreen() {
         <Button 
           label="Lock App" 
           variant="outline" 
-          icon={<LogOut size={20} color="#38BDF8" className="mr-2" />}
+          icon={<LogOut size={20} color="#1F2937" className="mr-2" />}
           onPress={handleLock}
           className="mb-8"
         />
