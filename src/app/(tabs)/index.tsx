@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Platform } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Platform, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
-import { Users, LogIn, LogOut, AlertCircle, Search, FileBarChart } from 'lucide-react-native';
+import { Users, LogIn, LogOut, AlertCircle, Search, FileBarChart, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
@@ -10,6 +10,7 @@ import { openDatabase } from '@/database';
 export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [recentGuests, setRecentGuests] = useState<any[]>([]);
+  const [selectedGuest, setSelectedGuest] = useState<any | null>(null);
   const router = useRouter();
 
   const currentHour = new Date().getHours();
@@ -109,35 +110,134 @@ export default function DashboardScreen() {
           Recent Registrations
         </Text>
         
-        <GlassCard className="mb-4">
+        <GlassCard className="mb-6 p-5 rounded-2xl border border-gray-100 dark:border-white/10">
           {recentGuests.length === 0 ? (
             <Text className="text-gray-500 text-center py-4">No recent guests found.</Text>
           ) : (
             recentGuests.map((guest, index) => (
-              <View 
-                key={guest.id} 
-                className={`flex-row justify-between items-center ${index !== recentGuests.length - 1 ? 'border-b border-transparent dark:border-transparent pb-3 mb-3' : ''}`}
+              <TouchableOpacity 
+                key={guest.id}
+                activeOpacity={0.7}
+                onPress={() => setSelectedGuest(guest)}
+                className={`flex-row justify-between items-center ${index !== recentGuests.length - 1 ? 'border-b border-gray-100 dark:border-gray-800 pb-3 mb-3' : ''}`}
               >
-                <View className="flex-row items-center">
-                  <View className="w-10 h-10 rounded-full bg-[#38BDF8]/10 items-center justify-center mr-3">
-                    <Text className="text-[#38BDF8] font-bold text-lg">
+                <View className="flex-row items-center flex-1 mr-2">
+                  <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-3">
+                    <Text className="text-foreground font-bold text-lg">
                       {guest.full_name ? guest.full_name.charAt(0).toUpperCase() : '?'}
                     </Text>
                   </View>
-                  <View>
-                    <Text className="text-base font-semibold text-foreground">{guest.full_name}</Text>
-                    <Text className="text-xs text-gray-500 mt-0.5">ID: {guest.id_number} • {guest.id_type}</Text>
+                  <View className="flex-1">
+                    <Text className="text-base font-semibold text-foreground" numberOfLines={1}>{guest.full_name}</Text>
+                    <Text className="text-xs text-gray-500 mt-0.5" numberOfLines={1}>ID: {guest.id_number || 'N/A'} • {guest.id_type || 'ID'}</Text>
                   </View>
                 </View>
-                <View className="bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full">
-                  <Text className="text-xs font-medium text-green-700 dark:text-green-400">Verified</Text>
+                <View className="bg-emerald-100 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/40">
+                  <Text className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Verified</Text>
                 </View>
-              </View>
+              </TouchableOpacity>
             ))
           )}
         </GlassCard>
 
       </ScrollView>
+
+      {/* Guest Details Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={!!selectedGuest}
+        onRequestClose={() => setSelectedGuest(null)}
+      >
+        <TouchableOpacity 
+          activeOpacity={1} 
+          onPress={() => setSelectedGuest(null)}
+          className="flex-1 bg-black/50 justify-end"
+        >
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation?.()}
+            className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6 max-h-[85%]"
+          >
+            {selectedGuest && (
+              <View>
+                <View className="flex-row justify-between items-center mb-6">
+                  <View className="flex-row items-center gap-3">
+                    <View className="w-12 h-12 rounded-full bg-primary/10 items-center justify-center">
+                      <User size={24} color="#000000" />
+                    </View>
+                    <View>
+                      <Text className="text-xl font-bold text-foreground">{selectedGuest.full_name}</Text>
+                      <Text className="text-xs text-emerald-600 font-semibold">Verified Registration</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={() => setSelectedGuest(null)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
+                    <X size={20} color="#9CA3AF" />
+                  </TouchableOpacity>
+                </View>
+
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                  <View className="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl mb-4 border border-gray-100 dark:border-gray-800 space-y-3">
+                    
+                    <View className="flex-row items-center gap-3">
+                      <IdCard size={18} color="#6B7280" />
+                      <View>
+                        <Text className="text-xs text-gray-400 font-medium">Document ID ({selectedGuest.id_type || 'ID'})</Text>
+                        <Text className="text-sm font-semibold text-foreground">{selectedGuest.id_number || 'N/A'}</Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-row items-center gap-3">
+                      <Phone size={18} color="#6B7280" />
+                      <View>
+                        <Text className="text-xs text-gray-400 font-medium">Phone</Text>
+                        <Text className="text-sm font-semibold text-foreground">{selectedGuest.phone || 'N/A'}</Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-row items-center gap-3">
+                      <Mail size={18} color="#6B7280" />
+                      <View>
+                        <Text className="text-xs text-gray-400 font-medium">Email</Text>
+                        <Text className="text-sm font-semibold text-foreground">{selectedGuest.email || 'N/A'}</Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-row items-center gap-3">
+                      <Globe size={18} color="#6B7280" />
+                      <View>
+                        <Text className="text-xs text-gray-400 font-medium">Nationality / Gender</Text>
+                        <Text className="text-sm font-semibold text-foreground">{selectedGuest.nationality || 'Indian'} • {selectedGuest.gender || 'N/A'}</Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-row items-center gap-3">
+                      <MapPin size={18} color="#6B7280" />
+                      <View className="flex-1">
+                        <Text className="text-xs text-gray-400 font-medium">Address</Text>
+                        <Text className="text-sm font-semibold text-foreground">
+                          {[selectedGuest.address, selectedGuest.city, selectedGuest.state, selectedGuest.country, selectedGuest.pin_code].filter(Boolean).join(', ') || 'N/A'}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View className="flex-row items-center gap-3">
+                      <Calendar size={18} color="#6B7280" />
+                      <View>
+                        <Text className="text-xs text-gray-400 font-medium">Registration Time</Text>
+                        <Text className="text-sm font-semibold text-foreground">
+                          {selectedGuest.created_at ? new Date(selectedGuest.created_at).toLocaleString() : 'Recent'}
+                        </Text>
+                      </View>
+                    </View>
+
+                  </View>
+                </ScrollView>
+              </View>
+            )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
