@@ -1,10 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, TextInput } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, FlatList, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, TextInput, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { useRoomsStore } from '@/store/useRoomsStore';
 import { Plus, X, Trash, Search, LayoutGrid, List, BedDouble, CheckCircle2, UserCheck, Sparkles, Wrench } from 'lucide-react-native';
-import BottomSheet, { BottomSheetView, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { Room } from '@/database/rooms';
@@ -12,8 +11,7 @@ import { Room } from '@/database/rooms';
 export default function RoomsScreen() {
   const { rooms, fetchRooms, createRoom, editRoom, removeRoom, isLoading } = useRoomsStore();
   
-  const bottomSheetRef = useRef<BottomSheet>(null);
-  
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [roomNumber, setRoomNumber] = useState('');
   const [roomType, setRoomType] = useState('');
@@ -95,7 +93,7 @@ export default function RoomsScreen() {
     setRoomNumber('');
     setRoomType('');
     setRoomStatus('available');
-    bottomSheetRef.current?.expand();
+    setIsModalOpen(true);
   };
 
   const openEditSheet = (room: Room) => {
@@ -103,11 +101,11 @@ export default function RoomsScreen() {
     setRoomNumber(room.room_number);
     setRoomType(room.room_type || '');
     setRoomStatus(room.status);
-    bottomSheetRef.current?.expand();
+    setIsModalOpen(true);
   };
   
   const closeSheet = () => {
-    bottomSheetRef.current?.close();
+    setIsModalOpen(false);
   };
 
   const handleSave = async () => {
@@ -156,7 +154,7 @@ export default function RoomsScreen() {
         <GlassCard variant="elevated" className={`p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-col justify-between min-h-[130px]`}>
           <View className="flex-row justify-between items-start mb-3">
             <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-              <BedDouble size={20} color="#38BDF8" />
+              <BedDouble size={20} color="#000000" />
             </View>
             <View className={`flex-row items-center gap-1.5 px-2.5 py-1 rounded-full ${config.badgeBg} ${config.borderColor} border`}>
               {config.icon}
@@ -187,7 +185,7 @@ export default function RoomsScreen() {
         <GlassCard variant="elevated" className="p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row justify-between items-center">
           <View className="flex-row items-center space-x-3 gap-3">
             <View className="w-11 h-11 rounded-xl bg-primary/10 items-center justify-center">
-              <BedDouble size={22} color="#38BDF8" />
+              <BedDouble size={22} color="#000000" />
             </View>
             <View>
               <Text className="text-lg font-bold text-foreground tracking-tight">Room {item.room_number}</Text>
@@ -217,7 +215,7 @@ export default function RoomsScreen() {
   return (
     <SafeAreaView edges={['left', 'right', 'top']} className="flex-1 bg-background">
       {/* Top Header */}
-      <View className="px-5 pt-3 pb-2 flex-row justify-between items-center">
+      <View className="px-5 pt-6 mt-2 pb-2 flex-row justify-between items-center">
         <View>
           <Text className="text-3xl font-bold text-foreground">Rooms</Text>
           <Text className="text-xs text-gray-400 font-medium mt-0.5">{total} Total Properties & Rooms</Text>
@@ -227,7 +225,7 @@ export default function RoomsScreen() {
           activeOpacity={0.8}
           className="bg-primary h-11 px-4 rounded-xl flex-row items-center gap-2 shadow-md shadow-primary/20"
         >
-          <Plus size={20} color="#fff" />
+          <Plus size={20} color="#ffffff" />
           <Text className="text-white font-semibold text-sm">Add Room</Text>
         </TouchableOpacity>
       </View>
@@ -362,95 +360,99 @@ export default function RoomsScreen() {
         }
       />
 
-      {/* Add / Edit Room Bottom Sheet */}
-      <BottomSheet
-        ref={bottomSheetRef}
-        index={-1}
-        snapPoints={['70%']}
-        enablePanDownToClose
-        backdropComponent={(props) => (
-          <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} pressBehavior="close" />
-        )}
-        backgroundStyle={{ backgroundColor: '#ffffff', borderRadius: 24 }}
-        handleIndicatorStyle={{ backgroundColor: '#D1D5DB', width: 40 }}
+      {/* Add / Edit Room Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isModalOpen}
+        onRequestClose={closeSheet}
       >
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          className="flex-1"
+        <TouchableOpacity 
+          activeOpacity={1} 
+          onPress={closeSheet}
+          className="flex-1 bg-black/50 justify-end"
         >
-          <BottomSheetView className="flex-1 px-6 pt-2 pb-8">
-            <View className="flex-row justify-between items-center mb-6">
-              <Text className="text-2xl font-bold text-gray-900">
-                {editingRoom ? 'Edit Room' : 'Add New Room'}
-              </Text>
-              <TouchableOpacity onPress={closeSheet} className="p-2 bg-gray-100 rounded-full">
-                <X size={20} color="#4B5563" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} className="flex-1">
-              <Input
-                label="Room Number"
-                placeholder="e.g. 101"
-                value={roomNumber}
-                onChangeText={setRoomNumber}
-              />
-              
-              <Input
-                label="Room Type"
-                placeholder="e.g. Standard, Deluxe, Suite"
-                value={roomType}
-                onChangeText={setRoomType}
-              />
-
-              <Text className="text-sm font-semibold text-gray-900 mb-2 ml-1 mt-2">Status</Text>
-              <View className="flex-row flex-wrap gap-2.5 mb-6">
-                {(['available', 'occupied', 'cleaning', 'maintenance'] as const).map((status) => {
-                  const cfg = getStatusConfig(status);
-                  const isSelected = roomStatus === status;
-                  return (
-                    <TouchableOpacity
-                      key={status}
-                      activeOpacity={0.7}
-                      onPress={() => setRoomStatus(status)}
-                      className={`flex-row items-center gap-1.5 px-4 py-2.5 rounded-xl border ${
-                        isSelected 
-                          ? `${cfg.badgeBg} ${cfg.borderColor}` 
-                          : 'border-gray-200 bg-white dark:border-gray-800'
-                      }`}
-                    >
-                      {cfg.icon}
-                      <Text className={`font-semibold capitalize text-xs ${
-                        isSelected ? cfg.textColor : 'text-gray-600'
-                      }`}>
-                        {status}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </ScrollView>
-
-            <View className="pt-4 border-t border-gray-100 mt-auto flex-row gap-3">
-              {editingRoom && (
-                <TouchableOpacity 
-                  onPress={handleDelete}
-                  activeOpacity={0.7}
-                  className="bg-red-50 h-14 w-14 rounded-2xl items-center justify-center border border-red-200"
-                >
-                  <Trash size={24} color="#EF4444" />
+          <TouchableOpacity 
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation?.()}
+            className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6 max-h-[85%]"
+          >
+            <KeyboardAvoidingView 
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            >
+              <View className="flex-row justify-between items-center mb-6">
+                <Text className="text-2xl font-bold text-foreground">
+                  {editingRoom ? 'Edit Room' : 'Add New Room'}
+                </Text>
+                <TouchableOpacity onPress={closeSheet} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
+                  <X size={20} color="#9CA3AF" />
                 </TouchableOpacity>
-              )}
-              <Button 
-                label={editingRoom ? "Save Changes" : "Create Room"} 
-                onPress={handleSave}
-                className="flex-1 h-14"
-                isLoading={isLoading}
-              />
-            </View>
-          </BottomSheetView>
-        </KeyboardAvoidingView>
-      </BottomSheet>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                <Input
+                  label="Room Number"
+                  placeholder="e.g. 101"
+                  value={roomNumber}
+                  onChangeText={setRoomNumber}
+                />
+                
+                <Input
+                  label="Room Type"
+                  placeholder="e.g. Standard, Deluxe, Suite"
+                  value={roomType}
+                  onChangeText={setRoomType}
+                />
+
+                <Text className="text-sm font-semibold text-foreground mb-2 ml-1 mt-2">Status</Text>
+                <View className="flex-row flex-wrap gap-2.5 mb-6">
+                  {(['available', 'occupied', 'cleaning', 'maintenance'] as const).map((status) => {
+                    const cfg = getStatusConfig(status);
+                    const isSelected = roomStatus === status;
+                    return (
+                      <TouchableOpacity
+                        key={status}
+                        activeOpacity={0.7}
+                        onPress={() => setRoomStatus(status)}
+                        className={`flex-row items-center gap-1.5 px-4 py-2.5 rounded-xl border ${
+                          isSelected 
+                            ? `${cfg.badgeBg} ${cfg.borderColor}` 
+                            : 'border-gray-200 bg-white dark:border-gray-800'
+                        }`}
+                      >
+                        {cfg.icon}
+                        <Text className={`font-semibold capitalize text-xs ${
+                          isSelected ? cfg.textColor : 'text-gray-600 dark:text-gray-400'
+                        }`}>
+                          {status}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+
+                <View className="pt-4 border-t border-gray-100 dark:border-gray-800 flex-row gap-3">
+                  {editingRoom && (
+                    <TouchableOpacity 
+                      onPress={handleDelete}
+                      activeOpacity={0.7}
+                      className="bg-red-50 dark:bg-red-950/40 h-14 w-14 rounded-2xl items-center justify-center border border-red-200 dark:border-red-900/40"
+                    >
+                      <Trash size={24} color="#EF4444" />
+                    </TouchableOpacity>
+                  )}
+                  <Button 
+                    label={editingRoom ? "Save Changes" : "Create Room"} 
+                    onPress={handleSave}
+                    className="flex-1 h-14"
+                    isLoading={isLoading}
+                  />
+                </View>
+              </ScrollView>
+            </KeyboardAvoidingView>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
