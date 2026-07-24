@@ -19,6 +19,7 @@ export interface GuestProfile {
   pinCode?: FieldValue;
   nationality?: FieldValue;
   photoUri?: string;
+  backPhotoUri?: string;
   rawOCR?: string;
 }
 

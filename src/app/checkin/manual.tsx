@@ -5,6 +5,7 @@ import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Input } from '@/components/Input';
+import { DatePicker } from '@/components/DatePicker';
 import { Button } from '@/components/Button';
 import { GlassCard } from '@/components/GlassCard';
 import { useRouter } from 'expo-router';
@@ -13,7 +14,7 @@ import { useRoomsStore } from '@/store/useRoomsStore';
 import * as ImagePicker from 'expo-image-picker';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
 
-const docTypes = ['AADHAAR', 'PASSPORT', 'DRIVING_LICENSE', 'VOTER_ID', 'OTHER'];
+const docTypes = ['AADHAAR', 'PAN', 'PASSPORT', 'DRIVING_LICENSE', 'VOTER_ID', 'OTHER'];
 
 const schema = z.object({
   fullName: z.string().min(2, 'Name must be at least 2 characters'),
@@ -33,18 +34,18 @@ export default function ManualEntryScreen() {
   const [isScanning, setIsScanning] = useState(false);
   const [uploadedPhotoUri, setUploadedPhotoUri] = useState<string | null>(null);
 
-  const availableRooms = rooms.filter(r => r.status === 'available');
+  const availableRooms = rooms;
 
   useEffect(() => {
     fetchRooms();
   }, []);
 
-  // Pre-select first available room if none selected
+  // Pre-select first room if none selected
   useEffect(() => {
-    if (availableRooms.length > 0 && !selectedRoomId) {
-      setSelectedRoomId(availableRooms[0].id);
+    if (rooms.length > 0 && !selectedRoomId) {
+      setSelectedRoomId(rooms[0].id);
     }
-  }, [availableRooms]);
+  }, [rooms]);
 
   const { control, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -144,10 +145,14 @@ export default function ManualEntryScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background">
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         className="flex-1"
       >
-        <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+        <ScrollView 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+        >
           {/* PROGRESS STEPPER */}
           <View className="flex-row items-center justify-center mb-6 px-2 mt-2">
             <View className="items-center">
@@ -330,16 +335,13 @@ export default function ManualEntryScreen() {
             <Controller
               control={control}
               name="dob"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
+              render={({ field: { onChange, value } }) => (
+                <DatePicker
                   label="Date of Birth"
                   placeholder="YYYY-MM-DD"
-                  {...(Platform.OS === 'web' ? { type: 'date' } as any : {})}
-                  onBlur={onBlur}
+                  value={value || ''}
                   onChangeText={onChange}
-                  value={value}
                   error={errors.dob?.message}
-                  icon={<Calendar size={20} color="#9498AA" />}
                 />
               )}
             />
@@ -368,14 +370,13 @@ export default function ManualEntryScreen() {
                 <Input
                   label="Address"
                   placeholder="Enter full address"
-                  multiline
-                  numberOfLines={3}
-                  className="h-24 items-start pt-3"
+                  returnKeyType="done"
+                  blurOnSubmit={true}
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
                   error={errors.address?.message}
-                  icon={<MapPin size={20} color="#9498AA" className="mt-1" />}
+                  icon={<MapPin size={20} color="#9498AA" />}
                 />
               )}
             />

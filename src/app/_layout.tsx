@@ -1,18 +1,41 @@
 import { useEffect } from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import '../i18n';
+import i18n from '../i18n';
 import { initDatabase } from '@/database';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 import '../global.css';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
+  const { colorScheme, setColorScheme } = useColorScheme();
+  const theme = useSettingsStore((s) => s.theme);
+  const language = useSettingsStore((s) => s.language);
+
+  // Synchronize stored theme preference with NativeWind colorScheme
+  useEffect(() => {
+    try {
+      if (theme && theme !== 'system') {
+        setColorScheme(theme);
+      } else {
+        setColorScheme('system');
+      }
+    } catch (e) {
+      console.warn('Unable to set color scheme', e);
+    }
+  }, [theme]);
+
+  // Synchronize stored language preference with i18n
+  useEffect(() => {
+    if (language) {
+      i18n.changeLanguage(language);
+    }
+  }, [language]);
 
   useEffect(() => {
     async function init() {
@@ -39,9 +62,9 @@ export default function RootLayout() {
           <Stack.Screen name="checkin" />
           <Stack.Screen name="search" />
           <Stack.Screen name="reports" />
+          <Stack.Screen name="registrations" />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>
   );
 }
-

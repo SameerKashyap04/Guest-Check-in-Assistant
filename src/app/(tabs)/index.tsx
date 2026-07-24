@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Platform, Modal } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Platform, Modal, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
-import { Users, LogIn, LogOut, AlertCircle, Search, FileBarChart, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe } from 'lucide-react-native';
+import { Users, LogIn, LogOut, AlertCircle, Search, FileBarChart, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe, DoorOpen } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
@@ -22,7 +22,13 @@ export default function DashboardScreen() {
   const fetchGuests = async () => {
     try {
       const db = await openDatabase();
-      const guests = await db.getAllAsync('SELECT * FROM guests ORDER BY id DESC LIMIT 5');
+      const guests = await db.getAllAsync(`
+        SELECT g.*, r.room_number, r.room_type, s.check_in_date, s.check_out_date
+        FROM guests g
+        LEFT JOIN stays s ON s.guest_id = g.id
+        LEFT JOIN rooms r ON r.id = s.room_id
+        ORDER BY g.id DESC LIMIT 10
+      `);
       setRecentGuests(guests as any[]);
     } catch (e) {
       console.error('Failed to fetch guests', e);
@@ -52,9 +58,9 @@ export default function DashboardScreen() {
           <Text className="text-sm text-gray-500 mt-1 font-medium">{todayDate}</Text>
         </View>
 
-        <View className="flex-row justify-between items-center mb-6">
+        <View className="flex-row items-center gap-3 mb-6">
           <TouchableOpacity 
-            className="flex-1 mr-3"
+            className="flex-1"
             onPress={() => router.push('/search')}
             activeOpacity={0.7}
           >
@@ -63,12 +69,13 @@ export default function DashboardScreen() {
                 placeholder="Search guests, rooms, IDs..." 
                 icon={<Search size={20} color="#9498AA" />}
                 editable={false}
+                className="mb-0"
               />
             </View>
           </TouchableOpacity>
           <TouchableOpacity 
-            className="w-14 h-14 bg-white dark:bg-black/20 border border-transparent dark:border-transparent rounded-2xl items-center justify-center"
-            style={Platform.OS === 'web' ? { transition: 'all 0.2s ease' } : undefined}
+            className="w-14 h-14 bg-white dark:bg-black/20 border border-gray-100 dark:border-white/10 rounded-2xl items-center justify-center"
+            style={Platform.OS === 'web' ? ({ transition: 'all 0.2s ease' } as any) : undefined}
             activeOpacity={0.7}
             onPress={() => router.push('/reports')}
           >
@@ -106,9 +113,18 @@ export default function DashboardScreen() {
           </GlassCard>
         </View>
 
-        <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 mt-4">
-          Recent Registrations
-        </Text>
+        <View className="flex-row justify-between items-center mb-4 mt-4">
+          <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+            Recent Registrations
+          </Text>
+          <TouchableOpacity 
+            onPress={() => router.push('/registrations')}
+            activeOpacity={0.7}
+            className="flex-row items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-full"
+          >
+            <Text className="text-xs font-bold text-primary">Show All →</Text>
+          </TouchableOpacity>
+        </View>
         
         <GlassCard className="mb-6 p-5 rounded-2xl border border-gray-100 dark:border-white/10">
           {recentGuests.length === 0 ? (
@@ -129,11 +145,22 @@ export default function DashboardScreen() {
                   </View>
                   <View className="flex-1">
                     <Text className="text-base font-semibold text-foreground" numberOfLines={1}>{guest.full_name}</Text>
-                    <Text className="text-xs text-gray-500 mt-0.5" numberOfLines={1}>ID: {guest.id_number || 'N/A'} • {guest.id_type || 'ID'}</Text>
+                    <View className="flex-row items-center gap-1.5 mt-0.5">
+                      {guest.room_number ? (
+                        <View className="bg-foreground/10 px-1.5 py-0.5 rounded">
+                          <Text className="text-[11px] font-bold text-foreground">Room {guest.room_number}</Text>
+                        </View>
+                      ) : null}
+                      <Text className="text-xs text-gray-500" numberOfLines={1}>ID: {guest.id_number || 'N/A'}</Text>
+                    </View>
                   </View>
                 </View>
-                <View className="bg-emerald-100 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800/40">
-                  <Text className="text-xs font-bold text-emerald-700 dark:text-emerald-400">Verified</Text>
+
+                <View className="items-end gap-1">
+                  <View className="bg-emerald-100 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/40">
+                    <Text className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Verified</Text>
+                  </View>
+                  <Text className="text-[10px] text-primary font-semibold">Tap to view ID Card →</Text>
                 </View>
               </TouchableOpacity>
             ))
@@ -177,8 +204,55 @@ export default function DashboardScreen() {
                 </View>
 
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                  
+                  {/* ID CARD PHOTOS (FRONT & BACK) */}
+                  {(selectedGuest.photo_uri || selectedGuest.back_photo_uri) ? (
+                    <View className="mb-4">
+                      <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+                        ID Card Photos ({selectedGuest.photo_uri && selectedGuest.back_photo_uri ? 'Front & Back' : 'Scanned ID'})
+                      </Text>
+                      <View className="gap-3">
+                        {selectedGuest.photo_uri ? (
+                          <View className="bg-gray-50 dark:bg-gray-800/40 p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
+                            <View className="bg-gray-200 dark:bg-gray-700 px-2.5 py-1 rounded-md self-start mb-2">
+                              <Text className="text-xs font-bold text-foreground">Front Side ID</Text>
+                            </View>
+                            <Image 
+                              source={{ uri: selectedGuest.photo_uri }} 
+                              style={{ width: '100%', height: 160, borderRadius: 12 }}
+                              resizeMode="cover"
+                            />
+                          </View>
+                        ) : null}
+
+                        {selectedGuest.back_photo_uri ? (
+                          <View className="bg-gray-50 dark:bg-gray-800/40 p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
+                            <View className="bg-gray-200 dark:bg-gray-700 px-2.5 py-1 rounded-md self-start mb-2">
+                              <Text className="text-xs font-bold text-foreground">Back Side ID</Text>
+                            </View>
+                            <Image 
+                              source={{ uri: selectedGuest.back_photo_uri }} 
+                              style={{ width: '100%', height: 160, borderRadius: 12 }}
+                              resizeMode="cover"
+                            />
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+                  ) : null}
+
                   <View className="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl mb-4 border border-gray-100 dark:border-gray-800 space-y-3">
                     
+                    {selectedGuest.room_number && (
+                      <View className="flex-row items-center gap-3">
+                        <DoorOpen size={18} color="#6B7280" />
+                        <View>
+                          <Text className="text-xs text-gray-400 font-medium">Assigned Room</Text>
+                          <Text className="text-sm font-bold text-foreground">Room {selectedGuest.room_number} ({selectedGuest.room_type || 'Standard'})</Text>
+                        </View>
+                      </View>
+                    )}
+
                     <View className="flex-row items-center gap-3">
                       <IdCard size={18} color="#6B7280" />
                       <View>

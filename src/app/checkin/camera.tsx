@@ -1,4 +1,4 @@
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState, useEffect } from 'react';
 import { LightSensor } from 'expo-sensors';
@@ -79,15 +79,46 @@ export default function CameraScannerScreen() {
     // Manually finalize the scan using whatever data has been accumulated in the background
     useAutoCaptureStore.getState().setCaptured(true);
     
-    // Quick flash effect or haptic could go here
-    
     const profile = useAutoCaptureStore.getState().extractedData;
-    router.push({
-      pathname: '/checkin/review',
-      params: {
-        guestProfile: JSON.stringify(profile),
-      },
-    });
+    
+    if (params.returnToReview === 'true') {
+      let existing: any[] = [];
+      if (params.existingGuests) {
+        try {
+          const str = Array.isArray(params.existingGuests) ? params.existingGuests[0] : params.existingGuests;
+          existing = JSON.parse(str);
+        } catch (e) {
+          console.warn('Failed to parse existingGuests', e);
+        }
+      }
+      const newGuest = {
+        name: profile?.fullName?.value || '',
+        idNumber: profile?.idNumber?.value || '',
+        address: profile?.address?.value || '',
+        phone: '',
+        docType: profile?.idType || 'UNKNOWN',
+        dob: profile?.dob?.value || '',
+        gender: profile?.gender?.value || '',
+        pinCode: profile?.pinCode?.value || '',
+        photoUri: profile?.photoUri || '',
+        backPhotoUri: profile?.backPhotoUri || ''
+      };
+      existing.push(newGuest);
+      router.push({
+        pathname: '/checkin/review',
+        params: {
+          guestList: JSON.stringify(existing),
+          selectedRoomId: params.selectedRoomId || '',
+        },
+      });
+    } else {
+      router.push({
+        pathname: '/checkin/review',
+        params: {
+          guestProfile: JSON.stringify(profile),
+        },
+      });
+    }
   };
 
   useAutoCapture({

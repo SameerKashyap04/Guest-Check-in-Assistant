@@ -32,6 +32,7 @@ export async function initDatabase() {
       id_type TEXT,
       id_number TEXT,
       photo_uri TEXT,
+      back_photo_uri TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -39,6 +40,7 @@ export async function initDatabase() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       room_number TEXT NOT NULL UNIQUE,
       room_type TEXT,
+      price REAL DEFAULT 0,
       status TEXT DEFAULT 'available' -- 'available', 'occupied', 'cleaning', 'maintenance'
     );
 
@@ -61,6 +63,18 @@ export async function initDatabase() {
       FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL
     );
   `);
+
+  try {
+    await db.execAsync('ALTER TABLE guests ADD COLUMN back_photo_uri TEXT;');
+  } catch (e) {
+    // Column already exists
+  }
+
+  try {
+    await db.execAsync('ALTER TABLE rooms ADD COLUMN price REAL DEFAULT 0;');
+  } catch (e) {
+    // Column already exists
+  }
 }
 
 export async function resetDatabase() {
