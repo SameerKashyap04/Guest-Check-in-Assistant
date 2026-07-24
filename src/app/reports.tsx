@@ -16,7 +16,7 @@ export default function ReportsScreen() {
           onPress={() => router.back()}
           className="mr-3 p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
         >
-          <ChevronLeft size={28} color="#2563EB" />
+          <ChevronLeft size={28} color="#000000" />
         </TouchableOpacity>
         <Text className="text-xl font-bold text-foreground">Property Reports</Text>
       </View>
@@ -42,11 +42,16 @@ export default function ReportsScreen() {
             <View className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full items-center justify-center mr-4">
               <Users size={24} color="#2563EB" />
             </View>
-            <View>
-              <Text className="text-sm text-gray-500">Total Guests</Text>
-              <Text className="text-2xl font-bold text-foreground">145</Text>
-            </View>
+          <GlassCard className="mb-4 flex-row items-center p-4">
+          <View className="w-12 h-12 rounded-full bg-primary/10 items-center justify-center mr-4">
+            <Users size={24} color="#000000" />
           </View>
+          <View className="flex-1">
+            <Text className="text-base font-semibold text-foreground">Monthly Occupancy</Text>
+            <Text className="text-xs text-gray-500 mt-0.5">84% Average rate</Text>
+          </View>
+          <Text className="text-lg font-bold text-foreground">248 Guests</Text>
+        </GlassCard>
 
           <View className="flex-row items-center">
             <View className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full items-center justify-center mr-4">
@@ -60,23 +65,21 @@ export default function ReportsScreen() {
         </GlassCard>
 
         <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 mt-4">
-          Export Data
+          Export Options
         </Text>
-        
-        <View className="flex-row gap-4 mb-4">
-          <Button 
-            label="Export CSV" 
-            variant="outline" 
-            className="flex-1"
-            icon={<Download size={18} color="#2563EB" className="mr-2" />}
-          />
-          <Button 
-            label="Export PDF" 
-            variant="outline" 
-            className="flex-1"
-            icon={<Download size={18} color="#2563EB" className="mr-2" />}
-          />
-        </View>
+
+        <Button 
+          label="Export Guest Register (PDF)" 
+          variant="outline" 
+          icon={<Download size={18} color="#000000" className="mr-2" />}
+          className="mb-3"
+        />
+
+        <Button 
+          label="Export Monthly Report (CSV)" 
+          variant="outline" 
+          icon={<Download size={18} color="#000000" className="mr-2" />}
+        />
 
       </ScrollView>
     </SafeAreaView>

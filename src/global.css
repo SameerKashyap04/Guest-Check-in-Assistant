@@ -4,7 +4,7 @@
 
 @layer base {
   :root {
-    --color-primary: 37, 99, 235;    /* #2563EB */
+    --color-primary: 0, 0, 0;          /* #000000 */
     --color-secondary: 6, 182, 212;  /* #06B6D4 */
     --color-accent: 56, 189, 248;    /* #38BDF8 */
     --color-background: 248, 250, 252; /* #F8FAFC */
@@ -12,7 +12,7 @@
   }
 
   .dark {
-    --color-primary: 59, 130, 246;     /* lighter blue */
+    --color-primary: 255, 255, 255;     /* #FFFFFF */
     --color-secondary: 8, 145, 178;    
     --color-accent: 14, 165, 233;      
     --color-background: 15, 23, 42;    /* #0F172A */

@@ -14,7 +14,7 @@ export default function Index() {
 
   // Show a loading state while hydration completes if necessary
   if ((useAuthStore as any).persist?.hasHydrated && !(useAuthStore as any).persist.hasHydrated()) {
-     return <View className="flex-1 items-center justify-center bg-background"><ActivityIndicator size="large" color="#2563EB" /></View>;
+     return <View className="flex-1 items-center justify-center bg-background"><ActivityIndicator size="large" color="#000000" /></View>;
   }
 
   if (!hasPin || !isUnlocked) {

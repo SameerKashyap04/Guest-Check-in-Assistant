@@ -30,7 +30,7 @@ export function BusinessSetupScreen() {
         <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', padding: 24 }}>
           <View className="mb-10 items-center">
             <View className="w-20 h-20 bg-primary/10 rounded-full items-center justify-center mb-6">
-              <Hotel size={40} color="#2563EB" />
+              <Hotel size={40} color="#000000" />
             </View>
             <Text className="text-3xl font-bold text-foreground text-center mb-2">
               Welcome to Guest Check-in Assistant

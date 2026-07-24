@@ -62,7 +62,7 @@ const Button = forwardRef<React.ElementRef<typeof TouchableOpacity>, ButtonProps
         {...props}
       >
         {isLoading ? (
-          <ActivityIndicator color={variant === 'outline' || variant === 'ghost' ? '#2563EB' : '#FFFFFF'} className="mr-2" />
+          <ActivityIndicator color={variant === 'outline' || variant === 'ghost' ? '#000000' : '#FFFFFF'} className="mr-2" />
         ) : icon ? (
           icon
         ) : null}

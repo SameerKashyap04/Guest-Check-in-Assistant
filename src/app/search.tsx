@@ -22,7 +22,7 @@ export default function SearchScreen() {
           onPress={() => router.back()}
           className="mr-3 p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
         >
-          <ChevronLeft size={28} color="#2563EB" />
+          <ChevronLeft size={28} color="#000000" />
         </TouchableOpacity>
         
         <View className="flex-1 mt-4">
@@ -53,7 +53,7 @@ export default function SearchScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity className="flex-row items-center p-4 mb-3 bg-white dark:bg-black/20 rounded-2xl border border-transparent dark:border-transparent">
             <View className="w-12 h-12 rounded-full bg-primary/10 items-center justify-center mr-4">
-              {item.type === 'guest' ? <User size={24} color="#2563EB" /> : <Bed size={24} color="#06B6D4" />}
+              {item.type === 'guest' ? <User size={24} color="#000000" /> : <Bed size={24} color="#06B6D4" />}
             </View>
             <View>
               <Text className="text-base font-bold text-foreground">{item.title}</Text>
