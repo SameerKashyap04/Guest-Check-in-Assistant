@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -8,8 +8,10 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { GlassCard } from '@/components/GlassCard';
 import { useRouter } from 'expo-router';
-import { User, MapPin, Hash, Phone, Calendar, DoorOpen, Plus } from 'lucide-react-native';
+import { User, MapPin, Hash, Phone, Calendar, DoorOpen, Plus, Upload, Sparkles } from 'lucide-react-native';
 import { useRoomsStore } from '@/store/useRoomsStore';
+import * as ImagePicker from 'expo-image-picker';
+import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
 
 const docTypes = ['AADHAAR', 'PASSPORT', 'DRIVING_LICENSE', 'VOTER_ID', 'OTHER'];
 
@@ -28,6 +30,8 @@ export default function ManualEntryScreen() {
   const router = useRouter();
   const { rooms, fetchRooms } = useRoomsStore();
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [uploadedPhotoUri, setUploadedPhotoUri] = useState<string | null>(null);
 
   const availableRooms = rooms.filter(r => r.status === 'available');
 
@@ -42,7 +46,7 @@ export default function ManualEntryScreen() {
     }
   }, [availableRooms]);
 
-  const { control, handleSubmit, formState: { errors } } = useForm<FormData>({
+  const { control, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       fullName: '',
@@ -53,6 +57,72 @@ export default function ManualEntryScreen() {
       address: '',
     }
   });
+
+  const handleUploadAndAutoFill = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Permission to access photo gallery is required to upload ID images.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 1,
+        allowsEditing: false,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const imageUri = result.assets[0].uri;
+      setUploadedPhotoUri(imageUri);
+      setIsScanning(true);
+
+      // Run OCR pipeline to extract text blocks
+      const blocks = await OCRPipeline.analyzeFrame(imageUri);
+      const initialProfile = {
+        fullName: { value: '', confidence: 0 },
+        idNumber: { value: '', confidence: 0 },
+        address: { value: '', confidence: 0 },
+        dob: { value: '', confidence: 0 },
+        gender: { value: '', confidence: 0 },
+        pinCode: { value: '', confidence: 0 },
+        idType: 'UNKNOWN' as const,
+        isBackScanned: false,
+        photoUri: imageUri
+      };
+
+      const profile = OCRPipeline.processBlocks(blocks, initialProfile, 'UNKNOWN');
+      setIsScanning(false);
+
+      // Auto-fill form fields
+      if (profile.fullName?.value) {
+        setValue('fullName', profile.fullName.value, { shouldValidate: true });
+      }
+      if (profile.idNumber?.value) {
+        setValue('idNumber', profile.idNumber.value, { shouldValidate: true });
+      }
+      if (profile.idType && profile.idType !== 'UNKNOWN') {
+        const mappedType = profile.idType === 'DRIVING_LICENCE' ? 'DRIVING_LICENSE' : profile.idType;
+        setValue('docType', mappedType);
+      }
+      if (profile.dob?.value) {
+        setValue('dob', profile.dob.value);
+      }
+      if (profile.address?.value) {
+        setValue('address', profile.address.value, { shouldValidate: true });
+      }
+
+      Alert.alert('Scan Complete ✨', 'Document scanned! Check and refine any auto-filled details below.');
+
+    } catch (error) {
+      console.error('OCR Upload error:', error);
+      setIsScanning(false);
+      Alert.alert('Scan Failed', 'Could not extract text from the selected image. You can manually enter details.');
+    }
+  };
 
   const onSubmit = (data: FormData) => {
     router.push({
@@ -65,6 +135,7 @@ export default function ManualEntryScreen() {
         extractedPhone: data.phone,
         extractedDob: data.dob || '',
         selectedRoomId: selectedRoomId ? String(selectedRoomId) : '',
+        photoUri: uploadedPhotoUri || '',
         isManual: 'true'
       },
     });
@@ -78,7 +149,7 @@ export default function ManualEntryScreen() {
       >
         <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
           {/* PROGRESS STEPPER */}
-          <View className="flex-row items-center justify-center mb-8 px-2 mt-2">
+          <View className="flex-row items-center justify-center mb-6 px-2 mt-2">
             <View className="items-center">
               <View className="w-8 h-8 rounded-full bg-foreground items-center justify-center">
                 <Text className="text-background font-bold text-sm">1</Text>
@@ -100,6 +171,32 @@ export default function ManualEntryScreen() {
               <Text className="text-xs text-gray-400 font-medium mt-1.5">Done</Text>
             </View>
           </View>
+
+          {/* AUTO-FILL FROM UPLOADED ID BUTTON */}
+          <GlassCard variant="elevated" className="mb-6 p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row items-center justify-between">
+            <View className="flex-1 mr-3">
+              <View className="flex-row items-center gap-1.5 mb-1">
+                <Sparkles size={16} color="#000000" />
+                <Text className="text-sm font-bold text-foreground">Upload ID Card Photo</Text>
+              </View>
+              <Text className="text-xs text-gray-500">Pick an image from gallery to auto-fill form</Text>
+            </View>
+            <TouchableOpacity 
+              onPress={handleUploadAndAutoFill}
+              disabled={isScanning}
+              activeOpacity={0.8}
+              className="bg-foreground px-4 py-2.5 rounded-xl flex-row items-center gap-2"
+            >
+              {isScanning ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <>
+                  <Upload size={16} color="#FFFFFF" />
+                  <Text className="text-background font-semibold text-xs">Upload</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </GlassCard>
 
           {/* ROOM SELECTION SECTION */}
           <View className="flex-row justify-between items-center mb-3 ml-1">
