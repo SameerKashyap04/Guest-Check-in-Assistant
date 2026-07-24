@@ -41,7 +41,7 @@ export default function DashboardScreen() {
   }, []);
 
   return (
-    <SafeAreaView edges={['left', 'right']} className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}

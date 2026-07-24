@@ -27,7 +27,7 @@ export default function ReportsScreen() {
           This Month
         </Text>
         
-        <GlassCard className="mb-4">
+        <GlassCard className="mb-4 p-5">
           <View className="flex-row items-center mb-6">
             <View className="w-12 h-12 bg-green-100 dark:bg-green-900/30 rounded-full items-center justify-center mr-4">
               <TrendingUp size={24} color="#16A34A" />
@@ -39,19 +39,14 @@ export default function ReportsScreen() {
           </View>
 
           <View className="flex-row items-center mb-6">
-            <View className="w-12 h-12 bg-blue-100 dark:bg-blue-900/30 rounded-full items-center justify-center mr-4">
-              <Users size={24} color="#2563EB" />
+            <View className="w-12 h-12 bg-gray-100 dark:bg-gray-800/40 rounded-full items-center justify-center mr-4">
+              <Users size={24} color="#000000" />
             </View>
-          <GlassCard className="mb-4 flex-row items-center p-4">
-          <View className="w-12 h-12 rounded-full bg-primary/10 items-center justify-center mr-4">
-            <Users size={24} color="#000000" />
+            <View>
+              <Text className="text-sm text-gray-500">Total Guests</Text>
+              <Text className="text-2xl font-bold text-foreground">145</Text>
+            </View>
           </View>
-          <View className="flex-1">
-            <Text className="text-base font-semibold text-foreground">Monthly Occupancy</Text>
-            <Text className="text-xs text-gray-500 mt-0.5">84% Average rate</Text>
-          </View>
-          <Text className="text-lg font-bold text-foreground">248 Guests</Text>
-        </GlassCard>
 
           <View className="flex-row items-center">
             <View className="w-12 h-12 bg-purple-100 dark:bg-purple-900/30 rounded-full items-center justify-center mr-4">
