@@ -46,8 +46,16 @@ export default function ReviewScreen() {
   
   const photoUri = profile?.photoUri || (Array.isArray(params.photoUri) ? params.photoUri[0] : params.photoUri);
 
-  // New state for room assignment
-  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
+  const initialRoomId = params.selectedRoomId ? Number(Array.isArray(params.selectedRoomId) ? params.selectedRoomId[0] : params.selectedRoomId) : null;
+  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(initialRoomId);
+  
+  useEffect(() => {
+    if (initialRoomId) {
+      setSelectedRoomId(initialRoomId);
+    } else if (availableRooms.length > 0 && !selectedRoomId) {
+      setSelectedRoomId(availableRooms[0].id);
+    }
+  }, [availableRooms, initialRoomId]);
   
   // Default to today's date in YYYY-MM-DD
   const today = new Date().toISOString().split('T')[0];
@@ -167,17 +175,17 @@ export default function ReviewScreen() {
                         {...(Platform.OS === 'web' ? { style: { transition: 'all 0.2s' } } : {})}
                         className={`px-5 py-3.5 rounded-2xl border ${
                           isSelected 
-                            ? 'border-primary bg-primary/10 shadow-sm shadow-primary/20' 
-                            : 'border-transparent/60 bg-surface/50'
+                            ? 'border-foreground bg-foreground/10 dark:border-white dark:bg-white/15' 
+                            : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-black/20'
                         }`}
                       >
                         <Text className={`font-bold text-center text-base mb-0.5 ${
-                          isSelected ? 'text-primary' : 'text-gray-700'
+                          isSelected ? 'text-foreground font-extrabold' : 'text-gray-700 dark:text-gray-300'
                         }`}>
-                          {room.room_number}
+                          Room {room.room_number}
                         </Text>
                         <Text className={`text-[10px] text-center font-medium uppercase tracking-wider ${
-                          isSelected ? 'text-primary/70' : 'text-gray-500'
+                          isSelected ? 'text-foreground' : 'text-gray-500'
                         }`}>
                           {room.room_type || 'Standard'}
                         </Text>
