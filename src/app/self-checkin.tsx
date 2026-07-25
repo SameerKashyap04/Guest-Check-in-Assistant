@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
-import { ChevronLeft, Camera, Image as ImageIcon, CheckCircle2, User, IdCard, Phone, MapPin, Building2, Sparkles, ShieldCheck, DoorOpen, Calendar, X } from 'lucide-react-native';
+import { ChevronLeft, Camera, Image as ImageIcon, CheckCircle2, User, IdCard, Phone, MapPin, Building2, Sparkles, ShieldCheck, DoorOpen, Calendar, X, Link2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -199,7 +199,7 @@ export default function SelfCheckinScreen() {
           <GlassCard className="mb-6 p-5 rounded-2xl border border-sky-500/20 bg-sky-500/5">
             <View className="flex-row items-center gap-3 mb-2">
               <View className="w-10 h-10 rounded-xl bg-primary/20 items-center justify-center">
-                <Sparkles size={20} color="#38BDF8" />
+                <Link2 size={22} color="#38BDF8" />
               </View>
               <View className="flex-1">
                 <Text className="text-base font-bold text-foreground">Guest Self Check-in</Text>
