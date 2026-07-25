@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
-import { ChevronLeft, Camera, Image as ImageIcon, CheckCircle2, User, IdCard, Phone, MapPin, Building2, Sparkles, ShieldCheck, DoorOpen, Calendar, X, Link2 } from 'lucide-react-native';
+import { ChevronLeft, Camera, Image as ImageIcon, CheckCircle2, User, IdCard, Phone, MapPin, Building2, Sparkles, ShieldCheck, DoorOpen, Calendar, X, Link2, UploadCloud, CreditCard } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -319,7 +319,10 @@ export default function SelfCheckinScreen() {
             
             {/* Front Side ID */}
             <View>
-              <Text className="text-sm font-bold text-foreground mb-2">Front Side ID Card Photo</Text>
+              <View className="flex-row items-center gap-2 mb-2">
+                <IdCard size={18} color="#38BDF8" />
+                <Text className="text-sm font-bold text-foreground">Front Side ID Card Photo</Text>
+              </View>
               {frontPhotoUri ? (
                 <View className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
                   <Image source={{ uri: frontPhotoUri }} style={{ width: '100%', height: 160 }} resizeMode="cover" />
@@ -337,14 +340,14 @@ export default function SelfCheckinScreen() {
                     className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl items-center border border-dashed border-gray-300 dark:border-gray-700"
                   >
                     <Camera size={22} color="#38BDF8" className="mb-1" />
-                    <Text className="text-xs font-bold text-foreground">Camera</Text>
+                    <Text className="text-xs font-bold text-foreground">Take Photo</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     onPress={() => pickImage('front', false)}
                     className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl items-center border border-dashed border-gray-300 dark:border-gray-700"
                   >
-                    <ImageIcon size={22} color="#38BDF8" className="mb-1" />
-                    <Text className="text-xs font-bold text-foreground">Gallery</Text>
+                    <UploadCloud size={22} color="#38BDF8" className="mb-1" />
+                    <Text className="text-xs font-bold text-foreground">Upload ID</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -352,7 +355,10 @@ export default function SelfCheckinScreen() {
 
             {/* Back Side ID */}
             <View className="pt-3 border-t border-gray-100 dark:border-gray-800">
-              <Text className="text-sm font-bold text-foreground mb-2">Back Side ID Card Photo</Text>
+              <View className="flex-row items-center gap-2 mb-2">
+                <CreditCard size={18} color="#38BDF8" />
+                <Text className="text-sm font-bold text-foreground">Back Side ID Card Photo</Text>
+              </View>
               {backPhotoUri ? (
                 <View className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
                   <Image source={{ uri: backPhotoUri }} style={{ width: '100%', height: 160 }} resizeMode="cover" />
@@ -370,14 +376,14 @@ export default function SelfCheckinScreen() {
                     className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl items-center border border-dashed border-gray-300 dark:border-gray-700"
                   >
                     <Camera size={22} color="#38BDF8" className="mb-1" />
-                    <Text className="text-xs font-bold text-foreground">Camera</Text>
+                    <Text className="text-xs font-bold text-foreground">Take Photo</Text>
                   </TouchableOpacity>
                   <TouchableOpacity 
                     onPress={() => pickImage('back', false)}
                     className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl items-center border border-dashed border-gray-300 dark:border-gray-700"
                   >
-                    <ImageIcon size={22} color="#38BDF8" className="mb-1" />
-                    <Text className="text-xs font-bold text-foreground">Gallery</Text>
+                    <UploadCloud size={22} color="#38BDF8" className="mb-1" />
+                    <Text className="text-xs font-bold text-foreground">Upload ID</Text>
                   </TouchableOpacity>
                 </View>
               )}
