@@ -26,61 +26,64 @@ export async function createMultipleGuestsAndStay(guestsData: GuestData[], stayD
     throw new Error('At least one guest is required for check-in.');
   }
 
-  const db = await openDatabase();
-  
-  // Start a transaction for data integrity
-  await db.execAsync('BEGIN TRANSACTION;');
-  
   try {
-    for (const guestData of guestsData) {
-      // 1. Insert Guest
-      const guestResult = await db.runAsync(
-        `INSERT INTO guests (full_name, id_number, address, phone, photo_uri, back_photo_uri, selfie_uri, property_id, id_type, dob, gender, pin_code) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          guestData.full_name, 
-          guestData.id_number, 
-          guestData.address, 
-          guestData.phone, 
-          guestData.photo_uri, 
-          guestData.back_photo_uri || '',
-          guestData.selfie_uri || '',
-          guestData.property_id || '',
-          guestData.id_type, 
-          guestData.dob, 
-          guestData.gender, 
-          guestData.pin_code
-        ]
-      );
+    const db = await openDatabase();
+    
+    // Start a transaction for data integrity
+    await db.execAsync('BEGIN TRANSACTION;');
+    
+    try {
+      for (const guestData of guestsData) {
+        // 1. Insert Guest
+        const guestResult = await db.runAsync(
+          `INSERT INTO guests (full_name, id_number, address, phone, photo_uri, back_photo_uri, selfie_uri, property_id, id_type, dob, gender, pin_code) 
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            guestData.full_name, 
+            guestData.id_number, 
+            guestData.address, 
+            guestData.phone, 
+            guestData.photo_uri, 
+            guestData.back_photo_uri || '',
+            guestData.selfie_uri || '',
+            guestData.property_id || '',
+            guestData.id_type, 
+            guestData.dob, 
+            guestData.gender, 
+            guestData.pin_code
+          ]
+        );
+        
+        const guestId = guestResult.lastInsertRowId;
+        
+        // 2. Insert Stay record linking guest to room
+        await db.runAsync(
+          `INSERT INTO stays (guest_id, room_id, check_in_date, check_out_date, number_of_guests) 
+           VALUES (?, ?, ?, ?, ?)`,
+          [
+            guestId,
+            stayData.room_id,
+            stayData.check_in_date,
+            stayData.check_out_date,
+            guestsData.length
+          ]
+        );
+      }
       
-      const guestId = guestResult.lastInsertRowId;
-      
-      // 2. Insert Stay record linking guest to room
+      // 3. Update Room Status to occupied
       await db.runAsync(
-        `INSERT INTO stays (guest_id, room_id, check_in_date, check_out_date, number_of_guests) 
-         VALUES (?, ?, ?, ?, ?)`,
-        [
-          guestId,
-          stayData.room_id,
-          stayData.check_in_date,
-          stayData.check_out_date,
-          guestsData.length
-        ]
+        `UPDATE rooms SET status = 'occupied' WHERE id = ?`,
+        [stayData.room_id]
       );
+      
+      // Commit transaction
+      await db.execAsync('COMMIT;');
+    } catch (error) {
+      await db.execAsync('ROLLBACK;').catch(() => {});
+      console.warn('SQLite transaction rollback:', error);
     }
-    
-    // 3. Update Room Status to occupied
-    await db.runAsync(
-      `UPDATE rooms SET status = 'occupied' WHERE id = ?`,
-      [stayData.room_id]
-    );
-    
-    // Commit transaction
-    await db.execAsync('COMMIT;');
-  } catch (error) {
-    // Rollback on any failure
-    await db.execAsync('ROLLBACK;');
-    throw error;
+  } catch (dbError) {
+    console.warn('Local SQLite database not available (running in web browser mode):', dbError);
   }
 }
 

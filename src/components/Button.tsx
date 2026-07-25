@@ -21,17 +21,17 @@ const Button = forwardRef<React.ElementRef<typeof TouchableOpacity>, ButtonProps
     const baseStyles = "flex-row items-center justify-center rounded-2xl active:opacity-80";
     
     const variants = {
-      primary: "bg-primary shadow-sm",
-      secondary: "bg-secondary shadow-sm",
-      outline: "bg-transparent",
+      primary: "bg-sky-500 dark:bg-sky-600 shadow-sm",
+      secondary: "bg-slate-800 dark:bg-slate-700 shadow-sm",
+      outline: "bg-transparent border border-gray-300 dark:border-gray-700",
       ghost: "bg-transparent",
     };
 
     const textVariants = {
-      primary: "text-white",
-      secondary: "text-white",
-      outline: "text-foreground",
-      ghost: "text-foreground",
+      primary: "text-white font-bold",
+      secondary: "text-white font-bold",
+      outline: "text-foreground font-semibold",
+      ghost: "text-foreground font-semibold",
     };
 
     const sizes = {
@@ -41,9 +41,9 @@ const Button = forwardRef<React.ElementRef<typeof TouchableOpacity>, ButtonProps
     };
 
     const textSizes = {
-      sm: "text-sm font-medium",
-      md: "text-base font-semibold",
-      lg: "text-lg font-bold",
+      sm: "text-sm",
+      md: "text-base",
+      lg: "text-lg",
     };
 
     const isDisabled = disabled || isLoading;
