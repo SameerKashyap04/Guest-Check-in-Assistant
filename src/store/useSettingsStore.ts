@@ -34,7 +34,7 @@ export const useSettingsStore = create<SettingsState>()(
       businessName: null,
       language: 'en',
       theme: 'system',
-      selfCheckinUrl: 'guestcheckinassistant://self-checkin',
+      selfCheckinUrl: 'https://guest-checkin-assistant.vercel.app/self-checkin',
       setBusinessSetup: (name) => set({ businessName: name, hasCompletedSetup: true }),
       setLanguage: (lang) => set({ language: lang }),
       setTheme: (theme) => set({ theme: theme }),
