@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon } from 'lucide-react-native';
+import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';

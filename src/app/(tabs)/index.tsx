@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Platform, Modal, Image, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
-import { Users, LogIn, LogOut, AlertCircle, Search, FileBarChart, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe, DoorOpen, Share2, ExternalLink, Sparkles } from 'lucide-react-native';
+import { Users, LogIn, LogOut, AlertCircle, Search, FileBarChart, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe, DoorOpen, Share2, ExternalLink, Sparkles, Link2, QrCode } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
@@ -120,7 +120,7 @@ export default function DashboardScreen() {
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center gap-3">
               <View className="w-10 h-10 rounded-xl bg-primary/20 items-center justify-center">
-                <Sparkles size={20} color="#38BDF8" />
+                <Link2 size={22} color="#38BDF8" />
               </View>
               <View>
                 <Text className="text-base font-bold text-foreground">Self Check-in Link</Text>
