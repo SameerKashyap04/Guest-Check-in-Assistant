@@ -24,7 +24,7 @@ export default function ReportsScreen() {
   const [roomsData, setRoomsData] = useState<any[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
   const [occupancyRate, setOccupancyRate] = useState(0);
-  const [timeFilter, setTimeFilter] = useState<'month' | 'week' | 'all'>('month');
+  const [timeFilter, setTimeFilter] = useState<'today' | 'week' | 'month' | 'all'>('today');
 
   const fetchReportData = async () => {
     try {
@@ -73,14 +73,46 @@ export default function ReportsScreen() {
     setRefreshing(false);
   }, []);
 
+  // Helper to check if a date string matches a given target date
+  const isSameDay = (dateStr: string | null | undefined, targetDate: Date) => {
+    if (!dateStr) return false;
+
+    const tYear = targetDate.getFullYear();
+    const tMonth = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const tDay = String(targetDate.getDate()).padStart(2, '0');
+
+    const isoDateStr = `${tYear}-${tMonth}-${tDay}`;
+    const indianDateStr = `${tDay}/${tMonth}/${tYear}`;
+
+    if (dateStr.includes(isoDateStr) || dateStr.includes(indianDateStr)) return true;
+
+    const parsedDate = new Date(dateStr);
+    if (isNaN(parsedDate.getTime())) return false;
+
+    return (
+      parsedDate.getDate() === targetDate.getDate() &&
+      parsedDate.getMonth() === targetDate.getMonth() &&
+      parsedDate.getFullYear() === targetDate.getFullYear()
+    );
+  };
+
   // Filter guests based on selected time frame
   const getFilteredGuests = () => {
     if (timeFilter === 'all') return guestsData;
     
     const now = new Date();
+
     return guestsData.filter((g) => {
-      if (!g.created_at) return true;
-      const regDate = new Date(g.created_at);
+      const dateString = g.check_in_date || g.created_at || g.stay_created_at;
+      if (!dateString) return false;
+
+      if (timeFilter === 'today') {
+        return isSameDay(dateString, now);
+      }
+
+      const regDate = new Date(dateString);
+      if (isNaN(regDate.getTime())) return false;
+
       if (timeFilter === 'month') {
         return regDate.getMonth() === now.getMonth() && regDate.getFullYear() === now.getFullYear();
       }
@@ -95,10 +127,31 @@ export default function ReportsScreen() {
   const currentFilteredGuests = getFilteredGuests();
   const currentRevenue = currentFilteredGuests.reduce((sum, g) => sum + (Number(g.price) || 0), 0);
 
+  // Helper to safely share or present generated report file
+  const shareReportFile = async (fileUri: string, mimeType: string, filename: string) => {
+    try {
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        await Sharing.shareAsync(fileUri, { 
+          UTI: mimeType === 'text/csv' ? 'public.comma-separated-values-text' : 'com.adobe.pdf', 
+          mimeType, 
+          dialogTitle: filename 
+        });
+      } else {
+        Alert.alert('Report Created', `${filename} generated successfully!`);
+      }
+    } catch (e) {
+      console.warn('Share error', e);
+      Alert.alert('Report Created', `${filename} generated successfully!`);
+    }
+  };
+
   // PDF Export Handler
   const handleExportPDF = async () => {
-    if (currentFilteredGuests.length === 0) {
-      Alert.alert('No Data', 'There are no guest records to export in the selected report.');
+    const targetGuests = currentFilteredGuests;
+
+    if (targetGuests.length === 0) {
+      Alert.alert('No Registrations', `No guest registrations found for ${getDurationLabel()}.`);
       return;
     }
 
@@ -106,8 +159,9 @@ export default function ReportsScreen() {
       setExportingPdf(true);
       const propTitle = businessName || 'Guest Check-in Assistant Property';
       const exportDate = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
+      const exportRevenue = targetGuests.reduce((sum, g) => sum + (Number(g.price) || 0), 0);
 
-      const tableRowsHtml = currentFilteredGuests.map((g, idx) => `
+      const tableRowsHtml = targetGuests.map((g, idx) => `
         <tr style="background-color: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
           <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 12px; text-align: center;">${idx + 1}</td>
           <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 12px; font-weight: bold; color: #0F172A;">${g.full_name || 'N/A'}</td>
@@ -143,7 +197,7 @@ export default function ReportsScreen() {
             <div class="header">
               <div>
                 <div class="title">${propTitle}</div>
-                <div class="subtitle">Official Guest Register & Property Report</div>
+                <div class="subtitle">Official Guest Register & Property Report (${getDurationLabel()})</div>
               </div>
               <div style="text-align: right;">
                 <div style="font-size: 12px; font-weight: bold;">Report Date</div>
@@ -154,11 +208,11 @@ export default function ReportsScreen() {
             <div class="stats-container">
               <div class="stat-box">
                 <div class="stat-label">Total Guest Registrations</div>
-                <div class="stat-val">${currentFilteredGuests.length}</div>
+                <div class="stat-val">${targetGuests.length}</div>
               </div>
               <div class="stat-box" style="border-left-color: #10B981;">
                 <div class="stat-label">Estimated Revenue</div>
-                <div class="stat-val">₹${currentRevenue.toLocaleString()}</div>
+                <div class="stat-val">₹${exportRevenue.toLocaleString()}</div>
               </div>
               <div class="stat-box" style="border-left-color: #8B5CF6;">
                 <div class="stat-label">Occupancy Rate</div>
@@ -191,10 +245,10 @@ export default function ReportsScreen() {
       `;
 
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      await Sharing.shareAsync(uri, { UTI: '.pdf', mimeType: 'application/pdf' });
-    } catch (e) {
+      await shareReportFile(uri, 'application/pdf', 'Guest_Register_Report.pdf');
+    } catch (e: any) {
       console.error('PDF generation error', e);
-      Alert.alert('Error', 'Failed to generate PDF report.');
+      Alert.alert('Export Error', e?.message || 'Failed to generate PDF report.');
     } finally {
       setExportingPdf(false);
     }
@@ -202,15 +256,17 @@ export default function ReportsScreen() {
 
   // CSV Export Handler
   const handleExportCSV = async () => {
-    if (currentFilteredGuests.length === 0) {
-      Alert.alert('No Data', 'There are no guest records to export.');
+    const targetGuests = currentFilteredGuests;
+
+    if (targetGuests.length === 0) {
+      Alert.alert('No Registrations', `No guest registrations found for ${getDurationLabel()}.`);
       return;
     }
 
     try {
       setExportingCsv(true);
       const csvHeader = 'Sl No,Guest Name,Room Number,Room Type,Room Price,ID Type,ID Number,Phone,Date of Birth,Address,Check-in Date\n';
-      const csvRows = currentFilteredGuests.map((g, i) => {
+      const csvRows = targetGuests.map((g, i) => {
         const clean = (val: any) => `"${String(val || '').replace(/"/g, '""')}"`;
         return [
           i + 1,
@@ -230,12 +286,22 @@ export default function ReportsScreen() {
       const csvData = csvHeader + csvRows;
       const fileUri = `${FileSystem.cacheDirectory}Guest_Register_Report.csv`;
       await FileSystem.writeAsStringAsync(fileUri, csvData, { encoding: FileSystem.EncodingType.UTF8 });
-      await Sharing.shareAsync(fileUri, { UTI: '.csv', mimeType: 'text/csv' });
-    } catch (e) {
+      await shareReportFile(fileUri, 'text/csv', 'Guest_Register_Report.csv');
+    } catch (e: any) {
       console.error('CSV generation error', e);
-      Alert.alert('Error', 'Failed to generate CSV report.');
+      Alert.alert('Export Error', e?.message || 'Failed to generate CSV report.');
     } finally {
       setExportingCsv(false);
+    }
+  };
+
+  const getDurationLabel = () => {
+    switch (timeFilter) {
+      case 'today': return "Today's";
+      case 'week': return "Past 7 Days";
+      case 'month': return "This Month's";
+      case 'all': return "All Time";
+      default: return "";
     }
   };
 
@@ -266,11 +332,15 @@ export default function ReportsScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* TIME FILTER CHIPS */}
-        <View className="flex-row gap-2 mb-5">
+        {/* DURATION SELECTION TABS */}
+        <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+          Select Duration
+        </Text>
+        <View className="flex-row gap-2 mb-5 flex-wrap">
           {[
-            { id: 'month', label: 'This Month' },
+            { id: 'today', label: 'Today' },
             { id: 'week', label: 'Past 7 Days' },
+            { id: 'month', label: 'This Month' },
             { id: 'all', label: 'All Time' }
           ].map((tab) => (
             <TouchableOpacity
@@ -303,7 +373,7 @@ export default function ReportsScreen() {
                 <TrendingUp size={24} color="#10B981" />
               </View>
               <View className="flex-1">
-                <Text className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Estimated Revenue</Text>
+                <Text className="text-xs text-gray-500 font-semibold uppercase tracking-wider">{getDurationLabel()} Revenue</Text>
                 <Text className="text-2xl font-extrabold text-foreground mt-0.5">₹{currentRevenue.toLocaleString()}</Text>
               </View>
             </View>
@@ -314,7 +384,7 @@ export default function ReportsScreen() {
                 <Users size={24} color="#0EA5E9" />
               </View>
               <View className="flex-1">
-                <Text className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Registered Guests</Text>
+                <Text className="text-xs text-gray-500 font-semibold uppercase tracking-wider">{getDurationLabel()} Registered Guests</Text>
                 <Text className="text-2xl font-extrabold text-foreground mt-0.5">{currentFilteredGuests.length}</Text>
               </View>
             </View>
@@ -334,11 +404,11 @@ export default function ReportsScreen() {
 
         {/* EXPORT OPTIONS */}
         <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4 mt-2">
-          Export Reports
+          Export {getDurationLabel()} Reports
         </Text>
 
         <Button 
-          label={exportingPdf ? "Generating PDF Register..." : "Export Guest Register (PDF)"} 
+          label={exportingPdf ? "Generating PDF Register..." : `Export ${getDurationLabel()} Register (PDF)`} 
           variant="outline" 
           disabled={exportingPdf}
           icon={exportingPdf ? <ActivityIndicator size="small" color="#38BDF8" className="mr-2" /> : <Download size={18} color="#000000" className="mr-2" />}
@@ -347,7 +417,7 @@ export default function ReportsScreen() {
         />
 
         <Button 
-          label={exportingCsv ? "Generating CSV Spreadsheet..." : "Export Monthly Report (CSV)"} 
+          label={exportingCsv ? "Generating CSV Spreadsheet..." : `Export ${getDurationLabel()} Report (CSV)`} 
           variant="outline" 
           disabled={exportingCsv}
           icon={exportingCsv ? <ActivityIndicator size="small" color="#38BDF8" className="mr-2" /> : <Download size={18} color="#000000" className="mr-2" />}
