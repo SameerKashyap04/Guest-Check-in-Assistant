@@ -1,5 +1,5 @@
 import { db } from '@/config/firebase';
-import { collection, addDoc, onSnapshot, query, where, serverTimestamp, QuerySnapshot, DocumentChange } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, where, serverTimestamp, QuerySnapshot, DocumentChange } from '@firebase/firestore';
 
 export interface CloudGuestCheckin {
   id?: string;
