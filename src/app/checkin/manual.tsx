@@ -9,7 +9,7 @@ import { DatePicker } from '@/components/DatePicker';
 import { Button } from '@/components/Button';
 import { GlassCard } from '@/components/GlassCard';
 import { useRouter } from 'expo-router';
-import { User, MapPin, Hash, Phone, Calendar, DoorOpen, Plus, Upload, Sparkles } from 'lucide-react-native';
+import { User, MapPin, Hash, Phone, Calendar, DoorOpen, Plus, Upload, Sparkles, IdCard, UploadCloud } from 'lucide-react-native';
 import { useRoomsStore } from '@/store/useRoomsStore';
 import * as ImagePicker from 'expo-image-picker';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
@@ -178,10 +178,10 @@ export default function ManualEntryScreen() {
           </View>
 
           {/* AUTO-FILL FROM UPLOADED ID BUTTON */}
-          <GlassCard variant="elevated" className="mb-6 p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row items-center justify-between">
+          <GlassCard variant="elevated" className="mb-6 p-4 rounded-2xl border border-sky-500/20 bg-sky-500/5 flex-row items-center justify-between">
             <View className="flex-1 mr-3">
-              <View className="flex-row items-center gap-1.5 mb-1">
-                <Sparkles size={16} color="#000000" />
+              <View className="flex-row items-center gap-2 mb-1">
+                <IdCard size={18} color="#38BDF8" />
                 <Text className="text-sm font-bold text-foreground">Upload ID Card Photo</Text>
               </View>
               <Text className="text-xs text-gray-500">Pick an image from gallery to auto-fill form</Text>
@@ -190,14 +190,14 @@ export default function ManualEntryScreen() {
               onPress={handleUploadAndAutoFill}
               disabled={isScanning}
               activeOpacity={0.8}
-              className="bg-foreground px-4 py-2.5 rounded-xl flex-row items-center gap-2"
+              className="bg-primary px-4 py-2.5 rounded-xl flex-row items-center gap-2"
             >
               {isScanning ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
-                  <Upload size={16} color="#FFFFFF" />
-                  <Text className="text-background font-semibold text-xs">Upload</Text>
+                  <UploadCloud size={16} color="#FFFFFF" />
+                  <Text className="text-white font-semibold text-xs">Upload</Text>
                 </>
               )}
             </TouchableOpacity>
