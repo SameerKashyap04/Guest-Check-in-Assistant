@@ -228,6 +228,25 @@ export default function RegistrationsScreen() {
                 </View>
 
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                  {/* GUEST SELFIE PHOTO (IF AVAILABLE) */}
+                  {selectedGuest.selfie_uri ? (
+                    <View className="mb-6">
+                      <Text className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1">
+                        Guest Selfie Photo 🤳
+                      </Text>
+                      <View className="bg-sky-50 dark:bg-sky-950/30 p-3 rounded-2xl border border-sky-100 dark:border-sky-800/40">
+                        <View className="bg-primary/20 px-3 py-1 rounded-md self-start mb-2">
+                          <Text className="text-xs font-bold text-primary">Self Check-in Selfie</Text>
+                        </View>
+                        <Image 
+                          source={{ uri: selectedGuest.selfie_uri }} 
+                          style={{ width: '100%', height: 180, borderRadius: 12 }}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    </View>
+                  ) : null}
+
                   {/* ID CARD PHOTOS (FRONT & BACK) */}
                   {(selectedGuest.photo_uri || selectedGuest.back_photo_uri) ? (
                     <View className="mb-6">

@@ -1,8 +1,8 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Platform, Modal, Image } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Platform, Modal, Image, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
-import { Users, LogIn, LogOut, AlertCircle, Search, FileBarChart, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe, DoorOpen } from 'lucide-react-native';
+import { Users, LogIn, LogOut, AlertCircle, Search, FileBarChart, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe, DoorOpen, Share2, ExternalLink, Sparkles } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
@@ -205,6 +205,25 @@ export default function DashboardScreen() {
 
                 <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
                   
+                  {/* GUEST SELFIE PHOTO (IF AVAILABLE) */}
+                  {selectedGuest.selfie_uri ? (
+                    <View className="mb-4">
+                      <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
+                        Guest Selfie Photo 🤳
+                      </Text>
+                      <View className="bg-sky-50 dark:bg-sky-950/30 p-3 rounded-2xl border border-sky-100 dark:border-sky-800/40">
+                        <View className="bg-primary/20 px-2.5 py-1 rounded-md self-start mb-2">
+                          <Text className="text-xs font-bold text-primary">Self Check-in Selfie</Text>
+                        </View>
+                        <Image 
+                          source={{ uri: selectedGuest.selfie_uri }} 
+                          style={{ width: '100%', height: 180, borderRadius: 12 }}
+                          resizeMode="cover"
+                        />
+                      </View>
+                    </View>
+                  ) : null}
+
                   {/* ID CARD PHOTOS (FRONT & BACK) */}
                   {(selectedGuest.photo_uri || selectedGuest.back_photo_uri) ? (
                     <View className="mb-4">

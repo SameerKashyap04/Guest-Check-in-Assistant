@@ -34,7 +34,6 @@ export async function initDatabase() {
       photo_uri TEXT,
       back_photo_uri TEXT,
       selfie_uri TEXT,
-      ocr_confidence REAL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -64,21 +63,8 @@ export async function initDatabase() {
       FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
       FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL
     );
-
-    CREATE TABLE IF NOT EXISTS self_checkin_tokens (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      token TEXT NOT NULL UNIQUE,
-      booking_reference TEXT,
-      guest_name TEXT,
-      room_id INTEGER,
-      status TEXT DEFAULT 'active', -- 'active', 'completed', 'expired'
-      expires_at DATETIME,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL
-    );
   `);
 
-  // Run migrations safely
   try {
     await db.execAsync('ALTER TABLE guests ADD COLUMN back_photo_uri TEXT;');
   } catch (e) {
@@ -87,12 +73,6 @@ export async function initDatabase() {
 
   try {
     await db.execAsync('ALTER TABLE guests ADD COLUMN selfie_uri TEXT;');
-  } catch (e) {
-    // Column already exists
-  }
-
-  try {
-    await db.execAsync('ALTER TABLE guests ADD COLUMN ocr_confidence REAL DEFAULT 0;');
   } catch (e) {
     // Column already exists
   }
@@ -107,7 +87,6 @@ export async function initDatabase() {
 export async function resetDatabase() {
   const db = await openDatabase();
   await db.execAsync(`
-    DROP TABLE IF EXISTS self_checkin_tokens;
     DROP TABLE IF EXISTS stays;
     DROP TABLE IF EXISTS rooms;
     DROP TABLE IF EXISTS guests;

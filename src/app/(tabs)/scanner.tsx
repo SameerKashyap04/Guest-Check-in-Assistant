@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, Platform, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, Platform, Alert, Share, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
-import { Camera, FileText, X, ChevronRight, Upload, Image as ImageIcon } from 'lucide-react-native';
+import { GlassCard } from '@/components/GlassCard';
+import { Camera, FileText, X, ChevronRight, Upload, Sparkles, Share2, ExternalLink } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
@@ -89,46 +90,93 @@ export default function ScannerScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background justify-center items-center px-6">
-      <View className="items-center mb-8 mt-4">
-        <View className="w-24 h-24 bg-primary/10 rounded-full items-center justify-center mb-6">
-          <Camera size={48} color="#000000" />
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
+      <ScrollView contentContainerStyle={{ padding: 24, paddingBottom: 110, alignItems: 'center' }}>
+        
+        {/* PAGE HEADER */}
+        <View className="items-center mb-6 mt-2">
+          <View className="w-20 h-20 bg-primary/10 rounded-full items-center justify-center mb-4">
+            <Camera size={40} color="#000000" />
+          </View>
+          <Text className="text-2xl font-bold text-foreground mb-1 text-center">
+            Guest Check-in
+          </Text>
+          <Text className="text-sm text-gray-500 text-center px-2">
+            Scan an ID card, upload an image, enter manually, or send a self check-in link.
+          </Text>
         </View>
-        <Text className="text-2xl font-bold text-foreground mb-2 text-center">
-          New Guest Registration
-        </Text>
-        <Text className="text-base text-gray-500 text-center px-2">
-          Scan a government ID using your camera, upload an image from your gallery, or enter details manually.
-        </Text>
-      </View>
 
-      <Button 
-        label="Scan ID Card with Camera" 
-        size="lg" 
-        className="w-full mb-3"
-        icon={<Camera size={20} color="#FFF" className="mr-2" />}
-        onPress={() => setModalVisible(true)}
-      />
+        {/* PRIMARY CHECK-IN ACTION BUTTONS */}
+        <Button 
+          label="Scan ID Card with Camera" 
+          size="lg" 
+          className="w-full mb-3"
+          icon={<Camera size={20} color="#FFF" className="mr-2" />}
+          onPress={() => setModalVisible(true)}
+        />
 
-      <Button 
-        label={isScanning ? "Scanning Uploaded ID..." : "Upload ID Image"} 
-        variant="secondary"
-        size="lg" 
-        className="w-full mb-3"
-        isLoading={isScanning}
-        icon={<Upload size={20} color="#FFF" className="mr-2" />}
-        onPress={handleUploadID}
-      />
-      
-      <Button 
-        label="Manual Entry" 
-        variant="outline"
-        size="lg" 
-        className="w-full"
-        icon={<FileText size={20} color="#1F2937" className="mr-2" />}
-        onPress={() => router.push('/checkin/manual')}
-      />
+        <Button 
+          label={isScanning ? "Scanning Uploaded ID..." : "Upload ID Image"} 
+          variant="secondary"
+          size="lg" 
+          className="w-full mb-3"
+          isLoading={isScanning}
+          icon={<Upload size={20} color="#FFF" className="mr-2" />}
+          onPress={handleUploadID}
+        />
+        
+        <Button 
+          label="Manual Entry" 
+          variant="outline"
+          size="lg" 
+          className="w-full mb-6"
+          icon={<FileText size={20} color="#1F2937" className="mr-2" />}
+          onPress={() => router.push('/checkin/manual')}
+        />
 
+        {/* SELF CHECK-IN LINK CARD */}
+        <GlassCard className="w-full p-5 rounded-2xl border border-sky-500/30 bg-sky-500/5">
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-row items-center gap-3">
+              <View className="w-10 h-10 rounded-xl bg-primary/20 items-center justify-center">
+                <Sparkles size={20} color="#38BDF8" />
+              </View>
+              <View>
+                <Text className="text-base font-bold text-foreground">Self Check-in Link</Text>
+                <Text className="text-xs text-gray-500 font-medium">Send remote check-in form to guests</Text>
+              </View>
+            </View>
+          </View>
+
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              onPress={async () => {
+                try {
+                  const message = `Hello! Please complete your online guest self check-in prior to arrival: https://checkin.assistant/self-checkin`;
+                  await Share.share({ message, title: 'Self Check-in Link' });
+                } catch (e) {
+                  console.error('Share error', e);
+                }
+              }}
+              className="flex-1 bg-primary py-3 rounded-xl items-center justify-center flex-row gap-2"
+            >
+              <Share2 size={16} color="#FFFFFF" />
+              <Text className="text-xs font-bold text-white">Share Link</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.push('/self-checkin')}
+              className="flex-1 bg-white dark:bg-black/30 border border-gray-200 dark:border-gray-800 py-3 rounded-xl items-center justify-center flex-row gap-2"
+            >
+              <ExternalLink size={16} color="#000000" />
+              <Text className="text-xs font-bold text-foreground">Open Portal</Text>
+            </TouchableOpacity>
+          </View>
+        </GlassCard>
+
+      </ScrollView>
+
+      {/* ID TYPE SELECTION MODAL */}
       <Modal
         animationType="slide"
         transparent={true}
