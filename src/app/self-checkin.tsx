@@ -5,7 +5,7 @@ import { GlassCard } from '@/components/GlassCard';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { ChevronLeft, Camera, Image as ImageIcon, CheckCircle2, User, IdCard, Phone, MapPin, Building2, Sparkles, ShieldCheck, DoorOpen, Calendar, X, Link2, UploadCloud, CreditCard } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { getRooms, Room } from '@/database/rooms';
@@ -13,7 +13,11 @@ import { createGuestAndStay } from '@/database/stays';
 
 export default function SelfCheckinScreen() {
   const router = useRouter();
-  const { businessName } = useSettingsStore();
+  const searchParams = useLocalSearchParams<{ property_id?: string; property_name?: string }>();
+  const { businessName, propertyId: storePropId } = useSettingsStore();
+
+  const activePropertyId = (searchParams?.property_id as string) || storePropId || 'DEFAULT-HOMESTAY';
+  const activePropertyName = (searchParams?.property_name as string) || businessName || 'Homestay Property';
 
   // Form State
   const [fullName, setFullName] = useState('');
@@ -125,6 +129,7 @@ export default function SelfCheckinScreen() {
           photo_uri: frontPhotoUri || '',
           back_photo_uri: backPhotoUri || '',
           selfie_uri: selfiePhotoUri || '',
+          property_id: activePropertyId,
           id_type: idType,
           dob: dob.trim(),
           gender: gender,
@@ -157,7 +162,7 @@ export default function SelfCheckinScreen() {
 
           <Text className="text-2xl font-extrabold text-foreground text-center">Self Check-in Successful!</Text>
           <Text className="text-sm text-gray-500 text-center mt-2 mb-6">
-            Welcome to <Text className="font-bold text-foreground">{businessName || 'our property'}</Text>. Your check-in registration has been processed.
+            Welcome to <Text className="font-bold text-foreground">{activePropertyName}</Text>. Your check-in registration has been processed.
           </Text>
 
           <View className="bg-primary/10 px-6 py-4 rounded-2xl items-center mb-8 w-full border border-primary/20">
@@ -186,7 +191,7 @@ export default function SelfCheckinScreen() {
           <ChevronLeft size={26} color="#000000" />
         </TouchableOpacity>
         <View className="items-center">
-          <Text className="text-lg font-bold text-foreground">{businessName || 'Self Check-in Portal'}</Text>
+          <Text className="text-lg font-bold text-foreground">{activePropertyName}</Text>
           <View className="flex-row items-center gap-1 mt-0.5">
             <ShieldCheck size={13} color="#10B981" />
             <Text className="text-xs text-emerald-600 font-semibold">Verified Online Check-in</Text>

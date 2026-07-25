@@ -34,6 +34,7 @@ export async function initDatabase() {
       photo_uri TEXT,
       back_photo_uri TEXT,
       selfie_uri TEXT,
+      property_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
 
@@ -73,6 +74,12 @@ export async function initDatabase() {
 
   try {
     await db.execAsync('ALTER TABLE guests ADD COLUMN selfie_uri TEXT;');
+  } catch (e) {
+    // Column already exists
+  }
+
+  try {
+    await db.execAsync('ALTER TABLE guests ADD COLUMN property_id TEXT;');
   } catch (e) {
     // Column already exists
   }

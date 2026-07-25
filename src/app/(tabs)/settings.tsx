@@ -12,7 +12,7 @@ import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';
 
 export default function SettingsScreen() {
-  const { businessName, language, theme, selfCheckinUrl, setBusinessSetup, setLanguage, setTheme, setSelfCheckinUrl } = useSettingsStore();
+  const { businessName, language, theme, selfCheckinUrl, propertyId, setBusinessSetup, setLanguage, setTheme, setSelfCheckinUrl } = useSettingsStore();
   const { setColorScheme } = useColorScheme();
   const { lock, verifyPin, setupPin } = useAuthStore();
   const router = useRouter();
@@ -154,7 +154,12 @@ export default function SettingsScreen() {
             </View>
             <View className="flex-1">
               <Text className="text-2xl font-bold text-foreground mb-1">{businessName || 'Property Name'}</Text>
-              <Text className="text-sm font-medium text-foreground">Owner Account • Tap to edit</Text>
+              <View className="flex-row items-center gap-2 mt-0.5">
+                <View className="bg-primary/10 px-2.5 py-0.5 rounded-md border border-primary/20">
+                  <Text className="text-[11px] font-extrabold text-primary">ID: {propertyId || 'DEFAULT'}</Text>
+                </View>
+                <Text className="text-xs font-medium text-gray-500">Homestay Owner</Text>
+              </View>
             </View>
           </GlassCard>
         </TouchableOpacity>

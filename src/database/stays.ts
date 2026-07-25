@@ -8,6 +8,7 @@ export interface GuestData {
   photo_uri: string;
   back_photo_uri?: string;
   selfie_uri?: string;
+  property_id?: string;
   id_type: string;
   dob: string;
   gender: string;
@@ -34,8 +35,8 @@ export async function createMultipleGuestsAndStay(guestsData: GuestData[], stayD
     for (const guestData of guestsData) {
       // 1. Insert Guest
       const guestResult = await db.runAsync(
-        `INSERT INTO guests (full_name, id_number, address, phone, photo_uri, back_photo_uri, selfie_uri, id_type, dob, gender, pin_code) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO guests (full_name, id_number, address, phone, photo_uri, back_photo_uri, selfie_uri, property_id, id_type, dob, gender, pin_code) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           guestData.full_name, 
           guestData.id_number, 
@@ -44,6 +45,7 @@ export async function createMultipleGuestsAndStay(guestsData: GuestData[], stayD
           guestData.photo_uri, 
           guestData.back_photo_uri || '',
           guestData.selfie_uri || '',
+          guestData.property_id || '',
           guestData.id_type, 
           guestData.dob, 
           guestData.gender, 

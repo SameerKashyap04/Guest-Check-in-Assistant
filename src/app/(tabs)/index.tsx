@@ -9,7 +9,7 @@ import { openDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
 
 export default function DashboardScreen() {
-  const { businessName, selfCheckinUrl } = useSettingsStore();
+  const { businessName, getShareableLink } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [recentGuests, setRecentGuests] = useState<any[]>([]);
   const [selectedGuest, setSelectedGuest] = useState<any | null>(null);
@@ -133,9 +133,9 @@ export default function DashboardScreen() {
             <TouchableOpacity
               onPress={async () => {
                 try {
-                  const activeLink = selfCheckinUrl || 'guestcheckinassistant://self-checkin';
-                  const message = `Hello! Welcome to ${businessName || 'our property'}. Please complete your online guest self check-in prior to arrival using this link:\n${activeLink}`;
-                  await Share.share({ message, title: 'Self Check-in Link' });
+                  const activeLink = getShareableLink();
+                  const message = `Hello! Welcome to ${businessName || 'our property'}. Please complete your online guest self check-in prior to arrival using your unique link:\n${activeLink}`;
+                  await Share.share({ message, title: 'Homestay Self Check-in Link' });
                 } catch (e) {
                   console.error('Share error', e);
                 }
