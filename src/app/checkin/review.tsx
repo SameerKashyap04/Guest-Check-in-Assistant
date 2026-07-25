@@ -307,7 +307,7 @@ export default function ReviewScreen() {
         }
       );
       
-      Alert.alert('Success ✨', `${guestsData.length} ${guestsData.length === 1 ? 'guest' : 'guests'} checked in successfully!`, [
+      Alert.alert('Success', `${guestsData.length} ${guestsData.length === 1 ? 'guest' : 'guests'} checked in successfully!`, [
         { text: 'OK', onPress: () => router.replace('/(tabs)') }
       ]);
     } catch (error) {

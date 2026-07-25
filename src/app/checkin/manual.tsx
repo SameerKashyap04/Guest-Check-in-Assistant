@@ -116,7 +116,7 @@ export default function ManualEntryScreen() {
         setValue('address', profile.address.value, { shouldValidate: true });
       }
 
-      Alert.alert('Scan Complete ✨', 'Document scanned! Check and refine any auto-filled details below.');
+      Alert.alert('Scan Complete', 'Document scanned! Check and refine any auto-filled details below.');
 
     } catch (error) {
       console.error('OCR Upload error:', error);

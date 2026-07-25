@@ -252,7 +252,7 @@ export default function DashboardScreen() {
                   {selectedGuest.selfie_uri ? (
                     <View className="mb-4">
                       <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
-                        Guest Selfie Photo 🤳
+                        Guest Selfie Photo
                       </Text>
                       <View className="bg-sky-50 dark:bg-sky-950/30 p-3 rounded-2xl border border-sky-100 dark:border-sky-800/40">
                         <View className="bg-primary/20 px-2.5 py-1 rounded-md self-start mb-2">

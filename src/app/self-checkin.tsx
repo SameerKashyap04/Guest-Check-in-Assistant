@@ -155,7 +155,7 @@ export default function SelfCheckinScreen() {
             <CheckCircle2 size={44} color="#10B981" />
           </View>
 
-          <Text className="text-2xl font-extrabold text-foreground text-center">Self Check-in Successful! 🎉</Text>
+          <Text className="text-2xl font-extrabold text-foreground text-center">Self Check-in Successful!</Text>
           <Text className="text-sm text-gray-500 text-center mt-2 mb-6">
             Welcome to <Text className="font-bold text-foreground">{businessName || 'our property'}</Text>. Your check-in registration has been processed.
           </Text>
@@ -187,7 +187,10 @@ export default function SelfCheckinScreen() {
         </TouchableOpacity>
         <View className="items-center">
           <Text className="text-lg font-bold text-foreground">{businessName || 'Self Check-in Portal'}</Text>
-          <Text className="text-xs text-emerald-600 font-semibold">Verified Online Check-in 🔒</Text>
+          <View className="flex-row items-center gap-1 mt-0.5">
+            <ShieldCheck size={13} color="#10B981" />
+            <Text className="text-xs text-emerald-600 font-semibold">Verified Online Check-in</Text>
+          </View>
         </View>
         <View className="w-8" />
       </View>
@@ -383,7 +386,10 @@ export default function SelfCheckinScreen() {
             {/* OPTIONAL SELFIE PHOTO */}
             <View className="pt-3 border-t border-gray-100 dark:border-gray-800">
               <View className="flex-row items-center justify-between mb-2">
-                <Text className="text-sm font-bold text-foreground">Guest Selfie Photo 🤳</Text>
+                <View className="flex-row items-center gap-1.5">
+                  <Camera size={16} color="#38BDF8" />
+                  <Text className="text-sm font-bold text-foreground">Guest Selfie Photo</Text>
+                </View>
                 <View className="bg-sky-500/10 px-2.5 py-0.5 rounded-full">
                   <Text className="text-[10px] font-bold text-primary">Optional</Text>
                 </View>
@@ -456,7 +462,7 @@ export default function SelfCheckinScreen() {
 
           {/* SUBMIT BUTTON */}
           <Button
-            label={isSubmitting ? "Submitting Registration..." : "Complete Self Check-in ✨"}
+            label={isSubmitting ? "Submitting Registration..." : "Complete Self Check-in"}
             disabled={isSubmitting || rooms.length === 0}
             icon={isSubmitting ? <ActivityIndicator size="small" color="#FFFFFF" className="mr-2" /> : <CheckCircle2 size={20} color="#FFFFFF" className="mr-2" />}
             onPress={handleSubmit}

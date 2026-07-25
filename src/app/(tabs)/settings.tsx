@@ -47,7 +47,7 @@ export default function SettingsScreen() {
     }
     setBusinessSetup(tempPropName.trim());
     setProfileModalOpen(false);
-    Alert.alert('Success ✨', 'Property profile updated successfully!');
+    Alert.alert('Success', 'Property profile updated successfully!');
   };
 
   const handleSaveSelfCheckinUrl = () => {
@@ -57,7 +57,7 @@ export default function SettingsScreen() {
     }
     setSelfCheckinUrl(tempSelfCheckinUrl.trim());
     setSelfCheckinModalOpen(false);
-    Alert.alert('Success ✨', 'Self Check-in link updated!');
+    Alert.alert('Success', 'Self Check-in link updated!');
   };
 
   const handleChangePin = async () => {
@@ -82,7 +82,7 @@ export default function SettingsScreen() {
       setCurrentPinInput('');
       setNewPinInput('');
       setConfirmPinInput('');
-      Alert.alert('Success 🔐', 'Security PIN changed successfully!');
+      Alert.alert('Success', 'Security PIN changed successfully!');
     } else {
       Alert.alert('Error', 'Failed to save new PIN');
     }
