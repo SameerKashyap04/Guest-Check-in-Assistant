@@ -1,18 +1,36 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, KeyboardAvoidingView, Platform, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon } from 'lucide-react-native';
+import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link as LinkIcon, Camera, User, Share2, Copy, Sparkles } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';
+import { createSelfCheckinToken } from '@/database/tokens';
+import * as Sharing from 'expo-sharing';
 
 export default function SettingsScreen() {
-  const { businessName, language, theme, setBusinessSetup, setLanguage, setTheme } = useSettingsStore();
+  const { 
+    businessName, 
+    language, 
+    theme, 
+    enableSelfCheckin, 
+    requireSelfie, 
+    allowManualEditing, 
+    requireSignature, 
+    allowWalkIn, 
+    enableIdScanning, 
+    enableOcr,
+    setBusinessSetup, 
+    setLanguage, 
+    setTheme, 
+    setSetting 
+  } = useSettingsStore();
+
   const { setColorScheme } = useColorScheme();
   const { lock, verifyPin, setupPin } = useAuthStore();
   const router = useRouter();
@@ -23,6 +41,7 @@ export default function SettingsScreen() {
   const [themeModalOpen, setThemeModalOpen] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [autoLockModalOpen, setAutoLockModalOpen] = useState(false);
+  const [linkGenModalOpen, setLinkGenModalOpen] = useState(false);
 
   // Form states
   const [tempPropName, setTempPropName] = useState(businessName || '');
@@ -32,6 +51,11 @@ export default function SettingsScreen() {
   const [biometricsEnabled, setBiometricsEnabled] = useState(false);
   const [autoLockSetting, setAutoLockSetting] = useState('After 5 min');
   const [customMinutes, setCustomMinutes] = useState('');
+
+  // Link Generator state
+  const [guestNameInput, setGuestNameInput] = useState('');
+  const [bookingRefInput, setBookingRefInput] = useState('');
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
 
   const handleLock = () => {
     lock();
@@ -76,10 +100,14 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleToggleBiometrics = () => {
-    const nextState = !biometricsEnabled;
-    setBiometricsEnabled(nextState);
-    Alert.alert('Biometrics', nextState ? 'Biometric login enabled for quick access.' : 'Biometric login disabled.');
+  const handleGenerateLink = async () => {
+    try {
+      const record = await createSelfCheckinToken(bookingRefInput.trim(), guestNameInput.trim());
+      const link = `https://guestcheckin.app/checkin/${record.token}`;
+      setGeneratedLink(link);
+    } catch (e) {
+      Alert.alert('Error', 'Failed to generate Self Check-in link.');
+    }
   };
 
   const getLanguageLabel = (lang: string) => {
@@ -98,27 +126,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleGeneralSettingPress = (item: string) => {
-    if (item === 'Property Profile') {
-      setTempPropName(businessName || '');
-      setProfileModalOpen(true);
-    } else if (item === 'Language') {
-      setLangModalOpen(true);
-    } else if (item === 'Theme (Dark/Light)') {
-      setThemeModalOpen(true);
-    }
-  };
-
-  const handleSecuritySettingPress = (item: string) => {
-    if (item === 'Change PIN') {
-      setPinModalOpen(true);
-    } else if (item === 'Biometrics') {
-      handleToggleBiometrics();
-    } else if (item === 'Auto-Lock') {
-      setAutoLockModalOpen(true);
-    }
-  };
-
   return (
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
@@ -132,21 +139,105 @@ export default function SettingsScreen() {
           }}
         >
           <GlassCard className="mb-6 flex-row items-center p-5">
-            <View className="w-20 h-20 rounded-full bg-indigo-50 dark:bg-indigo-900/20 items-center justify-center mr-5">
-              <View className="w-16 h-16 bg-primary rounded-full items-center justify-center shadow-lg shadow-primary/30">
-                <Building2 size={32} color="#ffffff" />
-              </View>
+            <View className="w-16 h-16 rounded-2xl bg-primary/10 items-center justify-center mr-4 border border-primary/20">
+              <Building2 size={30} color="#38BDF8" />
             </View>
             <View className="flex-1">
-              <Text className="text-2xl font-bold text-foreground mb-1">{businessName || 'Property Name'}</Text>
-              <Text className="text-sm font-medium text-foreground">Owner Account • Tap to edit</Text>
+              <Text className="text-xl font-bold text-foreground mb-0.5">{businessName || 'Property Name'}</Text>
+              <Text className="text-xs font-medium text-gray-500">Hotel Owner Settings • Tap to edit</Text>
             </View>
           </GlassCard>
         </TouchableOpacity>
 
+        {/* SELF CHECK-IN & HOTEL CONFIGURATION */}
+        <View className="flex-row justify-between items-center mb-3">
+          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+            Self Check-in & Hotel Options
+          </Text>
+          <TouchableOpacity 
+            onPress={() => {
+              setGeneratedLink(null);
+              setGuestNameInput('');
+              setBookingRefInput('');
+              setLinkGenModalOpen(true);
+            }}
+            className="flex-row items-center bg-primary/10 px-3 py-1.5 rounded-full"
+          >
+            <Sparkles size={14} color="#38BDF8" className="mr-1" />
+            <Text className="text-xs font-bold text-primary">Generate Link</Text>
+          </TouchableOpacity>
+        </View>
+
+        <GlassCard className="mb-6 p-4 rounded-2xl border border-gray-100 dark:border-white/10">
+          {/* Enable Self Check-in */}
+          <View className="flex-row justify-between items-center py-3 border-b border-gray-100 dark:border-gray-800">
+            <View className="flex-1 mr-4">
+              <Text className="text-sm font-semibold text-foreground">Enable Self Check-in</Text>
+              <Text className="text-xs text-gray-400">Allow guests to check in on their mobile phones</Text>
+            </View>
+            <Switch
+              value={enableSelfCheckin}
+              onValueChange={(val) => setSetting('enableSelfCheckin', val)}
+              trackColor={{ false: '#94A3B8', true: '#38BDF8' }}
+            />
+          </View>
+
+          {/* Require Selfie */}
+          <View className="flex-row justify-between items-center py-3 border-b border-gray-100 dark:border-gray-800">
+            <View className="flex-1 mr-4">
+              <Text className="text-sm font-semibold text-foreground">Require Selfie Verification</Text>
+              <Text className="text-xs text-gray-400">Capture circular face guide photo during check-in</Text>
+            </View>
+            <Switch
+              value={requireSelfie}
+              onValueChange={(val) => setSetting('requireSelfie', val)}
+              trackColor={{ false: '#94A3B8', true: '#38BDF8' }}
+            />
+          </View>
+
+          {/* Allow Manual Editing */}
+          <View className="flex-row justify-between items-center py-3 border-b border-gray-100 dark:border-gray-800">
+            <View className="flex-1 mr-4">
+              <Text className="text-sm font-semibold text-foreground">Allow Manual Editing</Text>
+              <Text className="text-xs text-gray-400">Guests can edit OCR scanned ID information</Text>
+            </View>
+            <Switch
+              value={allowManualEditing}
+              onValueChange={(val) => setSetting('allowManualEditing', val)}
+              trackColor={{ false: '#94A3B8', true: '#38BDF8' }}
+            />
+          </View>
+
+          {/* Enable ID Scanning */}
+          <View className="flex-row justify-between items-center py-3 border-b border-gray-100 dark:border-gray-800">
+            <View className="flex-1 mr-4">
+              <Text className="text-sm font-semibold text-foreground">Enable ID Scanning</Text>
+              <Text className="text-xs text-gray-400">Camera scan for Aadhaar, Passport, DL, Voter ID</Text>
+            </View>
+            <Switch
+              value={enableIdScanning}
+              onValueChange={(val) => setSetting('enableIdScanning', val)}
+              trackColor={{ false: '#94A3B8', true: '#38BDF8' }}
+            />
+          </View>
+
+          {/* Enable OCR */}
+          <View className="flex-row justify-between items-center py-3">
+            <View className="flex-1 mr-4">
+              <Text className="text-sm font-semibold text-foreground">Automatic OCR Extraction</Text>
+              <Text className="text-xs text-gray-400">Extract name, ID number, and address automatically</Text>
+            </View>
+            <Switch
+              value={enableOcr}
+              onValueChange={(val) => setSetting('enableOcr', val)}
+              trackColor={{ false: '#94A3B8', true: '#38BDF8' }}
+            />
+          </View>
+        </GlassCard>
+
         {/* GENERAL SETTINGS */}
-        <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-          General Settings
+        <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
+          General App Settings
         </Text>
 
         <GlassCard className="mb-6 p-2 overflow-hidden">
@@ -160,7 +251,11 @@ export default function SettingsScreen() {
               <TouchableOpacity 
                 key={item}
                 activeOpacity={0.7}
-                onPress={() => handleGeneralSettingPress(item)}
+                onPress={() => {
+                  if (item === 'Property Profile') setProfileModalOpen(true);
+                  if (item === 'Language') setLangModalOpen(true);
+                  if (item === 'Theme (Dark/Light)') setThemeModalOpen(true);
+                }}
                 className={`flex-row justify-between items-center p-4 active:bg-gray-50 dark:active:bg-gray-800/50 ${
                   index !== 2 ? 'border-b border-gray-100 dark:border-gray-800' : ''
                 }`}
@@ -176,7 +271,7 @@ export default function SettingsScreen() {
         </GlassCard>
 
         {/* SECURITY SETTINGS */}
-        <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+        <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">
           Security
         </Text>
 
@@ -191,7 +286,11 @@ export default function SettingsScreen() {
               <TouchableOpacity 
                 key={item}
                 activeOpacity={0.7}
-                onPress={() => handleSecuritySettingPress(item)}
+                onPress={() => {
+                  if (item === 'Change PIN') setPinModalOpen(true);
+                  if (item === 'Biometrics') setBiometricsEnabled(!biometricsEnabled);
+                  if (item === 'Auto-Lock') setAutoLockModalOpen(true);
+                }}
                 className={`flex-row justify-between items-center p-4 active:bg-gray-50 dark:active:bg-gray-800/50 ${
                   index !== 2 ? 'border-b border-gray-100 dark:border-gray-800' : ''
                 }`}
@@ -219,6 +318,74 @@ export default function SettingsScreen() {
         </View>
 
       </ScrollView>
+
+      {/* MODAL: SELF CHECK-IN LINK GENERATOR */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={linkGenModalOpen}
+        onRequestClose={() => setLinkGenModalOpen(false)}
+        statusBarTranslucent={true}
+      >
+        <TouchableOpacity 
+          activeOpacity={1} 
+          onPress={() => setLinkGenModalOpen(false)} 
+          className="flex-1 bg-black/60 justify-end"
+        >
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
+            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation?.()} className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6">
+              <View className="flex-row justify-between items-center mb-5">
+                <View className="flex-row items-center">
+                  <Sparkles size={22} color="#38BDF8" className="mr-2" />
+                  <Text className="text-xl font-bold text-foreground">Self Check-in Link</Text>
+                </View>
+                <TouchableOpacity onPress={() => setLinkGenModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
+                  <X size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+
+              <Input
+                label="Guest Name (Optional)"
+                placeholder="e.g. Sameer Kashyap"
+                value={guestNameInput}
+                onChangeText={setGuestNameInput}
+              />
+
+              <Input
+                label="Booking Ref (Optional)"
+                placeholder="e.g. BK-9821"
+                value={bookingRefInput}
+                onChangeText={setBookingRefInput}
+              />
+
+              {!generatedLink ? (
+                <Button
+                  label="Create Express Check-in Link"
+                  onPress={handleGenerateLink}
+                  className="mt-2"
+                />
+              ) : (
+                <View className="mt-2 bg-sky-50 dark:bg-sky-950/40 p-4 rounded-xl border border-sky-100 dark:border-sky-900/40">
+                  <Text className="text-xs font-bold text-sky-500 uppercase tracking-wider mb-1">Generated Link</Text>
+                  <Text className="text-sm font-semibold text-foreground mb-4" selectable={true}>{generatedLink}</Text>
+                  
+                  <View className="flex-row gap-2">
+                    <TouchableOpacity 
+                      onPress={() => {
+                        Alert.alert('Link Copied', 'Check-in link copied to clipboard!');
+                      }}
+                      className="flex-1 bg-primary py-3 rounded-xl items-center justify-center flex-row"
+                    >
+                      <Copy size={16} color="#FFFFFF" className="mr-1.5" />
+                      <Text className="text-white font-bold text-xs">Copy Link</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </TouchableOpacity>
+      </Modal>
 
       {/* MODAL 1: PROPERTY PROFILE */}
       <Modal
