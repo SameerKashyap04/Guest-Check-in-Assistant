@@ -7,9 +7,11 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useRoomsStore } from '@/store/useRoomsStore';
 
 export default function DashboardScreen() {
   const { businessName, getShareableLink } = useSettingsStore();
+  const { rooms, fetchRooms } = useRoomsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [recentGuests, setRecentGuests] = useState<any[]>([]);
   const [selectedGuest, setSelectedGuest] = useState<any | null>(null);
@@ -133,7 +135,8 @@ export default function DashboardScreen() {
             <TouchableOpacity
               onPress={async () => {
                 try {
-                  const activeLink = getShareableLink();
+                  await fetchRooms();
+                  const activeLink = getShareableLink(useRoomsStore.getState().rooms);
                   const message = `Hello! Welcome to ${businessName || 'our property'}. Please complete your online guest self check-in prior to arrival using your unique link:\n${activeLink}`;
                   await Share.share({ message, title: 'Homestay Self Check-in Link' });
                 } catch (e) {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Platform, KeyboardAvoidingView } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Platform, KeyboardAvoidingView, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { Input } from '@/components/Input';
@@ -13,7 +13,7 @@ import { createGuestAndStay } from '@/database/stays';
 
 export default function SelfCheckinScreen() {
   const router = useRouter();
-  const searchParams = useLocalSearchParams<{ property_id?: string; property_name?: string }>();
+  const searchParams = useLocalSearchParams<{ property_id?: string; property_name?: string; rooms?: string }>();
   const { businessName, propertyId: storePropId } = useSettingsStore();
 
   const activePropertyId = (searchParams?.property_id as string) || storePropId || 'DEFAULT-HOMESTAY';
@@ -43,6 +43,31 @@ export default function SelfCheckinScreen() {
 
   useEffect(() => {
     async function loadRooms() {
+      // 1. Check if rooms are passed in URL search params from owner link
+      if (searchParams?.rooms) {
+        try {
+          const raw = String(searchParams.rooms);
+          const parsed = raw.split(';').map((item, idx) => {
+            const parts = item.split(':');
+            return {
+              id: idx + 900,
+              room_number: decodeURIComponent(parts[0] || `Room ${idx+1}`),
+              room_type: decodeURIComponent(parts[1] || 'Standard'),
+              price: Number(parts[2]) || 0,
+              status: 'available' as const
+            };
+          });
+          if (parsed.length > 0) {
+            setRooms(parsed);
+            setSelectedRoomId(parsed[0].id);
+            return;
+          }
+        } catch (err) {
+          console.error('Failed to parse URL query rooms', err);
+        }
+      }
+
+      // 2. Fetch from DB / Fallback
       try {
         let availableRooms = await getRooms();
         let avail = availableRooms.filter(r => r.status === 'available');
@@ -63,7 +88,17 @@ export default function SelfCheckinScreen() {
       }
     }
     loadRooms();
-  }, []);
+  }, [searchParams?.rooms]);
+
+  const handleNotifyOwner = () => {
+    const message = `🏡 *New Guest Self Check-in Submission*\n---------------------------------\n*Property:* ${activePropertyName} (ID: ${activePropertyId})\n*Guest Name:* ${fullName.trim()}\n*Phone:* ${phone.trim()}\n*Assigned Room:* Room ${assignedRoomNumber}\n*ID Type:* ${idType} (${idNumber.trim()})\n*Address:* ${address.trim()} (${pinCode.trim()})\n*Date:* ${new Date().toLocaleDateString()}\n\nVerified Online Check-in`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(whatsappUrl, '_blank');
+    } else {
+      Share.share({ message, title: 'Self Check-in Submission' }).catch(() => {});
+    }
+  };
 
   const pickImage = async (target: 'front' | 'back' | 'selfie', useCamera = false) => {
     try {
@@ -173,16 +208,34 @@ export default function SelfCheckinScreen() {
             Welcome to <Text className="font-bold text-foreground">{activePropertyName}</Text>. Your check-in registration has been processed.
           </Text>
 
-          <View className="bg-primary/10 px-6 py-4 rounded-2xl items-center mb-8 w-full border border-primary/20">
+          <View className="bg-primary/10 px-6 py-4 rounded-2xl items-center mb-6 w-full border border-primary/20">
             <Text className="text-xs font-semibold text-primary uppercase tracking-widest">Assigned Room</Text>
             <Text className="text-3xl font-extrabold text-primary mt-1">Room {assignedRoomNumber}</Text>
           </View>
 
-          <Button
-            label="Back to App Dashboard"
-            onPress={() => router.replace('/(tabs)')}
-            className="w-full"
-          />
+          <View className="w-full gap-3">
+            <Button
+              label="Send Details to Property Owner (WhatsApp)"
+              onPress={handleNotifyOwner}
+              className="w-full bg-emerald-600 active:bg-emerald-700"
+            />
+
+            {Platform.OS === 'web' ? (
+              <Button
+                label="Property Owner Admin Login"
+                variant="outline"
+                onPress={() => router.replace('/auth')}
+                className="w-full"
+              />
+            ) : (
+              <Button
+                label="Back to App Dashboard"
+                variant="outline"
+                onPress={() => router.replace('/(tabs)')}
+                className="w-full"
+              />
+            )}
+          </View>
         </GlassCard>
       </SafeAreaView>
     );

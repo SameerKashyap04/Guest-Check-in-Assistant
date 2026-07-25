@@ -32,7 +32,7 @@ interface SettingsState {
   setLanguage: (lang: 'en' | 'hi' | 'as') => void;
   setTheme: (theme: 'system' | 'light' | 'dark') => void;
   setSelfCheckinUrl: (url: string) => void;
-  getShareableLink: () => string;
+  getShareableLink: (customRooms?: any[]) => string;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -51,13 +51,24 @@ export const useSettingsStore = create<SettingsState>()(
       setLanguage: (lang) => set({ language: lang }),
       setTheme: (theme) => set({ theme: theme }),
       setSelfCheckinUrl: (url) => set({ selfCheckinUrl: url }),
-      getShareableLink: () => {
+      getShareableLink: (customRooms?: any[]) => {
         const state = get();
         const baseUrl = state.selfCheckinUrl || 'https://guest-checkin-assistant.vercel.app/self-checkin';
         const cleanBaseUrl = baseUrl.split('?')[0];
         const propId = state.propertyId || generatePropertyId(state.businessName);
         const propName = encodeURIComponent(state.businessName || 'Homestay');
-        return `${cleanBaseUrl}?property_id=${propId}&property_name=${propName}`;
+        
+        let roomsQuery = '';
+        if (customRooms && customRooms.length > 0) {
+          const availableOnly = customRooms.filter(r => r.status === 'available');
+          if (availableOnly.length > 0) {
+            const encodedRooms = availableOnly.map(r => 
+              `${encodeURIComponent(r.room_number || '')}:${encodeURIComponent(r.room_type || 'Standard')}:${r.price || 0}`
+            ).join(';');
+            roomsQuery = `&rooms=${encodeURIComponent(encodedRooms)}`;
+          }
+        }
+        return `${cleanBaseUrl}?property_id=${propId}&property_name=${propName}${roomsQuery}`;
       },
     }),
     {
