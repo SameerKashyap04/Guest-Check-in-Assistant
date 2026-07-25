@@ -20,9 +20,11 @@ interface SettingsState {
   businessName: string | null;
   language: 'en' | 'hi' | 'as';
   theme: 'system' | 'light' | 'dark';
+  selfCheckinUrl: string;
   setBusinessSetup: (name: string) => void;
   setLanguage: (lang: 'en' | 'hi' | 'as') => void;
   setTheme: (theme: 'system' | 'light' | 'dark') => void;
+  setSelfCheckinUrl: (url: string) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -32,9 +34,11 @@ export const useSettingsStore = create<SettingsState>()(
       businessName: null,
       language: 'en',
       theme: 'system',
+      selfCheckinUrl: 'guestcheckinassistant://self-checkin',
       setBusinessSetup: (name) => set({ businessName: name, hasCompletedSetup: true }),
       setLanguage: (lang) => set({ language: lang }),
       setTheme: (theme) => set({ theme: theme }),
+      setSelfCheckinUrl: (url) => set({ selfCheckinUrl: url }),
     }),
     {
       name: 'settings-storage',

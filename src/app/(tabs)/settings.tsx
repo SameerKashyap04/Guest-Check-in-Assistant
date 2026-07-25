@@ -12,13 +12,14 @@ import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';
 
 export default function SettingsScreen() {
-  const { businessName, language, theme, setBusinessSetup, setLanguage, setTheme } = useSettingsStore();
+  const { businessName, language, theme, selfCheckinUrl, setBusinessSetup, setLanguage, setTheme, setSelfCheckinUrl } = useSettingsStore();
   const { setColorScheme } = useColorScheme();
   const { lock, verifyPin, setupPin } = useAuthStore();
   const router = useRouter();
 
   // Modals state
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [selfCheckinModalOpen, setSelfCheckinModalOpen] = useState(false);
   const [langModalOpen, setLangModalOpen] = useState(false);
   const [themeModalOpen, setThemeModalOpen] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
@@ -26,6 +27,7 @@ export default function SettingsScreen() {
 
   // Form states
   const [tempPropName, setTempPropName] = useState(businessName || '');
+  const [tempSelfCheckinUrl, setTempSelfCheckinUrl] = useState(selfCheckinUrl || 'guestcheckinassistant://self-checkin');
   const [currentPinInput, setCurrentPinInput] = useState('');
   const [newPinInput, setNewPinInput] = useState('');
   const [confirmPinInput, setConfirmPinInput] = useState('');
@@ -46,6 +48,16 @@ export default function SettingsScreen() {
     setBusinessSetup(tempPropName.trim());
     setProfileModalOpen(false);
     Alert.alert('Success ✨', 'Property profile updated successfully!');
+  };
+
+  const handleSaveSelfCheckinUrl = () => {
+    if (!tempSelfCheckinUrl.trim()) {
+      Alert.alert('Validation Error', 'Self Check-in Link cannot be empty');
+      return;
+    }
+    setSelfCheckinUrl(tempSelfCheckinUrl.trim());
+    setSelfCheckinModalOpen(false);
+    Alert.alert('Success ✨', 'Self Check-in link updated!');
   };
 
   const handleChangePin = async () => {
@@ -102,6 +114,9 @@ export default function SettingsScreen() {
     if (item === 'Property Profile') {
       setTempPropName(businessName || '');
       setProfileModalOpen(true);
+    } else if (item === 'Self Check-in Link') {
+      setTempSelfCheckinUrl(selfCheckinUrl || 'guestcheckinassistant://self-checkin');
+      setSelfCheckinModalOpen(true);
     } else if (item === 'Language') {
       setLangModalOpen(true);
     } else if (item === 'Theme (Dark/Light)') {
@@ -150,9 +165,10 @@ export default function SettingsScreen() {
         </Text>
 
         <GlassCard className="mb-6 p-2 overflow-hidden">
-          {['Property Profile', 'Language', 'Theme (Dark/Light)'].map((item, index) => {
+          {['Property Profile', 'Self Check-in Link', 'Language', 'Theme (Dark/Light)'].map((item, index) => {
             let detailText = '';
             if (item === 'Property Profile') detailText = businessName || 'Edit Details';
+            if (item === 'Self Check-in Link') detailText = 'Edit Link';
             if (item === 'Language') detailText = getLanguageLabel(language);
             if (item === 'Theme (Dark/Light)') detailText = getThemeLabel(theme);
 
@@ -162,12 +178,12 @@ export default function SettingsScreen() {
                 activeOpacity={0.7}
                 onPress={() => handleGeneralSettingPress(item)}
                 className={`flex-row justify-between items-center p-4 active:bg-gray-50 dark:active:bg-gray-800/50 ${
-                  index !== 2 ? 'border-b border-gray-100 dark:border-gray-800' : ''
+                  index !== 3 ? 'border-b border-gray-100 dark:border-gray-800' : ''
                 }`}
               >
                 <Text className="text-base font-medium text-foreground">{item}</Text>
                 <View className="flex-row items-center gap-2">
-                  <Text className="text-xs font-semibold text-gray-400">{detailText}</Text>
+                  <Text className="text-xs font-semibold text-gray-400" numberOfLines={1}>{detailText}</Text>
                   <ChevronRight size={20} color="#9CA3AF" />
                 </View>
               </TouchableOpacity>
@@ -253,6 +269,51 @@ export default function SettingsScreen() {
               <Button
                 label="Save Profile"
                 onPress={handleSaveProfile}
+                className="mt-4"
+              />
+            </TouchableOpacity>
+          </KeyboardAvoidingView>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* MODAL 1.5: SELF CHECK-IN LINK */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={selfCheckinModalOpen}
+        onRequestClose={() => setSelfCheckinModalOpen(false)}
+        statusBarTranslucent={true}
+      >
+        <TouchableOpacity 
+          activeOpacity={1} 
+          onPress={() => setSelfCheckinModalOpen(false)} 
+          className="flex-1 bg-black/60 justify-end"
+        >
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
+            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation?.()} className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6">
+              <View className="flex-row justify-between items-center mb-4">
+                <Text className="text-xl font-bold text-foreground">Self Check-in Portal Link</Text>
+                <TouchableOpacity onPress={() => setSelfCheckinModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
+                  <X size={20} color="#9CA3AF" />
+                </TouchableOpacity>
+              </View>
+
+              <Text className="text-xs text-gray-500 mb-4">
+                Configure your custom web URL or deep-link to share with guests via WhatsApp / SMS.
+              </Text>
+
+              <Input
+                label="Self Check-in URL or Link"
+                placeholder="e.g. https://myhotel.com/self-checkin"
+                value={tempSelfCheckinUrl}
+                onChangeText={setTempSelfCheckinUrl}
+                autoCapitalize="none"
+                icon={<Globe size={18} color="#9498AA" />}
+              />
+
+              <Button
+                label="Save Link Settings"
+                onPress={handleSaveSelfCheckinUrl}
                 className="mt-4"
               />
             </TouchableOpacity>

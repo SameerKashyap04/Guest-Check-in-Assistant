@@ -6,8 +6,10 @@ import { Users, LogIn, LogOut, AlertCircle, Search, FileBarChart, X, User, Phone
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 export default function DashboardScreen() {
+  const { businessName, selfCheckinUrl } = useSettingsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [recentGuests, setRecentGuests] = useState<any[]>([]);
   const [selectedGuest, setSelectedGuest] = useState<any | null>(null);
@@ -112,6 +114,47 @@ export default function DashboardScreen() {
             <Text className="text-xs text-gray-500 font-medium">Pending Verif.</Text>
           </GlassCard>
         </View>
+
+        {/* SELF CHECK-IN BANNER & SHARE LINK */}
+        <GlassCard className="mb-6 p-5 rounded-2xl border border-sky-500/30 bg-sky-500/5">
+          <View className="flex-row items-center justify-between mb-3">
+            <View className="flex-row items-center gap-3">
+              <View className="w-10 h-10 rounded-xl bg-primary/20 items-center justify-center">
+                <Sparkles size={20} color="#38BDF8" />
+              </View>
+              <View>
+                <Text className="text-base font-bold text-foreground">Self Check-in Link</Text>
+                <Text className="text-xs text-gray-500 font-medium">Allow guests to check in remotely</Text>
+              </View>
+            </View>
+          </View>
+
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              onPress={async () => {
+                try {
+                  const activeLink = selfCheckinUrl || 'guestcheckinassistant://self-checkin';
+                  const message = `Hello! Welcome to ${businessName || 'our property'}. Please complete your online guest self check-in prior to arrival using this link:\n${activeLink}`;
+                  await Share.share({ message, title: 'Self Check-in Link' });
+                } catch (e) {
+                  console.error('Share error', e);
+                }
+              }}
+              className="flex-1 bg-primary py-3 rounded-xl items-center justify-center flex-row gap-2"
+            >
+              <Share2 size={16} color="#FFFFFF" />
+              <Text className="text-xs font-bold text-white">Share Link</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => router.push('/self-checkin')}
+              className="flex-1 bg-white dark:bg-black/30 border border-gray-200 dark:border-gray-800 py-3 rounded-xl items-center justify-center flex-row gap-2"
+            >
+              <ExternalLink size={16} color="#000000" />
+              <Text className="text-xs font-bold text-foreground">Open Portal</Text>
+            </TouchableOpacity>
+          </View>
+        </GlassCard>
 
         <View className="flex-row justify-between items-center mb-4 mt-4">
           <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
