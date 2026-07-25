@@ -10,6 +10,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { getRooms, getFallbackRooms, Room } from '@/database/rooms';
 import { createGuestAndStay } from '@/database/stays';
+import { pushGuestCheckinToCloud } from '@/services/firebaseSync';
 
 export default function SelfCheckinScreen() {
   const router = useRouter();
@@ -184,6 +185,24 @@ export default function SelfCheckinScreen() {
           check_out_date: todayStr,
         }
       );
+
+      // Push real-time cloud check-in payload for owner app sync
+      await pushGuestCheckinToCloud({
+        property_id: activePropertyId,
+        full_name: fullName.trim(),
+        phone: phone.trim(),
+        id_type: idType,
+        id_number: idNumber.trim(),
+        address: address.trim(),
+        pin_code: pinCode.trim(),
+        gender: gender,
+        dob: dob.trim(),
+        photo_uri: frontPhotoUri || '',
+        back_photo_uri: backPhotoUri || '',
+        selfie_uri: selfiePhotoUri || '',
+        room_number: roomNum,
+        check_in_date: todayStr
+      });
 
       setAssignedRoomNumber(roomNum);
       setIsSubmitted(true);
