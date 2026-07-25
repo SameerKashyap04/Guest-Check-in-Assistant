@@ -8,7 +8,7 @@ import { ChevronLeft, Camera, Image as ImageIcon, CheckCircle2, User, IdCard, Ph
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { getRooms, Room } from '@/database/rooms';
+import { getRooms, getFallbackRooms, Room } from '@/database/rooms';
 import { createGuestAndStay } from '@/database/stays';
 
 export default function SelfCheckinScreen() {
@@ -44,14 +44,22 @@ export default function SelfCheckinScreen() {
   useEffect(() => {
     async function loadRooms() {
       try {
-        const availableRooms = await getRooms();
-        const avail = availableRooms.filter(r => r.status === 'available');
+        let availableRooms = await getRooms();
+        let avail = availableRooms.filter(r => r.status === 'available');
+        if (avail.length === 0) {
+          avail = getFallbackRooms();
+        }
         setRooms(avail);
         if (avail.length > 0) {
           setSelectedRoomId(avail[0].id);
         }
       } catch (e) {
         console.error('Failed to load rooms for self check-in', e);
+        const fallback = getFallbackRooms();
+        setRooms(fallback);
+        if (fallback.length > 0) {
+          setSelectedRoomId(fallback[0].id);
+        }
       }
     }
     loadRooms();
