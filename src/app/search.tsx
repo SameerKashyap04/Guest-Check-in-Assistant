@@ -4,10 +4,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '@/components/Input';
 import { Search, ChevronLeft, User, Bed } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useColorScheme } from 'nativewind';
 
 export default function SearchScreen() {
   const [query, setQuery] = useState('');
   const router = useRouter();
+  const { colorScheme } = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const mockResults = query.length > 2 ? [
     { id: '1', type: 'guest', title: 'Rahul Sharma', subtitle: 'Room 101 • Checked in' },
@@ -22,7 +25,7 @@ export default function SearchScreen() {
           onPress={() => router.back()}
           className="mr-3 p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
         >
-          <ChevronLeft size={28} color="#000000" />
+          <ChevronLeft size={28} color={isDark ? '#FFFFFF' : '#000000'} />
         </TouchableOpacity>
         
         <View className="flex-1 mt-4">

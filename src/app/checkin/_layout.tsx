@@ -1,8 +1,8 @@
 import { Stack } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from 'nativewind';
 
 export default function CheckinLayout() {
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
 
   return (

@@ -1,11 +1,11 @@
 import { Tabs } from 'expo-router';
 import { Home, Users, Bed, Settings, ScanLine } from 'lucide-react-native';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import { BlurView } from 'expo-blur';
 import { Platform, View } from 'react-native';
 
 export default function TabLayout() {
-  const colorScheme = useColorScheme();
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   
   return (
