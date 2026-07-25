@@ -21,18 +21,45 @@ export interface CloudGuestCheckin {
 }
 
 /**
- * Pushes guest self check-in registration to Cloud Firestore in real-time
+ * Pushes guest self check-in registration to Cloud Firestore in real-time.
+ * Uses a non-blocking 2-second Promise timeout & LocalStorage backup to guarantee instant UI submission.
  */
 export async function pushGuestCheckinToCloud(data: CloudGuestCheckin): Promise<string> {
+  // 1. Instant local backup in Web LocalStorage
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const existingStr = window.localStorage.getItem('pending_guest_checkins') || '[]';
+      const existing = JSON.parse(existingStr);
+      existing.push({ ...data, timestamp: Date.now() });
+      window.localStorage.setItem('pending_guest_checkins', JSON.stringify(existing));
+    } catch (e) {
+      console.warn('LocalStorage backup warning:', e);
+    }
+  }
+
+  // 2. Wrap Firestore addDoc with a 2-second timeout race to prevent infinite button loading
+  const pushTask = (async () => {
+    try {
+      const checkinsRef = collection(db, 'guest_checkins');
+      const docRef = await addDoc(checkinsRef, {
+        ...data,
+        created_at: serverTimestamp(),
+      });
+      return docRef.id;
+    } catch (err) {
+      console.warn('Firestore cloud write warning:', err);
+      return `local_${Date.now()}`;
+    }
+  })();
+
+  const timeoutTask = new Promise<string>((resolve) => {
+    setTimeout(() => resolve(`timeout_${Date.now()}`), 2000);
+  });
+
   try {
-    const checkinsRef = collection(db, 'guest_checkins');
-    const docRef = await addDoc(checkinsRef, {
-      ...data,
-      created_at: serverTimestamp(),
-    });
-    return docRef.id;
+    return await Promise.race([pushTask, timeoutTask]);
   } catch (error) {
-    console.warn('Firestore cloud push warning (offline or demo mode fallback):', error);
+    console.warn('Firestore cloud push warning:', error);
     return `local_${Date.now()}`;
   }
 }
