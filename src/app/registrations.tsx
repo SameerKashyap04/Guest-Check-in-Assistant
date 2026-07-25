@@ -6,14 +6,11 @@ import { ChevronLeft, ChevronRight, Search, X, User, Phone, Mail, IdCard, MapPin
 import { useRouter } from 'expo-router';
 import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
-import { useColorScheme } from 'nativewind';
 
 const ITEMS_PER_PAGE = 8;
 
 export default function RegistrationsScreen() {
   const router = useRouter();
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
   const [guests, setGuests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -81,7 +78,7 @@ export default function RegistrationsScreen() {
             onPress={() => router.back()}
             className="mr-3 p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
           >
-            <ChevronLeft size={26} color={isDark ? '#FFFFFF' : '#000000'} />
+            <ChevronLeft size={26} color="#000000" />
           </TouchableOpacity>
           <View>
             <Text className="text-xl font-bold text-foreground">All Registrations</Text>

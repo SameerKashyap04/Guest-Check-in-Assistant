@@ -5,12 +5,9 @@ import { GlassCard } from '@/components/GlassCard';
 import { ChevronLeft, Download, TrendingUp, Users, Calendar } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
-import { useColorScheme } from 'nativewind';
 
 export default function ReportsScreen() {
   const router = useRouter();
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
 
   return (
     <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
@@ -19,7 +16,7 @@ export default function ReportsScreen() {
           onPress={() => router.back()}
           className="mr-3 p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
         >
-          <ChevronLeft size={28} color={isDark ? '#FFFFFF' : '#000000'} />
+          <ChevronLeft size={28} color="#000000" />
         </TouchableOpacity>
         <Text className="text-xl font-bold text-foreground">Property Reports</Text>
       </View>

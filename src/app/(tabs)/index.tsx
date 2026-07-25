@@ -7,6 +7,8 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
 
+import { LiquidGlassBackground } from '@/components/LiquidGlassBackground';
+
 export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [recentGuests, setRecentGuests] = useState<any[]>([]);
@@ -49,6 +51,7 @@ export default function DashboardScreen() {
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
+      <LiquidGlassBackground />
       <ScrollView
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}

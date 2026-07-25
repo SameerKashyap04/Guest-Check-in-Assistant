@@ -11,6 +11,8 @@ import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';
 
+import { LiquidGlassBackground } from '@/components/LiquidGlassBackground';
+
 export default function SettingsScreen() {
   const { businessName, language, theme, setBusinessSetup, setLanguage, setTheme } = useSettingsStore();
   const { setColorScheme } = useColorScheme();
@@ -121,6 +123,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
+      <LiquidGlassBackground />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
         
         {/* PROPERTY HEADER CARD */}

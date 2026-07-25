@@ -8,11 +8,9 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { Room } from '@/database/rooms';
 import { getGuestsForRoom } from '@/database/stays';
-import { useColorScheme } from 'nativewind';
+import { LiquidGlassBackground } from '@/components/LiquidGlassBackground';
 
 export default function RoomsScreen() {
-  const { colorScheme } = useColorScheme();
-  const isDark = colorScheme === 'dark';
   const { rooms, fetchRooms, createRoom, editRoom, removeRoom, isLoading } = useRoomsStore();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -171,7 +169,7 @@ export default function RoomsScreen() {
         <GlassCard variant="elevated" className={`p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-col justify-between min-h-[130px]`}>
           <View className="flex-row justify-between items-start mb-3">
             <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-              <BedDouble size={20} color={isDark ? '#38BDF8' : '#000000'} />
+              <BedDouble size={20} color="#000000" />
             </View>
             <View className={`flex-row items-center gap-1.5 px-2.5 py-1 rounded-full ${config.badgeBg} ${config.borderColor} border`}>
               {config.icon}
@@ -203,7 +201,7 @@ export default function RoomsScreen() {
         <GlassCard variant="elevated" className="p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row justify-between items-center">
           <View className="flex-row items-center space-x-3 gap-3">
             <View className="w-11 h-11 rounded-xl bg-primary/10 items-center justify-center">
-              <BedDouble size={22} color={isDark ? '#38BDF8' : '#000000'} />
+              <BedDouble size={22} color="#000000" />
             </View>
             <View>
               <Text className="text-lg font-bold text-foreground tracking-tight">Room {item.room_number}</Text>
@@ -232,6 +230,7 @@ export default function RoomsScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right', 'top']} className="flex-1 bg-background">
+      <LiquidGlassBackground />
       {/* Top Header */}
       <View className="px-5 pt-6 mt-2 pb-2 flex-row justify-between items-center">
         <View>
