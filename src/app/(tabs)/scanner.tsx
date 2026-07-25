@@ -6,7 +6,6 @@ import { Camera, FileText, X, ChevronRight, Upload, Image as ImageIcon } from 'l
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
-import { LiquidGlassBackground } from '@/components/LiquidGlassBackground';
 
 const ID_TYPES = [
   { id: 'UNKNOWN', label: 'Auto-Detect', description: 'Let the system identify the document' },
@@ -90,8 +89,7 @@ export default function ScannerScreen() {
   };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background justify-between p-6 pb-24">
-      <LiquidGlassBackground />
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background justify-center items-center px-6">
       <View className="items-center mb-8 mt-4">
         <View className="w-24 h-24 bg-primary/10 rounded-full items-center justify-center mb-6">
           <Camera size={48} color="#000000" />

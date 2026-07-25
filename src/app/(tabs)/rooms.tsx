@@ -8,7 +8,6 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { Room } from '@/database/rooms';
 import { getGuestsForRoom } from '@/database/stays';
-import { LiquidGlassBackground } from '@/components/LiquidGlassBackground';
 
 export default function RoomsScreen() {
   const { rooms, fetchRooms, createRoom, editRoom, removeRoom, isLoading } = useRoomsStore();
@@ -230,7 +229,6 @@ export default function RoomsScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right', 'top']} className="flex-1 bg-background">
-      <LiquidGlassBackground />
       {/* Top Header */}
       <View className="px-5 pt-6 mt-2 pb-2 flex-row justify-between items-center">
         <View>
