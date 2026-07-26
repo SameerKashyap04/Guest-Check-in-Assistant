@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
-import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, ChevronLeft } from 'lucide-react-native';
+import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, ChevronLeft, Sparkles } from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
 import { signUpOwner, loginOwner } from '@/services/firebaseAuth';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -62,6 +62,20 @@ export default function AuthScreen() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleDebugDirectAccess = () => {
+    const debugProfile = {
+      uid: 'OWNER_DEBUG_101',
+      email: 'owner.admin@homestay.com',
+      businessName: businessName.trim() || 'Sameer Homestay',
+      propertyId: 'HS-8821',
+      createdAt: new Date().toISOString()
+    };
+    setOwner(debugProfile);
+    setOwnerId(debugProfile.uid);
+    setBusinessSetup(debugProfile.businessName);
+    router.replace('/');
   };
 
   return (
@@ -160,6 +174,19 @@ export default function AuthScreen() {
               onPress={handleAuthSubmit}
               className="mt-2 bg-black dark:bg-white"
             />
+
+            {/* Direct Debug Login Button */}
+            <View className="mt-4 pt-4 border-t border-gray-200/60 dark:border-gray-800 items-center">
+              <TouchableOpacity
+                onPress={handleDebugDirectAccess}
+                className="w-full py-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex-row items-center justify-center gap-2"
+              >
+                <Sparkles size={18} color="#D97706" />
+                <Text className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                  ⚡ Direct Debug Access (No Password)
+                </Text>
+              </TouchableOpacity>
+            </View>
           </GlassCard>
 
         </ScrollView>
