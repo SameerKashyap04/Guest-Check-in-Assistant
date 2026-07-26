@@ -9,8 +9,10 @@ export default function Index() {
   const { hasCompletedSetup } = useSettingsStore();
 
   useEffect(() => {
-    checkPinSetup();
-  }, []);
+    if (typeof checkPinSetup === 'function') {
+      checkPinSetup();
+    }
+  }, [checkPinSetup]);
 
   // Show a loading state while hydration completes if necessary
   if ((useAuthStore as any).persist?.hasHydrated && !(useAuthStore as any).persist.hasHydrated()) {
