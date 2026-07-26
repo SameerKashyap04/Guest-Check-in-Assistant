@@ -80,44 +80,50 @@ export default function DashboardScreen() {
   // Real-time Cloud Sync Listener for Web Self Check-in Submissions
   useEffect(() => {
     if (!propertyId) return;
-    const unsubscribe = subscribeToPropertyCheckins(propertyId, async (cloudGuest) => {
-      try {
-        const db = await openDatabase();
-        const existing = await db.getFirstAsync('SELECT id FROM guests WHERE full_name = ? AND phone = ?', [cloudGuest.full_name, cloudGuest.phone]);
-        if (!existing) {
-          let roomId = rooms.length > 0 ? rooms[0].id : 1;
-          const matchedRoom = rooms.find(r => r.room_number === cloudGuest.room_number);
-          if (matchedRoom) roomId = matchedRoom.id;
+    const isLocalOnlyMode = storageMode === 'local';
+    const unsubscribe = subscribeToPropertyCheckins(
+      propertyId, 
+      async (cloudGuest) => {
+        try {
+          const db = await openDatabase();
+          const existing = await db.getFirstAsync('SELECT id FROM guests WHERE full_name = ? AND phone = ?', [cloudGuest.full_name, cloudGuest.phone]);
+          if (!existing) {
+            let roomId = rooms.length > 0 ? rooms[0].id : 1;
+            const matchedRoom = rooms.find(r => r.room_number === cloudGuest.room_number);
+            if (matchedRoom) roomId = matchedRoom.id;
 
-          await createMultipleGuestsAndStay(
-            [{
-              full_name: cloudGuest.full_name,
-              id_number: cloudGuest.id_number,
-              address: cloudGuest.address,
-              phone: cloudGuest.phone,
-              photo_uri: cloudGuest.photo_uri || '',
-              back_photo_uri: cloudGuest.back_photo_uri || '',
-              selfie_uri: cloudGuest.selfie_uri || '',
-              property_id: cloudGuest.property_id,
-              id_type: cloudGuest.id_type,
-              dob: cloudGuest.dob || '',
-              gender: cloudGuest.gender || 'Other',
-              pin_code: cloudGuest.pin_code || ''
-            }],
-            {
-              room_id: roomId,
-              check_in_date: cloudGuest.check_in_date || new Date().toISOString().split('T')[0],
-              check_out_date: cloudGuest.check_in_date || new Date().toISOString().split('T')[0]
-            }
-          );
-          fetchGuests();
+            await createMultipleGuestsAndStay(
+              [{
+                full_name: cloudGuest.full_name,
+                id_number: cloudGuest.id_number,
+                address: cloudGuest.address,
+                phone: cloudGuest.phone,
+                photo_uri: cloudGuest.photo_uri || '',
+                back_photo_uri: cloudGuest.back_photo_uri || '',
+                selfie_uri: cloudGuest.selfie_uri || '',
+                property_id: cloudGuest.property_id,
+                id_type: cloudGuest.id_type,
+                dob: cloudGuest.dob || '',
+                gender: cloudGuest.gender || 'Other',
+                pin_code: cloudGuest.pin_code || ''
+              }],
+              {
+                room_id: roomId,
+                check_in_date: cloudGuest.check_in_date || new Date().toISOString().split('T')[0],
+                check_out_date: cloudGuest.check_in_date || new Date().toISOString().split('T')[0]
+              }
+            );
+            fetchGuests();
+          }
+        } catch (e) {
+          console.warn('Real-time sync import error', e);
         }
-      } catch (e) {
-        console.warn('Real-time sync import error', e);
-      }
-    });
+      },
+      ownerId,
+      isLocalOnlyMode
+    );
     return () => unsubscribe();
-  }, [propertyId, rooms]);
+  }, [propertyId, ownerId, storageMode, rooms]);
 
   const currentHour = new Date().getHours();
   let greeting = 'Good Evening';

@@ -1,5 +1,17 @@
 import { db } from '@/config/firebase';
-import { collection, addDoc, onSnapshot, query, where, serverTimestamp, QuerySnapshot, DocumentChange } from '@firebase/firestore';
+import { 
+  collection, 
+  addDoc, 
+  onSnapshot, 
+  query, 
+  where, 
+  serverTimestamp, 
+  deleteDoc, 
+  doc, 
+  getDocs,
+  QuerySnapshot, 
+  DocumentChange 
+} from '@firebase/firestore';
 
 export interface CloudGuestCheckin {
   id?: string;
@@ -19,11 +31,13 @@ export interface CloudGuestCheckin {
   room_number: string;
   check_in_date: string;
   created_at?: any;
+  expires_at?: number; // 10-day TTL timestamp
 }
 
+const TEN_DAYS_MS = 10 * 24 * 60 * 60 * 1000;
+
 /**
- * Pushes guest self check-in registration to Cloud Firestore in real-time.
- * Uses a non-blocking 2-second Promise timeout & LocalStorage backup to guarantee instant UI submission.
+ * Pushes guest self check-in registration to Cloud Firestore with a 10-day expiration TTL.
  */
 export async function pushGuestCheckinToCloud(data: CloudGuestCheckin): Promise<string> {
   // 1. Instant local backup in Web LocalStorage
@@ -38,7 +52,7 @@ export async function pushGuestCheckinToCloud(data: CloudGuestCheckin): Promise<
     }
   }
 
-  // 2. Wrap Firestore addDoc with a 2-second timeout race to prevent infinite button loading
+  // 2. Push to Firestore with 10-day TTL
   const pushTask = (async () => {
     try {
       const checkinsRef = collection(db, 'guest_checkins');
@@ -46,6 +60,7 @@ export async function pushGuestCheckinToCloud(data: CloudGuestCheckin): Promise<
         ...data,
         owner_id: data.owner_id || 'OWNER_DEFAULT_101',
         created_at: serverTimestamp(),
+        expires_at: Date.now() + TEN_DAYS_MS,
       });
       return docRef.id;
     } catch (err) {
@@ -67,14 +82,48 @@ export async function pushGuestCheckinToCloud(data: CloudGuestCheckin): Promise<
 }
 
 /**
- * Listens for new online check-in submissions for a specific homestay owner & propertyId in real-time
+ * Deletes a temporary check-in record from Firebase after it is safely stored in local device SQLite storage.
+ */
+export async function deleteCloudCheckinDoc(docId: string): Promise<void> {
+  if (!docId || docId.startsWith('local_') || docId.startsWith('timeout_')) return;
+  try {
+    await deleteDoc(doc(db, 'guest_checkins', docId));
+  } catch (e) {
+    console.warn(`Failed to delete temporary check-in doc ${docId}:`, e);
+  }
+}
+
+/**
+ * Purges any temporary check-in records older than 10 days from Firebase
+ */
+export async function purgeExpiredTempCheckins(ownerId?: string): Promise<void> {
+  try {
+    const checkinsRef = collection(db, 'guest_checkins');
+    const now = Date.now();
+    const q = query(checkinsRef, where('expires_at', '<=', now));
+    const snapshot = await getDocs(q);
+    snapshot.forEach((d) => {
+      deleteDoc(d.ref).catch(() => {});
+    });
+  } catch (e) {
+    console.warn('Purge expired temp check-ins warning:', e);
+  }
+}
+
+/**
+ * Listens for online check-in submissions in real-time.
+ * Deletes doc from Firebase once downloaded if storage mode is Local Storage.
  */
 export function subscribeToPropertyCheckins(
   propertyId: string,
   onNewCheckin: (checkin: CloudGuestCheckin) => void,
-  ownerId?: string
+  ownerId?: string,
+  deleteAfterDownload = false
 ) {
   if (!propertyId) return () => {};
+
+  // Run async purge of >10 days expired records
+  purgeExpiredTempCheckins(ownerId);
 
   try {
     const checkinsRef = collection(db, 'guest_checkins');
@@ -88,7 +137,13 @@ export function subscribeToPropertyCheckins(
       snapshot.docChanges().forEach((change: DocumentChange) => {
         if (change.type === 'added') {
           const data = change.doc.data() as CloudGuestCheckin;
-          onNewCheckin({ ...data, id: change.doc.id });
+          const docId = change.doc.id;
+          onNewCheckin({ ...data, id: docId });
+
+          // If local storage mode, delete from cloud after downloading locally
+          if (deleteAfterDownload && docId) {
+            deleteCloudCheckinDoc(docId);
+          }
         }
       });
     }, (error: any) => {
