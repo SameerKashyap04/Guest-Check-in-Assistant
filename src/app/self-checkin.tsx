@@ -113,26 +113,56 @@ export default function SelfCheckinScreen() {
     }
   };
 
-  const getPortableImageUri = async (asset: ImagePicker.ImagePickerAsset): Promise<string> => {
+  const compressAndGetBase64 = async (asset: ImagePicker.ImagePickerAsset): Promise<string> => {
+    const rawUri = asset.uri;
+
+    // Web Canvas Downscaler to keep Firestore payload ~25KB per image
+    if (Platform.OS === 'web' && typeof window !== 'undefined' && rawUri) {
+      return new Promise<string>((resolve) => {
+        const img = new window.Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 480;
+          const MAX_HEIGHT = 480;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = Math.round(width);
+          canvas.height = Math.round(height);
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.35);
+            resolve(compressedDataUrl);
+          } else {
+            resolve(rawUri);
+          }
+        };
+        img.onerror = () => {
+          if (asset.base64) resolve(`data:image/jpeg;base64,${asset.base64}`);
+          else resolve(rawUri);
+        };
+        img.src = rawUri;
+      });
+    }
+
     if (asset.base64) {
       return `data:image/jpeg;base64,${asset.base64}`;
     }
-    if (Platform.OS === 'web' && asset.uri && asset.uri.startsWith('blob:')) {
-      try {
-        const response = await fetch(asset.uri);
-        const blob = await response.blob();
-        return new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = () => resolve(asset.uri);
-          reader.readAsDataURL(blob);
-        });
-      } catch (e) {
-        console.warn('Failed to convert web blob to data URL:', e);
-        return asset.uri;
-      }
-    }
-    return asset.uri;
+    return rawUri;
   };
 
   const pickImage = async (target: 'front' | 'back' | 'selfie', useCamera = false) => {
@@ -140,7 +170,7 @@ export default function SelfCheckinScreen() {
       let result;
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ['images'],
-        quality: 0.3,
+        quality: 0.2,
         base64: true,
         allowsEditing: target === 'selfie',
       };
@@ -162,7 +192,7 @@ export default function SelfCheckinScreen() {
       }
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const portableUri = await getPortableImageUri(result.assets[0]);
+        const portableUri = await compressAndGetBase64(result.assets[0]);
         if (target === 'front') setFrontPhotoUri(portableUri);
         if (target === 'back') setBackPhotoUri(portableUri);
         if (target === 'selfie') setSelfiePhotoUri(portableUri);

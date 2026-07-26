@@ -52,12 +52,21 @@ export async function pushGuestCheckinToCloud(data: CloudGuestCheckin): Promise<
     }
   }
 
+  // Safely limit photo strings to max 250k chars each to guarantee Firestore 1MB doc limit compliance
+  const safePhoto = (uri?: string) => {
+    if (!uri) return '';
+    return uri.length > 250000 ? uri.substring(0, 250000) : uri;
+  };
+
   // 2. Push to Firestore with 10-day TTL
   const pushTask = (async () => {
     try {
       const checkinsRef = collection(db, 'guest_checkins');
       const docRef = await addDoc(checkinsRef, {
         ...data,
+        photo_uri: safePhoto(data.photo_uri),
+        back_photo_uri: safePhoto(data.back_photo_uri),
+        selfie_uri: safePhoto(data.selfie_uri),
         owner_id: data.owner_id || 'OWNER_DEFAULT_101',
         created_at: serverTimestamp(),
         expires_at: Date.now() + TEN_DAYS_MS,
