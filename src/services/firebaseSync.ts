@@ -4,6 +4,7 @@ import { collection, addDoc, onSnapshot, query, where, serverTimestamp, QuerySna
 export interface CloudGuestCheckin {
   id?: string;
   property_id: string;
+  owner_id?: string;
   full_name: string;
   phone: string;
   id_type: string;
@@ -43,6 +44,7 @@ export async function pushGuestCheckinToCloud(data: CloudGuestCheckin): Promise<
       const checkinsRef = collection(db, 'guest_checkins');
       const docRef = await addDoc(checkinsRef, {
         ...data,
+        owner_id: data.owner_id || 'OWNER_DEFAULT_101',
         created_at: serverTimestamp(),
       });
       return docRef.id;
@@ -65,17 +67,22 @@ export async function pushGuestCheckinToCloud(data: CloudGuestCheckin): Promise<
 }
 
 /**
- * Listens for new online check-in submissions for a specific homestay propertyId in real-time
+ * Listens for new online check-in submissions for a specific homestay owner & propertyId in real-time
  */
 export function subscribeToPropertyCheckins(
   propertyId: string,
-  onNewCheckin: (checkin: CloudGuestCheckin) => void
+  onNewCheckin: (checkin: CloudGuestCheckin) => void,
+  ownerId?: string
 ) {
   if (!propertyId) return () => {};
 
   try {
     const checkinsRef = collection(db, 'guest_checkins');
-    const q = query(checkinsRef, where('property_id', '==', propertyId));
+    let q = query(checkinsRef, where('property_id', '==', propertyId));
+
+    if (ownerId && ownerId !== 'OWNER_DEFAULT_101') {
+      q = query(checkinsRef, where('owner_id', '==', ownerId));
+    }
 
     const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
       snapshot.docChanges().forEach((change: DocumentChange) => {

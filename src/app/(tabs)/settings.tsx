@@ -12,7 +12,7 @@ import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';
 
 export default function SettingsScreen() {
-  const { businessName, language, theme, selfCheckinUrl, propertyId, setBusinessSetup, setLanguage, setTheme, setSelfCheckinUrl } = useSettingsStore();
+  const { businessName, language, theme, selfCheckinUrl, propertyId, storageMode, setBusinessSetup, setLanguage, setTheme, setSelfCheckinUrl, setStorageMode } = useSettingsStore();
   const { setColorScheme } = useColorScheme();
   const { lock, verifyPin, setupPin } = useAuthStore();
   const router = useRouter();
@@ -163,6 +163,51 @@ export default function SettingsScreen() {
             </View>
           </GlassCard>
         </TouchableOpacity>
+
+        {/* STORAGE MODE SWITCHER CARD */}
+        <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          Check-in Storage Mode
+        </Text>
+
+        <GlassCard className="mb-6 p-4 rounded-2xl border border-gray-200 dark:border-gray-800">
+          <Text className="text-xs text-gray-500 mb-3">
+            Choose whether to store guest check-ins in Cloud Storage (Firebase) or Local Device Storage.
+          </Text>
+
+          <View className="flex-row gap-3">
+            <TouchableOpacity
+              onPress={() => setStorageMode('cloud')}
+              className={`flex-1 p-4 rounded-2xl border items-center justify-center ${
+                storageMode === 'cloud'
+                  ? 'bg-black dark:bg-white border-black dark:border-white'
+                  : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
+              }`}
+            >
+              <Text className={`font-bold text-sm ${storageMode === 'cloud' ? 'text-white dark:text-black' : 'text-foreground'}`}>
+                ☁️ Cloud Storage
+              </Text>
+              <Text className={`text-[10px] text-center mt-1 ${storageMode === 'cloud' ? 'text-white/80 dark:text-black/80' : 'text-gray-400'}`}>
+                Auto-syncs Web & Mobile
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setStorageMode('local')}
+              className={`flex-1 p-4 rounded-2xl border items-center justify-center ${
+                storageMode === 'local'
+                  ? 'bg-black dark:bg-white border-black dark:border-white'
+                  : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
+              }`}
+            >
+              <Text className={`font-bold text-sm ${storageMode === 'local' ? 'text-white dark:text-black' : 'text-foreground'}`}>
+                🏠 Local Storage
+              </Text>
+              <Text className={`text-[10px] text-center mt-1 ${storageMode === 'local' ? 'text-white/80 dark:text-black/80' : 'text-gray-400'}`}>
+                Offline SQLite Only
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </GlassCard>
 
         {/* GENERAL SETTINGS */}
         <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">

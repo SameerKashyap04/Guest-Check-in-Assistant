@@ -14,7 +14,7 @@ import { parseCheckinImportText } from '@/utils/checkinImporter';
 import { Alert } from 'react-native';
 
 export default function DashboardScreen() {
-  const { businessName, propertyId, getShareableLink } = useSettingsStore();
+  const { businessName, propertyId, ownerId, storageMode, getShareableLink } = useSettingsStore();
   const { rooms, fetchRooms } = useRoomsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [recentGuests, setRecentGuests] = useState<any[]>([]);
@@ -233,7 +233,7 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          <View className="flex-row flex-wrap gap-2">
+          <View className="flex-row gap-3">
             <TouchableOpacity
               onPress={async () => {
                 try {
@@ -245,28 +245,29 @@ export default function DashboardScreen() {
                   console.error('Share error', e);
                 }
               }}
-              className="flex-1 bg-primary py-3 rounded-xl items-center justify-center flex-row gap-1.5"
+              className="flex-1 bg-black dark:bg-white py-3 rounded-xl items-center justify-center flex-row gap-2"
             >
-              <Share2 size={16} color="#FFFFFF" />
-              <Text className="text-xs font-bold text-white">Share Link</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setIsImportModalVisible(true)}
-              className="flex-1 bg-black dark:bg-white py-3 rounded-xl items-center justify-center flex-row gap-1.5"
-            >
-              <LogIn size={16} color="#FFFFFF" className="dark:text-black" />
-              <Text className="text-xs font-bold text-white dark:text-black">Import Check-in</Text>
+              <Share2 size={16} color="#FFFFFF" className="dark:text-black" />
+              <Text className="text-xs font-bold text-white dark:text-black">Share Link</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => router.push('/self-checkin')}
-              className="flex-1 bg-white dark:bg-black/30 border border-gray-200 dark:border-gray-800 py-3 rounded-xl items-center justify-center flex-row gap-1.5"
+              className="flex-1 bg-white dark:bg-black/30 border border-gray-200 dark:border-gray-800 py-3 rounded-xl items-center justify-center flex-row gap-2"
             >
               <ExternalLink size={16} color="#000000" />
               <Text className="text-xs font-bold text-foreground">Open Portal</Text>
             </TouchableOpacity>
           </View>
+
+          {storageMode === 'cloud' && (
+            <View className="mt-3 flex-row items-center justify-center gap-1.5 bg-emerald-500/10 py-1.5 rounded-lg border border-emerald-500/20">
+              <Sparkles size={12} color="#10B981" />
+              <Text className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                ⚡ Firebase Cloud Auto-Sync Enabled (Real-time)
+              </Text>
+            </View>
+          )}
         </GlassCard>
 
         <View className="flex-row justify-between items-center mb-4 mt-4">

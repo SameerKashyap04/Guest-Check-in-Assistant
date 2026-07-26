@@ -14,10 +14,11 @@ import { pushGuestCheckinToCloud } from '@/services/firebaseSync';
 
 export default function SelfCheckinScreen() {
   const router = useRouter();
-  const searchParams = useLocalSearchParams<{ property_id?: string; property_name?: string; rooms?: string }>();
-  const { businessName, propertyId: storePropId } = useSettingsStore();
+  const searchParams = useLocalSearchParams<{ property_id?: string; owner_id?: string; property_name?: string; rooms?: string }>();
+  const { businessName, propertyId: storePropId, ownerId: storeOwnerId } = useSettingsStore();
 
   const activePropertyId = (searchParams?.property_id as string) || storePropId || 'DEFAULT-HOMESTAY';
+  const activeOwnerId = (searchParams?.owner_id as string) || storeOwnerId || 'OWNER_DEFAULT_101';
   const activePropertyName = (searchParams?.property_name as string) || businessName || 'Homestay Property';
 
   // Form State
@@ -212,6 +213,7 @@ export default function SelfCheckinScreen() {
       try {
         await pushGuestCheckinToCloud({
           property_id: activePropertyId,
+          owner_id: activeOwnerId,
           full_name: fullName.trim(),
           phone: phone.trim(),
           id_type: idType,

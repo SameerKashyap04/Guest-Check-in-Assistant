@@ -25,10 +25,14 @@ interface SettingsState {
   hasCompletedSetup: boolean;
   businessName: string | null;
   propertyId: string;
+  ownerId: string;
+  storageMode: 'cloud' | 'local';
   language: 'en' | 'hi' | 'as';
   theme: 'system' | 'light' | 'dark';
   selfCheckinUrl: string;
   setBusinessSetup: (name: string) => void;
+  setOwnerId: (uid: string) => void;
+  setStorageMode: (mode: 'cloud' | 'local') => void;
   setLanguage: (lang: 'en' | 'hi' | 'as') => void;
   setTheme: (theme: 'system' | 'light' | 'dark') => void;
   setSelfCheckinUrl: (url: string) => void;
@@ -41,6 +45,8 @@ export const useSettingsStore = create<SettingsState>()(
       hasCompletedSetup: false,
       businessName: null,
       propertyId: generatePropertyId(null),
+      ownerId: 'OWNER_DEFAULT_101',
+      storageMode: 'cloud',
       language: 'en',
       theme: 'system',
       selfCheckinUrl: 'https://guest-checkin-assistant.vercel.app/self-checkin',
@@ -48,6 +54,8 @@ export const useSettingsStore = create<SettingsState>()(
         const currentPropId = get().propertyId || generatePropertyId(name);
         set({ businessName: name, propertyId: currentPropId, hasCompletedSetup: true });
       },
+      setOwnerId: (uid) => set({ ownerId: uid }),
+      setStorageMode: (mode) => set({ storageMode: mode }),
       setLanguage: (lang) => set({ language: lang }),
       setTheme: (theme) => set({ theme: theme }),
       setSelfCheckinUrl: (url) => set({ selfCheckinUrl: url }),
@@ -56,6 +64,7 @@ export const useSettingsStore = create<SettingsState>()(
         const baseUrl = state.selfCheckinUrl || 'https://guest-checkin-assistant.vercel.app/self-checkin';
         const cleanBaseUrl = baseUrl.split('?')[0];
         const propId = state.propertyId || generatePropertyId(state.businessName);
+        const ownerId = state.ownerId || 'OWNER_DEFAULT_101';
         const propName = encodeURIComponent(state.businessName || 'Homestay');
         
         let roomsQuery = '';
@@ -68,7 +77,7 @@ export const useSettingsStore = create<SettingsState>()(
             roomsQuery = `&rooms=${encodeURIComponent(encodedRooms)}`;
           }
         }
-        return `${cleanBaseUrl}?property_id=${propId}&property_name=${propName}${roomsQuery}`;
+        return `${cleanBaseUrl}?property_id=${propId}&owner_id=${ownerId}&property_name=${propName}${roomsQuery}`;
       },
     }),
     {

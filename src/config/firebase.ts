@@ -1,7 +1,8 @@
 import { initializeApp, getApps, getApp } from '@firebase/app';
 import { getFirestore } from '@firebase/firestore';
+import { getAuth } from '@firebase/auth';
 
-// Default Firebase Configuration for Guest Check-in Assistant Cloud Sync
+// Firebase Configuration for Guest Check-in Assistant Cloud Sync
 const firebaseConfig = {
   apiKey: "AIzaSyB_GUEST_CHECKIN_KEY_2026",
   authDomain: "guest-checkin-assistant.firebaseapp.com",
@@ -13,3 +14,4 @@ const firebaseConfig = {
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const db = getFirestore(app);
+export const auth = getAuth(app);
