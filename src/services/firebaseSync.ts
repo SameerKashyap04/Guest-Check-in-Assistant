@@ -120,24 +120,23 @@ export function subscribeToPropertyCheckins(
   ownerId?: string,
   deleteAfterDownload = false
 ) {
-  if (!propertyId) return () => {};
+  if (!propertyId && !ownerId) return () => {};
 
   // Run async purge of >10 days expired records
   purgeExpiredTempCheckins(ownerId);
 
   try {
     const checkinsRef = collection(db, 'guest_checkins');
-    let q = query(checkinsRef, where('property_id', '==', propertyId));
+    const processedDocIds = new Set<string>();
 
-    if (ownerId && ownerId !== 'OWNER_DEFAULT_101') {
-      q = query(checkinsRef, where('owner_id', '==', ownerId));
-    }
-
-    const unsubscribe = onSnapshot(q, (snapshot: QuerySnapshot) => {
+    const handleSnapshot = (snapshot: QuerySnapshot) => {
       snapshot.docChanges().forEach((change: DocumentChange) => {
         if (change.type === 'added') {
-          const data = change.doc.data() as CloudGuestCheckin;
           const docId = change.doc.id;
+          if (processedDocIds.has(docId)) return;
+          processedDocIds.add(docId);
+
+          const data = change.doc.data() as CloudGuestCheckin;
           onNewCheckin({ ...data, id: docId });
 
           // If local storage mode, delete from cloud after downloading locally
@@ -146,11 +145,30 @@ export function subscribeToPropertyCheckins(
           }
         }
       });
-    }, (error: any) => {
-      console.warn('Firestore real-time subscription listener warning:', error);
-    });
+    };
 
-    return unsubscribe;
+    // 1. Primary listener by property_id
+    let unsub1 = () => {};
+    if (propertyId) {
+      const q1 = query(checkinsRef, where('property_id', '==', propertyId));
+      unsub1 = onSnapshot(q1, handleSnapshot, (error: any) => {
+        console.warn('Firestore property listener warning:', error);
+      });
+    }
+
+    // 2. Secondary listener by owner_id if available
+    let unsub2 = () => {};
+    if (ownerId && ownerId !== 'OWNER_DEFAULT_101') {
+      const q2 = query(checkinsRef, where('owner_id', '==', ownerId));
+      unsub2 = onSnapshot(q2, handleSnapshot, (error: any) => {
+        console.warn('Firestore owner listener warning:', error);
+      });
+    }
+
+    return () => {
+      unsub1();
+      unsub2();
+    };
   } catch (e) {
     console.warn('Failed to start Firestore subscription listener:', e);
     return () => {};
