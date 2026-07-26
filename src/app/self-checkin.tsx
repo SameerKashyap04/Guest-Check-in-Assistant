@@ -113,38 +113,59 @@ export default function SelfCheckinScreen() {
     }
   };
 
+  const getPortableImageUri = async (asset: ImagePicker.ImagePickerAsset): Promise<string> => {
+    if (asset.base64) {
+      return `data:image/jpeg;base64,${asset.base64}`;
+    }
+    if (Platform.OS === 'web' && asset.uri && asset.uri.startsWith('blob:')) {
+      try {
+        const response = await fetch(asset.uri);
+        const blob = await response.blob();
+        return new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = () => resolve(asset.uri);
+          reader.readAsDataURL(blob);
+        });
+      } catch (e) {
+        console.warn('Failed to convert web blob to data URL:', e);
+        return asset.uri;
+      }
+    }
+    return asset.uri;
+  };
+
   const pickImage = async (target: 'front' | 'back' | 'selfie', useCamera = false) => {
     try {
       let result;
+      const options: ImagePicker.ImagePickerOptions = {
+        mediaTypes: ['images'],
+        quality: 0.3,
+        base64: true,
+        allowsEditing: target === 'selfie',
+      };
+
       if (useCamera) {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
           Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
           return;
         }
-        result = await ImagePicker.launchCameraAsync({
-          mediaTypes: ['images'],
-          quality: 0.8,
-          allowsEditing: target === 'selfie',
-        });
+        result = await ImagePicker.launchCameraAsync(options);
       } else {
         const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permission.granted) {
           Alert.alert('Permission Denied', 'Gallery permission is required to select photos.');
           return;
         }
-        result = await ImagePicker.launchImageLibraryAsync({
-          mediaTypes: ['images'],
-          quality: 0.8,
-          allowsEditing: target === 'selfie',
-        });
+        result = await ImagePicker.launchImageLibraryAsync(options);
       }
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const uri = result.assets[0].uri;
-        if (target === 'front') setFrontPhotoUri(uri);
-        if (target === 'back') setBackPhotoUri(uri);
-        if (target === 'selfie') setSelfiePhotoUri(uri);
+        const portableUri = await getPortableImageUri(result.assets[0]);
+        if (target === 'front') setFrontPhotoUri(portableUri);
+        if (target === 'back') setBackPhotoUri(portableUri);
+        if (target === 'selfie') setSelfiePhotoUri(portableUri);
       }
     } catch (e) {
       console.error('Image picker error', e);
