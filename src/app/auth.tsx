@@ -49,13 +49,9 @@ export default function AuthScreen() {
 
       setOwner(profile);
       setOwnerId(profile.uid);
+      useAuthStore.setState({ isUnlocked: true });
 
-      Alert.alert('Success', `Welcome to Guest Check-in Assistant, ${profile.businessName}!`, [
-        {
-          text: 'Continue',
-          onPress: () => router.replace('/'),
-        },
-      ]);
+      router.replace('/(tabs)');
     } catch (err: any) {
       console.error('Auth error', err);
       Alert.alert('Authentication Failed', err?.message || 'Please check your credentials and try again.');
@@ -75,7 +71,9 @@ export default function AuthScreen() {
     setOwner(debugProfile);
     setOwnerId(debugProfile.uid);
     setBusinessSetup(debugProfile.businessName);
-    router.replace('/');
+    useAuthStore.setState({ isUnlocked: true });
+
+    router.replace('/(tabs)');
   };
 
   return (

@@ -19,7 +19,7 @@ export default function Index() {
      return <View className="flex-1 items-center justify-center bg-background"><ActivityIndicator size="large" color="#000000" /></View>;
   }
 
-  if (!hasPin || !isUnlocked) {
+  if (!isUnlocked) {
     return <Redirect href="/auth" />;
   }
 
