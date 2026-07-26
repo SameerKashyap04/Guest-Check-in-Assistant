@@ -2,21 +2,85 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Modal, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
-import { ChevronLeft, ChevronRight, Search, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe, DoorOpen, Users } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Search, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe, DoorOpen, Users, LogIn } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
+import { parseCheckinImportText } from '@/utils/checkinImporter';
+import { createMultipleGuestsAndStay } from '@/database/stays';
+import { useRoomsStore } from '@/store/useRoomsStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { Alert } from 'react-native';
 
 const ITEMS_PER_PAGE = 8;
 
 export default function RegistrationsScreen() {
   const router = useRouter();
+  const { propertyId } = useSettingsStore();
+  const { rooms } = useRoomsStore();
   const [guests, setGuests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedGuest, setSelectedGuest] = useState<any | null>(null);
+
+  const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
+
+  const handleExecuteImport = async () => {
+    if (!importText.trim()) {
+      Alert.alert('Empty Input', 'Please paste the check-in message or code.');
+      return;
+    }
+    const parsed = parseCheckinImportText(importText.trim());
+    if (!parsed || !parsed.fullName) {
+      Alert.alert('Invalid Check-in Code', 'Could not parse guest check-in details. Please make sure to copy the full message from WhatsApp.');
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      let roomId = rooms.length > 0 ? rooms[0].id : 101;
+      const matchedRoom = rooms.find(r => r.room_number === parsed.roomNumber);
+      if (matchedRoom) roomId = matchedRoom.id;
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      await createMultipleGuestsAndStay(
+        [{
+          full_name: parsed.fullName,
+          id_number: parsed.idNumber || 'N/A',
+          address: parsed.address || '',
+          phone: parsed.phone || '',
+          photo_uri: '',
+          back_photo_uri: '',
+          selfie_uri: '',
+          property_id: propertyId || 'HS-8821',
+          id_type: parsed.idType || 'Aadhaar',
+          dob: '',
+          gender: 'Other',
+          pin_code: parsed.pinCode || ''
+        }],
+        {
+          room_id: roomId,
+          check_in_date: todayStr,
+          check_out_date: todayStr
+        }
+      );
+
+      await fetchAllGuests();
+      setIsImportModalVisible(false);
+      setImportText('');
+      Alert.alert('Check-in Imported!', `Guest ${parsed.fullName} assigned to Room ${parsed.roomNumber} has been saved.`);
+    } catch (e: any) {
+      console.error('Manual import error', e);
+      Alert.alert('Import Failed', e?.message || 'Could not save imported check-in.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   const fetchAllGuests = async () => {
     try {
@@ -96,15 +160,24 @@ export default function RegistrationsScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Search Input */}
-        <View className="mb-4">
-          <Input 
-            placeholder="Search by name, phone, ID number, room..." 
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            icon={<Search size={20} color="#9498AA" />}
-            className="mb-0"
-          />
+        {/* Search Input & Import Button */}
+        <View className="mb-4 flex-row items-center gap-2">
+          <View className="flex-1">
+            <Input 
+              placeholder="Search by name, phone, ID, room..." 
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              icon={<Search size={20} color="#9498AA" />}
+              className="mb-0"
+            />
+          </View>
+          <TouchableOpacity
+            onPress={() => setIsImportModalVisible(true)}
+            className="bg-black dark:bg-white px-4 py-3.5 rounded-2xl flex-row items-center gap-1.5"
+          >
+            <LogIn size={18} color="#FFFFFF" className="dark:text-black" />
+            <Text className="text-xs font-bold text-white dark:text-black">Import</Text>
+          </TouchableOpacity>
         </View>
 
         {/* Registrations List */}
@@ -330,6 +403,60 @@ export default function RegistrationsScreen() {
                 </ScrollView>
               </View>
             )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* MANUAL IMPORT MODAL */}
+      <Modal visible={isImportModalVisible} transparent animationType="slide">
+        <TouchableOpacity 
+          activeOpacity={1} 
+          onPress={() => setIsImportModalVisible(false)}
+          className="flex-1 bg-black/60 justify-end"
+        >
+          <TouchableOpacity activeOpacity={1} className="bg-background rounded-t-3xl p-6 border-t border-gray-200 dark:border-gray-800">
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center gap-2">
+                <LogIn size={20} color="#000000" className="dark:text-white" />
+                <Text className="text-lg font-bold text-foreground">Import Web Self Check-in</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsImportModalVisible(false)} className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                <X size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <Text className="text-xs text-gray-500 mb-3">
+              Paste the check-in text or code received on WhatsApp from the guest to import their details directly into your database.
+            </Text>
+
+            <Input
+              label="Paste Check-in Code / WhatsApp Message *"
+              placeholder="Paste WhatsApp message or #GUEST_IMPORT_DATA...# code here"
+              value={importText}
+              onChangeText={setImportText}
+              multiline
+              numberOfLines={5}
+              style={{ minHeight: 110, textAlignVertical: 'top' }}
+            />
+
+            <View className="flex-row gap-3 mt-4">
+              <TouchableOpacity
+                onPress={() => setIsImportModalVisible(false)}
+                className="flex-1 py-3.5 rounded-xl border border-gray-300 dark:border-gray-700 items-center justify-center"
+              >
+                <Text className="font-bold text-foreground">Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                disabled={isImporting}
+                onPress={handleExecuteImport}
+                className="flex-1 py-3.5 rounded-xl bg-black dark:bg-white items-center justify-center"
+              >
+                <Text className="font-bold text-white dark:text-black">
+                  {isImporting ? 'Importing...' : '📥 Save to App'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>

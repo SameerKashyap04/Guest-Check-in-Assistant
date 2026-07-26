@@ -92,7 +92,18 @@ export default function SelfCheckinScreen() {
   }, [searchParams?.rooms]);
 
   const handleNotifyOwner = () => {
-    const message = `🏡 *New Guest Self Check-in Submission*\n---------------------------------\n*Property:* ${activePropertyName} (ID: ${activePropertyId})\n*Guest Name:* ${fullName.trim()}\n*Phone:* ${phone.trim()}\n*Assigned Room:* Room ${assignedRoomNumber}\n*ID Type:* ${idType} (${idNumber.trim()})\n*Address:* ${address.trim()} (${pinCode.trim()})\n*Date:* ${new Date().toLocaleDateString()}\n\nVerified Online Check-in`;
+    const payload = JSON.stringify({
+      fullName: fullName.trim(),
+      phone: phone.trim(),
+      idType: idType,
+      idNumber: idNumber.trim(),
+      address: address.trim(),
+      pinCode: pinCode.trim(),
+      roomNumber: assignedRoomNumber,
+      propertyId: activePropertyId
+    });
+
+    const message = `🏡 *New Guest Self Check-in Submission*\n---------------------------------\n*Property:* ${activePropertyName} (ID: ${activePropertyId})\n*Guest Name:* ${fullName.trim()}\n*Phone:* ${phone.trim()}\n*Assigned Room:* Room ${assignedRoomNumber}\n*ID Type:* ${idType} (${idNumber.trim()})\n*Address:* ${address.trim()} (${pinCode.trim()})\n*Date:* ${new Date().toLocaleDateString()}\n\n📋 *IMPORT CODE FOR OWNER APP:*\n#GUEST_IMPORT_DATA:${payload}#\n\nVerified Online Check-in`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       window.open(whatsappUrl, '_blank');

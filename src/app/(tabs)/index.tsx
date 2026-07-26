@@ -10,6 +10,8 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useRoomsStore } from '@/store/useRoomsStore';
 import { subscribeToPropertyCheckins } from '@/services/firebaseSync';
 import { createMultipleGuestsAndStay } from '@/database/stays';
+import { parseCheckinImportText } from '@/utils/checkinImporter';
+import { Alert } from 'react-native';
 
 export default function DashboardScreen() {
   const { businessName, propertyId, getShareableLink } = useSettingsStore();
@@ -17,7 +19,63 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [recentGuests, setRecentGuests] = useState<any[]>([]);
   const [selectedGuest, setSelectedGuest] = useState<any | null>(null);
+  const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+  const [importText, setImportText] = useState('');
+  const [isImporting, setIsImporting] = useState(false);
   const router = useRouter();
+
+  const handleExecuteImport = async () => {
+    if (!importText.trim()) {
+      Alert.alert('Empty Input', 'Please paste the check-in message or code.');
+      return;
+    }
+    const parsed = parseCheckinImportText(importText.trim());
+    if (!parsed || !parsed.fullName) {
+      Alert.alert('Invalid Check-in Code', 'Could not parse guest check-in details. Please make sure to copy the full message from WhatsApp.');
+      return;
+    }
+
+    try {
+      setIsImporting(true);
+      let roomId = rooms.length > 0 ? rooms[0].id : 101;
+      const matchedRoom = rooms.find(r => r.room_number === parsed.roomNumber);
+      if (matchedRoom) roomId = matchedRoom.id;
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      await createMultipleGuestsAndStay(
+        [{
+          full_name: parsed.fullName,
+          id_number: parsed.idNumber || 'N/A',
+          address: parsed.address || '',
+          phone: parsed.phone || '',
+          photo_uri: '',
+          back_photo_uri: '',
+          selfie_uri: '',
+          property_id: propertyId || 'HS-8821',
+          id_type: parsed.idType || 'Aadhaar',
+          dob: '',
+          gender: 'Other',
+          pin_code: parsed.pinCode || ''
+        }],
+        {
+          room_id: roomId,
+          check_in_date: todayStr,
+          check_out_date: todayStr
+        }
+      );
+
+      await fetchGuests();
+      setIsImportModalVisible(false);
+      setImportText('');
+      Alert.alert('Check-in Imported!', `Guest ${parsed.fullName} assigned to Room ${parsed.roomNumber} has been saved to your app.`);
+    } catch (e: any) {
+      console.error('Manual import error', e);
+      Alert.alert('Import Failed', e?.message || 'Could not save imported check-in.');
+    } finally {
+      setIsImporting(false);
+    }
+  };
 
   // Real-time Cloud Sync Listener for Web Self Check-in Submissions
   useEffect(() => {
@@ -175,7 +233,7 @@ export default function DashboardScreen() {
             </View>
           </View>
 
-          <View className="flex-row gap-3">
+          <View className="flex-row flex-wrap gap-2">
             <TouchableOpacity
               onPress={async () => {
                 try {
@@ -187,15 +245,23 @@ export default function DashboardScreen() {
                   console.error('Share error', e);
                 }
               }}
-              className="flex-1 bg-primary py-3 rounded-xl items-center justify-center flex-row gap-2"
+              className="flex-1 bg-primary py-3 rounded-xl items-center justify-center flex-row gap-1.5"
             >
               <Share2 size={16} color="#FFFFFF" />
               <Text className="text-xs font-bold text-white">Share Link</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
+              onPress={() => setIsImportModalVisible(true)}
+              className="flex-1 bg-black dark:bg-white py-3 rounded-xl items-center justify-center flex-row gap-1.5"
+            >
+              <LogIn size={16} color="#FFFFFF" className="dark:text-black" />
+              <Text className="text-xs font-bold text-white dark:text-black">Import Check-in</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
               onPress={() => router.push('/self-checkin')}
-              className="flex-1 bg-white dark:bg-black/30 border border-gray-200 dark:border-gray-800 py-3 rounded-xl items-center justify-center flex-row gap-2"
+              className="flex-1 bg-white dark:bg-black/30 border border-gray-200 dark:border-gray-800 py-3 rounded-xl items-center justify-center flex-row gap-1.5"
             >
               <ExternalLink size={16} color="#000000" />
               <Text className="text-xs font-bold text-foreground">Open Portal</Text>
@@ -418,6 +484,60 @@ export default function DashboardScreen() {
                 </ScrollView>
               </View>
             )}
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* MANUAL IMPORT MODAL */}
+      <Modal visible={isImportModalVisible} transparent animationType="slide">
+        <TouchableOpacity 
+          activeOpacity={1} 
+          onPress={() => setIsImportModalVisible(false)}
+          className="flex-1 bg-black/60 justify-end"
+        >
+          <TouchableOpacity activeOpacity={1} className="bg-background rounded-t-3xl p-6 border-t border-gray-200 dark:border-gray-800">
+            <View className="flex-row justify-between items-center mb-4">
+              <View className="flex-row items-center gap-2">
+                <LogIn size={20} color="#000000" className="dark:text-white" />
+                <Text className="text-lg font-bold text-foreground">Import Web Self Check-in</Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsImportModalVisible(false)} className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                <X size={20} color="#6B7280" />
+              </TouchableOpacity>
+            </View>
+
+            <Text className="text-xs text-gray-500 mb-3">
+              Paste the check-in text or code received on WhatsApp from the guest to import their details directly into your database.
+            </Text>
+
+            <Input
+              label="Paste Check-in Code / WhatsApp Message *"
+              placeholder="Paste WhatsApp message or #GUEST_IMPORT_DATA...# code here"
+              value={importText}
+              onChangeText={setImportText}
+              multiline
+              numberOfLines={5}
+              style={{ minHeight: 110, textAlignVertical: 'top' }}
+            />
+
+            <View className="flex-row gap-3 mt-4">
+              <TouchableOpacity
+                onPress={() => setIsImportModalVisible(false)}
+                className="flex-1 py-3.5 rounded-xl border border-gray-300 dark:border-gray-700 items-center justify-center"
+              >
+                <Text className="font-bold text-foreground">Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity
+                disabled={isImporting}
+                onPress={handleExecuteImport}
+                className="flex-1 py-3.5 rounded-xl bg-black dark:bg-white items-center justify-center"
+              >
+                <Text className="font-bold text-white dark:text-black">
+                  {isImporting ? 'Importing...' : '📥 Save to App'}
+                </Text>
+              </TouchableOpacity>
+            </View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
