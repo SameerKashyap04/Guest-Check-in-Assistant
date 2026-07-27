@@ -4,16 +4,16 @@ import { getAuth, initializeAuth } from '@firebase/auth';
 import { getFirestore } from '@firebase/firestore';
 import { Platform } from 'react-native';
 
-// Firebase Configuration for Guest Check-in Assistant Cloud Sync
+// Firebase Configuration using Environment Variables for Security
 const firebaseConfig = {
-  apiKey: "AIzaSyAMPlyK7NKHZqW_mwEfdofXu0LF5_pW7m8",
-  authDomain: "guest-checkin-assistant.firebaseapp.com",
-  databaseURL: "https://guest-checkin-assistant-default-rtdb.firebaseio.com",
-  projectId: "guest-checkin-assistant",
-  storageBucket: "guest-checkin-assistant.firebasestorage.app",
-  messagingSenderId: "765584797318",
-  appId: "1:765584797318:web:5ca184f29c5e0d1a75eb07",
-  measurementId: "G-K2MN0PEHSZ"
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "",
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "guest-checkin-assistant.firebaseapp.com",
+  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || "https://guest-checkin-assistant-default-rtdb.firebaseio.com",
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "guest-checkin-assistant",
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || "guest-checkin-assistant.firebasestorage.app",
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "765584797318",
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || "1:765584797318:web:5ca184f29c5e0d1a75eb07",
+  measurementId: process.env.EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID || "G-K2MN0PEHSZ"
 };
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
@@ -37,7 +37,6 @@ if (Platform.OS === 'web') {
   authInstance = getAuth(app);
 } else {
   try {
-    // Dynamically import getReactNativePersistence from firebase/auth
     const { getReactNativePersistence } = require('firebase/auth');
     authInstance = initializeAuth(app, {
       persistence: getReactNativePersistence(mmkvAuthStorage as any),
