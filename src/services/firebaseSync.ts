@@ -143,9 +143,15 @@ export function subscribeToPropertyCheckins(
         if (change.type === 'added') {
           const docId = change.doc.id;
           if (processedDocIds.has(docId)) return;
-          processedDocIds.add(docId);
 
           const data = change.doc.data() as CloudGuestCheckin;
+          
+          // Strict Multi-Tenant Security Check: Ignore check-ins designated for another owner
+          if (ownerId && ownerId !== 'OWNER_DEFAULT_101' && data.owner_id && data.owner_id !== 'OWNER_DEFAULT_101' && data.owner_id !== ownerId) {
+            return;
+          }
+
+          processedDocIds.add(docId);
           onNewCheckin({ ...data, id: docId });
 
           // If local storage mode, delete from cloud after downloading locally
