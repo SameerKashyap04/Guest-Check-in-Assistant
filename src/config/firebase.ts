@@ -4,9 +4,9 @@ import { getAuth, initializeAuth } from '@firebase/auth';
 import { getFirestore } from '@firebase/firestore';
 import { Platform } from 'react-native';
 
-// Firebase Configuration using Environment Variables for Security
+// Firebase Configuration for Guest Check-in Assistant Cloud Sync
 const firebaseConfig = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "",
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyAMPlyK7NKHZqW_mwEfdofXu0LF5_pW7m8",
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "guest-checkin-assistant.firebaseapp.com",
   databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || "https://guest-checkin-assistant-default-rtdb.firebaseio.com",
   projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || "guest-checkin-assistant",
