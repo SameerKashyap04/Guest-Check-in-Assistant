@@ -4,13 +4,26 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
-import { ChevronLeft, Camera, Image as ImageIcon, CheckCircle2, User, IdCard, Phone, MapPin, Building2, Sparkles, ShieldCheck, DoorOpen, Calendar, X, Link2, UploadCloud, CreditCard, AlertCircle } from 'lucide-react-native';
+import { ChevronLeft, Camera, Image as ImageIcon, CheckCircle2, User, IdCard, Phone, MapPin, Building2, Sparkles, ShieldCheck, DoorOpen, Calendar, X, Link2, UploadCloud, CreditCard, AlertCircle, UserPlus, Trash2 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { getRooms, getFallbackRooms, Room } from '@/database/rooms';
 import { createGuestAndStay } from '@/database/stays';
 import { pushGuestCheckinToCloud } from '@/services/firebaseSync';
+
+export interface AdditionalGuest {
+  id: string;
+  fullName: string;
+  phone: string;
+  gender: string;
+  dob: string;
+  idType: string;
+  idNumber: string;
+  frontPhotoUri: string | null;
+  backPhotoUri: string | null;
+  selfiePhotoUri: string | null;
+}
 
 export default function SelfCheckinScreen() {
   const router = useRouter();
@@ -31,10 +44,39 @@ export default function SelfCheckinScreen() {
   const [address, setAddress] = useState('');
   const [pinCode, setPinCode] = useState('');
 
+  // Additional Guests State (Family / Group Check-in)
+  const [additionalGuests, setAdditionalGuests] = useState<AdditionalGuest[]>([]);
+
   // Photos State
   const [frontPhotoUri, setFrontPhotoUri] = useState<string | null>(null);
   const [backPhotoUri, setBackPhotoUri] = useState<string | null>(null);
   const [selfiePhotoUri, setSelfiePhotoUri] = useState<string | null>(null); // OPTIONAL SELFIE
+
+  const addAdditionalPerson = () => {
+    setAdditionalGuests(prev => [
+      ...prev,
+      {
+        id: `guest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        fullName: '',
+        phone: '',
+        gender: 'Male',
+        dob: '',
+        idType: 'Aadhaar',
+        idNumber: '',
+        frontPhotoUri: null,
+        backPhotoUri: null,
+        selfiePhotoUri: null,
+      }
+    ]);
+  };
+
+  const removeAdditionalPerson = (id: string) => {
+    setAdditionalGuests(prev => prev.filter(g => g.id !== id));
+  };
+
+  const updateAdditionalPerson = (id: string, field: keyof AdditionalGuest, value: any) => {
+    setAdditionalGuests(prev => prev.map(g => g.id === id ? { ...g, [field]: value } : g));
+  };
 
   // Rooms & Submission State
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -168,7 +210,7 @@ export default function SelfCheckinScreen() {
     return rawUri;
   };
 
-  const pickImage = async (target: 'front' | 'back' | 'selfie', useCamera = false) => {
+  const pickImage = async (target: 'front' | 'back' | 'selfie', useCamera = false, additionalGuestId?: string) => {
     try {
       let result;
       const options: ImagePicker.ImagePickerOptions = {
@@ -196,9 +238,14 @@ export default function SelfCheckinScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const portableUri = await compressAndGetBase64(result.assets[0]);
-        if (target === 'front') setFrontPhotoUri(portableUri);
-        if (target === 'back') setBackPhotoUri(portableUri);
-        if (target === 'selfie') setSelfiePhotoUri(portableUri);
+        if (additionalGuestId) {
+          const fieldName = target === 'front' ? 'frontPhotoUri' : target === 'back' ? 'backPhotoUri' : 'selfiePhotoUri';
+          updateAdditionalPerson(additionalGuestId, fieldName, portableUri);
+        } else {
+          if (target === 'front') setFrontPhotoUri(portableUri);
+          if (target === 'back') setBackPhotoUri(portableUri);
+          if (target === 'selfie') setSelfiePhotoUri(portableUri);
+        }
       }
     } catch (e) {
       console.error('Image picker error', e);
@@ -226,6 +273,15 @@ export default function SelfCheckinScreen() {
       showAlert('Required Field', `Please enter your ${idType} Number.`);
       return;
     }
+
+    // Additional guests validation
+    for (let i = 0; i < additionalGuests.length; i++) {
+      if (!additionalGuests[i].fullName.trim()) {
+        showAlert('Required Field', `Please enter Full Name for Person ${i + 2}.`);
+        return;
+      }
+    }
+
     if (rooms.length === 0) {
       showAlert('No Rooms Available', 'Sorry, all rooms are currently occupied or unavailable for online check-in. Please contact the homestay owner.');
       return;
@@ -284,7 +340,8 @@ export default function SelfCheckinScreen() {
           back_photo_uri: backPhotoUri || '',
           selfie_uri: selfiePhotoUri || '',
           room_number: roomNum,
-          check_in_date: todayStr
+          check_in_date: todayStr,
+          additional_guests: additionalGuests,
         });
       } catch (cloudErr) {
         console.warn('Cloud sync push warning:', cloudErr);
@@ -609,6 +666,156 @@ export default function SelfCheckinScreen() {
             </View>
 
           </GlassCard>
+
+          {/* 3. ADDITIONAL PERSONS (FAMILY & GROUP CHECK-IN) */}
+          <View className="flex-row justify-between items-center mb-3 ml-1">
+            <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+              3. Additional Guests / Persons
+            </Text>
+            <TouchableOpacity
+              onPress={addAdditionalPerson}
+              className="flex-row items-center gap-1 bg-black/10 dark:bg-white/10 px-3 py-1.5 rounded-full"
+            >
+              <UserPlus size={14} color="#000000" className="dark:text-white" />
+              <Text className="text-xs font-bold text-foreground">+ Add Person</Text>
+            </TouchableOpacity>
+          </View>
+
+          {additionalGuests.length === 0 ? (
+            <GlassCard className="mb-6 p-4 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 items-center justify-center py-5">
+              <UserPlus size={28} color="#9498AA" className="mb-2" />
+              <Text className="text-sm font-bold text-foreground">Travelling with Family or a Group?</Text>
+              <Text className="text-xs text-gray-500 text-center mt-1 mb-3">
+                Tap below to add details for additional guests staying in the same room.
+              </Text>
+              <TouchableOpacity
+                onPress={addAdditionalPerson}
+                className="bg-black dark:bg-white px-5 py-2.5 rounded-xl flex-row items-center gap-2"
+              >
+                <UserPlus size={16} color="#FFFFFF" className="dark:text-black" />
+                <Text className="text-xs font-bold text-white dark:text-black">Add Additional Guest</Text>
+              </TouchableOpacity>
+            </GlassCard>
+          ) : (
+            <View className="mb-6 gap-4">
+              {additionalGuests.map((guest, idx) => (
+                <GlassCard key={guest.id} className="p-4 rounded-2xl border border-gray-200 dark:border-gray-800">
+                  <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-gray-100 dark:border-gray-800">
+                    <View className="flex-row items-center gap-2">
+                      <View className="w-7 h-7 rounded-full bg-black/10 dark:bg-white/10 items-center justify-center">
+                        <Text className="text-xs font-bold text-foreground">{idx + 2}</Text>
+                      </View>
+                      <Text className="text-sm font-bold text-foreground">Person {idx + 2} Details</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => removeAdditionalPerson(guest.id)}
+                      className="p-1.5 rounded-full bg-red-500/10 active:bg-red-500/20"
+                    >
+                      <Trash2 size={16} color="#EF4444" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <Input
+                    label={`Person ${idx + 2} Full Name *`}
+                    placeholder="e.g. Rahul Kashyap"
+                    value={guest.fullName}
+                    onChangeText={(val) => updateAdditionalPerson(guest.id, 'fullName', val)}
+                    icon={<User size={18} color="#9498AA" />}
+                  />
+
+                  <Input
+                    label="Mobile Phone (Optional)"
+                    placeholder="Mobile number"
+                    keyboardType="phone-pad"
+                    value={guest.phone}
+                    onChangeText={(val) => updateAdditionalPerson(guest.id, 'phone', val)}
+                    icon={<Phone size={18} color="#9498AA" />}
+                  />
+
+                  <Text className="text-sm font-semibold text-foreground mb-2 ml-1">Gender</Text>
+                  <View className="flex-row gap-3 mb-4">
+                    {['Male', 'Female', 'Other'].map((g) => {
+                      const isSel = guest.gender === g;
+                      return (
+                        <TouchableOpacity
+                          key={g}
+                          onPress={() => updateAdditionalPerson(guest.id, 'gender', g)}
+                          className={`flex-1 py-2.5 rounded-xl border items-center justify-center ${
+                            isSel ? 'bg-black dark:bg-white border-black dark:border-white' : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
+                          }`}
+                        >
+                          <Text className={`font-bold text-xs ${isSel ? 'text-white dark:text-black' : 'text-gray-600 dark:text-gray-400'}`}>
+                            {g}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  <Text className="text-sm font-semibold text-foreground mb-2 ml-1">ID Document Type</Text>
+                  <View className="flex-row flex-wrap gap-2 mb-4">
+                    {['Aadhaar', 'Passport', 'Driving License', 'Voter ID', 'PAN'].map((type) => {
+                      const isSel = guest.idType === type;
+                      return (
+                        <TouchableOpacity
+                          key={type}
+                          onPress={() => updateAdditionalPerson(guest.id, 'idType', type)}
+                          className={`px-3 py-2 rounded-xl border ${
+                            isSel ? 'bg-black dark:bg-white border-black dark:border-white' : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
+                          }`}
+                        >
+                          <Text className={`font-bold text-xs ${isSel ? 'text-white dark:text-black' : 'text-gray-600 dark:text-gray-400'}`}>
+                            {type}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  <Input
+                    label={`${guest.idType} Number (Optional)`}
+                    placeholder="Enter ID Number"
+                    value={guest.idNumber}
+                    onChangeText={(val) => updateAdditionalPerson(guest.id, 'idNumber', val)}
+                    icon={<IdCard size={18} color="#9498AA" />}
+                  />
+
+                  {/* ID Front Photo */}
+                  <View className="pt-2 border-t border-gray-100 dark:border-gray-800">
+                    <Text className="text-xs font-bold text-foreground mb-2">ID Photo (Front)</Text>
+                    {guest.frontPhotoUri ? (
+                      <View className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800">
+                        <Image source={{ uri: guest.frontPhotoUri }} style={{ width: '100%', height: 120 }} resizeMode="cover" />
+                        <TouchableOpacity 
+                          onPress={() => updateAdditionalPerson(guest.id, 'frontPhotoUri', null)}
+                          className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full"
+                        >
+                          <X size={14} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View className="flex-row gap-2">
+                        <TouchableOpacity 
+                          onPress={() => pickImage('front', true, guest.id)}
+                          className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-3 rounded-xl items-center border border-dashed border-gray-300 dark:border-gray-700 flex-row justify-center gap-1.5"
+                        >
+                          <Camera size={16} color="#000000" />
+                          <Text className="text-xs font-bold text-foreground">Camera</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          onPress={() => pickImage('front', false, guest.id)}
+                          className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-3 rounded-xl items-center border border-dashed border-gray-300 dark:border-gray-700 flex-row justify-center gap-1.5"
+                        >
+                          <UploadCloud size={16} color="#000000" />
+                          <Text className="text-xs font-bold text-foreground">Upload</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+                </GlassCard>
+              ))}
+            </View>
+          )}
 
           {/* 4. ROOM SELECTION */}
           <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">

@@ -30,6 +30,7 @@ export interface CloudGuestCheckin {
   selfie_uri?: string;
   room_number: string;
   check_in_date: string;
+  additional_guests?: any[];
   created_at?: any;
   expires_at?: number; // 10-day TTL timestamp
 }

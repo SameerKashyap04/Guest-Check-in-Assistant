@@ -92,8 +92,8 @@ export default function DashboardScreen() {
             const matchedRoom = rooms.find(r => r.room_number === cloudGuest.room_number);
             if (matchedRoom) roomId = matchedRoom.id;
 
-            await createMultipleGuestsAndStay(
-              [{
+            const allGuests = [
+              {
                 full_name: cloudGuest.full_name,
                 id_number: cloudGuest.id_number,
                 address: cloudGuest.address,
@@ -106,7 +106,25 @@ export default function DashboardScreen() {
                 dob: cloudGuest.dob || '',
                 gender: cloudGuest.gender || 'Other',
                 pin_code: cloudGuest.pin_code || ''
-              }],
+              },
+              ...(cloudGuest.additional_guests || []).map((g: any) => ({
+                full_name: g.fullName || 'Additional Guest',
+                id_number: g.idNumber || 'N/A',
+                address: cloudGuest.address,
+                phone: g.phone || cloudGuest.phone,
+                photo_uri: g.frontPhotoUri || '',
+                back_photo_uri: g.backPhotoUri || '',
+                selfie_uri: g.selfiePhotoUri || '',
+                property_id: cloudGuest.property_id,
+                id_type: g.idType || 'Aadhaar',
+                dob: g.dob || '',
+                gender: g.gender || 'Other',
+                pin_code: cloudGuest.pin_code || ''
+              }))
+            ];
+
+            await createMultipleGuestsAndStay(
+              allGuests,
               {
                 room_id: roomId,
                 check_in_date: cloudGuest.check_in_date || new Date().toISOString().split('T')[0],
