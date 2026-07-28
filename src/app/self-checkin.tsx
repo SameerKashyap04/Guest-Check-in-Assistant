@@ -8,9 +8,15 @@ import { ChevronLeft, Camera, Image as ImageIcon, CheckCircle2, User, IdCard, Ph
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { getRooms, getFallbackRooms, Room } from '@/database/rooms';
-import { createGuestAndStay } from '@/database/stays';
 import { pushGuestCheckinToCloud } from '@/services/firebaseSync';
+
+export interface Room {
+  id: number;
+  room_number: string;
+  room_type?: string;
+  price?: number;
+  status: 'available' | 'occupied' | 'maintenance';
+}
 
 export interface AdditionalGuest {
   id: string;
@@ -118,21 +124,30 @@ export default function SelfCheckinScreen() {
         }
       }
 
-      // 2. Fetch from DB
-      try {
-        let availableRooms = await getRooms();
-        let avail = availableRooms.filter(r => r.status === 'available');
-        setRooms(avail);
-        if (avail.length > 0) {
-          setSelectedRoomId(avail[0].id);
-        } else {
-          setSelectedRoomId(null);
+      // 2. Fetch from DB (Native Mobile Devices)
+      if (Platform.OS !== 'web') {
+        try {
+          const { getRooms } = require('@/database/rooms');
+          let availableRooms = await getRooms();
+          let avail = availableRooms.filter((r: any) => r.status === 'available');
+          setRooms(avail);
+          if (avail.length > 0) {
+            setSelectedRoomId(avail[0].id);
+          } else {
+            setSelectedRoomId(null);
+          }
+          return;
+        } catch (e) {
+          console.error('Failed to load rooms for self check-in', e);
         }
-      } catch (e) {
-        console.error('Failed to load rooms for self check-in', e);
-        setRooms([]);
-        setSelectedRoomId(null);
       }
+
+      // Default Web Fallback Room
+      const defaultWebRooms: Room[] = [
+        { id: 901, room_number: '101', room_type: 'Standard', price: 0, status: 'available' }
+      ];
+      setRooms(defaultWebRooms);
+      setSelectedRoomId(901);
     }
     loadRooms();
   }, [searchParams?.rooms]);
@@ -296,31 +311,34 @@ export default function SelfCheckinScreen() {
     try {
       setIsSubmitting(true);
 
-      // 1. Local SQLite store
-      try {
-        await createGuestAndStay(
-          {
-            full_name: fullName.trim(),
-            id_number: idNumber.trim(),
-            address: address.trim(),
-            phone: phone.trim(),
-            photo_uri: frontPhotoUri || '',
-            back_photo_uri: backPhotoUri || '',
-            selfie_uri: selfiePhotoUri || '',
-            property_id: activePropertyId,
-            id_type: idType,
-            dob: dob.trim(),
-            gender: gender,
-            pin_code: pinCode.trim(),
-          },
-          {
-            room_id: effectiveRoomId,
-            check_in_date: todayStr,
-            check_out_date: todayStr,
-          }
-        );
-      } catch (localDbErr) {
-        console.warn('Local SQLite storage skipped on web:', localDbErr);
+      // 1. Local SQLite store (Native Mobile Only)
+      if (Platform.OS !== 'web') {
+        try {
+          const { createGuestAndStay } = require('@/database/stays');
+          await createGuestAndStay(
+            {
+              full_name: fullName.trim(),
+              id_number: idNumber.trim(),
+              address: address.trim(),
+              phone: phone.trim(),
+              photo_uri: frontPhotoUri || '',
+              back_photo_uri: backPhotoUri || '',
+              selfie_uri: selfiePhotoUri || '',
+              property_id: activePropertyId,
+              id_type: idType,
+              dob: dob.trim(),
+              gender: gender,
+              pin_code: pinCode.trim(),
+            },
+            {
+              room_id: effectiveRoomId,
+              check_in_date: todayStr,
+              check_out_date: todayStr,
+            }
+          );
+        } catch (localDbErr) {
+          console.warn('Local SQLite storage skipped on web:', localDbErr);
+        }
       }
 
       // 2. Real-time Firebase Cloud Push
