@@ -68,13 +68,15 @@ export const useSettingsStore = create<SettingsState>()(
         const propName = encodeURIComponent(state.businessName || 'Homestay');
         
         let roomsQuery = '';
-        if (customRooms && customRooms.length > 0) {
+        if (customRooms) {
           const availableOnly = customRooms.filter(r => r.status === 'available');
           if (availableOnly.length > 0) {
             const encodedRooms = availableOnly.map(r => 
               `${encodeURIComponent(r.room_number || '')}:${encodeURIComponent(r.room_type || 'Standard')}:${r.price || 0}`
             ).join(';');
             roomsQuery = `&rooms=${encodeURIComponent(encodedRooms)}`;
+          } else {
+            roomsQuery = `&rooms=none`;
           }
         }
         return `${cleanBaseUrl}?property_id=${propId}&owner_id=${ownerId}&property_name=${propName}${roomsQuery}`;

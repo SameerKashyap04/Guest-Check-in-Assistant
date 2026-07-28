@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
-import { ChevronLeft, Camera, Image as ImageIcon, CheckCircle2, User, IdCard, Phone, MapPin, Building2, Sparkles, ShieldCheck, DoorOpen, Calendar, X, Link2, UploadCloud, CreditCard } from 'lucide-react-native';
+import { ChevronLeft, Camera, Image as ImageIcon, CheckCircle2, User, IdCard, Phone, MapPin, Building2, Sparkles, ShieldCheck, DoorOpen, Calendar, X, Link2, UploadCloud, CreditCard, AlertCircle } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -47,6 +47,11 @@ export default function SelfCheckinScreen() {
     async function loadRooms() {
       // 1. Check if rooms are passed in URL search params from owner link
       if (searchParams?.rooms) {
+        if (searchParams.rooms === 'none') {
+          setRooms([]);
+          setSelectedRoomId(null);
+          return;
+        }
         try {
           const raw = String(searchParams.rooms);
           const parsed = raw.split(';').map((item, idx) => {
@@ -59,34 +64,32 @@ export default function SelfCheckinScreen() {
               status: 'available' as const
             };
           });
+          setRooms(parsed);
           if (parsed.length > 0) {
-            setRooms(parsed);
             setSelectedRoomId(parsed[0].id);
-            return;
+          } else {
+            setSelectedRoomId(null);
           }
+          return;
         } catch (err) {
           console.error('Failed to parse URL query rooms', err);
         }
       }
 
-      // 2. Fetch from DB / Fallback
+      // 2. Fetch from DB
       try {
         let availableRooms = await getRooms();
         let avail = availableRooms.filter(r => r.status === 'available');
-        if (avail.length === 0) {
-          avail = getFallbackRooms();
-        }
         setRooms(avail);
         if (avail.length > 0) {
           setSelectedRoomId(avail[0].id);
+        } else {
+          setSelectedRoomId(null);
         }
       } catch (e) {
         console.error('Failed to load rooms for self check-in', e);
-        const fallback = getFallbackRooms();
-        setRooms(fallback);
-        if (fallback.length > 0) {
-          setSelectedRoomId(fallback[0].id);
-        }
+        setRooms([]);
+        setSelectedRoomId(null);
       }
     }
     loadRooms();
@@ -223,11 +226,15 @@ export default function SelfCheckinScreen() {
       showAlert('Required Field', `Please enter your ${idType} Number.`);
       return;
     }
+    if (rooms.length === 0) {
+      showAlert('No Rooms Available', 'Sorry, all rooms are currently occupied or unavailable for online check-in. Please contact the homestay owner.');
+      return;
+    }
 
-    const activeRooms = rooms.length > 0 ? rooms : getFallbackRooms();
-    const effectiveRoomId = selectedRoomId || (activeRooms.length > 0 ? activeRooms[0].id : 101);
+    const activeRooms = rooms;
+    const effectiveRoomId = selectedRoomId || (activeRooms.length > 0 ? activeRooms[0].id : 0);
     const selectedRoom = activeRooms.find(r => r.id === effectiveRoomId) || activeRooms[0];
-    const roomNum = selectedRoom ? selectedRoom.room_number : '101';
+    const roomNum = selectedRoom ? selectedRoom.room_number : 'N/A';
     const todayStr = new Date().toISOString().split('T')[0];
 
     try {
@@ -610,7 +617,15 @@ export default function SelfCheckinScreen() {
 
           <GlassCard className="mb-8 p-4 rounded-2xl border border-gray-100 dark:border-white/10">
             {rooms.length === 0 ? (
-              <Text className="text-sm text-red-500 font-medium text-center py-3">No available rooms at the moment.</Text>
+              <View className="items-center py-5 px-3">
+                <AlertCircle size={36} color="#EF4444" className="mb-2" />
+                <Text className="text-base font-extrabold text-red-600 dark:text-red-400 text-center">
+                  No Rooms Available Currently
+                </Text>
+                <Text className="text-xs text-gray-500 text-center mt-1">
+                  All rooms at <Text className="font-bold text-foreground">{activePropertyName}</Text> are currently occupied or unavailable for online check-in. Please contact the property owner.
+                </Text>
+              </View>
             ) : (
               <View className="flex-row flex-wrap gap-3">
                 {rooms.map((r) => {
@@ -638,11 +653,17 @@ export default function SelfCheckinScreen() {
 
           {/* SUBMIT BUTTON */}
           <Button
-            label={isSubmitting ? "Submitting Registration..." : "Complete Self Check-in"}
-            disabled={isSubmitting}
+            label={
+              isSubmitting 
+                ? "Submitting Registration..." 
+                : rooms.length === 0 
+                ? "No Available Rooms to Check In" 
+                : "Complete Self Check-in"
+            }
+            disabled={isSubmitting || rooms.length === 0}
             icon={isSubmitting ? <ActivityIndicator size="small" color="#FFFFFF" className="mr-2" /> : <CheckCircle2 size={20} color="#FFFFFF" className="mr-2" />}
             onPress={handleSubmit}
-            className="mb-8 bg-black dark:bg-white active:bg-gray-900"
+            className={`mb-8 ${rooms.length === 0 ? 'bg-gray-400 opacity-60' : 'bg-black dark:bg-white active:bg-gray-900'}`}
           />
 
         </ScrollView>
