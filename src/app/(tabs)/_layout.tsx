@@ -1,13 +1,19 @@
 import React from 'react';
-import { Tabs } from 'expo-router';
+import { Tabs, Redirect } from 'expo-router';
 import { Home, BedDouble, Settings, ScanLine } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
 import { BlurView } from 'expo-blur';
 import { Platform, View, StyleSheet } from 'react-native';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function TabLayout() {
+  const { isUnlocked } = useAuthStore();
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
+  
+  if (!isUnlocked) {
+    return <Redirect href="/auth" />;
+  }
   
   return (
     <Tabs
