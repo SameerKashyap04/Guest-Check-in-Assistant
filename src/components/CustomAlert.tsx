@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, TouchableOpacity, Platform, Animated } from 'react-native';
-import { CheckCircle2, AlertCircle, ShieldAlert, Info, Sparkles, X } from 'lucide-react-native';
-import { Alert, AlertButton, AlertOptions } from 'react-native';
+import {
+  View,
+  Text,
+  Modal,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
+  AlertButton,
+  AlertOptions,
+  useColorScheme,
+} from 'react-native';
+import { CheckCircle2, AlertCircle, ShieldAlert, Info, Sparkles } from 'lucide-react-native';
 
 export type AlertType = 'success' | 'error' | 'warning' | 'info' | 'confirm';
 
@@ -21,7 +30,6 @@ export const showCustomAlert = (
   buttons?: AlertButton[],
   type?: AlertType
 ) => {
-  // Infer alert type if not explicitly provided
   let inferredType: AlertType = type || 'info';
   if (!type) {
     const lower = (title + ' ' + (message || '')).toLowerCase();
@@ -36,17 +44,11 @@ export const showCustomAlert = (
     }
   }
 
-  const options: CustomAlertOptions = {
-    title,
-    message,
-    buttons,
-    type: inferredType
-  };
-
+  const options: CustomAlertOptions = { title, message, buttons, type: inferredType };
   listeners.forEach(l => l(options));
 };
 
-// Global patch for Alert.alert to seamlessly direct all alert popups to the CustomAlert UI
+// Global patch for Alert.alert
 if (typeof Alert.alert === 'function') {
   const originalAlert = Alert.alert;
   Alert.alert = (title: string, message?: string, buttons?: AlertButton[], options?: AlertOptions) => {
@@ -60,27 +62,23 @@ if (typeof Alert.alert === 'function') {
 
 export function CustomAlertProvider() {
   const [currentAlert, setCurrentAlert] = useState<CustomAlertOptions | null>(null);
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   useEffect(() => {
     const listener: AlertListener = (opt) => setCurrentAlert(opt);
     listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-    };
+    return () => { listeners.delete(listener); };
   }, []);
 
   if (!currentAlert) return null;
 
-  const handleClose = () => {
-    setCurrentAlert(null);
-  };
+  const handleClose = () => setCurrentAlert(null);
 
   const handleButtonPress = (btn?: AlertButton) => {
     handleClose();
-    if (btn && btn.onPress) {
-      setTimeout(() => {
-        btn.onPress?.();
-      }, 50);
+    if (btn?.onPress) {
+      setTimeout(() => btn.onPress?.(), 50);
     }
   };
 
@@ -90,31 +88,31 @@ export function CustomAlertProvider() {
     switch (alertType) {
       case 'success':
         return (
-          <View className="w-14 h-14 rounded-full bg-emerald-500/15 items-center justify-center mb-3">
+          <View style={[styles.iconCircle, { backgroundColor: 'rgba(16,185,129,0.15)' }]}>
             <CheckCircle2 size={32} color="#10B981" />
           </View>
         );
       case 'error':
         return (
-          <View className="w-14 h-14 rounded-full bg-red-500/15 items-center justify-center mb-3">
+          <View style={[styles.iconCircle, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
             <AlertCircle size={32} color="#EF4444" />
           </View>
         );
       case 'warning':
         return (
-          <View className="w-14 h-14 rounded-full bg-amber-500/15 items-center justify-center mb-3">
+          <View style={[styles.iconCircle, { backgroundColor: 'rgba(245,158,11,0.15)' }]}>
             <ShieldAlert size={32} color="#F59E0B" />
           </View>
         );
       case 'confirm':
         return (
-          <View className="w-14 h-14 rounded-full bg-sky-500/15 items-center justify-center mb-3">
+          <View style={[styles.iconCircle, { backgroundColor: 'rgba(56,189,248,0.15)' }]}>
             <Sparkles size={32} color="#0284C7" />
           </View>
         );
       default:
         return (
-          <View className="w-14 h-14 rounded-full bg-sky-500/15 items-center justify-center mb-3">
+          <View style={[styles.iconCircle, { backgroundColor: 'rgba(56,189,248,0.15)' }]}>
             <Info size={32} color="#0284C7" />
           </View>
         );
@@ -126,6 +124,12 @@ export function CustomAlertProvider() {
     ? currentAlert.buttons
     : defaultButtons;
 
+  const cardBg = isDark ? '#181A24' : '#FFFFFF';
+  const cardBorder = isDark ? '#1F2937' : '#F3F4F6';
+  const titleColor = isDark ? '#F9FAFB' : '#111827';
+  const subtitleColor = isDark ? '#9CA3AF' : '#6B7280';
+  const overlayBg = isDark ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.6)';
+
   return (
     <Modal
       animationType="fade"
@@ -134,45 +138,44 @@ export function CustomAlertProvider() {
       onRequestClose={handleClose}
       statusBarTranslucent={true}
     >
-      <TouchableOpacity 
+      <TouchableOpacity
         activeOpacity={1}
         onPress={handleClose}
-        className="flex-1 bg-black/60 dark:bg-black/80 items-center justify-center px-6"
+        style={[styles.overlay, { backgroundColor: overlayBg }]}
       >
         <TouchableOpacity
           activeOpacity={1}
           onPress={(e) => e.stopPropagation?.()}
-          className="w-full max-w-sm bg-white dark:bg-[#181A24] rounded-3xl p-6 border border-gray-100 dark:border-gray-800 shadow-2xl items-center"
+          style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}
         >
           {renderIcon()}
 
-          <Text className="text-xl font-bold text-foreground text-center mb-2">
+          <Text style={[styles.title, { color: titleColor }]}>
             {currentAlert.title}
           </Text>
 
           {currentAlert.message ? (
-            <Text className="text-sm font-medium text-gray-500 dark:text-gray-400 text-center mb-6 leading-5">
+            <Text style={[styles.message, { color: subtitleColor }]}>
               {currentAlert.message}
             </Text>
           ) : (
-            <View className="mb-4" />
+            <View style={{ marginBottom: 16 }} />
           )}
 
-          {/* Action Buttons Row */}
-          <View className="w-full gap-2.5 flex-col">
+          <View style={styles.buttonsContainer}>
             {actionButtons.map((btn, index) => {
               const isDestructive = btn.style === 'destructive';
               const isCancel = btn.style === 'cancel';
 
-              let btnBg = 'bg-black dark:bg-white';
-              let btnText = 'text-white dark:text-black';
+              let btnBg = isDark ? '#FFFFFF' : '#000000';
+              let btnTextColor = isDark ? '#000000' : '#FFFFFF';
 
               if (isDestructive) {
-                btnBg = 'bg-red-600 active:bg-red-700';
-                btnText = 'text-white';
+                btnBg = '#DC2626';
+                btnTextColor = '#FFFFFF';
               } else if (isCancel) {
-                btnBg = 'bg-gray-100 dark:bg-gray-800 active:bg-gray-200 dark:active:bg-gray-700';
-                btnText = 'text-gray-700 dark:text-gray-300';
+                btnBg = isDark ? '#1F2937' : '#F3F4F6';
+                btnTextColor = isDark ? '#D1D5DB' : '#374151';
               }
 
               return (
@@ -180,9 +183,9 @@ export function CustomAlertProvider() {
                   key={index}
                   activeOpacity={0.8}
                   onPress={() => handleButtonPress(btn)}
-                  className={`w-full py-3.5 rounded-2xl items-center justify-center ${btnBg}`}
+                  style={[styles.button, { backgroundColor: btnBg }]}
                 >
-                  <Text className={`text-sm font-extrabold ${btnText}`}>
+                  <Text style={[styles.buttonText, { color: btnTextColor }]}>
                     {btn.text}
                   </Text>
                 </TouchableOpacity>
@@ -194,3 +197,63 @@ export function CustomAlertProvider() {
     </Modal>
   );
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
+  },
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  message: {
+    fontSize: 14,
+    fontWeight: '500',
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 24,
+    paddingHorizontal: 8,
+  },
+  buttonsContainer: {
+    width: '100%',
+    gap: 10,
+    flexDirection: 'column',
+  },
+  button: {
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  buttonText: {
+    fontSize: 14,
+    fontWeight: '800',
+  },
+});

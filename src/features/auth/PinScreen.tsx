@@ -5,7 +5,7 @@ import * as LocalAuthentication from 'expo-local-authentication';
 import { PinPad } from '@/components/PinPad';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ShieldAlert, ShieldCheck, LogOut } from 'lucide-react-native';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter } from 'expo-router';
 
 interface PinScreenProps {
   onSuccess?: () => void;
@@ -129,7 +129,6 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
 
   return (
     <SafeAreaView className="flex-1 bg-background justify-center items-center px-6">
-      <Stack.Screen options={{ headerShown: false }} />
       <View className="bg-primary/5 dark:bg-primary/10 rounded-3xl p-8 mb-8 items-center">
         {step === 'enter' ? (
           <ShieldCheck size={64} color="#38BDF8" className="mb-6" />

@@ -1,9 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  ActivityIndicator,
+  StyleSheet,
+  useColorScheme,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GlassCard } from '@/components/GlassCard';
 import { Input } from '@/components/Input';
-import { Button } from '@/components/Button';
 import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, ChevronLeft, Zap } from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
 import { signUpOwner, loginOwner } from '@/services/firebaseAuth';
@@ -13,14 +22,16 @@ import { PinScreen } from '@/features/auth/PinScreen';
 
 export default function AuthScreen() {
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   const [tab, setTab] = useState<'login' | 'signup'>('login');
-  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [businessName, setBusinessName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { isAuthenticated, isUnlocked, hasPin, setOwner, checkPinSetup } = useAuthStore();
+  const { isAuthenticated, isUnlocked, setOwner, checkPinSetup } = useAuthStore();
   const { setBusinessSetup, setOwnerId } = useSettingsStore();
 
   useEffect(() => {
@@ -30,13 +41,13 @@ export default function AuthScreen() {
   // If owner is already authenticated and unlocked, redirect directly to dashboard
   useEffect(() => {
     if (isAuthenticated && isUnlocked) {
-      router.replace('/(tabs)');
+      setTimeout(() => router.replace('/(tabs)'), 50);
     }
   }, [isAuthenticated, isUnlocked]);
 
   // If owner is authenticated, show Security PIN & Biometrics Screen (Setup or Unlock)
   if (isAuthenticated && !isUnlocked) {
-    return <PinScreen onSuccess={() => router.replace('/(tabs)')} />;
+    return <PinScreen onSuccess={() => { setTimeout(() => router.replace('/(tabs)'), 50); }} />;
   }
 
   const handleAuthSubmit = async () => {
@@ -62,12 +73,8 @@ export default function AuthScreen() {
       setOwner(masterProfile);
       setOwnerId(masterProfile.uid);
       setBusinessSetup(masterProfile.businessName);
-      
-      const pinExists = await checkPinSetup();
-      if (pinExists) {
-        useAuthStore.setState({ isUnlocked: true });
-        router.replace('/(tabs)');
-      }
+      useAuthStore.setState({ isUnlocked: true });
+      setTimeout(() => router.replace('/(tabs)'), 50);
       return;
     }
 
@@ -89,9 +96,7 @@ export default function AuthScreen() {
       setOwnerId(profile.uid);
       useAuthStore.setState({ isUnlocked: true });
 
-      setTimeout(() => {
-        router.replace('/(tabs)');
-      }, 50);
+      setTimeout(() => router.replace('/(tabs)'), 50);
     } catch (err: any) {
       console.error('Auth error', err);
       Alert.alert('Authentication Failed', err?.message || 'Please check your credentials and try again.');
@@ -100,7 +105,7 @@ export default function AuthScreen() {
     }
   };
 
-  const handleDebugDirectAccess = async () => {
+  const handleDebugDirectAccess = () => {
     const debugProfile = {
       uid: 'OWNER_DEBUG_101',
       email: 'owner.admin@homestay.com',
@@ -112,71 +117,70 @@ export default function AuthScreen() {
     setOwnerId(debugProfile.uid);
     setBusinessSetup(debugProfile.businessName);
     useAuthStore.setState({ isUnlocked: true });
-
-    setTimeout(() => {
-      router.replace('/(tabs)');
-    }, 50);
+    setTimeout(() => router.replace('/(tabs)'), 50);
   };
 
+  // Theme-aware colors using plain StyleSheet (no NativeWind dark: needed)
+  const bg = isDark ? '#0D0F17' : '#F8FAFC';
+  const cardBg = isDark ? '#181A24' : '#FFFFFF';
+  const cardBorder = isDark ? '#1F2937' : 'rgba(0,0,0,0.08)';
+  const textPrimary = isDark ? '#F9FAFB' : '#111827';
+  const textMuted = isDark ? '#9CA3AF' : '#6B7280';
+  const headerBorder = isDark ? '#1F2937' : 'rgba(0,0,0,0.08)';
+  const tabBg = isDark ? 'rgba(31,41,55,0.8)' : '#F3F4F6';
+  const activeTabBg = isDark ? '#181A24' : '#FFFFFF';
+  const submitBtnBg = isDark ? '#FFFFFF' : '#000000';
+  const submitBtnText = isDark ? '#000000' : '#FFFFFF';
+
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background">
+    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={[styles.root, { backgroundColor: bg }]}>
       <Stack.Screen options={{ headerShown: false }} />
 
       {/* Header */}
-      <View className="flex-row items-center justify-between px-4 pt-3 pb-3 border-b border-gray-200/50 dark:border-gray-800">
-        <TouchableOpacity 
-          onPress={() => router.back()}
-          className="p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
-        >
-          <ChevronLeft size={26} color={Platform.OS === 'web' ? '#38BDF8' : '#6B7280'} />
+      <View style={[styles.header, { borderBottomColor: headerBorder }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <ChevronLeft size={26} color={textMuted} />
         </TouchableOpacity>
-        <Text className="text-lg font-bold text-foreground">Homestay Owner Portal</Text>
-        <View className="w-8" />
+        <Text style={[styles.headerTitle, { color: textPrimary }]}>Homestay Owner Portal</Text>
+        <View style={{ width: 36 }} />
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ padding: 20, flexGrow: 1, justifyContent: 'center' }}>
-          
-          <GlassCard className="p-6 rounded-3xl border border-gray-200/60 dark:border-gray-800 shadow-md">
-            {/* Header Icon */}
-            <View className="items-center mb-6">
-              <View className="w-16 h-16 rounded-2xl bg-sky-500/15 items-center justify-center mb-3">
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+
+          {/* Card */}
+          <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
+
+            {/* Icon Header */}
+            <View style={styles.iconHeader}>
+              <View style={styles.shieldCircle}>
                 <ShieldCheck size={36} color="#38BDF8" />
               </View>
-              <Text className="text-2xl font-extrabold text-foreground text-center">Owner Account</Text>
-              <Text className="text-xs text-gray-500 text-center mt-1">
+              <Text style={[styles.cardTitle, { color: textPrimary }]}>Owner Account</Text>
+              <Text style={[styles.cardSubtitle, { color: textMuted }]}>
                 Manage your homestay property & receive real-time guest self check-ins
               </Text>
             </View>
 
-            {/* Login / Sign Up Tabs */}
-            <View className="flex-row bg-gray-100 dark:bg-gray-800/80 p-1 rounded-2xl mb-6">
+            {/* Tabs */}
+            <View style={[styles.tabBar, { backgroundColor: tabBg }]}>
               <TouchableOpacity
                 onPress={() => setTab('login')}
-                className={`flex-1 py-2.5 rounded-xl items-center flex-row justify-center gap-1.5 ${
-                  tab === 'login' ? 'bg-white dark:bg-[#181A24] shadow-sm' : ''
-                }`}
+                style={[styles.tab, tab === 'login' && [styles.activeTab, { backgroundColor: activeTabBg }]]}
               >
-                <LogIn size={16} color={tab === 'login' ? '#38BDF8' : '#6B7280'} />
-                <Text className={`font-bold text-xs ${tab === 'login' ? 'text-foreground' : 'text-gray-500'}`}>
-                  Log In
-                </Text>
+                <LogIn size={15} color={tab === 'login' ? '#38BDF8' : textMuted} />
+                <Text style={[styles.tabText, { color: tab === 'login' ? textPrimary : textMuted }]}>Log In</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 onPress={() => setTab('signup')}
-                className={`flex-1 py-2.5 rounded-xl items-center flex-row justify-center gap-1.5 ${
-                  tab === 'signup' ? 'bg-white dark:bg-[#181A24] shadow-sm' : ''
-                }`}
+                style={[styles.tab, tab === 'signup' && [styles.activeTab, { backgroundColor: activeTabBg }]]}
               >
-                <UserPlus size={16} color={tab === 'signup' ? '#38BDF8' : '#6B7280'} />
-                <Text className={`font-bold text-xs ${tab === 'signup' ? 'text-foreground' : 'text-gray-500'}`}>
-                  Sign Up
-                </Text>
+                <UserPlus size={15} color={tab === 'signup' ? '#38BDF8' : textMuted} />
+                <Text style={[styles.tabText, { color: tab === 'signup' ? textPrimary : textMuted }]}>Sign Up</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Form Fields */}
+            {/* Form */}
             {tab === 'signup' && (
               <Input
                 label="Property / Business Name *"
@@ -206,31 +210,117 @@ export default function AuthScreen() {
               icon={<Lock size={18} color="#9498AA" />}
             />
 
-            {/* Submit Button */}
-            <Button
-              label={isLoading ? 'Processing...' : tab === 'signup' ? 'Create Owner Account' : 'Log In to Dashboard'}
-              disabled={isLoading}
-              icon={isLoading ? <ActivityIndicator size="small" color="#FFFFFF" className="mr-2" /> : null}
+            {/* Submit */}
+            <TouchableOpacity
               onPress={handleAuthSubmit}
-              className="mt-2 bg-black dark:bg-white"
-            />
+              disabled={isLoading}
+              activeOpacity={0.8}
+              style={[styles.submitBtn, { backgroundColor: submitBtnBg, opacity: isLoading ? 0.7 : 1 }]}
+            >
+              {isLoading && <ActivityIndicator size="small" color={isDark ? '#000' : '#fff'} style={{ marginRight: 8 }} />}
+              <Text style={[styles.submitBtnText, { color: submitBtnText }]}>
+                {isLoading ? 'Processing...' : tab === 'signup' ? 'Create Owner Account' : 'Log In to Dashboard'}
+              </Text>
+            </TouchableOpacity>
 
-            {/* Direct Debug Login Button */}
-            <View className="mt-4 pt-4 border-t border-gray-200/60 dark:border-gray-800 items-center">
+            {/* Debug access */}
+            <View style={[styles.debugDivider, { borderTopColor: cardBorder }]}>
               <TouchableOpacity
                 onPress={handleDebugDirectAccess}
-                className="w-full py-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex-row items-center justify-center gap-2"
+                activeOpacity={0.8}
+                style={styles.debugBtn}
               >
-                <Zap size={18} color="#F59E0B" />
-                <Text className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Direct Debug Access (No Password)
-                </Text>
+                <Zap size={17} color="#F59E0B" />
+                <Text style={styles.debugBtnText}>Direct Debug Access (No Password)</Text>
               </TouchableOpacity>
             </View>
-          </GlassCard>
 
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+  },
+  backBtn: { padding: 8, marginLeft: -8, borderRadius: 999 },
+  headerTitle: { fontSize: 16, fontWeight: '700' },
+  scrollContent: { padding: 20, flexGrow: 1, justifyContent: 'center' },
+  card: {
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  iconHeader: { alignItems: 'center', marginBottom: 24 },
+  shieldCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: 'rgba(56,189,248,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  cardTitle: { fontSize: 22, fontWeight: '800', textAlign: 'center' },
+  cardSubtitle: { fontSize: 12, textAlign: 'center', marginTop: 4, paddingHorizontal: 16, lineHeight: 18 },
+  tabBar: {
+    flexDirection: 'row',
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 24,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  activeTab: {
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  tabText: { fontSize: 12, fontWeight: '700' },
+  submitBtn: {
+    marginTop: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  submitBtnText: { fontSize: 14, fontWeight: '800' },
+  debugDivider: { marginTop: 16, paddingTop: 16, borderTopWidth: 1 },
+  debugBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(245,158,11,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.3)',
+  },
+  debugBtnText: { fontSize: 13, fontWeight: '700', color: '#D97706' },
+});
