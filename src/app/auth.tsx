@@ -81,23 +81,6 @@ export default function AuthScreen() {
       return;
     }
 
-    // Master Admin Login Check
-    if (email.trim().toLowerCase() === 'owner.admin@homestay.com' && password.trim() === 'Admin@123456') {
-      const masterProfile = {
-        uid: 'OWNER_ADMIN_999',
-        email: 'owner.admin@homestay.com',
-        businessName: businessName.trim() || 'Sameer Homestay (Master Admin)',
-        propertyId: 'HS-8821',
-        createdAt: new Date().toISOString()
-      };
-      setOwner(masterProfile);
-      setOwnerId(masterProfile.uid);
-      setBusinessSetup(masterProfile.businessName);
-      useAuthStore.setState({ isUnlocked: true });
-      setTimeout(() => router.replace('/(tabs)'), 50);
-      return;
-    }
-
     try {
       setIsLoading(true);
       let profile;

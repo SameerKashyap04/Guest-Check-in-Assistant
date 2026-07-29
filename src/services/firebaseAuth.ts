@@ -221,19 +221,37 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
     'guestcheckinassistant://'
   );
 
-  if (result.type !== 'success') {
-    throw new Error('Google Sign-In was cancelled or failed.');
+  if (result.type !== 'success' || !result.url) {
+    throw new Error('Google Sign-In was cancelled or failed. Please select your Google account to log in.');
   }
 
-  // Generate authenticated Google profile dynamically
-  const googleUid = `GOOGLE_USER_${Date.now()}`;
-  const googleProfile: OwnerProfile = {
-    uid: googleUid,
-    email: 'google.user@homestay.com',
-    businessName: 'Google Homestay Owner',
-    propertyId: `HS-${googleUid.substring(12, 16)}`,
-    createdAt: new Date().toISOString()
-  };
+  // Parse ID token from Google OAuth redirect URL if available
+  const url = result.url;
+  const idTokenMatch = url.match(/id_token=([^&]+)/);
+  if (idTokenMatch && idTokenMatch[1]) {
+    try {
+      const idToken = idTokenMatch[1];
+      const credential = GoogleAuthProvider.credential(idToken);
+      const authResult = await signInWithCredential(auth, credential);
+      const user = authResult.user;
 
-  return googleProfile;
+      const profile: OwnerProfile = {
+        uid: user.uid,
+        email: user.email || 'google.user@homestay.com',
+        businessName: user.displayName ? `${user.displayName}'s Homestay` : 'My Homestay',
+        propertyId: `HS-${user.uid.substring(0, 4).toUpperCase()}`,
+        createdAt: new Date().toISOString()
+      };
+
+      try {
+        await setDoc(doc(db, 'owners', user.uid), profile);
+      } catch (_) {}
+
+      return profile;
+    } catch (credErr) {
+      console.warn('Firebase Google credential auth warning:', credErr);
+    }
+  }
+
+  throw new Error('Google Authentication was not completed. Please try again.');
 }
