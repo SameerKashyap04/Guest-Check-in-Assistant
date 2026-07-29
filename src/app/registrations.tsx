@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, RefreshControl, Modal, Image, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
-import { ChevronLeft, ChevronRight, Search, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe, DoorOpen, Users, LogIn } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Search, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe, DoorOpen, Users, LogIn, Download } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
@@ -446,15 +446,21 @@ export default function RegistrationsScreen() {
               >
                 <Text className="font-bold text-foreground">Cancel</Text>
               </TouchableOpacity>
-              
               <TouchableOpacity
                 disabled={isImporting}
                 onPress={handleExecuteImport}
-                className="flex-1 py-3.5 rounded-xl bg-black dark:bg-white items-center justify-center"
+                className="flex-1 py-3.5 rounded-xl bg-black dark:bg-white items-center justify-center flex-row gap-1.5"
               >
-                <Text className="font-bold text-white dark:text-black">
-                  {isImporting ? 'Importing...' : '📥 Save to App'}
-                </Text>
+                {isImporting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Download size={16} color="#FFFFFF" className="dark:text-black" />
+                    <Text className="font-bold text-white dark:text-black">
+                      Save to App
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </TouchableOpacity>

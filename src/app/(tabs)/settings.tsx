@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2 } from 'lucide-react-native';
+import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2, Cloud, HardDrive } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';
@@ -183,9 +183,12 @@ export default function SettingsScreen() {
                   : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
               }`}
             >
-              <Text className={`font-bold text-sm ${storageMode === 'cloud' ? 'text-white dark:text-black' : 'text-foreground'}`}>
-                ☁️ Cloud Storage
-              </Text>
+              <View className="flex-row items-center gap-1.5 mb-0.5">
+                <Cloud size={16} color={storageMode === 'cloud' ? (Platform.OS === 'web' ? '#38BDF8' : '#000000') : '#38BDF8'} />
+                <Text className={`font-bold text-sm ${storageMode === 'cloud' ? 'text-white dark:text-black' : 'text-foreground'}`}>
+                  Cloud Storage
+                </Text>
+              </View>
               <Text className={`text-[10px] text-center mt-1 ${storageMode === 'cloud' ? 'text-white/80 dark:text-black/80' : 'text-gray-400'}`}>
                 Auto-syncs Web & Mobile
               </Text>
@@ -199,9 +202,12 @@ export default function SettingsScreen() {
                   : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
               }`}
             >
-              <Text className={`font-bold text-sm ${storageMode === 'local' ? 'text-white dark:text-black' : 'text-foreground'}`}>
-                🏠 Local Storage
-              </Text>
+              <View className="flex-row items-center gap-1.5 mb-0.5">
+                <HardDrive size={16} color={storageMode === 'local' ? (Platform.OS === 'web' ? '#64748B' : '#000000') : '#64748B'} />
+                <Text className={`font-bold text-sm ${storageMode === 'local' ? 'text-white dark:text-black' : 'text-foreground'}`}>
+                  Local Storage
+                </Text>
+              </View>
               <Text className={`text-[10px] text-center mt-1 ${storageMode === 'local' ? 'text-white/80 dark:text-black/80' : 'text-gray-400'}`}>
                 Offline SQLite Only
               </Text>

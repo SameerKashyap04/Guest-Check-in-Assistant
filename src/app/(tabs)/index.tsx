@@ -1,8 +1,8 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Platform, Modal, Image, Share } from 'react-native';
+import { View, Text, ScrollView, RefreshControl, TouchableOpacity, Platform, Modal, Image, Share, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
-import { Users, LogIn, LogOut, AlertCircle, Search, FileBarChart, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe, DoorOpen, Share2, ExternalLink, Sparkles, Link2, QrCode } from 'lucide-react-native';
+import { Users, LogIn, LogOut, AlertCircle, Search, FileBarChart, X, User, Phone, Mail, IdCard, MapPin, Calendar, Globe, DoorOpen, Share2, ExternalLink, Sparkles, Link2, QrCode, Download } from 'lucide-react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
@@ -507,11 +507,18 @@ export default function DashboardScreen() {
               <TouchableOpacity
                 disabled={isImporting}
                 onPress={handleExecuteImport}
-                className="flex-1 py-3.5 rounded-xl bg-black dark:bg-white items-center justify-center"
+                className="flex-1 py-3.5 rounded-xl bg-black dark:bg-white items-center justify-center flex-row gap-1.5"
               >
-                <Text className="font-bold text-white dark:text-black">
-                  {isImporting ? 'Importing...' : '📥 Save to App'}
-                </Text>
+                {isImporting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Download size={16} color="#FFFFFF" />
+                    <Text className="font-bold text-white dark:text-black">
+                      Save to App
+                    </Text>
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </TouchableOpacity>

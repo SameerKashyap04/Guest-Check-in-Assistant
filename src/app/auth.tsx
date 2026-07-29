@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
-import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, ChevronLeft, Sparkles } from 'lucide-react-native';
+import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, ChevronLeft, Sparkles, Zap } from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
 import { signUpOwner, loginOwner } from '@/services/firebaseAuth';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -196,9 +196,9 @@ export default function AuthScreen() {
                 onPress={handleDebugDirectAccess}
                 className="w-full py-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex-row items-center justify-center gap-2"
               >
-                <Sparkles size={18} color="#D97706" />
+                <Zap size={18} color="#D97706" />
                 <Text className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                  ⚡ Direct Debug Access (No Password)
+                  Direct Debug Access (No Password)
                 </Text>
               </TouchableOpacity>
             </View>
