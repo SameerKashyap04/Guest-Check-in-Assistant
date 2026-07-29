@@ -115,10 +115,11 @@ export async function checkoutGuestOrRemoveFromRoom(guestId: number, roomId: num
     await db.execAsync('BEGIN TRANSACTION;');
 
     try {
-      // 1. Mark active stay records as completed (preserves guest details in database)
+      // 1. Mark active stay records as completed and stamp today's check_out_date (preserves guest details)
+      const checkoutDateStr = new Date().toISOString().split('T')[0];
       await db.runAsync(
-        `UPDATE stays SET status = 'completed' WHERE guest_id = ? AND room_id = ? AND (status IS NULL OR status = 'active')`, 
-        [guestId, roomId]
+        `UPDATE stays SET status = 'completed', check_out_date = ? WHERE guest_id = ? AND room_id = ? AND (status IS NULL OR status = 'active')`, 
+        [checkoutDateStr, guestId, roomId]
       );
 
       // 2. Check remaining active guests in this room

@@ -199,3 +199,69 @@ export function subscribeToPropertyCheckins(
     return () => {};
   }
 }
+
+/**
+ * Listens to the LIVE count of pending self check-in requests in Firestore.
+ * Fires on BOTH additions AND removals (e.g. after rejection) so the count stays accurate.
+ */
+export function subscribeToPendingCheckinCount(
+  propertyId: string,
+  ownerId: string,
+  onCountChange: (count: number) => void
+): () => void {
+  if (!propertyId && !ownerId) return () => {};
+
+  try {
+    const checkinsRef = collection(db, 'guest_checkins');
+    // Track all live doc IDs visible to this owner across both queries
+    const liveDocIds = new Set<string>();
+
+    const handlePermissionError = (error: any) => {
+      if (error?.code !== 'permission-denied') {
+        console.warn('Firestore pending count listener error:', error);
+      }
+    };
+
+    const rebuildCount = () => onCountChange(liveDocIds.size);
+
+    // Listener 1: by property_id
+    let unsub1 = () => {};
+    if (propertyId) {
+      const q1 = query(checkinsRef, where('property_id', '==', propertyId));
+      unsub1 = onSnapshot(
+        q1,
+        (snapshot: QuerySnapshot) => {
+          snapshot.docChanges().forEach((change: DocumentChange) => {
+            if (change.type === 'added') liveDocIds.add(change.doc.id);
+            if (change.type === 'removed') liveDocIds.delete(change.doc.id);
+          });
+          rebuildCount();
+        },
+        handlePermissionError
+      );
+    }
+
+    // Listener 2: by owner_id (catches docs that use owner_id instead of property_id)
+    let unsub2 = () => {};
+    if (ownerId && ownerId !== 'OWNER_DEFAULT_101') {
+      const q2 = query(checkinsRef, where('owner_id', '==', ownerId));
+      unsub2 = onSnapshot(
+        q2,
+        (snapshot: QuerySnapshot) => {
+          snapshot.docChanges().forEach((change: DocumentChange) => {
+            if (change.type === 'added') liveDocIds.add(change.doc.id);
+            if (change.type === 'removed') liveDocIds.delete(change.doc.id);
+          });
+          rebuildCount();
+        },
+        handlePermissionError
+      );
+    }
+
+    return () => { unsub1(); unsub2(); };
+  } catch (e) {
+    console.warn('Failed to start pending count listener:', e);
+    return () => {};
+  }
+}
+

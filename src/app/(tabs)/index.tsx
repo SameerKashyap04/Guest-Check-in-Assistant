@@ -8,7 +8,7 @@ import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useRoomsStore } from '@/store/useRoomsStore';
-import { subscribeToPropertyCheckins } from '@/services/firebaseSync';
+import { subscribeToPropertyCheckins, subscribeToPendingCheckinCount } from '@/services/firebaseSync';
 import { createMultipleGuestsAndStay, autoCheckoutExpiredStays } from '@/database/stays';
 import { parseCheckinImportText } from '@/utils/checkinImporter';
 import { Alert } from 'react-native';
@@ -87,21 +87,27 @@ export default function DashboardScreen() {
   // Real-time Cloud Sync Listener for Web Self Check-in Submissions
   useEffect(() => {
     if (!propertyId) return;
-    const pendingDocIds = new Set<string>();
     const unsubscribe = subscribeToPropertyCheckins(
-      propertyId, 
-      (cloudGuest) => {
-        if (cloudGuest.id) {
-          pendingDocIds.add(cloudGuest.id);
-          setOverviewStats(prev => ({ ...prev, pendingVerif: pendingDocIds.size }));
-        }
-        fetchGuests();
-      },
+      propertyId,
+      () => { fetchGuests(); },
       ownerId,
       false
     );
     return () => unsubscribe();
   }, [propertyId, ownerId, storageMode]);
+
+  // Separate live pending count listener — updates on BOTH additions AND rejections/removals
+  useEffect(() => {
+    if (!propertyId && !ownerId) return;
+    const unsubscribeCount = subscribeToPendingCheckinCount(
+      propertyId || '',
+      ownerId || '',
+      (count) => {
+        setOverviewStats(prev => ({ ...prev, pendingVerif: count }));
+      }
+    );
+    return () => unsubscribeCount();
+  }, [propertyId, ownerId]);
 
   const currentHour = new Date().getHours();
   let greeting = 'Good Evening';
@@ -137,12 +143,12 @@ export default function DashboardScreen() {
         WHERE check_in_date LIKE ? OR check_in_date LIKE ? OR check_in_date LIKE ?
       `, [`${todayIso}%`, `${todayIndian}%`, `%${todayIso}%`]);
 
-      // 2. Today's Check-outs Count
+      // 2. Today's Check-outs Count — counts stays marked 'completed' with today's check_out_date
       const checkoutsRes: any = await db.getFirstAsync(`
         SELECT COUNT(*) as count FROM stays 
-        WHERE (status = 'completed' AND (check_out_date LIKE ? OR check_out_date LIKE ?))
-           OR (check_out_date LIKE ? OR check_out_date LIKE ?)
-      `, [`${todayIso}%`, `${todayIndian}%`, `${todayIso}%`, `${todayIndian}%`]);
+        WHERE status = 'completed' 
+          AND (check_out_date LIKE ? OR check_out_date LIKE ? OR check_out_date LIKE ?)
+      `, [`${todayIso}%`, `${todayIndian}%`, `%${todayIso}%`]);
 
       // 3. Current Active Guests Count
       const activeRes: any = await db.getFirstAsync(`
