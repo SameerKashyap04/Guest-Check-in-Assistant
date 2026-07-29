@@ -14,7 +14,7 @@ import { storage } from '@/store/storage';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 
 try {
   GoogleSignin.configure({
