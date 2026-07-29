@@ -7,6 +7,9 @@ import {
   signInWithCredential,
   signOut, 
   onAuthStateChanged,
+  sendPasswordResetEmail,
+  sendEmailVerification,
+  verifyBeforeUpdateEmail,
   User as FirebaseUser 
 } from '@firebase/auth';
 import { doc, setDoc, getDoc } from '@firebase/firestore';
@@ -311,5 +314,54 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
       throw new Error('Google Play Services is not available or outdated on this device.');
     }
     throw new Error(nativeErr?.message || 'Google Sign-In failed or was cancelled.');
+  }
+}
+
+/**
+ * Sends Password Reset Link to the provided email address
+ */
+export async function resetOwnerPassword(email: string): Promise<void> {
+  const cleanEmail = email.trim().toLowerCase();
+  if (!cleanEmail) {
+    throw new Error('Please enter a valid email address.');
+  }
+  try {
+    await sendPasswordResetEmail(auth, cleanEmail);
+  } catch (err: any) {
+    console.error('Password reset error:', err);
+    throw new Error(err?.message || 'Failed to send password reset email. Please check the email address.');
+  }
+}
+
+/**
+ * Sends Email Verification Email to the currently signed in user
+ */
+export async function sendOwnerEmailVerification(): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('No user is currently signed in.');
+  }
+  try {
+    await sendEmailVerification(user);
+  } catch (err: any) {
+    console.error('Email verification error:', err);
+    throw new Error(err?.message || 'Failed to send email verification.');
+  }
+}
+
+/**
+ * Updates the user's email address by sending a verification link to the new email
+ */
+export async function changeOwnerEmail(newEmail: string): Promise<void> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('No user is currently signed in.');
+  }
+  const cleanEmail = newEmail.trim().toLowerCase();
+  try {
+    await verifyBeforeUpdateEmail(user, cleanEmail);
+  } catch (err: any) {
+    console.error('Email change error:', err);
+    throw new Error(err?.message || 'Failed to send email change confirmation link.');
   }
 }

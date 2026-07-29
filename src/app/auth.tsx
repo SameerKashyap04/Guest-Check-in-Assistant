@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '@/components/Input';
 import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, Zap } from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
-import { signUpOwner, loginOwner, signInWithGoogleOwner } from '@/services/firebaseAuth';
+import { signUpOwner, loginOwner, signInWithGoogleOwner, resetOwnerPassword } from '@/services/firebaseAuth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { PinScreen } from '@/features/auth/PinScreen';
@@ -202,6 +202,29 @@ export default function AuthScreen() {
               onChangeText={setPassword}
               icon={<Lock size={18} color="#9498AA" />}
             />
+
+            {tab === 'login' && (
+              <TouchableOpacity
+                onPress={async () => {
+                  if (!email.trim()) {
+                    Alert.alert('Email Required', 'Please enter your registered email address above to reset your password.');
+                    return;
+                  }
+                  try {
+                    await resetOwnerPassword(email.trim());
+                    Alert.alert('Reset Link Sent', `A password reset link has been sent to ${email.trim()}. Please check your email inbox.`);
+                  } catch (err: any) {
+                    Alert.alert('Reset Error', err?.message || 'Failed to send password reset email.');
+                  }
+                }}
+                activeOpacity={0.7}
+                style={{ alignSelf: 'flex-end', marginTop: -6, marginBottom: 16 }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#60A5FA' : '#2563EB' }}>
+                  Forgot Password?
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* Submit */}
             <TouchableOpacity

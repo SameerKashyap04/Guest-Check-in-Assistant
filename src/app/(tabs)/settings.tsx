@@ -6,11 +6,12 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2, Cloud, HardDrive } from 'lucide-react-native';
+import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2, Cloud, HardDrive, Mail, KeyRound } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';
 import { useTranslation } from 'react-i18next';
+import { resetOwnerPassword, sendOwnerEmailVerification, changeOwnerEmail } from '@/services/firebaseAuth';
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
@@ -218,6 +219,62 @@ export default function SettingsScreen() {
               </Text>
             </TouchableOpacity>
           </View>
+        </GlassCard>
+
+        {/* EMAIL & ACCOUNT SECURITY TEMPLATES */}
+        <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          Account Security & Verification
+        </Text>
+
+        <GlassCard className="mb-6 p-2 overflow-hidden">
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={async () => {
+              const { owner } = useAuthStore.getState();
+              if (!owner?.email) {
+                Alert.alert('No Account Email', 'Please log in with an email account.');
+                return;
+              }
+              try {
+                await resetOwnerPassword(owner.email);
+                Alert.alert('Password Reset Email Sent', `A password reset link was sent to ${owner.email}. Please check your inbox.`);
+              } catch (err: any) {
+                Alert.alert('Reset Error', err?.message || 'Failed to send password reset email.');
+              }
+            }}
+            className="flex-row justify-between items-center p-4 border-b border-gray-100 dark:border-gray-800"
+          >
+            <View className="flex-row items-center gap-3">
+              <KeyRound size={18} color="#3B82F6" />
+              <View>
+                <Text className="text-base font-medium text-foreground">Password Reset Link</Text>
+                <Text className="text-xs text-gray-400">Send password reset email template</Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color="#94A3B8" />
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={async () => {
+              try {
+                await sendOwnerEmailVerification();
+                Alert.alert('Verification Sent', 'Email address verification link sent to your registered email address.');
+              } catch (err: any) {
+                Alert.alert('Verification Error', err?.message || 'Failed to send verification email.');
+              }
+            }}
+            className="flex-row justify-between items-center p-4"
+          >
+            <View className="flex-row items-center gap-3">
+              <Mail size={18} color="#10B981" />
+              <View>
+                <Text className="text-base font-medium text-foreground">Email Address Verification</Text>
+                <Text className="text-xs text-gray-400">Send email verification template</Text>
+              </View>
+            </View>
+            <ChevronRight size={18} color="#94A3B8" />
+          </TouchableOpacity>
         </GlassCard>
 
         {/* GENERAL SETTINGS */}
