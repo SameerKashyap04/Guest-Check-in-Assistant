@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Vibration } from 'react-native';
+import { View, Text, Vibration, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { PinPad } from '@/components/PinPad';
 import { useAuthStore } from '@/store/useAuthStore';
-import { ShieldAlert, ShieldCheck } from 'lucide-react-native';
+import { ShieldAlert, ShieldCheck, LogOut } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
 interface PinScreenProps {
@@ -15,10 +15,16 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isBiometricSupported, setIsBiometricSupported] = useState(false);
-  const { hasPin, setupPin, verifyPin } = useAuthStore();
+  const { hasPin, setupPin, verifyPin, logout } = useAuthStore();
   const [confirmPin, setConfirmPin] = useState('');
   const [step, setStep] = useState<'enter' | 'setup' | 'confirm'>(hasPin ? 'enter' : 'setup');
-  const router = useRouter();
+
+  let router: any = null;
+  try {
+    router = useRouter();
+  } catch (e) {
+    router = null;
+  }
 
   useEffect(() => {
     (async () => {
@@ -36,9 +42,35 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
     useAuthStore.setState({ isUnlocked: true });
     if (onSuccess) {
       onSuccess();
-    } else {
-      router.replace('/(tabs)');
+    } else if (router) {
+      try {
+        router.replace('/(tabs)');
+      } catch (e) {}
     }
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Log Out Account?',
+      'Are you sure you want to log out from this device?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            if (onSuccess) {
+              onSuccess();
+            } else if (router) {
+              try {
+                router.replace('/auth');
+              } catch (e) {}
+            }
+          }
+        }
+      ]
+    );
   };
 
   const handleBiometric = async () => {
@@ -127,7 +159,7 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
       {error ? (
         <Text className="text-red-500 mb-6 font-medium">{error}</Text>
       ) : (
-        <View className="h-6 mb-6" /> // Placeholder to prevent layout shift
+        <View className="h-6 mb-6" />
       )}
 
       <PinPad
@@ -136,6 +168,15 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
         onBiometric={handleBiometric}
         showBiometric={isBiometricSupported && step === 'enter'}
       />
+
+      <TouchableOpacity
+        onPress={handleLogout}
+        activeOpacity={0.7}
+        className="mt-6 py-2 px-4 rounded-full bg-gray-100 dark:bg-gray-800 flex-row items-center gap-1.5"
+      >
+        <LogOut size={14} color="#EF4444" />
+        <Text className="text-xs font-bold text-red-500">Log Out / Switch Account</Text>
+      </TouchableOpacity>
     </SafeAreaView>
   );
 }

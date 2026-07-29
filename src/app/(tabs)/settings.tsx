@@ -14,7 +14,7 @@ import i18n from '@/i18n';
 export default function SettingsScreen() {
   const { businessName, language, theme, selfCheckinUrl, propertyId, storageMode, setBusinessSetup, setLanguage, setTheme, setSelfCheckinUrl, setStorageMode } = useSettingsStore();
   const { setColorScheme } = useColorScheme();
-  const { lock, verifyPin, setupPin } = useAuthStore();
+  const { lock, logout, verifyPin, setupPin } = useAuthStore();
   const router = useRouter();
 
   // Modals state
@@ -36,6 +36,24 @@ export default function SettingsScreen() {
   const handleLock = () => {
     lock();
     router.replace('/auth');
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Log Out Account?',
+      'Are you sure you want to log out? You will need to sign in again with your email and password.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Log Out',
+          style: 'destructive',
+          onPress: () => {
+            logout();
+            router.replace('/auth');
+          }
+        }
+      ]
+    );
   };
 
   const handleSaveProfile = () => {
@@ -262,13 +280,25 @@ export default function SettingsScreen() {
           })}
         </GlassCard>
 
-        <Button 
-          label="Lock App" 
-          variant="outline" 
-          icon={<LogOut size={20} color="#1F2937" className="mr-2" />}
-          onPress={handleLock}
-          className="mb-8"
-        />
+        <View className="flex-col gap-3 mb-8">
+          <Button 
+            label="Lock App" 
+            variant="outline" 
+            icon={<Lock size={18} color="#6B7280" className="mr-2" />}
+            onPress={handleLock}
+          />
+
+          <TouchableOpacity
+            onPress={handleLogout}
+            activeOpacity={0.8}
+            className="w-full py-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 flex-row items-center justify-center gap-2"
+          >
+            <LogOut size={18} color="#EF4444" />
+            <Text className="text-sm font-bold text-red-600 dark:text-red-400">
+              Log Out Account
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <View className="items-center justify-center">
           <Text className="text-muted text-sm text-gray-400">Guest Check-in Assistant v1.0.0</Text>
