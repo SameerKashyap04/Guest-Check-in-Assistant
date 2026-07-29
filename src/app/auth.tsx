@@ -1,14 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
-import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, ChevronLeft, Sparkles, Zap } from 'lucide-react-native';
+import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, ChevronLeft, Zap } from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
 import { signUpOwner, loginOwner } from '@/services/firebaseAuth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { PinScreen } from '@/features/auth/PinScreen';
 
 export default function AuthScreen() {
   const router = useRouter();
@@ -19,8 +20,24 @@ export default function AuthScreen() {
   const [businessName, setBusinessName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { setOwner } = useAuthStore();
+  const { isAuthenticated, isUnlocked, hasPin, setOwner, checkPinSetup } = useAuthStore();
   const { setBusinessSetup, setOwnerId } = useSettingsStore();
+
+  useEffect(() => {
+    checkPinSetup();
+  }, [checkPinSetup]);
+
+  // If owner is already authenticated and unlocked, redirect directly to dashboard
+  useEffect(() => {
+    if (isAuthenticated && isUnlocked) {
+      router.replace('/(tabs)');
+    }
+  }, [isAuthenticated, isUnlocked]);
+
+  // If owner is authenticated, show Security PIN & Biometrics Screen (Setup or Unlock)
+  if (isAuthenticated && !isUnlocked) {
+    return <PinScreen />;
+  }
 
   const handleAuthSubmit = async () => {
     if (!email.trim() || !password.trim()) {
@@ -45,8 +62,12 @@ export default function AuthScreen() {
       setOwner(masterProfile);
       setOwnerId(masterProfile.uid);
       setBusinessSetup(masterProfile.businessName);
-      useAuthStore.setState({ isUnlocked: true });
-      router.replace('/(tabs)');
+      
+      const pinExists = await checkPinSetup();
+      if (pinExists) {
+        useAuthStore.setState({ isUnlocked: true });
+        router.replace('/(tabs)');
+      }
       return;
     }
 
@@ -66,9 +87,13 @@ export default function AuthScreen() {
 
       setOwner(profile);
       setOwnerId(profile.uid);
-      useAuthStore.setState({ isUnlocked: true });
 
-      router.replace('/(tabs)');
+      const pinExists = await checkPinSetup();
+      if (pinExists) {
+        useAuthStore.setState({ isUnlocked: true });
+        router.replace('/(tabs)');
+      }
+      // If PIN does not exist, state is authenticated but unlocked=false, rendering PinScreen in setup mode!
     } catch (err: any) {
       console.error('Auth error', err);
       Alert.alert('Authentication Failed', err?.message || 'Please check your credentials and try again.');
@@ -77,7 +102,7 @@ export default function AuthScreen() {
     }
   };
 
-  const handleDebugDirectAccess = () => {
+  const handleDebugDirectAccess = async () => {
     const debugProfile = {
       uid: 'OWNER_DEBUG_101',
       email: 'owner.admin@homestay.com',
@@ -88,9 +113,12 @@ export default function AuthScreen() {
     setOwner(debugProfile);
     setOwnerId(debugProfile.uid);
     setBusinessSetup(debugProfile.businessName);
-    useAuthStore.setState({ isUnlocked: true });
 
-    router.replace('/(tabs)');
+    const pinExists = await checkPinSetup();
+    if (pinExists) {
+      useAuthStore.setState({ isUnlocked: true });
+      router.replace('/(tabs)');
+    }
   };
 
   return (
