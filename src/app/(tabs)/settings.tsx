@@ -10,8 +10,10 @@ import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Mo
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';
+import { useTranslation } from 'react-i18next';
 
 export default function SettingsScreen() {
+  const { t } = useTranslation();
   const { businessName, language, theme, selfCheckinUrl, propertyId, storageMode, setBusinessSetup, setLanguage, setTheme, setSelfCheckinUrl, setStorageMode } = useSettingsStore();
   const { setColorScheme } = useColorScheme();
   const { lock, logout, verifyPin, setupPin } = useAuthStore();
@@ -169,7 +171,7 @@ export default function SettingsScreen() {
 
         {/* STORAGE MODE SWITCHER CARD */}
         <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-          Check-in Storage Mode
+          {t('storageMode')}
         </Text>
 
         <GlassCard className="mb-6 p-4 rounded-2xl border border-gray-200 dark:border-gray-800">
@@ -189,7 +191,7 @@ export default function SettingsScreen() {
               <View className="flex-row items-center gap-1.5 mb-0.5">
                 <Cloud size={16} color={storageMode === 'cloud' ? (Platform.OS === 'web' ? '#38BDF8' : '#000000') : '#38BDF8'} />
                 <Text className={`font-bold text-sm ${storageMode === 'cloud' ? 'text-white dark:text-black' : 'text-foreground'}`}>
-                  Cloud Storage
+                  {t('cloudStorage')}
                 </Text>
               </View>
               <Text className={`text-[10px] text-center mt-1 ${storageMode === 'cloud' ? 'text-white/80 dark:text-black/80' : 'text-gray-400'}`}>
@@ -208,7 +210,7 @@ export default function SettingsScreen() {
               <View className="flex-row items-center gap-1.5 mb-0.5">
                 <HardDrive size={16} color={storageMode === 'local' ? (Platform.OS === 'web' ? '#64748B' : '#000000') : '#64748B'} />
                 <Text className={`font-bold text-sm ${storageMode === 'local' ? 'text-white dark:text-black' : 'text-foreground'}`}>
-                  Local Storage
+                  {t('localStorage')}
                 </Text>
               </View>
               <Text className={`text-[10px] text-center mt-1 ${storageMode === 'local' ? 'text-white/80 dark:text-black/80' : 'text-gray-400'}`}>
@@ -224,17 +226,21 @@ export default function SettingsScreen() {
         </Text>
 
         <GlassCard className="mb-6 p-2 overflow-hidden">
-          {['Property Profile', 'Language', 'Theme (Dark/Light)'].map((item, index) => {
+          {[t('propertyProfile'), t('language'), t('theme')].map((item, index) => {
             let detailText = '';
-            if (item === 'Property Profile') detailText = businessName || 'Edit Details';
-            if (item === 'Language') detailText = getLanguageLabel(language);
-            if (item === 'Theme (Dark/Light)') detailText = getThemeLabel(theme);
+            if (index === 0) detailText = businessName || 'Edit Details';
+            if (index === 1) detailText = getLanguageLabel(language);
+            if (index === 2) detailText = getThemeLabel(theme);
 
             return (
               <TouchableOpacity 
                 key={item}
                 activeOpacity={0.7}
-                onPress={() => handleGeneralSettingPress(item)}
+                onPress={() => {
+                  if (index === 0) { setTempPropName(businessName || ''); setProfileModalOpen(true); }
+                  else if (index === 1) { setLangModalOpen(true); }
+                  else if (index === 2) { setThemeModalOpen(true); }
+                }}
                 className={`flex-row justify-between items-center p-4 active:bg-gray-50 dark:active:bg-gray-800/50 ${
                   index !== 2 ? 'border-b border-gray-100 dark:border-gray-800' : ''
                 }`}
@@ -282,7 +288,7 @@ export default function SettingsScreen() {
 
         <View className="flex-col gap-3 mb-8">
           <Button 
-            label="Lock App" 
+            label={t('lockApp')} 
             variant="outline" 
             icon={<Lock size={18} color="#6B7280" className="mr-2" />}
             onPress={handleLock}
@@ -295,7 +301,7 @@ export default function SettingsScreen() {
           >
             <LogOut size={18} color="#EF4444" />
             <Text className="text-sm font-bold text-red-600 dark:text-red-400">
-              Log Out Account
+              {t('logOutAccount')}
             </Text>
           </TouchableOpacity>
         </View>

@@ -11,6 +11,7 @@ import { useRoomsStore } from '@/store/useRoomsStore';
 import { subscribeToPropertyCheckins, deleteCloudCheckinDoc, CloudGuestCheckin } from '@/services/firebaseSync';
 import { createMultipleGuestsAndStay } from '@/database/stays';
 import { GlassCard } from '@/components/GlassCard';
+import { useTranslation } from 'react-i18next';
 
 const ID_TYPES = [
   { id: 'UNKNOWN', label: 'Auto-Detect', description: 'Let the system identify the document' },
@@ -22,6 +23,7 @@ const ID_TYPES = [
 ];
 
 export default function ScannerScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { businessName, propertyId, ownerId, getShareableLink } = useSettingsStore();
   const { rooms, fetchRooms } = useRoomsStore();

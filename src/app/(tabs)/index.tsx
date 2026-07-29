@@ -12,8 +12,10 @@ import { subscribeToPropertyCheckins, subscribeToPendingCheckinCount } from '@/s
 import { createMultipleGuestsAndStay, autoCheckoutExpiredStays } from '@/database/stays';
 import { parseCheckinImportText } from '@/utils/checkinImporter';
 import { Alert } from 'react-native';
+import { useTranslation } from 'react-i18next';
 
 export default function DashboardScreen() {
+  const { t } = useTranslation();
   const { businessName, propertyId, ownerId, storageMode, getShareableLink } = useSettingsStore();
   const { rooms, fetchRooms } = useRoomsStore();
   const [refreshing, setRefreshing] = useState(false);
@@ -110,9 +112,10 @@ export default function DashboardScreen() {
   }, [propertyId, ownerId]);
 
   const currentHour = new Date().getHours();
-  let greeting = 'Good Evening';
-  if (currentHour < 12) greeting = 'Good Morning';
-  else if (currentHour < 18) greeting = 'Good Afternoon';
+  let greetingKey = 'goodEvening';
+  if (currentHour < 12) greetingKey = 'goodMorning';
+  else if (currentHour < 18) greetingKey = 'goodAfternoon';
+  const greeting = t(greetingKey);
   const todayDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   const fetchGuests = async () => {
@@ -201,7 +204,7 @@ export default function DashboardScreen() {
           >
             <View pointerEvents="none">
               <Input 
-                placeholder="Search guests, rooms, IDs..." 
+                placeholder={t('searchByNamePhoneRoom')} 
                 icon={<Search size={20} color="#9498AA" />}
                 editable={false}
                 className="mb-0"
@@ -219,51 +222,51 @@ export default function DashboardScreen() {
         </View>
 
         <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-          Today's Overview
+          {t('todaysOverview')}
         </Text>
         
         <View className="flex-row flex-wrap justify-between">
           <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl">
             <LogIn size={28} color="#38BDF8" className="mb-2" />
             <Text className="text-3xl font-bold text-foreground">{overviewStats.todayCheckins}</Text>
-            <Text className="text-xs text-gray-500 font-medium">Check-ins</Text>
+            <Text className="text-xs text-gray-500 font-medium">{t('todayCheckins')}</Text>
           </GlassCard>
           
           <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl">
             <LogOut size={28} color="#14B8A6" className="mb-2" />
             <Text className="text-3xl font-bold text-foreground">{overviewStats.todayCheckouts}</Text>
-            <Text className="text-xs text-gray-500 font-medium">Check-outs</Text>
+            <Text className="text-xs text-gray-500 font-medium">{t('todayCheckouts')}</Text>
           </GlassCard>
 
           <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl">
             <Users size={28} color="#F59E0B" className="mb-2" />
             <Text className="text-3xl font-bold text-foreground">{overviewStats.activeGuests}</Text>
-            <Text className="text-xs text-gray-500 font-medium">Current Guests</Text>
+            <Text className="text-xs text-gray-500 font-medium">{t('activeGuests')}</Text>
           </GlassCard>
 
           <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl">
             <AlertCircle size={28} color="#EF4444" className="mb-2" />
             <Text className="text-3xl font-bold text-foreground">{overviewStats.pendingVerif}</Text>
-            <Text className="text-xs text-gray-500 font-medium">Pending Verif.</Text>
+            <Text className="text-xs text-gray-500 font-medium">{t('pendingVerif')}</Text>
           </GlassCard>
         </View>
 
         <View className="flex-row justify-between items-center mb-4 mt-4">
           <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
-            Recent Registrations
+            {t('recentCheckins')}
           </Text>
           <TouchableOpacity 
             onPress={() => router.push('/registrations')}
             activeOpacity={0.7}
             className="flex-row items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-full"
           >
-            <Text className="text-xs font-bold text-primary">Show All →</Text>
+            <Text className="text-xs font-bold text-primary">{t('viewAll')} →</Text>
           </TouchableOpacity>
         </View>
         
         <GlassCard className="mb-6 p-5 rounded-2xl">
           {recentGuests.length === 0 ? (
-            <Text className="text-gray-500 text-center py-4">No recent guests found.</Text>
+            <Text className="text-gray-500 text-center py-4">{t('noRecentCheckins')}</Text>
           ) : (
             recentGuests.map((guest, index) => (
               <TouchableOpacity 

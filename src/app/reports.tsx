@@ -11,7 +11,10 @@ import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 
+import { useTranslation } from 'react-i18next';
+
 export default function ReportsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { businessName } = useSettingsStore();
 

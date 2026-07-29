@@ -8,8 +8,10 @@ import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { Room } from '@/database/rooms';
 import { getGuestsForRoom, checkoutGuestOrRemoveFromRoom } from '@/database/stays';
+import { useTranslation } from 'react-i18next';
 
 export default function RoomsScreen() {
+  const { t } = useTranslation();
   const { rooms, fetchRooms, createRoom, editRoom, removeRoom, isLoading } = useRoomsStore();
   
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -272,7 +274,7 @@ export default function RoomsScreen() {
           className="bg-primary h-11 px-4 rounded-xl flex-row items-center gap-2 shadow-md shadow-primary/20"
         >
           <Plus size={20} color="#ffffff" />
-          <Text className="text-white font-semibold text-sm">Add Room</Text>
+          <Text className="text-white font-semibold text-sm">{t('addRoom')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -284,7 +286,7 @@ export default function RoomsScreen() {
               <CheckCircle2 size={18} color="#10B981" />
             </View>
             <View>
-              <Text className="text-xs font-medium text-gray-400">Available</Text>
+              <Text className="text-xs font-medium text-gray-400">{t('available')}</Text>
               <Text className="text-base font-bold text-foreground">{available}</Text>
             </View>
           </GlassCard>
@@ -294,7 +296,7 @@ export default function RoomsScreen() {
               <UserCheck size={18} color="#0EA5E9" />
             </View>
             <View>
-              <Text className="text-xs font-medium text-gray-400">Occupied</Text>
+              <Text className="text-xs font-medium text-gray-400">{t('occupied')}</Text>
               <Text className="text-base font-bold text-foreground">{occupied}</Text>
             </View>
           </GlassCard>
@@ -304,7 +306,7 @@ export default function RoomsScreen() {
               <Sparkles size={18} color="#F59E0B" />
             </View>
             <View>
-              <Text className="text-xs font-medium text-gray-400">Cleaning</Text>
+              <Text className="text-xs font-medium text-gray-400">{t('cleaning')}</Text>
               <Text className="text-base font-bold text-foreground">{cleaning}</Text>
             </View>
           </GlassCard>
@@ -314,7 +316,7 @@ export default function RoomsScreen() {
               <Wrench size={18} color="#F43F5E" />
             </View>
             <View>
-              <Text className="text-xs font-medium text-gray-400">Maintenance</Text>
+              <Text className="text-xs font-medium text-gray-400">{t('maintenance')}</Text>
               <Text className="text-base font-bold text-foreground">{maintenance}</Text>
             </View>
           </GlassCard>

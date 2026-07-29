@@ -12,9 +12,12 @@ import { useRoomsStore } from '@/store/useRoomsStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { Alert } from 'react-native';
 
+import { useTranslation } from 'react-i18next';
+
 const ITEMS_PER_PAGE = 8;
 
 export default function RegistrationsScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { propertyId } = useSettingsStore();
   const { rooms } = useRoomsStore();

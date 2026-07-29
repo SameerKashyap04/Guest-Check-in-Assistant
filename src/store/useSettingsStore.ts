@@ -21,6 +21,8 @@ const generatePropertyId = (name?: string | null) => {
   return `${prefix}-${randomCode}`;
 };
 
+import i18n from '@/i18n';
+
 interface SettingsState {
   hasCompletedSetup: boolean;
   businessName: string | null;
@@ -56,9 +58,13 @@ export const useSettingsStore = create<SettingsState>()(
       },
       setOwnerId: (uid) => set({ ownerId: uid }),
       setStorageMode: (mode) => set({ storageMode: mode }),
-      setLanguage: (lang) => set({ language: lang }),
+      setLanguage: (lang) => {
+        try { i18n.changeLanguage(lang); } catch (_) {}
+        set({ language: lang });
+      },
       setTheme: (theme) => set({ theme: theme }),
       setSelfCheckinUrl: (url) => set({ selfCheckinUrl: url }),
+
       getShareableLink: (customRooms?: any[]) => {
         const state = get();
         const baseUrl = state.selfCheckinUrl || 'https://guest-checkin-assistant.vercel.app/self-checkin';

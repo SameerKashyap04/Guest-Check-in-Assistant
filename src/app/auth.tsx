@@ -19,8 +19,10 @@ import { signUpOwner, loginOwner } from '@/services/firebaseAuth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { PinScreen } from '@/features/auth/PinScreen';
+import { useTranslation } from 'react-i18next';
 
 export default function AuthScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -138,7 +140,7 @@ export default function AuthScreen() {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: headerBorder }]}>
-        <Text style={[styles.headerTitle, { color: textPrimary }]}>Homestay Owner Portal</Text>
+        <Text style={[styles.headerTitle, { color: textPrimary }]}>{t('ownerPortalTitle')}</Text>
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -152,9 +154,9 @@ export default function AuthScreen() {
               <View style={styles.shieldCircle}>
                 <ShieldCheck size={36} color="#38BDF8" />
               </View>
-              <Text style={[styles.cardTitle, { color: textPrimary }]}>Owner Account</Text>
+              <Text style={[styles.cardTitle, { color: textPrimary }]}>{t('ownerAccount')}</Text>
               <Text style={[styles.cardSubtitle, { color: textMuted }]}>
-                Manage your homestay property & receive real-time guest self check-ins
+                {t('ownerAccountDesc')}
               </Text>
             </View>
 
@@ -165,21 +167,21 @@ export default function AuthScreen() {
                 style={[styles.tab, tab === 'login' && [styles.activeTab, { backgroundColor: activeTabBg }]]}
               >
                 <LogIn size={15} color={tab === 'login' ? '#38BDF8' : textMuted} />
-                <Text style={[styles.tabText, { color: tab === 'login' ? textPrimary : textMuted }]}>Log In</Text>
+                <Text style={[styles.tabText, { color: tab === 'login' ? textPrimary : textMuted }]}>{t('loginTab')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setTab('signup')}
                 style={[styles.tab, tab === 'signup' && [styles.activeTab, { backgroundColor: activeTabBg }]]}
               >
                 <UserPlus size={15} color={tab === 'signup' ? '#38BDF8' : textMuted} />
-                <Text style={[styles.tabText, { color: tab === 'signup' ? textPrimary : textMuted }]}>Sign Up</Text>
+                <Text style={[styles.tabText, { color: tab === 'signup' ? textPrimary : textMuted }]}>{t('signupTab')}</Text>
               </TouchableOpacity>
             </View>
 
             {/* Form */}
             {tab === 'signup' && (
               <Input
-                label="Property / Business Name *"
+                label={t('propertyName')}
                 placeholder="e.g. Sameer Homestay"
                 value={businessName}
                 onChangeText={setBusinessName}
@@ -188,7 +190,7 @@ export default function AuthScreen() {
             )}
 
             <Input
-              label="Email Address *"
+              label={t('emailAddress')}
               placeholder="owner@homestay.com"
               keyboardType="email-address"
               autoCapitalize="none"
@@ -198,7 +200,7 @@ export default function AuthScreen() {
             />
 
             <Input
-              label="Password *"
+              label={t('password')}
               placeholder="••••••••"
               secureTextEntry
               value={password}
@@ -215,7 +217,7 @@ export default function AuthScreen() {
             >
               {isLoading && <ActivityIndicator size="small" color={isDark ? '#000' : '#fff'} style={{ marginRight: 8 }} />}
               <Text style={[styles.submitBtnText, { color: submitBtnText }]}>
-                {isLoading ? 'Processing...' : tab === 'signup' ? 'Create Owner Account' : 'Log In to Dashboard'}
+                {isLoading ? t('processing') : tab === 'signup' ? t('createOwnerAccount') : t('loginToDashboard')}
               </Text>
             </TouchableOpacity>
 
@@ -227,7 +229,7 @@ export default function AuthScreen() {
                 style={styles.debugBtn}
               >
                 <Zap size={17} color="#F59E0B" />
-                <Text style={styles.debugBtnText}>Direct Debug Access (No Password)</Text>
+                <Text style={styles.debugBtnText}>{t('directDebugAccess')}</Text>
               </TouchableOpacity>
             </View>
 

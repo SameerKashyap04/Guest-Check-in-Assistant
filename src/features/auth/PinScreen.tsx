@@ -6,12 +6,14 @@ import { PinPad } from '@/components/PinPad';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ShieldAlert, ShieldCheck, LogOut } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 interface PinScreenProps {
   onSuccess?: () => void;
 }
 
 export function PinScreen({ onSuccess }: PinScreenProps = {}) {
+  const { t } = useTranslation();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isBiometricSupported, setIsBiometricSupported] = useState(false);
@@ -136,12 +138,12 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
           <ShieldAlert size={64} color="#38BDF8" className="mb-6" />
         )}
         <Text className="text-2xl font-bold text-foreground mb-2 text-center">
-          {step === 'enter' ? 'Enter PIN' : step === 'setup' ? 'Set up a 4-digit PIN' : 'Confirm your PIN'}
+          {step === 'enter' ? t('enterPin') : step === 'setup' ? t('setupPin') : t('confirmPin')}
         </Text>
         <Text className="text-sm text-gray-500 text-center px-4">
           {step === 'enter'
-            ? 'Enter your PIN to access the Guest Check-in Assistant.'
-            : 'This PIN will be used to protect guest data.'}
+            ? t('enterPinDesc')
+            : t('setupPinDesc')}
         </Text>
       </View>
 
@@ -175,7 +177,7 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
         className="mt-6 py-2 px-4 rounded-full bg-gray-100 dark:bg-gray-800 flex-row items-center gap-1.5"
       >
         <LogOut size={14} color="#EF4444" />
-        <Text className="text-xs font-bold text-red-500">Log Out / Switch Account</Text>
+        <Text className="text-xs font-bold text-red-500">{t('logoutSwitchAccount')}</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

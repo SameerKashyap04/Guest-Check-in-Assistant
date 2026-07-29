@@ -32,7 +32,10 @@ export interface AdditionalGuest {
   selfiePhotoUri: string | null;
 }
 
+import { useTranslation } from 'react-i18next';
+
 export default function SelfCheckinScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useLocalSearchParams<{ property_id?: string; owner_id?: string; property_name?: string; rooms?: string }>();
   const { businessName, propertyId: storePropId, ownerId: storeOwnerId } = useSettingsStore();

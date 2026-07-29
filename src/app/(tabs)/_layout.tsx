@@ -5,10 +5,12 @@ import { useColorScheme } from 'nativewind';
 import { BlurView } from 'expo-blur';
 import { Platform, View, StyleSheet } from 'react-native';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useTranslation } from 'react-i18next';
 
 export default function TabLayout() {
   const { isUnlocked } = useAuthStore();
   const { colorScheme } = useColorScheme();
+  const { t } = useTranslation();
   const isDark = colorScheme === 'dark';
   
   if (!isUnlocked) {
@@ -65,7 +67,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Dashboard',
+          title: t('dashboard'),
           tabBarIcon: ({ color }) => (
             <View className="w-7 h-7 items-center justify-center">
               <Home color={color} size={20} />
@@ -76,7 +78,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="scanner"
         options={{
-          title: 'Check-in',
+          title: t('checkin'),
           tabBarIcon: ({ color }) => (
             <View className="w-7 h-7 items-center justify-center">
               <View className="bg-[#38BDF8] -mt-4 w-11 h-11 rounded-full items-center justify-center shadow-lg shadow-[#38BDF8]/40 border-2 border-white dark:border-[#12141C]">
@@ -84,13 +86,13 @@ export default function TabLayout() {
               </View>
             </View>
           ),
-          tabBarLabel: 'Check-in',
+          tabBarLabel: t('checkin'),
         }}
       />
       <Tabs.Screen
         name="rooms"
         options={{
-          title: 'Rooms',
+          title: t('rooms'),
           tabBarIcon: ({ color }) => (
             <View className="w-7 h-7 items-center justify-center">
               <BedDouble color={color} size={20} />
@@ -101,7 +103,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: t('settings'),
           tabBarIcon: ({ color }) => (
             <View className="w-7 h-7 items-center justify-center">
               <Settings color={color} size={20} />
