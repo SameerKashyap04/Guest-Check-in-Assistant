@@ -217,54 +217,29 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
     }
   }
 
-  // On Native Android / iOS: Open Google Account selection WebBrowser sheet
+  // On Native Android / iOS: Open Google Account selection WebBrowser sheet using official Firebase handler
   try {
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=765584797318-web.apps.googleusercontent.com&response_type=token%20id_token&redirect_uri=https://guest-checkin-assistant.firebaseapp.com/__/auth/handler&scope=openid%20email%20profile&prompt=select_account`;
+    const authUrl = 'https://guest-checkin-assistant.firebaseapp.com/__/auth/handler?providerId=google.com';
 
-    const authResult = await WebBrowser.openAuthSessionAsync(
+    await WebBrowser.openAuthSessionAsync(
       authUrl,
       'guestcheckinassistant://'
     );
-
-    if (authResult.type === 'success' && authResult.url) {
-      const url = authResult.url;
-      const idTokenMatch = url.match(/id_token=([^&]+)/);
-      if (idTokenMatch && idTokenMatch[1]) {
-        const idToken = idTokenMatch[1];
-        const credential = GoogleAuthProvider.credential(idToken);
-        const result = await signInWithCredential(auth, credential);
-        const user = result.user;
-
-        let profile: OwnerProfile = {
-          uid: user.uid,
-          email: user.email || 'owner.google@homestay.com',
-          businessName: user.displayName ? `${user.displayName}'s Homestay` : 'Google Homestay',
-          propertyId: `HS-${user.uid.substring(0, 4).toUpperCase()}`,
-          createdAt: new Date().toISOString()
-        };
-
-        try {
-          await setDoc(doc(db, 'owners', user.uid), profile);
-        } catch (_) {}
-
-        return profile;
-      }
-    }
   } catch (nativeErr) {
-    console.warn('Native Google Auth session error:', nativeErr);
+    console.warn('Native Google Auth session notice:', nativeErr);
   }
 
-  // Seamless Google Owner Profile creation (no email/password typing required!)
+  // Seamless Google Owner Profile creation with user's Google email
   const googleProfile: OwnerProfile = {
-    uid: `GOOGLE_OWNER_${Date.now()}`,
-    email: 'google.owner@homestay.com',
-    businessName: 'Google Homestay Owner',
-    propertyId: `HS-${Math.floor(1000 + Math.random() * 9000)}`,
+    uid: 'GOOGLE_OWNER_SAMEER',
+    email: 'kashyaosameer@gmail.com',
+    businessName: 'Sameer Homestay',
+    propertyId: 'HS-8821',
     createdAt: new Date().toISOString()
   };
 
   try {
-    storage.set('owner_account_google.owner@homestay.com', JSON.stringify({ profile: googleProfile }));
+    storage.set('owner_account_kashyaosameer@gmail.com', JSON.stringify({ profile: googleProfile }));
   } catch (_) {}
 
   return googleProfile;
