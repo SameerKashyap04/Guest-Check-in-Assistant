@@ -221,10 +221,7 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
   try {
     const authUrl = 'https://accounts.google.com/AccountChooser?service=lso&continue=https://guest-checkin-assistant.firebaseapp.com/__/auth/handler?providerId=google.com';
 
-    await WebBrowser.openAuthSessionAsync(
-      authUrl,
-      'guestcheckinassistant://'
-    );
+    await WebBrowser.openBrowserAsync(authUrl);
   } catch (nativeErr) {
     console.warn('Native Google Auth session notice:', nativeErr);
   }
