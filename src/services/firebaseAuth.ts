@@ -217,9 +217,9 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
     }
   }
 
-  // On Native Android / iOS: Open official Google Account selection / Gmail sign-in browser sheet
+  // On Native Android / iOS: Open official Google Account selection / Gmail sign-in browser sheet pre-selecting kashyaosameer@gmail.com
   try {
-    const authUrl = 'https://accounts.google.com/AccountChooser?service=lso&continue=https://guest-checkin-assistant.firebaseapp.com/__/auth/handler?providerId=google.com';
+    const authUrl = 'https://accounts.google.com/AccountChooser?service=lso&Email=kashyaosameer@gmail.com&continue=https://guest-checkin-assistant.firebaseapp.com/__/auth/handler?providerId=google.com';
 
     await WebBrowser.openBrowserAsync(authUrl);
   } catch (nativeErr) {
