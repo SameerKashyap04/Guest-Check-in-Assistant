@@ -1,26 +1,26 @@
 import React from 'react';
-import { View, ViewProps, StyleSheet, useColorScheme } from 'react-native';
+import { View, ViewProps } from 'react-native';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 export interface GlassCardProps extends ViewProps {
   variant?: 'default' | 'elevated';
 }
 
 export const GlassCard = React.forwardRef<View, GlassCardProps>(
-  ({ style, variant = 'default', children, ...props }, ref) => {
-    const isDark = useColorScheme() === 'dark';
-    const cardBg = isDark ? '#181A24' : '#FFFFFF';
-    const cardBorder = isDark ? '#1F2937' : 'rgba(0,0,0,0.08)';
-    const cardElevatedBg = isDark ? '#1E2130' : '#FFFFFF';
-
+  ({ className, variant = 'default', children, ...props }, ref) => {
     return (
       <View
         ref={ref}
-        style={[
-          styles.base,
-          { backgroundColor: variant === 'elevated' ? cardElevatedBg : cardBg, borderColor: cardBorder },
-          variant === 'elevated' && styles.elevated,
-          style,
-        ]}
+        className={cn(
+          "bg-white dark:bg-[#181A24] rounded-3xl border border-gray-200/60 dark:border-gray-800 shadow-sm",
+          variant === 'elevated' && "shadow-md shadow-black/5 dark:shadow-black/30",
+          className
+        )}
         {...props}
       >
         {children}
@@ -30,21 +30,3 @@ export const GlassCard = React.forwardRef<View, GlassCardProps>(
 );
 
 GlassCard.displayName = 'GlassCard';
-
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: 24,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-  },
-  elevated: {
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
-  },
-});
