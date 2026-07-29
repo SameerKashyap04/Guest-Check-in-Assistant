@@ -131,7 +131,7 @@ export default function AuthScreen() {
           onPress={() => router.back()}
           className="p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
         >
-          <ChevronLeft size={26} color="#000000" />
+          <ChevronLeft size={26} color={Platform.OS === 'web' ? '#38BDF8' : '#6B7280'} />
         </TouchableOpacity>
         <Text className="text-lg font-bold text-foreground">Homestay Owner Portal</Text>
         <View className="w-8" />
@@ -140,11 +140,11 @@ export default function AuthScreen() {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={{ padding: 20, flexGrow: 1, justifyContent: 'center' }}>
           
-          <GlassCard className="p-6 rounded-3xl border border-gray-200 dark:border-gray-800 shadow-sm">
+          <GlassCard className="p-6 rounded-3xl border border-gray-200/60 dark:border-gray-800 shadow-md">
             {/* Header Icon */}
             <View className="items-center mb-6">
-              <View className="w-16 h-16 rounded-2xl bg-black dark:bg-white items-center justify-center mb-3">
-                <ShieldCheck size={36} color="#FFFFFF" className="dark:text-black" />
+              <View className="w-16 h-16 rounded-2xl bg-sky-500/15 items-center justify-center mb-3">
+                <ShieldCheck size={36} color="#38BDF8" />
               </View>
               <Text className="text-2xl font-extrabold text-foreground text-center">Owner Account</Text>
               <Text className="text-xs text-gray-500 text-center mt-1">
@@ -153,14 +153,14 @@ export default function AuthScreen() {
             </View>
 
             {/* Login / Sign Up Tabs */}
-            <View className="flex-row bg-gray-100 dark:bg-gray-800/60 p-1 rounded-2xl mb-6">
+            <View className="flex-row bg-gray-100 dark:bg-gray-800/80 p-1 rounded-2xl mb-6">
               <TouchableOpacity
                 onPress={() => setTab('login')}
                 className={`flex-1 py-2.5 rounded-xl items-center flex-row justify-center gap-1.5 ${
-                  tab === 'login' ? 'bg-white dark:bg-black shadow-sm' : ''
+                  tab === 'login' ? 'bg-white dark:bg-[#181A24] shadow-sm' : ''
                 }`}
               >
-                <LogIn size={16} color={tab === 'login' ? '#000000' : '#6B7280'} className="dark:text-white" />
+                <LogIn size={16} color={tab === 'login' ? '#38BDF8' : '#6B7280'} />
                 <Text className={`font-bold text-xs ${tab === 'login' ? 'text-foreground' : 'text-gray-500'}`}>
                   Log In
                 </Text>
@@ -169,10 +169,10 @@ export default function AuthScreen() {
               <TouchableOpacity
                 onPress={() => setTab('signup')}
                 className={`flex-1 py-2.5 rounded-xl items-center flex-row justify-center gap-1.5 ${
-                  tab === 'signup' ? 'bg-white dark:bg-black shadow-sm' : ''
+                  tab === 'signup' ? 'bg-white dark:bg-[#181A24] shadow-sm' : ''
                 }`}
               >
-                <UserPlus size={16} color={tab === 'signup' ? '#000000' : '#6B7280'} className="dark:text-white" />
+                <UserPlus size={16} color={tab === 'signup' ? '#38BDF8' : '#6B7280'} />
                 <Text className={`font-bold text-xs ${tab === 'signup' ? 'text-foreground' : 'text-gray-500'}`}>
                   Sign Up
                 </Text>
@@ -224,7 +224,7 @@ export default function AuthScreen() {
                 onPress={handleDebugDirectAccess}
                 className="w-full py-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex-row items-center justify-center gap-2"
               >
-                <Zap size={18} color="#D97706" />
+                <Zap size={18} color="#F59E0B" />
                 <Text className="text-sm font-bold text-amber-700 dark:text-amber-400">
                   Direct Debug Access (No Password)
                 </Text>
