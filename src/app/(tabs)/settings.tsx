@@ -182,38 +182,62 @@ export default function SettingsScreen() {
           <View className="flex-row gap-3">
             <TouchableOpacity
               onPress={() => setStorageMode('cloud')}
-              className={`flex-1 p-4 rounded-2xl border items-center justify-center ${
+              activeOpacity={0.8}
+              className={`flex-1 p-4 rounded-2xl border items-center justify-between min-h-[120px] ${
                 storageMode === 'cloud'
-                  ? 'bg-black dark:bg-white border-black dark:border-white'
+                  ? 'bg-black dark:bg-white border-black dark:border-white shadow-md'
                   : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
               }`}
             >
-              <View className="flex-row items-center gap-1.5 mb-0.5">
-                <Cloud size={16} color={storageMode === 'cloud' ? (Platform.OS === 'web' ? '#38BDF8' : '#000000') : '#38BDF8'} />
-                <Text className={`font-bold text-sm ${storageMode === 'cloud' ? 'text-white dark:text-black' : 'text-foreground'}`}>
+              <View className="items-center w-full">
+                <View className={`w-10 h-10 rounded-xl items-center justify-center mb-2 ${
+                  storageMode === 'cloud'
+                    ? 'bg-sky-500/25'
+                    : 'bg-sky-500/10'
+                }`}>
+                  <Cloud size={22} color="#38BDF8" />
+                </View>
+                <Text
+                  className={`font-bold text-xs text-center leading-4 px-1 ${
+                    storageMode === 'cloud' ? 'text-white dark:text-black font-extrabold' : 'text-foreground'
+                  }`}
+                  numberOfLines={2}
+                >
                   {t('cloudStorage')}
                 </Text>
               </View>
-              <Text className={`text-[10px] text-center mt-1 ${storageMode === 'cloud' ? 'text-white/80 dark:text-black/80' : 'text-gray-400'}`}>
+              <Text className={`text-[10px] text-center mt-2 ${storageMode === 'cloud' ? 'text-white/80 dark:text-black/80 font-medium' : 'text-gray-400'}`}>
                 Auto-syncs Web & Mobile
               </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => setStorageMode('local')}
-              className={`flex-1 p-4 rounded-2xl border items-center justify-center ${
+              activeOpacity={0.8}
+              className={`flex-1 p-4 rounded-2xl border items-center justify-between min-h-[120px] ${
                 storageMode === 'local'
-                  ? 'bg-black dark:bg-white border-black dark:border-white'
+                  ? 'bg-black dark:bg-white border-black dark:border-white shadow-md'
                   : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
               }`}
             >
-              <View className="flex-row items-center gap-1.5 mb-0.5">
-                <HardDrive size={16} color={storageMode === 'local' ? (Platform.OS === 'web' ? '#64748B' : '#000000') : '#64748B'} />
-                <Text className={`font-bold text-sm ${storageMode === 'local' ? 'text-white dark:text-black' : 'text-foreground'}`}>
+              <View className="items-center w-full">
+                <View className={`w-10 h-10 rounded-xl items-center justify-center mb-2 ${
+                  storageMode === 'local'
+                    ? 'bg-slate-500/25'
+                    : 'bg-slate-500/10'
+                }`}>
+                  <HardDrive size={22} color="#64748B" />
+                </View>
+                <Text
+                  className={`font-bold text-xs text-center leading-4 px-1 ${
+                    storageMode === 'local' ? 'text-white dark:text-black font-extrabold' : 'text-foreground'
+                  }`}
+                  numberOfLines={2}
+                >
                   {t('localStorage')}
                 </Text>
               </View>
-              <Text className={`text-[10px] text-center mt-1 ${storageMode === 'local' ? 'text-white/80 dark:text-black/80' : 'text-gray-400'}`}>
+              <Text className={`text-[10px] text-center mt-2 ${storageMode === 'local' ? 'text-white/80 dark:text-black/80 font-medium' : 'text-gray-400'}`}>
                 Offline SQLite Only
               </Text>
             </TouchableOpacity>
