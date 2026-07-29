@@ -1,11 +1,16 @@
-import React, { useState } from 'react';
-import { View, Text, Modal, TouchableOpacity, Platform, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Modal, TouchableOpacity, Platform, Alert, ActivityIndicator, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
-import { Camera, FileText, X, ChevronRight, Upload, Image as ImageIcon } from 'lucide-react-native';
+import { Camera, FileText, X, ChevronRight, Upload, Image as ImageIcon, Globe, CheckCircle2, Trash2, User, Phone, IdCard, MapPin, Calendar, Users, Check, UserCheck } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { useRoomsStore } from '@/store/useRoomsStore';
+import { subscribeToPropertyCheckins, deleteCloudCheckinDoc, CloudGuestCheckin } from '@/services/firebaseSync';
+import { createMultipleGuestsAndStay } from '@/database/stays';
+import { GlassCard } from '@/components/GlassCard';
 
 const ID_TYPES = [
   { id: 'UNKNOWN', label: 'Auto-Detect', description: 'Let the system identify the document' },
@@ -18,8 +23,135 @@ const ID_TYPES = [
 
 export default function ScannerScreen() {
   const router = useRouter();
+  const { propertyId, ownerId } = useSettingsStore();
+  const { rooms, fetchRooms } = useRoomsStore();
+
   const [modalVisible, setModalVisible] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+
+  // Online Self Check-ins Portal State
+  const [pendingCheckins, setPendingCheckins] = useState<CloudGuestCheckin[]>([]);
+  const [isPortalModalOpen, setIsPortalModalOpen] = useState(false);
+  const [selectedCheckinDetail, setSelectedCheckinDetail] = useState<CloudGuestCheckin | null>(null);
+  const [isApprovingId, setIsApprovingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchRooms();
+  }, []);
+
+  // Real-time listener for incoming Web Self Check-ins
+  useEffect(() => {
+    if (!propertyId) return;
+    const unsub = subscribeToPropertyCheckins(
+      propertyId,
+      (newCheckin) => {
+        setPendingCheckins(prev => {
+          if (prev.some(item => item.id === newCheckin.id)) return prev;
+          return [newCheckin, ...prev];
+        });
+      },
+      ownerId,
+      false
+    );
+    return () => unsub();
+  }, [propertyId, ownerId]);
+
+  const handleApproveCheckin = async (checkin: CloudGuestCheckin) => {
+    try {
+      setIsApprovingId(checkin.id || 'current');
+
+      let roomId = rooms.length > 0 ? rooms[0].id : 1;
+      const matchedRoom = rooms.find(r => r.room_number === checkin.room_number);
+      if (matchedRoom) roomId = matchedRoom.id;
+
+      const allGuestsToImport = [
+        {
+          full_name: checkin.full_name,
+          id_number: checkin.id_number || 'N/A',
+          address: checkin.address || '',
+          phone: checkin.phone || '',
+          photo_uri: checkin.photo_uri || '',
+          back_photo_uri: checkin.back_photo_uri || '',
+          selfie_uri: checkin.selfie_uri || '',
+          property_id: checkin.property_id,
+          id_type: checkin.id_type || 'Aadhaar',
+          dob: checkin.dob || '',
+          gender: checkin.gender || 'Other',
+          pin_code: checkin.pin_code || ''
+        },
+        ...(checkin.additional_guests || []).map((g: any) => ({
+          full_name: g.fullName || 'Additional Guest',
+          id_number: g.idNumber || 'N/A',
+          address: checkin.address || '',
+          phone: g.phone || checkin.phone || '',
+          photo_uri: g.frontPhotoUri || '',
+          back_photo_uri: g.backPhotoUri || '',
+          selfie_uri: g.selfiePhotoUri || '',
+          property_id: checkin.property_id,
+          id_type: g.idType || 'Aadhaar',
+          dob: g.dob || '',
+          gender: g.gender || 'Other',
+          pin_code: checkin.pin_code || ''
+        }))
+      ];
+
+      const todayStr = new Date().toISOString().split('T')[0];
+
+      await createMultipleGuestsAndStay(
+        allGuestsToImport,
+        {
+          room_id: roomId,
+          check_in_date: checkin.check_in_date || todayStr,
+          check_out_date: checkin.check_out_date || checkin.check_in_date || todayStr
+        }
+      );
+
+      // Delete from Cloud Firestore once approved
+      if (checkin.id) {
+        await deleteCloudCheckinDoc(checkin.id);
+      }
+
+      setPendingCheckins(prev => prev.filter(item => item.id !== checkin.id));
+      if (selectedCheckinDetail?.id === checkin.id) {
+        setSelectedCheckinDetail(null);
+      }
+
+      await fetchRooms();
+
+      Alert.alert(
+        'Self Check-in Approved! 🎉',
+        `Guest ${checkin.full_name} (${allGuestsToImport.length} guest${allGuestsToImport.length > 1 ? 's' : ''}) assigned to Room ${checkin.room_number} has been registered into your app.`
+      );
+    } catch (e: any) {
+      console.error('Approval failed', e);
+      Alert.alert('Approval Failed', e?.message || 'Could not approve self check-in.');
+    } finally {
+      setIsApprovingId(null);
+    }
+  };
+
+  const handleRejectCheckin = (checkin: CloudGuestCheckin) => {
+    Alert.alert(
+      'Reject & Remove Check-in?',
+      `Are you sure you want to discard the online check-in request from ${checkin.full_name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject & Remove',
+          style: 'destructive',
+          onPress: async () => {
+            if (checkin.id) {
+              await deleteCloudCheckinDoc(checkin.id);
+            }
+            setPendingCheckins(prev => prev.filter(item => item.id !== checkin.id));
+            if (selectedCheckinDetail?.id === checkin.id) {
+              setSelectedCheckinDetail(null);
+            }
+          }
+        }
+      ]
+    );
+  };
 
   const startScan = (idType: string) => {
     setModalVisible(false);
@@ -50,7 +182,6 @@ export default function ScannerScreen() {
       const imageUri = result.assets[0].uri;
       setIsScanning(true);
 
-      // Perform OCR analysis on the uploaded ID image
       const blocks = await OCRPipeline.analyzeFrame(imageUri);
       const initialProfile = {
         fullName: { value: '', confidence: 0 },
@@ -67,7 +198,6 @@ export default function ScannerScreen() {
       const profile = OCRPipeline.processBlocks(blocks, initialProfile, 'UNKNOWN');
       setIsScanning(false);
 
-      // Navigate to Review screen with auto-filled scanned profile data
       router.push({
         pathname: '/checkin/review',
         params: {
@@ -119,6 +249,34 @@ export default function ScannerScreen() {
         icon={<Upload size={20} color="#FFF" className="mr-2" />}
         onPress={handleUploadID}
       />
+
+      {/* ONLINE SELF CHECK-INS APPROVAL BUTTON - POSITIONED BETWEEN UPLOAD & MANUAL */}
+      <TouchableOpacity
+        onPress={() => setIsPortalModalOpen(true)}
+        activeOpacity={0.8}
+        className="w-full mb-3 bg-emerald-600 active:bg-emerald-700 p-4 rounded-2xl flex-row items-center justify-between shadow-sm"
+      >
+        <View className="flex-row items-center gap-3">
+          <View className="w-10 h-10 rounded-xl bg-white/20 items-center justify-center">
+            <Globe size={22} color="#FFFFFF" />
+          </View>
+          <View>
+            <Text className="text-white font-bold text-base">Online Self Check-ins</Text>
+            <Text className="text-white/80 text-xs font-medium">Review & approve web submissions</Text>
+          </View>
+        </View>
+
+        {pendingCheckins.length > 0 ? (
+          <View className="bg-white px-3 py-1.5 rounded-full flex-row items-center gap-1.5">
+            <View className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <Text className="text-emerald-700 font-extrabold text-xs">
+              {pendingCheckins.length} Pending
+            </Text>
+          </View>
+        ) : (
+          <ChevronRight size={20} color="#FFFFFF" />
+        )}
+      </TouchableOpacity>
       
       <Button 
         label="Manual Entry" 
@@ -129,6 +287,7 @@ export default function ScannerScreen() {
         onPress={() => router.push('/checkin/manual')}
       />
 
+      {/* CAMERA ID TYPE SELECTION MODAL */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -162,6 +321,286 @@ export default function ScannerScreen() {
                 <ChevronRight size={20} color="#9CA3AF" />
               </TouchableOpacity>
             ))}
+          </View>
+        </View>
+      </Modal>
+
+      {/* ONLINE SELF CHECK-INS APPROVAL PORTAL MODAL */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isPortalModalOpen}
+        onRequestClose={() => setIsPortalModalOpen(false)}
+        statusBarTranslucent={true}
+      >
+        <View className="flex-1 bg-black/70 justify-end">
+          <View className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6 h-[90%] flex-col justify-between">
+            
+            {/* Header */}
+            <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+              <View className="flex-row items-center gap-2.5">
+                <View className="w-9 h-9 rounded-xl bg-emerald-500/15 items-center justify-center">
+                  <Globe size={20} color="#10B981" />
+                </View>
+                <View>
+                  <Text className="text-xl font-bold text-foreground">Online Self Check-ins</Text>
+                  <Text className="text-xs text-gray-500 font-medium">Review and approve guest web submissions</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setIsPortalModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
+                <X size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Content List */}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {pendingCheckins.length === 0 ? (
+                <View className="bg-gray-50 dark:bg-gray-800/20 p-8 rounded-2xl items-center justify-center border border-dashed border-gray-200 dark:border-gray-800 my-8">
+                  <Globe size={40} color="#9CA3AF" className="mb-3" />
+                  <Text className="text-base font-bold text-foreground text-center">No Pending Self Check-ins</Text>
+                  <Text className="text-xs text-gray-500 text-center mt-1">
+                    When guests complete check-in on your online link, their registrations will appear here for your approval.
+                  </Text>
+                </View>
+              ) : (
+                <View className="gap-4">
+                  {pendingCheckins.map((checkin) => {
+                    const addGuestsCount = (checkin.additional_guests || []).length;
+                    const totalGuests = 1 + addGuestsCount;
+                    const isApproving = isApprovingId === checkin.id;
+
+                    return (
+                      <GlassCard key={checkin.id} className="p-4 rounded-2xl border border-gray-200 dark:border-gray-800">
+                        {/* Checkin Card Top Bar */}
+                        <View className="flex-row justify-between items-start mb-3">
+                          <View className="flex-row items-center gap-3">
+                            <View className="w-10 h-10 rounded-full bg-emerald-500/10 items-center justify-center">
+                              <Text className="text-emerald-600 font-extrabold text-base">
+                                {checkin.full_name ? checkin.full_name.charAt(0).toUpperCase() : 'G'}
+                              </Text>
+                            </View>
+                            <View>
+                              <Text className="text-base font-bold text-foreground">{checkin.full_name}</Text>
+                              <Text className="text-xs text-gray-500">Phone: {checkin.phone || 'N/A'}</Text>
+                            </View>
+                          </View>
+
+                          <View className="bg-emerald-100 dark:bg-emerald-950/50 px-3 py-1 rounded-full border border-emerald-500/30">
+                            <Text className="text-xs font-extrabold text-emerald-700 dark:text-emerald-400">
+                              Room {checkin.room_number || 'N/A'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Stay Summary Pills */}
+                        <View className="flex-row flex-wrap gap-2 mb-4 bg-gray-50 dark:bg-gray-800/40 p-3 rounded-xl">
+                          <View className="flex-row items-center gap-1">
+                            <Users size={14} color="#6B7280" />
+                            <Text className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                              {totalGuests} Guest{totalGuests > 1 ? 's' : ''} ({1} Primary{addGuestsCount > 0 ? ` + ${addGuestsCount} Additional` : ''})
+                            </Text>
+                          </View>
+                          <Text className="text-gray-300 dark:text-gray-700">•</Text>
+                          <View className="flex-row items-center gap-1">
+                            <IdCard size={14} color="#6B7280" />
+                            <Text className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                              {checkin.id_type || 'Aadhaar'}: {checkin.id_number || 'N/A'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Photo Thumbnail Row */}
+                        {(checkin.photo_uri || checkin.selfie_uri) && (
+                          <View className="flex-row gap-2 mb-4">
+                            {checkin.photo_uri ? (
+                              <View className="flex-1 h-20 rounded-xl overflow-hidden bg-black/10">
+                                <Image source={{ uri: checkin.photo_uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                              </View>
+                            ) : null}
+                            {checkin.selfie_uri ? (
+                              <View className="flex-1 h-20 rounded-xl overflow-hidden bg-black/10">
+                                <Image source={{ uri: checkin.selfie_uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                              </View>
+                            ) : null}
+                          </View>
+                        )}
+
+                        {/* Action Buttons */}
+                        <View className="flex-row gap-2.5">
+                          <TouchableOpacity
+                            onPress={() => setSelectedCheckinDetail(checkin)}
+                            className="bg-gray-100 dark:bg-gray-800 px-3.5 py-2.5 rounded-xl justify-center items-center"
+                          >
+                            <Text className="text-xs font-bold text-foreground">View Details</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => handleRejectCheckin(checkin)}
+                            className="bg-red-500/10 border border-red-500/30 px-3.5 py-2.5 rounded-xl justify-center items-center flex-row gap-1"
+                          >
+                            <Trash2 size={14} color="#EF4444" />
+                            <Text className="text-xs font-bold text-red-500">Remove</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => handleApproveCheckin(checkin)}
+                            disabled={isApproving}
+                            className="flex-1 bg-emerald-600 active:bg-emerald-700 py-2.5 rounded-xl justify-center items-center flex-row gap-1.5"
+                          >
+                            {isApproving ? (
+                              <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                              <>
+                                <CheckCircle2 size={16} color="#FFFFFF" />
+                                <Text className="text-xs font-extrabold text-white">Approve & Save</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </GlassCard>
+                    );
+                  })}
+                </View>
+              )}
+            </ScrollView>
+
+          </View>
+        </View>
+      </Modal>
+
+      {/* DETAILED CHECK-IN PREVIEW MODAL */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={selectedCheckinDetail !== null}
+        onRequestClose={() => setSelectedCheckinDetail(null)}
+      >
+        <View className="flex-1 bg-black/80 justify-end">
+          <View className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6 h-[92%] flex-col justify-between">
+            <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+              <View>
+                <Text className="text-xl font-bold text-foreground">{selectedCheckinDetail?.full_name}</Text>
+                <Text className="text-xs text-emerald-600 font-semibold">Web Self Check-in Preview</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedCheckinDetail(null)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
+                <X size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedCheckinDetail && (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                {/* Photos Display */}
+                <Text className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">
+                  ID & Selfie Photos
+                </Text>
+                <View className="gap-3 mb-5">
+                  {selectedCheckinDetail.photo_uri ? (
+                    <View className="bg-gray-50 dark:bg-gray-800/40 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                      <Text className="text-xs font-bold text-foreground mb-1.5 ml-1">Front ID Photo</Text>
+                      <Image source={{ uri: selectedCheckinDetail.photo_uri }} style={{ width: '100%', height: 180, borderRadius: 12 }} resizeMode="cover" />
+                    </View>
+                  ) : null}
+
+                  {selectedCheckinDetail.back_photo_uri ? (
+                    <View className="bg-gray-50 dark:bg-gray-800/40 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                      <Text className="text-xs font-bold text-foreground mb-1.5 ml-1">Back ID Photo</Text>
+                      <Image source={{ uri: selectedCheckinDetail.back_photo_uri }} style={{ width: '100%', height: 180, borderRadius: 12 }} resizeMode="cover" />
+                    </View>
+                  ) : null}
+
+                  {selectedCheckinDetail.selfie_uri ? (
+                    <View className="bg-sky-50 dark:bg-sky-950/30 p-2.5 rounded-2xl border border-sky-100 dark:border-sky-800/40">
+                      <Text className="text-xs font-bold text-primary mb-1.5 ml-1">Guest Selfie Photo</Text>
+                      <Image source={{ uri: selectedCheckinDetail.selfie_uri }} style={{ width: '100%', height: 200, borderRadius: 12 }} resizeMode="cover" />
+                    </View>
+                  ) : null}
+                </View>
+
+                {/* Primary Info Details */}
+                <Text className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">
+                  Primary Guest Information
+                </Text>
+                <View className="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 gap-2.5 mb-5">
+                  <View className="flex-row justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
+                    <Text className="text-xs font-medium text-gray-500">Requested Room</Text>
+                    <Text className="text-xs font-bold text-foreground">Room {selectedCheckinDetail.room_number}</Text>
+                  </View>
+                  <View className="flex-row justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
+                    <Text className="text-xs font-medium text-gray-500">Document Type</Text>
+                    <Text className="text-xs font-bold text-foreground">{selectedCheckinDetail.id_type || 'N/A'}</Text>
+                  </View>
+                  <View className="flex-row justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
+                    <Text className="text-xs font-medium text-gray-500">ID Number</Text>
+                    <Text className="text-xs font-bold text-foreground">{selectedCheckinDetail.id_number || 'N/A'}</Text>
+                  </View>
+                  <View className="flex-row justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
+                    <Text className="text-xs font-medium text-gray-500">Phone</Text>
+                    <Text className="text-xs font-bold text-foreground">{selectedCheckinDetail.phone || 'N/A'}</Text>
+                  </View>
+                  <View className="flex-row justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
+                    <Text className="text-xs font-medium text-gray-500">Gender & DOB</Text>
+                    <Text className="text-xs font-bold text-foreground">{selectedCheckinDetail.gender || 'N/A'} • {selectedCheckinDetail.dob || 'N/A'}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs font-medium text-gray-500">Address</Text>
+                    <Text className="text-xs font-bold text-foreground max-w-[60%] text-right">{selectedCheckinDetail.address || 'N/A'}</Text>
+                  </View>
+                </View>
+
+                {/* Additional Guests List */}
+                {(selectedCheckinDetail.additional_guests || []).length > 0 && (
+                  <View className="mb-5">
+                    <Text className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">
+                      Additional Group Guests ({(selectedCheckinDetail.additional_guests || []).length})
+                    </Text>
+                    <View className="gap-3">
+                      {(selectedCheckinDetail.additional_guests || []).map((g: any, idx: number) => (
+                        <View key={idx} className="bg-gray-50 dark:bg-gray-800/40 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                          <Text className="text-xs font-bold text-foreground mb-1">Person {idx + 2}: {g.fullName}</Text>
+                          <Text className="text-[11px] text-gray-500 font-medium">Gender: {g.gender || 'N/A'} • DOB: {g.dob || 'N/A'}</Text>
+                          <Text className="text-[11px] text-gray-500 font-medium">{g.idType || 'ID'}: {g.idNumber || 'N/A'}</Text>
+
+                          {g.frontPhotoUri ? (
+                            <Image source={{ uri: g.frontPhotoUri }} style={{ width: '100%', height: 120, borderRadius: 10, marginTop: 8 }} resizeMode="cover" />
+                          ) : null}
+                          {g.selfiePhotoUri ? (
+                            <Image source={{ uri: g.selfiePhotoUri }} style={{ width: '100%', height: 120, borderRadius: 10, marginTop: 8 }} resizeMode="cover" />
+                          ) : null}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+
+            {/* Approval Action Footer */}
+            {selectedCheckinDetail && (
+              <View className="pt-3 border-t border-gray-100 dark:border-gray-800 flex-row gap-3">
+                <TouchableOpacity
+                  onPress={() => handleRejectCheckin(selectedCheckinDetail)}
+                  className="bg-red-500/10 border border-red-500/30 px-5 py-3.5 rounded-2xl justify-center items-center flex-row gap-1.5"
+                >
+                  <Trash2 size={18} color="#EF4444" />
+                  <Text className="text-xs font-bold text-red-500">Reject</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleApproveCheckin(selectedCheckinDetail)}
+                  disabled={isApprovingId === selectedCheckinDetail.id}
+                  className="flex-1 bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-2xl justify-center items-center flex-row gap-2"
+                >
+                  {isApprovingId === selectedCheckinDetail.id ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <CheckCircle2 size={18} color="#FFFFFF" />
+                      <Text className="text-sm font-extrabold text-white">Approve & Save Check-in</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
           </View>
         </View>
       </Modal>
