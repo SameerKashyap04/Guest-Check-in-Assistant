@@ -116,21 +116,6 @@ export default function AuthScreen() {
     }
   };
 
-  const handleDebugDirectAccess = () => {
-    const debugProfile = {
-      uid: 'OWNER_DEBUG_101',
-      email: 'owner.admin@homestay.com',
-      businessName: businessName.trim() || 'Sameer Homestay',
-      propertyId: 'HS-8821',
-      createdAt: new Date().toISOString()
-    };
-    setOwner(debugProfile);
-    setOwnerId(debugProfile.uid);
-    setBusinessSetup(debugProfile.businessName);
-    useAuthStore.setState({ isUnlocked: true });
-    setTimeout(() => router.replace('/(tabs)'), 50);
-  };
-
   // Theme-aware colors using plain StyleSheet (no NativeWind dark: needed)
   const bg = isDark ? '#0D0F17' : '#F8FAFC';
   const cardBg = isDark ? '#181A24' : '#FFFFFF';
@@ -242,18 +227,6 @@ export default function AuthScreen() {
                 {t('continueWithGoogle')}
               </Text>
             </TouchableOpacity>
-
-            {/* Debug access */}
-            <View style={[styles.debugDivider, { borderTopColor: cardBorder }]}>
-              <TouchableOpacity
-                onPress={handleDebugDirectAccess}
-                activeOpacity={0.8}
-                style={styles.debugBtn}
-              >
-                <Zap size={17} color="#F59E0B" />
-                <Text style={styles.debugBtnText}>{t('directDebugAccess')}</Text>
-              </TouchableOpacity>
-            </View>
 
           </View>
         </ScrollView>

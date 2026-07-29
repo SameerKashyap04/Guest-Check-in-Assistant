@@ -74,28 +74,12 @@ export async function signUpOwner(email: string, password: string, businessName:
       throw new Error('Password should be at least 6 characters long.');
     }
 
-    // For any Firebase server/configuration/network issue, fallback seamlessly to Local Owner Mode
-    const propertyId = `HS-${Math.floor(1000 + Math.random() * 9000)}`;
-    const offlineProfile: OwnerProfile = {
-      uid: `LOCAL_OWNER_${Date.now()}`,
-      email: cleanEmail,
-      businessName: cleanBusinessName,
-      propertyId: propertyId,
-      createdAt: new Date().toISOString(),
-      isOffline: true
-    };
-
-    try {
-      storage.set(`owner_account_${cleanEmail}`, JSON.stringify({ profile: offlineProfile, password }));
-    } catch (_) {}
-
-    return offlineProfile;
+    throw new Error(error?.message || 'Failed to create account. Please check your credentials and network connection.');
   }
 }
 
 /**
  * Logs in an existing Homestay Owner with Email & Password
- * Has automatic offline & unconfigured-firebase fallback
  */
 export async function loginOwner(email: string, password: string): Promise<OwnerProfile> {
   const cleanEmail = email.trim().toLowerCase();
@@ -140,26 +124,7 @@ export async function loginOwner(email: string, password: string): Promise<Owner
       throw new Error('Please enter a valid email address.');
     }
 
-    // For any Firebase server/configuration/network error, fallback to Local Saved Account or Local Owner Mode
-    const savedData = storage.getString(`owner_account_${cleanEmail}`);
-    if (savedData) {
-      try {
-        const parsed = JSON.parse(savedData);
-        if (parsed?.profile) {
-          return { ...parsed.profile, isOffline: true };
-        }
-      } catch (_) {}
-    }
-
-    const offlineProfile: OwnerProfile = {
-      uid: `LOCAL_OWNER_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '')}`,
-      email: cleanEmail,
-      businessName: 'Homestay Property',
-      propertyId: `HS-${Math.floor(1000 + Math.random() * 9000)}`,
-      createdAt: new Date().toISOString(),
-      isOffline: true
-    };
-    return offlineProfile;
+    throw new Error(error?.message || 'Login failed. Please check your credentials and try again.');
   }
 }
 
