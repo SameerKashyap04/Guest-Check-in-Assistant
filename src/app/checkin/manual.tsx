@@ -47,7 +47,7 @@ export default function ManualEntryScreen() {
     }
   }, [rooms]);
 
-  const { control, handleSubmit, setValue, formState: { errors } } = useForm<FormData>({
+  const { control, handleSubmit, setValue, watch, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       fullName: '',
@@ -319,17 +319,22 @@ export default function ManualEntryScreen() {
             <Controller
               control={control}
               name="idNumber"
-              render={({ field: { onChange, onBlur, value } }) => (
-                <Input
-                  label="ID Number"
-                  placeholder="Enter ID number"
-                  onBlur={onBlur}
-                  onChangeText={onChange}
-                  value={value}
-                  error={errors.idNumber?.message}
-                  icon={<Hash size={20} color="#9498AA" />}
-                />
-              )}
+              render={({ field: { onChange, onBlur, value } }) => {
+                const currentDocType = watch('docType');
+                const isAadhaar = currentDocType?.toLowerCase() === 'aadhaar';
+                return (
+                  <Input
+                    label="ID Number"
+                    placeholder="Enter ID number"
+                    onBlur={onBlur}
+                    onChangeText={onChange}
+                    value={value}
+                    keyboardType={isAadhaar ? 'numeric' : 'default'}
+                    error={errors.idNumber?.message}
+                    icon={<Hash size={20} color="#9498AA" />}
+                  />
+                );
+              }}
             />
 
             <Controller

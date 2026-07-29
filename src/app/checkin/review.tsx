@@ -712,6 +712,7 @@ export default function ReviewScreen() {
                     placeholder="Enter document ID number"
                     value={guestForm.idNumber}
                     onChangeText={(v) => setGuestForm(prev => ({ ...prev, idNumber: v }))}
+                    keyboardType={guestForm.docType?.toLowerCase() === 'aadhaar' ? 'numeric' : 'default'}
                     icon={<Hash size={18} color="#9498AA" />}
                   />
 

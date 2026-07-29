@@ -578,6 +578,7 @@ export default function SelfCheckinScreen() {
               placeholder={`Enter ${idType} Number`}
               value={idNumber}
               onChangeText={setIdNumber}
+              keyboardType={idType.toLowerCase() === 'aadhaar' ? 'numeric' : 'default'}
               icon={<IdCard size={18} color="#9498AA" />}
             />
 
@@ -838,6 +839,7 @@ export default function SelfCheckinScreen() {
                     placeholder="Enter ID Number"
                     value={guest.idNumber}
                     onChangeText={(val) => updateAdditionalPerson(guest.id, 'idNumber', val)}
+                    keyboardType={guest.idType.toLowerCase() === 'aadhaar' ? 'numeric' : 'default'}
                     icon={<IdCard size={18} color="#9498AA" />}
                   />
 
