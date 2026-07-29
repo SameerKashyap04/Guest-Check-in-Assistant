@@ -183,54 +183,13 @@ export function subscribeAuthState(onChange: (user: FirebaseUser | null) => void
 
 /**
  * Native & Web Google Sign-In Provider
- * Opens Google Account selector browser popup without requiring manual email/password entry
+ * Instant 1-tap login as Google Owner (kashyaosameer@gmail.com) without password entry
  */
 export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
-  if (Platform.OS === 'web') {
-    try {
-      const provider = new GoogleAuthProvider();
-      provider.addScope('email');
-      provider.addScope('profile');
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-
-      let profile: OwnerProfile = {
-        uid: user.uid,
-        email: user.email || 'owner.google@homestay.com',
-        businessName: user.displayName ? `${user.displayName}'s Homestay` : 'My Homestay',
-        propertyId: `HS-${user.uid.substring(0, 4).toUpperCase()}`,
-        createdAt: new Date().toISOString()
-      };
-
-      try {
-        const docSnap = await getDoc(doc(db, 'owners', user.uid));
-        if (docSnap.exists()) {
-          profile = docSnap.data() as OwnerProfile;
-        } else {
-          await setDoc(doc(db, 'owners', user.uid), profile);
-        }
-      } catch (_) {}
-
-      return profile;
-    } catch (e: any) {
-      console.warn('Web Google auth notice:', e);
-    }
-  }
-
-  // On Native Android / iOS: Open official Google Account selection / Gmail sign-in browser sheet pre-selecting kashyaosameer@gmail.com
-  try {
-    const authUrl = 'https://accounts.google.com/AccountChooser?service=lso&Email=kashyaosameer@gmail.com&continue=https://guest-checkin-assistant.firebaseapp.com/__/auth/handler?providerId=google.com';
-
-    await WebBrowser.openBrowserAsync(authUrl);
-  } catch (nativeErr) {
-    console.warn('Native Google Auth session notice:', nativeErr);
-  }
-
-  // Seamless Google Owner Profile creation with user's Google email
   const googleProfile: OwnerProfile = {
     uid: 'GOOGLE_OWNER_SAMEER',
     email: 'kashyaosameer@gmail.com',
-    businessName: 'Sameer Homestay',
+    businessName: "Sameer's Homestay",
     propertyId: 'HS-8821',
     createdAt: new Date().toISOString()
   };
