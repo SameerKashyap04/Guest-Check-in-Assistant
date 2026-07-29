@@ -36,7 +36,7 @@ export default function AuthScreen() {
 
   // If owner is authenticated, show Security PIN & Biometrics Screen (Setup or Unlock)
   if (isAuthenticated && !isUnlocked) {
-    return <PinScreen />;
+    return <PinScreen onSuccess={() => router.replace('/(tabs)')} />;
   }
 
   const handleAuthSubmit = async () => {

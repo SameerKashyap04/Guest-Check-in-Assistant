@@ -7,7 +7,11 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { ShieldAlert, ShieldCheck } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 
-export function PinScreen() {
+interface PinScreenProps {
+  onSuccess?: () => void;
+}
+
+export function PinScreen({ onSuccess }: PinScreenProps = {}) {
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [isBiometricSupported, setIsBiometricSupported] = useState(false);
@@ -18,20 +22,36 @@ export function PinScreen() {
 
   useEffect(() => {
     (async () => {
-      const compatible = await LocalAuthentication.hasHardwareAsync();
-      const enrolled = await LocalAuthentication.isEnrolledAsync();
-      setIsBiometricSupported(compatible && enrolled);
+      try {
+        const compatible = await LocalAuthentication.hasHardwareAsync();
+        const enrolled = await LocalAuthentication.isEnrolledAsync();
+        setIsBiometricSupported(compatible && enrolled);
+      } catch (e) {
+        setIsBiometricSupported(false);
+      }
     })();
   }, []);
 
+  const handleSuccessUnlock = () => {
+    useAuthStore.setState({ isUnlocked: true });
+    if (onSuccess) {
+      onSuccess();
+    } else {
+      router.replace('/(tabs)');
+    }
+  };
+
   const handleBiometric = async () => {
-    const result = await LocalAuthentication.authenticateAsync({
-      promptMessage: 'Authenticate to unlock',
-      fallbackLabel: 'Use PIN',
-    });
-    if (result.success) {
-      useAuthStore.setState({ isUnlocked: true });
-      router.replace('/');
+    try {
+      const result = await LocalAuthentication.authenticateAsync({
+        promptMessage: 'Authenticate to unlock',
+        fallbackLabel: 'Use PIN',
+      });
+      if (result.success) {
+        handleSuccessUnlock();
+      }
+    } catch (e) {
+      console.warn('Biometric auth error', e);
     }
   };
 
@@ -45,7 +65,7 @@ export function PinScreen() {
       if (step === 'enter') {
         const isValid = await verifyPin(newPin);
         if (isValid) {
-          router.replace('/');
+          handleSuccessUnlock();
         } else {
           Vibration.vibrate();
           setError('Incorrect PIN');
@@ -58,7 +78,7 @@ export function PinScreen() {
       } else if (step === 'confirm') {
         if (newPin === confirmPin) {
           await setupPin(newPin);
-          router.replace('/');
+          handleSuccessUnlock();
         } else {
           Vibration.vibrate();
           setError('PINs do not match. Try again.');
