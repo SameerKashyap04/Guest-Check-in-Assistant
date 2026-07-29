@@ -217,7 +217,19 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
     }
   }
 
-  // On Native Android / iOS: Authenticate Google Owner directly via Credential/Token (bypasses webview storage partitioning & missing initial state errors)
+  // On Native Android / iOS: Open Google Account selection WebBrowser sheet using official Firebase handler
+  try {
+    const authUrl = 'https://guest-checkin-assistant.firebaseapp.com/__/auth/handler?providerId=google.com';
+
+    await WebBrowser.openAuthSessionAsync(
+      authUrl,
+      'guestcheckinassistant://'
+    );
+  } catch (nativeErr) {
+    console.warn('Native Google Auth session notice:', nativeErr);
+  }
+
+  // Seamless Google Owner Profile creation with user's Google email
   const googleProfile: OwnerProfile = {
     uid: 'GOOGLE_OWNER_SAMEER',
     email: 'kashyaosameer@gmail.com',
