@@ -17,14 +17,10 @@ export const GlassCard = React.forwardRef<View, GlassCardProps>(
       <View
         ref={ref}
         className={cn(
-          "bg-white/80 dark:bg-black/40 rounded-3xl border border-transparent dark:border-transparent",
-          variant === 'elevated' && "shadow-lg shadow-black/5 dark:shadow-black/20",
+          "bg-white dark:bg-[#181A24] rounded-3xl border border-gray-200/60 dark:border-gray-800 shadow-sm",
+          variant === 'elevated' && "shadow-md shadow-black/5 dark:shadow-black/30",
           className
         )}
-        style={{
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-        } as any}
         {...props}
       >
         {children}

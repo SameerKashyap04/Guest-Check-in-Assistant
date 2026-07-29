@@ -217,25 +217,25 @@ export default function DashboardScreen() {
         </Text>
         
         <View className="flex-row flex-wrap justify-between">
-          <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl border border-gray-100 dark:border-white/10">
+          <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl">
             <LogIn size={28} color="#38BDF8" className="mb-2" />
             <Text className="text-3xl font-bold text-foreground">{overviewStats.todayCheckins}</Text>
             <Text className="text-xs text-gray-500 font-medium">Check-ins</Text>
           </GlassCard>
           
-          <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl border border-gray-100 dark:border-white/10">
+          <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl">
             <LogOut size={28} color="#14B8A6" className="mb-2" />
             <Text className="text-3xl font-bold text-foreground">{overviewStats.todayCheckouts}</Text>
             <Text className="text-xs text-gray-500 font-medium">Check-outs</Text>
           </GlassCard>
 
-          <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl border border-gray-100 dark:border-white/10">
+          <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl">
             <Users size={28} color="#F59E0B" className="mb-2" />
             <Text className="text-3xl font-bold text-foreground">{overviewStats.activeGuests}</Text>
             <Text className="text-xs text-gray-500 font-medium">Current Guests</Text>
           </GlassCard>
 
-          <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl border border-gray-100 dark:border-white/10">
+          <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl">
             <AlertCircle size={28} color="#EF4444" className="mb-2" />
             <Text className="text-3xl font-bold text-foreground">{overviewStats.pendingVerif}</Text>
             <Text className="text-xs text-gray-500 font-medium">Pending Verif.</Text>
@@ -255,7 +255,7 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </View>
         
-        <GlassCard className="mb-6 p-5 rounded-2xl border border-gray-100 dark:border-white/10">
+        <GlassCard className="mb-6 p-5 rounded-2xl">
           {recentGuests.length === 0 ? (
             <Text className="text-gray-500 text-center py-4">No recent guests found.</Text>
           ) : (
