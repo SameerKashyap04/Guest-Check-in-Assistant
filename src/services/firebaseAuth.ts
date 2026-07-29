@@ -190,8 +190,15 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
     return profile;
   }
 
-  // Native Android / iOS Device Google Sign-In Sheet
+  // Native Android / iOS Device Google Sign-In Sheet using Web Client ID
   try {
+    const WEB_CLIENT_ID = '765584797318-q9gnbmfr650bpgm2vr1na0i3u1mb7i7e.apps.googleusercontent.com';
+    
+    await GoogleSignin.configure({
+      webClientId: WEB_CLIENT_ID,
+      offlineAccess: true,
+    });
+
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     
     let response;
@@ -200,7 +207,7 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
     } catch (err: any) {
       if (err?.code === 'DEVELOPER_ERROR' || err?.message?.includes('DEVELOPER_ERROR') || String(err?.code) === '10') {
         console.warn('GoogleSignin DEVELOPER_ERROR detected, using WebBrowser OAuth flow fallback...');
-        const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=765584797318-q9gnbmfr650bpgm2vr1na0i3u1mb7i7e.apps.googleusercontent.com&response_type=id_token&redirect_uri=https://guest-checkin-assistant.firebaseapp.com/__/auth/handler&scope=openid%20email%20profile&nonce=123456789&prompt=select_account';
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${WEB_CLIENT_ID}&response_type=id_token&redirect_uri=https://guest-checkin-assistant.firebaseapp.com/__/auth/handler&scope=openid%20email%20profile&nonce=123456789&prompt=select_account`;
         
         const webResult = await WebBrowser.openAuthSessionAsync(
           authUrl,
