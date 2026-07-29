@@ -88,14 +88,16 @@ export default function RegistrationsScreen() {
   const fetchAllGuests = async () => {
     try {
       setIsLoading(true);
+      const activePropertyId = propertyId || 'HS-DEFAULT';
       const db = await openDatabase();
       const result = await db.getAllAsync(`
         SELECT g.*, r.room_number, r.room_type, s.check_in_date, s.check_out_date
         FROM guests g
         LEFT JOIN stays s ON s.guest_id = g.id
         LEFT JOIN rooms r ON r.id = s.room_id
+        WHERE g.property_id = ? OR g.property_id IS NULL OR g.property_id = ''
         ORDER BY g.id DESC
-      `);
+      `, [activePropertyId]);
       setGuests(result as any[]);
     } catch (e) {
       console.error('Failed to fetch all registrations', e);

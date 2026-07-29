@@ -6,6 +6,7 @@ import { Search, ChevronLeft, User, DoorOpen, X, Phone, IdCard, MapPin, Calendar
 import { useRouter } from 'expo-router';
 import { openDatabase } from '@/database';
 import { GlassCard } from '@/components/GlassCard';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 export default function SearchScreen() {
   const [query, setQuery] = useState('');
@@ -23,6 +24,8 @@ export default function SearchScreen() {
 
     try {
       setIsLoading(true);
+      const { propertyId } = useSettingsStore.getState();
+      const activePropertyId = propertyId || 'HS-DEFAULT';
       const db = await openDatabase();
       const searchPattern = `%${searchTerm.trim()}%`;
 
@@ -31,14 +34,11 @@ export default function SearchScreen() {
         FROM guests g
         LEFT JOIN stays s ON s.guest_id = g.id
         LEFT JOIN rooms r ON r.id = s.room_id
-        WHERE g.full_name LIKE ?
-           OR g.phone LIKE ?
-           OR g.id_number LIKE ?
-           OR r.room_number LIKE ?
-           OR g.address LIKE ?
+        WHERE (g.property_id = ? OR g.property_id IS NULL OR g.property_id = '')
+          AND (g.full_name LIKE ? OR g.phone LIKE ? OR g.id_number LIKE ? OR r.room_number LIKE ? OR g.address LIKE ?)
         ORDER BY g.id DESC
         LIMIT 25
-      `, [searchPattern, searchPattern, searchPattern, searchPattern, searchPattern]);
+      `, [activePropertyId, searchPattern, searchPattern, searchPattern, searchPattern, searchPattern]);
 
       setResults(searchResults as any[]);
     } catch (e) {

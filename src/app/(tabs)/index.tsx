@@ -121,14 +121,16 @@ export default function DashboardScreen() {
   const fetchGuests = async () => {
     try {
       await autoCheckoutExpiredStays();
+      const activePropertyId = propertyId || 'HS-DEFAULT';
       const db = await openDatabase();
       const guests = await db.getAllAsync(`
         SELECT g.*, r.room_number, r.room_type, s.check_in_date, s.check_out_date
         FROM guests g
         LEFT JOIN stays s ON s.guest_id = g.id
         LEFT JOIN rooms r ON r.id = s.room_id
+        WHERE g.property_id = ? OR g.property_id IS NULL OR g.property_id = ''
         ORDER BY g.id DESC LIMIT 10
-      `);
+      `, [activePropertyId]);
       setRecentGuests(guests as any[]);
       fetchRooms();
 

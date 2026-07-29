@@ -58,17 +58,13 @@ export async function signUpOwner(email: string, password: string, businessName:
       createdAt: new Date().toISOString()
     };
 
-    // Save local backup copy of profile
+    // Save local copy immediately
     try {
       storage.set(`owner_account_${cleanEmail}`, JSON.stringify({ profile, password }));
     } catch (_) {}
 
-    // Save Profile to Firestore Cloud
-    try {
-      await setDoc(doc(db, 'owners', user.uid), profile);
-    } catch (dbErr) {
-      console.warn('Firestore owner profile write warning:', dbErr);
-    }
+    // Non-blocking background sync to Firestore Cloud
+    setDoc(doc(db, 'owners', user.uid), profile).catch((e) => console.warn('Background Firestore write notice:', e));
 
     return profile;
   } catch (error: any) {
@@ -100,7 +96,17 @@ export async function loginOwner(email: string, password: string): Promise<Owner
     const credential = await signInWithEmailAndPassword(auth, cleanEmail, password);
     const user = credential.user;
 
-    let profile: OwnerProfile = {
+    // Check local storage for cached profile first for instant load
+    let cachedProfile: OwnerProfile | null = null;
+    try {
+      const saved = storage.getString(`owner_account_${cleanEmail}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.profile) cachedProfile = parsed.profile;
+      }
+    } catch (_) {}
+
+    let profile: OwnerProfile = cachedProfile || {
       uid: user.uid,
       email: user.email || cleanEmail,
       businessName: 'My Homestay',
@@ -108,20 +114,20 @@ export async function loginOwner(email: string, password: string): Promise<Owner
       createdAt: new Date().toISOString()
     };
 
-    // Save local backup copy of profile
+    // Save local copy immediately
     try {
       storage.set(`owner_account_${cleanEmail}`, JSON.stringify({ profile, password }));
     } catch (_) {}
 
-    // Fetch Profile from Firestore if exists
-    try {
-      const docSnap = await getDoc(doc(db, 'owners', user.uid));
+    // Non-blocking background sync from Firestore
+    getDoc(doc(db, 'owners', user.uid)).then((docSnap) => {
       if (docSnap.exists()) {
-        profile = docSnap.data() as OwnerProfile;
+        const cloudProfile = docSnap.data() as OwnerProfile;
+        try {
+          storage.set(`owner_account_${cleanEmail}`, JSON.stringify({ profile: cloudProfile, password }));
+        } catch (_) {}
       }
-    } catch (dbErr) {
-      console.warn('Firestore profile fetch warning:', dbErr);
-    }
+    }).catch(() => {});
 
     return profile;
   } catch (error: any) {
