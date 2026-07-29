@@ -7,6 +7,7 @@ import {
   User as FirebaseUser 
 } from '@firebase/auth';
 import { doc, setDoc, getDoc } from '@firebase/firestore';
+import { storage } from '@/store/storage';
 
 export interface OwnerProfile {
   uid: string;
@@ -14,24 +15,34 @@ export interface OwnerProfile {
   businessName: string;
   propertyId: string;
   createdAt: string;
+  isOffline?: boolean;
 }
 
 /**
  * Creates a new Homestay Owner account with Email & Password
+ * Has automatic offline fallback if network/Firebase is unreachable
  */
 export async function signUpOwner(email: string, password: string, businessName: string): Promise<OwnerProfile> {
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanBusinessName = businessName.trim() || 'My Homestay';
+
   try {
-    const credential = await createUserWithEmailAndPassword(auth, email, password);
+    const credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
     const user = credential.user;
     const propertyId = `HS-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const profile: OwnerProfile = {
       uid: user.uid,
-      email: user.email || email,
-      businessName: businessName || 'My Homestay',
+      email: user.email || cleanEmail,
+      businessName: cleanBusinessName,
       propertyId: propertyId,
       createdAt: new Date().toISOString()
     };
+
+    // Save local backup copy of profile
+    try {
+      storage.set(`owner_account_${cleanEmail}`, JSON.stringify({ profile, password }));
+    } catch (_) {}
 
     // Save Profile to Firestore Cloud
     try {
@@ -43,25 +54,64 @@ export async function signUpOwner(email: string, password: string, businessName:
     return profile;
   } catch (error: any) {
     console.error('Sign up error:', error);
-    throw new Error(error?.message || 'Failed to create owner account.');
+    const code = error?.code || '';
+
+    // Handle Network / Connection errors by falling back to Local Owner Mode
+    if (code === 'auth/network-request-failed' || code.includes('network') || error?.message?.includes('network-request-failed')) {
+      const propertyId = `HS-${Math.floor(1000 + Math.random() * 9000)}`;
+      const offlineProfile: OwnerProfile = {
+        uid: `LOCAL_OWNER_${Date.now()}`,
+        email: cleanEmail,
+        businessName: cleanBusinessName,
+        propertyId: propertyId,
+        createdAt: new Date().toISOString(),
+        isOffline: true
+      };
+
+      try {
+        storage.set(`owner_account_${cleanEmail}`, JSON.stringify({ profile: offlineProfile, password }));
+      } catch (_) {}
+
+      return offlineProfile;
+    }
+
+    if (code === 'auth/email-already-in-use') {
+      throw new Error('An account with this email address already exists. Please log in instead.');
+    }
+    if (code === 'auth/invalid-email') {
+      throw new Error('Please enter a valid email address.');
+    }
+    if (code === 'auth/weak-password') {
+      throw new Error('Password should be at least 6 characters long.');
+    }
+
+    throw new Error(error?.message || 'Failed to create owner account. Please try again.');
   }
 }
 
 /**
  * Logs in an existing Homestay Owner with Email & Password
+ * Has automatic offline fallback if network/Firebase is unreachable
  */
 export async function loginOwner(email: string, password: string): Promise<OwnerProfile> {
+  const cleanEmail = email.trim().toLowerCase();
+
   try {
-    const credential = await signInWithEmailAndPassword(auth, email, password);
+    const credential = await signInWithEmailAndPassword(auth, cleanEmail, password);
     const user = credential.user;
 
     let profile: OwnerProfile = {
       uid: user.uid,
-      email: user.email || email,
+      email: user.email || cleanEmail,
       businessName: 'My Homestay',
       propertyId: `HS-${user.uid.substring(0, 4).toUpperCase()}`,
       createdAt: new Date().toISOString()
     };
+
+    // Save local backup copy of profile
+    try {
+      storage.set(`owner_account_${cleanEmail}`, JSON.stringify({ profile, password }));
+    } catch (_) {}
 
     // Fetch Profile from Firestore if exists
     try {
@@ -76,7 +126,40 @@ export async function loginOwner(email: string, password: string): Promise<Owner
     return profile;
   } catch (error: any) {
     console.error('Login error:', error);
-    throw new Error(error?.message || 'Invalid email or password.');
+    const code = error?.code || '';
+
+    // Handle Network / Connection errors by falling back to Local Saved Account or Local Mode
+    if (code === 'auth/network-request-failed' || code.includes('network') || error?.message?.includes('network-request-failed')) {
+      const savedData = storage.getString(`owner_account_${cleanEmail}`);
+      if (savedData) {
+        try {
+          const parsed = JSON.parse(savedData);
+          if (parsed?.profile) {
+            return { ...parsed.profile, isOffline: true };
+          }
+        } catch (_) {}
+      }
+
+      // If no prior local backup, generate offline owner profile
+      const offlineProfile: OwnerProfile = {
+        uid: `LOCAL_OWNER_${cleanEmail.replace(/[^a-zA-Z0-9]/g, '')}`,
+        email: cleanEmail,
+        businessName: 'Homestay Property',
+        propertyId: `HS-${Math.floor(1000 + Math.random() * 9000)}`,
+        createdAt: new Date().toISOString(),
+        isOffline: true
+      };
+      return offlineProfile;
+    }
+
+    if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+      throw new Error('Invalid email address or password. Please check your credentials.');
+    }
+    if (code === 'auth/invalid-email') {
+      throw new Error('Please enter a valid email address.');
+    }
+
+    throw new Error(error?.message || 'Failed to log in. Please check your credentials.');
   }
 }
 

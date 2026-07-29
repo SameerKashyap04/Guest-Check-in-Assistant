@@ -1,8 +1,7 @@
 import { storage } from '@/store/storage';
 import { getApp, getApps, initializeApp } from '@firebase/app';
-import { getAuth, initializeAuth } from '@firebase/auth';
+import { getAuth } from '@firebase/auth';
 import { getFirestore } from '@firebase/firestore';
-import { Platform } from 'react-native';
 
 // Firebase Configuration for Guest Check-in Assistant Cloud Sync
 const firebaseConfig = {
@@ -18,32 +17,4 @@ const firebaseConfig = {
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 export const db = getFirestore(app);
-
-// Custom Storage adapter using MMKV for lightning-fast native auth persistence
-const mmkvAuthStorage = {
-  getItem: (key: string) => Promise.resolve(storage.getString(key) ?? null),
-  setItem: (key: string, value: string) => {
-    storage.set(key, value);
-    return Promise.resolve();
-  },
-  removeItem: (key: string) => {
-    storage.remove(key);
-    return Promise.resolve();
-  },
-};
-
-let authInstance;
-if (Platform.OS === 'web') {
-  authInstance = getAuth(app);
-} else {
-  try {
-    const { getReactNativePersistence } = require('firebase/auth');
-    authInstance = initializeAuth(app, {
-      persistence: getReactNativePersistence(mmkvAuthStorage as any),
-    });
-  } catch (e) {
-    authInstance = getAuth(app);
-  }
-}
-
-export const auth = authInstance;
+export const auth = getAuth(app);

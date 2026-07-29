@@ -98,10 +98,18 @@ export default function AuthScreen() {
       setOwnerId(profile.uid);
       useAuthStore.setState({ isUnlocked: true });
 
-      setTimeout(() => router.replace('/(tabs)'), 50);
+      if (profile.isOffline) {
+        Alert.alert(
+          'Offline Mode Activated',
+          'Logged in using local owner account. You can manage guest check-ins offline, and cloud sync will resume when internet is connected.',
+          [{ text: 'Continue to App', onPress: () => router.replace('/(tabs)') }]
+        );
+      } else {
+        setTimeout(() => router.replace('/(tabs)'), 50);
+      }
     } catch (err: any) {
       console.error('Auth error', err);
-      Alert.alert('Authentication Failed', err?.message || 'Please check your credentials and try again.');
+      Alert.alert('Authentication Notice', err?.message || 'Please check your credentials and try again.');
     } finally {
       setIsLoading(false);
     }
