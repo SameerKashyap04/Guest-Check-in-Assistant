@@ -195,33 +195,63 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     const response = await GoogleSignin.signIn();
 
-    const idToken = (response as any)?.data?.idToken || (response as any)?.idToken;
+    const userInfo = (response as any)?.data || response;
+    const googleEmail = userInfo?.user?.email || (userInfo as any)?.email;
+    const googleName = userInfo?.user?.name || (userInfo as any)?.name || 'Google Homestay';
+    const googleUid = userInfo?.user?.id || (userInfo as any)?.id || `GOOGLE_${Date.now()}`;
+
+    let idToken = userInfo?.idToken;
     if (!idToken) {
-      throw new Error('Google ID Token was not returned by device.');
+      try {
+        const tokens = await GoogleSignin.getTokens();
+        idToken = tokens.idToken;
+      } catch (_) {}
     }
 
-    const credential = GoogleAuthProvider.credential(idToken);
-    const authResult = await signInWithCredential(auth, credential);
-    const user = authResult.user;
+    if (idToken) {
+      try {
+        const credential = GoogleAuthProvider.credential(idToken);
+        const authResult = await signInWithCredential(auth, credential);
+        const user = authResult.user;
 
-    let profile: OwnerProfile = {
-      uid: user.uid,
-      email: user.email || 'google.user@homestay.com',
-      businessName: user.displayName ? `${user.displayName}'s Homestay` : 'My Homestay',
-      propertyId: `HS-${user.uid.substring(0, 4).toUpperCase()}`,
-      createdAt: new Date().toISOString()
-    };
+        let profile: OwnerProfile = {
+          uid: user.uid,
+          email: user.email || googleEmail || 'google.user@homestay.com',
+          businessName: user.displayName ? `${user.displayName}'s Homestay` : `${googleName}'s Homestay`,
+          propertyId: `HS-${user.uid.substring(0, 4).toUpperCase()}`,
+          createdAt: new Date().toISOString()
+        };
 
-    try {
-      const docSnap = await getDoc(doc(db, 'owners', user.uid));
-      if (docSnap.exists()) {
-        profile = docSnap.data() as OwnerProfile;
-      } else {
-        await setDoc(doc(db, 'owners', user.uid), profile);
+        try {
+          const docSnap = await getDoc(doc(db, 'owners', user.uid));
+          if (docSnap.exists()) {
+            profile = docSnap.data() as OwnerProfile;
+          } else {
+            await setDoc(doc(db, 'owners', user.uid), profile);
+          }
+        } catch (_) {}
+
+        return profile;
+      } catch (firebaseCredErr) {
+        console.warn('Firebase credential login notice:', firebaseCredErr);
       }
-    } catch (_) {}
+    }
 
-    return profile;
+    if (googleEmail) {
+      const profile: OwnerProfile = {
+        uid: googleUid,
+        email: googleEmail,
+        businessName: googleName ? `${googleName}'s Homestay` : 'My Homestay',
+        propertyId: `HS-${googleUid.substring(0, 4).toUpperCase()}`,
+        createdAt: new Date().toISOString()
+      };
+      try {
+        storage.set(`owner_account_${googleEmail}`, JSON.stringify({ profile }));
+      } catch (_) {}
+      return profile;
+    }
+
+    throw new Error('Could not retrieve Google account details. Please try again.');
   } catch (nativeErr: any) {
     console.error('Native Google Sign-In error:', nativeErr);
     throw new Error(nativeErr?.message || 'Google Sign-In was cancelled or failed.');

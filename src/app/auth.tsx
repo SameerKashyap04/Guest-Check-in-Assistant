@@ -57,14 +57,15 @@ export default function AuthScreen() {
     try {
       setIsLoading(true);
       const profile = await signInWithGoogleOwner();
-      setBusinessSetup(profile.businessName);
+      setBusinessSetup(profile.businessName || 'My Homestay');
       setOwner(profile);
       setOwnerId(profile.uid);
       useAuthStore.setState({ isUnlocked: true });
 
-      setTimeout(() => router.replace('/(tabs)'), 50);
+      router.replace('/(tabs)');
     } catch (err: any) {
-      console.error('Google auth error', err);
+      console.error('Google auth error:', err);
+      Alert.alert('Google Sign-In', err?.message || 'Google Sign-In was not completed.');
     } finally {
       setIsLoading(false);
     }
