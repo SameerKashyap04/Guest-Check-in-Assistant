@@ -89,6 +89,12 @@ export async function initDatabase() {
   } catch (e) {
     // Column already exists
   }
+
+  try {
+    await db.execAsync("ALTER TABLE stays ADD COLUMN status TEXT DEFAULT 'active';");
+  } catch (e) {
+    // Column already exists
+  }
 }
 
 export async function resetDatabase() {

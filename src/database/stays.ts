@@ -58,8 +58,8 @@ export async function createMultipleGuestsAndStay(guestsData: GuestData[], stayD
         
         // 2. Insert Stay record linking guest to room
         await db.runAsync(
-          `INSERT INTO stays (guest_id, room_id, check_in_date, check_out_date, number_of_guests) 
-           VALUES (?, ?, ?, ?, ?)`,
+          `INSERT INTO stays (guest_id, room_id, check_in_date, check_out_date, number_of_guests, status) 
+           VALUES (?, ?, ?, ?, ?, 'active')`,
           [
             guestId,
             stayData.room_id,
@@ -98,7 +98,7 @@ export async function getGuestsForRoom(roomId: number): Promise<any[]> {
       `SELECT g.*, s.check_in_date, s.check_out_date, s.created_at as stay_created_at 
        FROM guests g
        JOIN stays s ON s.guest_id = g.id
-       WHERE s.room_id = ?
+       WHERE s.room_id = ? AND (s.status IS NULL OR s.status = 'active')
        ORDER BY g.id DESC`,
       [roomId]
     );
@@ -115,21 +115,21 @@ export async function checkoutGuestOrRemoveFromRoom(guestId: number, roomId: num
     await db.execAsync('BEGIN TRANSACTION;');
 
     try {
-      // 1. Remove stay records for this guest & room
-      await db.runAsync(`DELETE FROM stays WHERE guest_id = ? AND room_id = ?`, [guestId, roomId]);
+      // 1. Mark active stay records as completed (preserves guest details in database)
+      await db.runAsync(
+        `UPDATE stays SET status = 'completed' WHERE guest_id = ? AND room_id = ? AND (status IS NULL OR status = 'active')`, 
+        [guestId, roomId]
+      );
 
-      // 2. Remove guest record
-      await db.runAsync(`DELETE FROM guests WHERE id = ?`, [guestId]);
-
-      // 3. Check remaining active guests in this room
+      // 2. Check remaining active guests in this room
       const remaining: any = await db.getFirstAsync(
-        `SELECT COUNT(*) as count FROM stays WHERE room_id = ?`,
+        `SELECT COUNT(*) as count FROM stays WHERE room_id = ? AND (status IS NULL OR status = 'active')`,
         [roomId]
       );
 
       const remainingCount = remaining?.count || 0;
 
-      // 4. If no guests left in room, mark room status as available
+      // 3. If no active guests left in room, mark room status as available
       if (remainingCount === 0) {
         await db.runAsync(`UPDATE rooms SET status = 'available' WHERE id = ?`, [roomId]);
       }
@@ -146,18 +146,18 @@ export async function checkoutGuestOrRemoveFromRoom(guestId: number, roomId: num
 
 /**
  * Automatically checks out guests whose check_out_date is earlier than today's date
- * and updates impacted room status to 'available'.
+ * and updates impacted room status to 'available', while preserving guest history.
  */
 export async function autoCheckoutExpiredStays(): Promise<number> {
   try {
     const db = await openDatabase();
     const todayStr = new Date().toISOString().split('T')[0];
     
-    // Find all stays where check_out_date is strictly earlier than today's date
+    // Find all active stays where check_out_date is strictly earlier than today's date
     const expiredStays: any[] = await db.getAllAsync(
       `SELECT s.id as stay_id, s.guest_id, s.room_id 
        FROM stays s 
-       WHERE s.check_out_date < ?`,
+       WHERE s.check_out_date < ? AND (s.status IS NULL OR s.status = 'active')`,
       [todayStr]
     );
 
@@ -169,14 +169,14 @@ export async function autoCheckoutExpiredStays(): Promise<number> {
 
       for (const stay of expiredStays) {
         roomIdsToUpdate.add(stay.room_id);
-        await db.runAsync(`DELETE FROM stays WHERE id = ?`, [stay.stay_id]);
-        await db.runAsync(`DELETE FROM guests WHERE id = ?`, [stay.guest_id]);
+        // Mark stay as completed without deleting guest profile
+        await db.runAsync(`UPDATE stays SET status = 'completed' WHERE id = ?`, [stay.stay_id]);
       }
 
-      // Check each impacted room to update status to available if no guests remain
+      // Check each impacted room to update status to available if no active guests remain
       for (const roomId of roomIdsToUpdate) {
         const remaining: any = await db.getFirstAsync(
-          `SELECT COUNT(*) as count FROM stays WHERE room_id = ?`,
+          `SELECT COUNT(*) as count FROM stays WHERE room_id = ? AND (status IS NULL OR status = 'active')`,
           [roomId]
         );
         if ((remaining?.count || 0) === 0) {
