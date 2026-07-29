@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '@/components/Input';
-import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, ChevronLeft, Zap } from 'lucide-react-native';
+import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, Zap } from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
 import { signUpOwner, loginOwner } from '@/services/firebaseAuth';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -138,11 +138,7 @@ export default function AuthScreen() {
 
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: headerBorder }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <ChevronLeft size={26} color={textMuted} />
-        </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: textPrimary }]}>Homestay Owner Portal</Text>
-        <View style={{ width: 36 }} />
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
@@ -245,14 +241,12 @@ export default function AuthScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   header: {
-    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderBottomWidth: 1,
   },
-  backBtn: { padding: 8, marginLeft: -8, borderRadius: 999 },
   headerTitle: { fontSize: 16, fontWeight: '700' },
   scrollContent: { padding: 20, flexGrow: 1, justifyContent: 'center' },
   card: {

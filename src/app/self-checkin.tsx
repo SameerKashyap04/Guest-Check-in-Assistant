@@ -419,22 +419,6 @@ export default function SelfCheckinScreen() {
               onPress={handleNotifyOwner}
               className="w-full bg-emerald-600 active:bg-emerald-700"
             />
-
-            {Platform.OS === 'web' ? (
-              <Button
-                label="Property Owner Admin Login"
-                variant="outline"
-                onPress={() => router.replace('/auth')}
-                className="w-full"
-              />
-            ) : (
-              <Button
-                label="Back to App Dashboard"
-                variant="outline"
-                onPress={() => router.replace('/(tabs)')}
-                className="w-full"
-              />
-            )}
           </View>
         </GlassCard>
       </SafeAreaView>
