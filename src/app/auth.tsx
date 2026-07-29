@@ -62,18 +62,9 @@ export default function AuthScreen() {
       setOwnerId(profile.uid);
       useAuthStore.setState({ isUnlocked: true });
 
-      if (profile.isOffline) {
-        Alert.alert(
-          'Google Sign-In (Active)',
-          'Logged in with Google account. Your homestay dashboard is active!',
-          [{ text: 'Continue to App', onPress: () => router.replace('/(tabs)') }]
-        );
-      } else {
-        setTimeout(() => router.replace('/(tabs)'), 50);
-      }
+      setTimeout(() => router.replace('/(tabs)'), 50);
     } catch (err: any) {
       console.error('Google auth error', err);
-      Alert.alert('Google Sign-In Notice', err?.message || 'Could not sign in with Google.');
     } finally {
       setIsLoading(false);
     }
