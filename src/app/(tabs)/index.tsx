@@ -77,14 +77,24 @@ export default function DashboardScreen() {
     }
   };
 
+  const [overviewStats, setOverviewStats] = useState({
+    todayCheckins: 0,
+    todayCheckouts: 0,
+    activeGuests: 0,
+    pendingVerif: 0
+  });
+
   // Real-time Cloud Sync Listener for Web Self Check-in Submissions
-  // Note: Guest self check-ins are reviewed & approved in the Online Self Check-ins Portal (scanner.tsx)
   useEffect(() => {
     if (!propertyId) return;
+    const pendingDocIds = new Set<string>();
     const unsubscribe = subscribeToPropertyCheckins(
       propertyId, 
       (cloudGuest) => {
-        // Refresh recent guests list when a new approved stay is processed
+        if (cloudGuest.id) {
+          pendingDocIds.add(cloudGuest.id);
+          setOverviewStats(prev => ({ ...prev, pendingVerif: pendingDocIds.size }));
+        }
         fetchGuests();
       },
       ownerId,
@@ -112,8 +122,42 @@ export default function DashboardScreen() {
       `);
       setRecentGuests(guests as any[]);
       fetchRooms();
+
+      // Dynamic calculation for Today's Overview metrics:
+      const todayIso = new Date().toISOString().split('T')[0];
+      const todayDateObj = new Date();
+      const tYear = todayDateObj.getFullYear();
+      const tMonth = String(todayDateObj.getMonth() + 1).padStart(2, '0');
+      const tDay = String(todayDateObj.getDate()).padStart(2, '0');
+      const todayIndian = `${tDay}/${tMonth}/${tYear}`;
+
+      // 1. Today's Check-ins Count
+      const checkinsRes: any = await db.getFirstAsync(`
+        SELECT COUNT(*) as count FROM stays 
+        WHERE check_in_date LIKE ? OR check_in_date LIKE ? OR check_in_date LIKE ?
+      `, [`${todayIso}%`, `${todayIndian}%`, `%${todayIso}%`]);
+
+      // 2. Today's Check-outs Count
+      const checkoutsRes: any = await db.getFirstAsync(`
+        SELECT COUNT(*) as count FROM stays 
+        WHERE (status = 'completed' AND (check_out_date LIKE ? OR check_out_date LIKE ?))
+           OR (check_out_date LIKE ? OR check_out_date LIKE ?)
+      `, [`${todayIso}%`, `${todayIndian}%`, `${todayIso}%`, `${todayIndian}%`]);
+
+      // 3. Current Active Guests Count
+      const activeRes: any = await db.getFirstAsync(`
+        SELECT COUNT(*) as count FROM stays s
+        WHERE s.status IS NULL OR s.status = 'active'
+      `);
+
+      setOverviewStats(prev => ({
+        ...prev,
+        todayCheckins: checkinsRes?.count || 0,
+        todayCheckouts: checkoutsRes?.count || 0,
+        activeGuests: activeRes?.count || 0
+      }));
     } catch (e) {
-      console.error('Failed to fetch guests', e);
+      console.error('Failed to fetch guests and overview metrics', e);
     }
   };
 
@@ -123,20 +167,23 @@ export default function DashboardScreen() {
     }, [])
   );
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    await fetchGuests();
-    setRefreshing(false);
-  }, []);
-
   return (
     <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
-      <ScrollView
+      <ScrollView 
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={async () => {
+              setRefreshing(true);
+              await fetchGuests();
+              setRefreshing(false);
+            }} 
+          />
+        }
       >
         <View className="mb-6 mt-2">
-          <Text className="text-2xl font-bold text-foreground">{greeting}</Text>
+          <Text className="text-3xl font-extrabold text-foreground tracking-tight">{greeting}</Text>
           <Text className="text-sm text-gray-500 mt-1 font-medium">{todayDate}</Text>
         </View>
 
@@ -172,25 +219,25 @@ export default function DashboardScreen() {
         <View className="flex-row flex-wrap justify-between">
           <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl border border-gray-100 dark:border-white/10">
             <LogIn size={28} color="#38BDF8" className="mb-2" />
-            <Text className="text-3xl font-bold text-foreground">12</Text>
+            <Text className="text-3xl font-bold text-foreground">{overviewStats.todayCheckins}</Text>
             <Text className="text-xs text-gray-500 font-medium">Check-ins</Text>
           </GlassCard>
           
           <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl border border-gray-100 dark:border-white/10">
             <LogOut size={28} color="#14B8A6" className="mb-2" />
-            <Text className="text-3xl font-bold text-foreground">5</Text>
+            <Text className="text-3xl font-bold text-foreground">{overviewStats.todayCheckouts}</Text>
             <Text className="text-xs text-gray-500 font-medium">Check-outs</Text>
           </GlassCard>
 
           <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl border border-gray-100 dark:border-white/10">
             <Users size={28} color="#F59E0B" className="mb-2" />
-            <Text className="text-3xl font-bold text-foreground">42</Text>
+            <Text className="text-3xl font-bold text-foreground">{overviewStats.activeGuests}</Text>
             <Text className="text-xs text-gray-500 font-medium">Current Guests</Text>
           </GlassCard>
 
           <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl border border-gray-100 dark:border-white/10">
             <AlertCircle size={28} color="#EF4444" className="mb-2" />
-            <Text className="text-3xl font-bold text-foreground">3</Text>
+            <Text className="text-3xl font-bold text-foreground">{overviewStats.pendingVerif}</Text>
             <Text className="text-xs text-gray-500 font-medium">Pending Verif.</Text>
           </GlassCard>
         </View>
