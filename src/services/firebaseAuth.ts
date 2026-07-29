@@ -217,9 +217,9 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
     }
   }
 
-  // On Native Android / iOS: Open Google Account selection WebBrowser sheet using official Firebase handler
+  // On Native Android / iOS: Open official Google Account selection / Gmail sign-in browser sheet
   try {
-    const authUrl = 'https://guest-checkin-assistant.firebaseapp.com/__/auth/handler?providerId=google.com';
+    const authUrl = 'https://accounts.google.com/AccountChooser?service=lso&continue=https://guest-checkin-assistant.firebaseapp.com/__/auth/handler?providerId=google.com';
 
     await WebBrowser.openAuthSessionAsync(
       authUrl,
