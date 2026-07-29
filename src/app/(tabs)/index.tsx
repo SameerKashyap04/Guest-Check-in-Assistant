@@ -78,70 +78,20 @@ export default function DashboardScreen() {
   };
 
   // Real-time Cloud Sync Listener for Web Self Check-in Submissions
+  // Note: Guest self check-ins are reviewed & approved in the Online Self Check-ins Portal (scanner.tsx)
   useEffect(() => {
     if (!propertyId) return;
-    const isLocalOnlyMode = storageMode === 'local';
     const unsubscribe = subscribeToPropertyCheckins(
       propertyId, 
-      async (cloudGuest) => {
-        try {
-          const db = await openDatabase();
-          const existing = await db.getFirstAsync('SELECT id FROM guests WHERE full_name = ? AND phone = ?', [cloudGuest.full_name, cloudGuest.phone]);
-          if (!existing) {
-            let roomId = rooms.length > 0 ? rooms[0].id : 1;
-            const matchedRoom = rooms.find(r => r.room_number === cloudGuest.room_number);
-            if (matchedRoom) roomId = matchedRoom.id;
-
-            const allGuests = [
-              {
-                full_name: cloudGuest.full_name,
-                id_number: cloudGuest.id_number,
-                address: cloudGuest.address,
-                phone: cloudGuest.phone,
-                photo_uri: cloudGuest.photo_uri || '',
-                back_photo_uri: cloudGuest.back_photo_uri || '',
-                selfie_uri: cloudGuest.selfie_uri || '',
-                property_id: cloudGuest.property_id,
-                id_type: cloudGuest.id_type,
-                dob: cloudGuest.dob || '',
-                gender: cloudGuest.gender || 'Other',
-                pin_code: cloudGuest.pin_code || ''
-              },
-              ...(cloudGuest.additional_guests || []).map((g: any) => ({
-                full_name: g.fullName || 'Additional Guest',
-                id_number: g.idNumber || 'N/A',
-                address: cloudGuest.address,
-                phone: g.phone || cloudGuest.phone,
-                photo_uri: g.frontPhotoUri || '',
-                back_photo_uri: g.backPhotoUri || '',
-                selfie_uri: g.selfiePhotoUri || '',
-                property_id: cloudGuest.property_id,
-                id_type: g.idType || 'Aadhaar',
-                dob: g.dob || '',
-                gender: g.gender || 'Other',
-                pin_code: cloudGuest.pin_code || ''
-              }))
-            ];
-
-            await createMultipleGuestsAndStay(
-              allGuests,
-              {
-                room_id: roomId,
-                check_in_date: cloudGuest.check_in_date || new Date().toISOString().split('T')[0],
-                check_out_date: cloudGuest.check_out_date || cloudGuest.check_in_date || new Date().toISOString().split('T')[0]
-              }
-            );
-            fetchGuests();
-          }
-        } catch (e) {
-          console.warn('Real-time sync import error', e);
-        }
+      (cloudGuest) => {
+        // Refresh recent guests list when a new approved stay is processed
+        fetchGuests();
       },
       ownerId,
-      isLocalOnlyMode
+      false
     );
     return () => unsubscribe();
-  }, [propertyId, ownerId, storageMode, rooms]);
+  }, [propertyId, ownerId, storageMode]);
 
   const currentHour = new Date().getHours();
   let greeting = 'Good Evening';
