@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'nativewind';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { Platform } from 'react-native';
 import i18n from '../i18n';
 import { initDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -19,18 +20,24 @@ export default function RootLayout() {
   const theme = useSettingsStore((s) => s.theme);
   const language = useSettingsStore((s) => s.language);
 
-  // Synchronize stored theme preference with NativeWind colorScheme
+  // Synchronize stored theme preference with NativeWind colorScheme & Web document root
   useEffect(() => {
     try {
-      if (theme && theme !== 'system') {
-        setColorScheme(theme);
-      } else {
-        setColorScheme('system');
+      const targetScheme = (theme && theme !== 'system') ? theme : 'system';
+      setColorScheme(targetScheme as any);
+
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        const isDark = targetScheme === 'dark' || (targetScheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
       }
     } catch (e) {
       console.warn('Unable to set color scheme', e);
     }
-  }, [theme]);
+  }, [theme, setColorScheme]);
 
   // Synchronize stored language preference with i18n
   useEffect(() => {
@@ -52,10 +59,12 @@ export default function RootLayout() {
     init();
   }, []);
 
+  const isDark = (colorScheme as string) === 'dark' || (theme as string) === 'dark';
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+        <StatusBar style={isDark ? 'light' : 'dark'} />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="(tabs)" />
