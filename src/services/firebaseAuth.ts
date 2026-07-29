@@ -303,6 +303,13 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
     throw new Error('Could not retrieve Google account details. Please try again.');
   } catch (nativeErr: any) {
     console.error('Native Google Sign-In error:', nativeErr);
+    if (nativeErr?.code === statusCodes.SIGN_IN_CANCELLED) {
+      throw new Error('User cancelled the Google Sign-In.');
+    } else if (nativeErr?.code === statusCodes.IN_PROGRESS) {
+      throw new Error('Google Sign-In is already in progress.');
+    } else if (nativeErr?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+      throw new Error('Google Play Services is not available or outdated on this device.');
+    }
     throw new Error(nativeErr?.message || 'Google Sign-In failed or was cancelled.');
   }
 }
