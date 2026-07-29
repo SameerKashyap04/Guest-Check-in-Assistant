@@ -19,6 +19,7 @@ import { signUpOwner, loginOwner, signInWithGoogleOwner } from '@/services/fireb
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { PinScreen } from '@/features/auth/PinScreen';
+import { GoogleLogo } from '@/components/GoogleLogo';
 import { useTranslation } from 'react-i18next';
 
 export default function AuthScreen() {
@@ -262,8 +263,9 @@ export default function AuthScreen() {
               activeOpacity={0.8}
               style={[styles.googleBtn, { opacity: isLoading ? 0.7 : 1 }]}
             >
+              <GoogleLogo size={20} />
               <Text style={styles.googleBtnText}>
-                🌐 {t('continueWithGoogle')}
+                {t('continueWithGoogle')}
               </Text>
             </TouchableOpacity>
 
@@ -358,6 +360,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 10,
     backgroundColor: 'rgba(66,133,244,0.12)',
     borderWidth: 1,
     borderColor: 'rgba(66,133,244,0.3)',
