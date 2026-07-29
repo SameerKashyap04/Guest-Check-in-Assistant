@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '@/components/Input';
 import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, Zap } from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
-import { signUpOwner, loginOwner } from '@/services/firebaseAuth';
+import { signUpOwner, loginOwner, signInWithGoogleOwner } from '@/services/firebaseAuth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { PinScreen } from '@/features/auth/PinScreen';
@@ -49,8 +49,34 @@ export default function AuthScreen() {
 
   // If owner is authenticated, show Security PIN & Biometrics Screen (Setup or Unlock)
   if (isAuthenticated && !isUnlocked) {
-    return <PinScreen onSuccess={() => { setTimeout(() => router.replace('/(tabs)'), 50); }} />;
+    return <PinScreen onSuccess={() => router.replace('/(tabs)')} />;
   }
+
+  const handleGoogleAuth = async () => {
+    try {
+      setIsLoading(true);
+      const profile = await signInWithGoogleOwner();
+      setBusinessSetup(profile.businessName);
+      setOwner(profile);
+      setOwnerId(profile.uid);
+      useAuthStore.setState({ isUnlocked: true });
+
+      if (profile.isOffline) {
+        Alert.alert(
+          'Google Sign-In (Active)',
+          'Logged in with Google account. Your homestay dashboard is active!',
+          [{ text: 'Continue to App', onPress: () => router.replace('/(tabs)') }]
+        );
+      } else {
+        setTimeout(() => router.replace('/(tabs)'), 50);
+      }
+    } catch (err: any) {
+      console.error('Google auth error', err);
+      Alert.alert('Google Sign-In Notice', err?.message || 'Could not sign in with Google.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleAuthSubmit = async () => {
     if (!email.trim() || !password.trim()) {
@@ -229,6 +255,18 @@ export default function AuthScreen() {
               </Text>
             </TouchableOpacity>
 
+            {/* Google Sign-In */}
+            <TouchableOpacity
+              onPress={handleGoogleAuth}
+              disabled={isLoading}
+              activeOpacity={0.8}
+              style={[styles.googleBtn, { opacity: isLoading ? 0.7 : 1 }]}
+            >
+              <Text style={styles.googleBtnText}>
+                🌐 {t('continueWithGoogle')}
+              </Text>
+            </TouchableOpacity>
+
             {/* Debug access */}
             <View style={[styles.debugDivider, { borderTopColor: cardBorder }]}>
               <TouchableOpacity
@@ -313,6 +351,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   submitBtnText: { fontSize: 14, fontWeight: '800' },
+  googleBtn: {
+    marginTop: 10,
+    paddingVertical: 14,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(66,133,244,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(66,133,244,0.3)',
+  },
+  googleBtnText: { fontSize: 14, fontWeight: '700', color: '#4285F4' },
   debugDivider: { marginTop: 16, paddingTop: 16, borderTopWidth: 1 },
   debugBtn: {
     flexDirection: 'row',

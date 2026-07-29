@@ -110,6 +110,7 @@ export const resources = {
       propertyName: 'Property / Business Name *',
       loginToDashboard: 'Log In to Dashboard',
       createOwnerAccount: 'Create Owner Account',
+      continueWithGoogle: 'Continue with Google',
       directDebugAccess: 'Direct Debug Access (No Password)',
       processing: 'Processing...',
 
@@ -255,6 +256,7 @@ export const resources = {
       propertyName: 'संपत्ति / व्यवसाय का नाम *',
       loginToDashboard: 'डैशबोर्ड में लॉग इन करें',
       createOwnerAccount: 'मालिक खाता बनाएं',
+      continueWithGoogle: 'गूगल से जारी रखें',
       directDebugAccess: 'प्रत्यक्ष डिबग पहुंच (बिना पासवर्ड)',
       processing: 'प्रसंस्करण चल रहा है...',
 
@@ -400,6 +402,7 @@ export const resources = {
       propertyName: 'সম্পত্তি / ব্যৱসায়ৰ নাম *',
       loginToDashboard: 'ডেশবৰ্ডত লগ ইন কৰক',
       createOwnerAccount: 'মালিক একাউণ্ট সৃষ্টি কৰক',
+      continueWithGoogle: 'গুগলৰ সৈতে অব্যাহত ৰাখক',
       directDebugAccess: 'প্ৰত্যক্ষ ডিবগ প্ৰৱেশাধিকাৰ (পাছৱৰ্ড নোহোৱাকৈ)',
       processing: 'প্ৰক্ৰিয়া চলি আছে...',
 
