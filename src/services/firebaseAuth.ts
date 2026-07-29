@@ -56,8 +56,15 @@ export async function signUpOwner(email: string, password: string, businessName:
     console.error('Sign up error:', error);
     const code = error?.code || '';
 
-    // Handle Network / Connection errors by falling back to Local Owner Mode
-    if (code === 'auth/network-request-failed' || code.includes('network') || error?.message?.includes('network-request-failed')) {
+    // Handle Network / Connection / API Key errors by falling back to Local Owner Mode
+    if (
+      code === 'auth/network-request-failed' ||
+      code === 'auth/api-key-not-valid' ||
+      code.includes('network') ||
+      code.includes('api-key') ||
+      error?.message?.includes('network-request-failed') ||
+      error?.message?.includes('api-key-not-valid')
+    ) {
       const propertyId = `HS-${Math.floor(1000 + Math.random() * 9000)}`;
       const offlineProfile: OwnerProfile = {
         uid: `LOCAL_OWNER_${Date.now()}`,
@@ -128,8 +135,15 @@ export async function loginOwner(email: string, password: string): Promise<Owner
     console.error('Login error:', error);
     const code = error?.code || '';
 
-    // Handle Network / Connection errors by falling back to Local Saved Account or Local Mode
-    if (code === 'auth/network-request-failed' || code.includes('network') || error?.message?.includes('network-request-failed')) {
+    // Handle Network / Connection / API Key errors by falling back to Local Saved Account or Local Mode
+    if (
+      code === 'auth/network-request-failed' ||
+      code === 'auth/api-key-not-valid' ||
+      code.includes('network') ||
+      code.includes('api-key') ||
+      error?.message?.includes('network-request-failed') ||
+      error?.message?.includes('api-key-not-valid')
+    ) {
       const savedData = storage.getString(`owner_account_${cleanEmail}`);
       if (savedData) {
         try {
