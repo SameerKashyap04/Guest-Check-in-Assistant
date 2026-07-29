@@ -8,6 +8,8 @@ import i18n from '../i18n';
 import { initDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
 
+import { CustomAlertProvider } from '@/components/CustomAlert';
+
 import '../global.css';
 
 SplashScreen.preventAutoHideAsync();
@@ -64,6 +66,7 @@ export default function RootLayout() {
           <Stack.Screen name="reports" />
           <Stack.Screen name="registrations" />
         </Stack>
+        <CustomAlertProvider />
       </ThemeProvider>
     </GestureHandlerRootView>
   );
