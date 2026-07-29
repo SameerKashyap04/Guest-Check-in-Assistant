@@ -87,13 +87,11 @@ export default function AuthScreen() {
 
       setOwner(profile);
       setOwnerId(profile.uid);
+      useAuthStore.setState({ isUnlocked: true });
 
-      const pinExists = await checkPinSetup();
-      if (pinExists) {
-        useAuthStore.setState({ isUnlocked: true });
+      setTimeout(() => {
         router.replace('/(tabs)');
-      }
-      // If PIN does not exist, state is authenticated but unlocked=false, rendering PinScreen in setup mode!
+      }, 50);
     } catch (err: any) {
       console.error('Auth error', err);
       Alert.alert('Authentication Failed', err?.message || 'Please check your credentials and try again.');
@@ -113,12 +111,11 @@ export default function AuthScreen() {
     setOwner(debugProfile);
     setOwnerId(debugProfile.uid);
     setBusinessSetup(debugProfile.businessName);
+    useAuthStore.setState({ isUnlocked: true });
 
-    const pinExists = await checkPinSetup();
-    if (pinExists) {
-      useAuthStore.setState({ isUnlocked: true });
+    setTimeout(() => {
       router.replace('/(tabs)');
-    }
+    }, 50);
   };
 
   return (
