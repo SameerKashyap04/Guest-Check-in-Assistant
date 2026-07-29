@@ -1,33 +1,46 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'nativewind';
+import { useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Platform } from 'react-native';
 import i18n from '../i18n';
 import { initDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
-
 import { CustomAlertProvider } from '@/components/CustomAlert';
 
 import '../global.css';
 
-SplashScreen.preventAutoHideAsync();
+// Prevent the splash screen from auto-hiding before app is ready
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Hard safety net: always hide splash within 4 seconds no matter what
+const splashSafetyTimeout = setTimeout(() => {
+  SplashScreen.hideAsync().catch(() => {});
+}, 4000);
 
 export default function RootLayout() {
-  const { colorScheme, setColorScheme } = useColorScheme();
-  const theme = useSettingsStore((s) => s.theme);
-  const language = useSettingsStore((s) => s.language);
+  const systemColorScheme = useColorScheme();
 
-  // Synchronize stored theme preference with NativeWind colorScheme & Web document root
+  let theme = 'system';
+  let language = 'en';
+  try {
+    theme = useSettingsStore.getState().theme || 'system';
+    language = useSettingsStore.getState().language || 'en';
+  } catch (_) {}
+
+  const storedTheme = useSettingsStore((s) => s.theme);
+  const storedLanguage = useSettingsStore((s) => s.language);
+
+  // Apply stored theme to NativeWind + Web document root
   useEffect(() => {
     try {
-      const targetScheme = (theme && theme !== 'system') ? theme : 'system';
-      setColorScheme(targetScheme as any);
-
       if (Platform.OS === 'web' && typeof document !== 'undefined') {
-        const isDark = targetScheme === 'dark' || (targetScheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        const isDark =
+          storedTheme === 'dark' ||
+          ((!storedTheme || storedTheme === 'system') &&
+            window.matchMedia?.('(prefers-color-scheme: dark)').matches);
         if (isDark) {
           document.documentElement.classList.add('dark');
         } else {
@@ -37,15 +50,18 @@ export default function RootLayout() {
     } catch (e) {
       console.warn('Unable to set color scheme', e);
     }
-  }, [theme, setColorScheme]);
+  }, [storedTheme]);
 
-  // Synchronize stored language preference with i18n
+  // Sync i18n language
   useEffect(() => {
-    if (language) {
-      i18n.changeLanguage(language);
-    }
-  }, [language]);
+    try {
+      if (storedLanguage) {
+        i18n.changeLanguage(storedLanguage);
+      }
+    } catch (_) {}
+  }, [storedLanguage]);
 
+  // Initialize database and hide splash — with guaranteed timeout fallback
   useEffect(() => {
     async function init() {
       try {
@@ -53,13 +69,16 @@ export default function RootLayout() {
       } catch (e) {
         console.error('Failed to init database', e);
       } finally {
+        clearTimeout(splashSafetyTimeout);
         SplashScreen.hideAsync().catch(() => {});
       }
     }
     init();
   }, []);
 
-  const isDark = (colorScheme as string) === 'dark' || (theme as string) === 'dark';
+  const isDark =
+    storedTheme === 'dark' ||
+    ((!storedTheme || storedTheme === 'system') && systemColorScheme === 'dark');
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
