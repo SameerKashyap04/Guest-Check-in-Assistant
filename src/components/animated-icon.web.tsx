@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Keyframe, Easing } from 'react-native-reanimated';
+import { AppLogo } from '@/components/AppLogo';
 
 import classes from './animated-icon.module.css';
 const DURATION = 300;
@@ -66,7 +67,7 @@ export function AnimatedIcon() {
       </Animated.View>
 
       <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
+        <AppLogo size={76} />
       </Animated.View>
     </View>
   );
@@ -94,11 +95,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: 128,
     height: 128,
-  },
-  image: {
-    position: 'absolute',
-    width: 76,
-    height: 71,
   },
   background: {
     width: 128,

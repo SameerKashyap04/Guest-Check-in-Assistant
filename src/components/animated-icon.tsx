@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import Animated, { Easing, Keyframe } from 'react-native-reanimated';
 import { scheduleOnRN } from 'react-native-worklets';
+import { AppLogo } from '@/components/AppLogo';
 
 const INITIAL_SCALE_FACTOR = Dimensions.get('screen').height / 90;
 const DURATION = 600;
@@ -33,7 +34,7 @@ export function AnimatedSplashOverlay() {
     },
   });
 
-  const image = <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />;
+  const image = <AppLogo size={80} />;
 
   return animate ? (
     <Animated.View
@@ -104,7 +105,7 @@ export function AnimatedIcon() {
 
       <Animated.View entering={keyframe.duration(DURATION)} style={styles.background} />
       <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
-        <Image style={styles.image} source={require('@/assets/images/expo-logo.png')} />
+        <AppLogo size={76} />
       </Animated.View>
     </View>
   );
@@ -127,10 +128,6 @@ const styles = StyleSheet.create({
     height: 128,
     zIndex: 100,
   },
-  image: {
-    width: 76,
-    height: 71,
-  },
   background: {
     borderRadius: 40,
     experimental_backgroundImage: `linear-gradient(180deg, #3C9FFE, #0274DF)`,
@@ -140,7 +137,7 @@ const styles = StyleSheet.create({
   },
   splashOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: '#208AEF',
+    backgroundColor: '#0F172A',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1000,
