@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Modal, TouchableOpacity, Platform, Alert, ActivityIndicator, ScrollView, Image } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, Platform, Alert, ActivityIndicator, ScrollView, Image, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '@/components/Button';
-import { Camera, FileText, X, ChevronRight, Upload, Image as ImageIcon, Globe, CheckCircle2, Trash2, User, Phone, IdCard, MapPin, Calendar, Users, Check, UserCheck } from 'lucide-react-native';
+import { Camera, FileText, X, ChevronRight, Upload, Image as ImageIcon, Globe, CheckCircle2, Trash2, User, Phone, IdCard, MapPin, Calendar, Users, Check, UserCheck, Share2, Link2, ExternalLink } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
@@ -23,7 +23,7 @@ const ID_TYPES = [
 
 export default function ScannerScreen() {
   const router = useRouter();
-  const { propertyId, ownerId } = useSettingsStore();
+  const { businessName, propertyId, ownerId, getShareableLink } = useSettingsStore();
   const { rooms, fetchRooms } = useRoomsStore();
 
   const [modalVisible, setModalVisible] = useState(false);
@@ -233,7 +233,7 @@ export default function ScannerScreen() {
       </View>
 
       <Button 
-        label="Scan ID Card with Camera" 
+        label="Scan ID Card" 
         size="lg" 
         className="w-full mb-3"
         icon={<Camera size={20} color="#FFF" className="mr-2" />}
@@ -250,31 +250,22 @@ export default function ScannerScreen() {
         onPress={handleUploadID}
       />
 
-      {/* ONLINE SELF CHECK-INS APPROVAL BUTTON - POSITIONED BETWEEN UPLOAD & MANUAL */}
+      {/* ONLINE SELF CHECK-INS APPROVAL BUTTON */}
       <TouchableOpacity
         onPress={() => setIsPortalModalOpen(true)}
         activeOpacity={0.8}
-        className="w-full mb-3 bg-emerald-600 active:bg-emerald-700 p-4 rounded-2xl flex-row items-center justify-between shadow-sm"
+        className="w-full mb-3 bg-emerald-600 active:bg-emerald-700 px-8 py-4 rounded-2xl flex-row items-center justify-center shadow-sm"
       >
-        <View className="flex-row items-center gap-3">
-          <View className="w-10 h-10 rounded-xl bg-white/20 items-center justify-center">
-            <Globe size={22} color="#FFFFFF" />
-          </View>
-          <View>
-            <Text className="text-white font-bold text-base">Online Self Check-ins</Text>
-            <Text className="text-white/80 text-xs font-medium">Review & approve web submissions</Text>
-          </View>
-        </View>
-
-        {pendingCheckins.length > 0 ? (
-          <View className="bg-white px-3 py-1.5 rounded-full flex-row items-center gap-1.5">
-            <View className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+        <Globe size={20} color="#FFFFFF" className="mr-2" />
+        <Text className="text-white font-bold text-lg">
+          Online Self Check-ins
+        </Text>
+        {pendingCheckins.length > 0 && (
+          <View className="ml-2.5 bg-white px-2.5 py-0.5 rounded-full flex-row items-center justify-center">
             <Text className="text-emerald-700 font-extrabold text-xs">
-              {pendingCheckins.length} Pending
+              {pendingCheckins.length}
             </Text>
           </View>
-        ) : (
-          <ChevronRight size={20} color="#FFFFFF" />
         )}
       </TouchableOpacity>
       
@@ -354,6 +345,51 @@ export default function ScannerScreen() {
 
             {/* Content List */}
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              
+              {/* SHARE ONLINE CHECK-IN LINK CARD */}
+              <GlassCard className="mb-5 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10">
+                <View className="flex-row items-center justify-between mb-2">
+                  <View className="flex-row items-center gap-2.5 flex-1">
+                    <View className="w-8 h-8 rounded-lg bg-emerald-600 justify-center items-center">
+                      <Link2 size={18} color="#FFFFFF" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-bold text-foreground">Guest Self Check-in Link</Text>
+                      <Text className="text-xs text-gray-500">Allow guests to submit their details before arrival</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View className="flex-row gap-2 mt-2">
+                  <TouchableOpacity
+                    onPress={async () => {
+                      try {
+                        await fetchRooms();
+                        const activeLink = getShareableLink(useRoomsStore.getState().rooms);
+                        const message = `Hello! Welcome to ${businessName || 'our property'}. Please complete your online guest self check-in prior to arrival using your unique link:\n${activeLink}`;
+                        await Share.share({ message, title: 'Homestay Self Check-in Link' });
+                      } catch (e) {
+                        console.error('Share error', e);
+                      }
+                    }}
+                    className="flex-1 bg-emerald-600 active:bg-emerald-700 py-2.5 rounded-xl items-center justify-center flex-row gap-1.5 shadow-sm"
+                  >
+                    <Share2 size={16} color="#FFFFFF" />
+                    <Text className="text-xs font-extrabold text-white">Share Link with Guest</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsPortalModalOpen(false);
+                      router.push('/self-checkin');
+                    }}
+                    className="bg-white dark:bg-black/30 border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 rounded-xl items-center justify-center flex-row gap-1.5"
+                  >
+                    <ExternalLink size={16} color="#000000" className="dark:text-white" />
+                    <Text className="text-xs font-bold text-foreground">Open Portal</Text>
+                  </TouchableOpacity>
+                </View>
+              </GlassCard>
               {pendingCheckins.length === 0 ? (
                 <View className="bg-gray-50 dark:bg-gray-800/20 p-8 rounded-2xl items-center justify-center border border-dashed border-gray-200 dark:border-gray-800 my-8">
                   <Globe size={40} color="#9CA3AF" className="mb-3" />

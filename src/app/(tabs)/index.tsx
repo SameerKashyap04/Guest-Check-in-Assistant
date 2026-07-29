@@ -245,57 +245,6 @@ export default function DashboardScreen() {
           </GlassCard>
         </View>
 
-        {/* SELF CHECK-IN BANNER & SHARE LINK */}
-        <GlassCard className="mb-6 p-5 rounded-2xl border border-sky-500/30 bg-sky-500/5">
-          <View className="flex-row items-center justify-between mb-3">
-            <View className="flex-row items-center gap-3">
-              <View className="w-10 h-10 rounded-xl bg-primary/20 items-center justify-center">
-                <Link2 size={22} color="#38BDF8" />
-              </View>
-              <View>
-                <Text className="text-base font-bold text-foreground">Self Check-in Link</Text>
-                <Text className="text-xs text-gray-500 font-medium">Allow guests to check in remotely</Text>
-              </View>
-            </View>
-          </View>
-
-          <View className="flex-row gap-3">
-            <TouchableOpacity
-              onPress={async () => {
-                try {
-                  await fetchRooms();
-                  const activeLink = getShareableLink(useRoomsStore.getState().rooms);
-                  const message = `Hello! Welcome to ${businessName || 'our property'}. Please complete your online guest self check-in prior to arrival using your unique link:\n${activeLink}`;
-                  await Share.share({ message, title: 'Homestay Self Check-in Link' });
-                } catch (e) {
-                  console.error('Share error', e);
-                }
-              }}
-              className="flex-1 bg-black dark:bg-white py-3 rounded-xl items-center justify-center flex-row gap-2"
-            >
-              <Share2 size={16} color="#FFFFFF" className="dark:text-black" />
-              <Text className="text-xs font-bold text-white dark:text-black">Share Link</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => router.push('/self-checkin')}
-              className="flex-1 bg-white dark:bg-black/30 border border-gray-200 dark:border-gray-800 py-3 rounded-xl items-center justify-center flex-row gap-2"
-            >
-              <ExternalLink size={16} color="#000000" />
-              <Text className="text-xs font-bold text-foreground">Open Portal</Text>
-            </TouchableOpacity>
-          </View>
-
-          {storageMode === 'cloud' && (
-            <View className="mt-3 flex-row items-center justify-center gap-1.5 bg-emerald-500/10 py-1.5 rounded-lg border border-emerald-500/20">
-              <Sparkles size={12} color="#10B981" />
-              <Text className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                ⚡ Firebase Cloud Auto-Sync Enabled (Real-time)
-              </Text>
-            </View>
-          )}
-        </GlassCard>
-
         <View className="flex-row justify-between items-center mb-4 mt-4">
           <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
             Recent Registrations
