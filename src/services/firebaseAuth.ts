@@ -187,21 +187,15 @@ export function subscribeAuthState(onChange: (user: FirebaseUser | null) => void
  */
 export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
   if (Platform.OS !== 'web') {
-    try {
-      const authUrl = 'https://guest-checkin-assistant.firebaseapp.com/__/auth/handler?providerId=google.com';
-      const result = await WebBrowser.openAuthSessionAsync(
-        authUrl,
-        'guestcheckinassistant://'
-      );
+    const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=765584797318-q9gnbmfr650bpgm2vr1na0i3u1mb7i7e.apps.googleusercontent.com&response_type=id_token&redirect_uri=https://guest-checkin-assistant.firebaseapp.com/__/auth/handler&scope=openid%20email%20profile&nonce=123456789&prompt=select_account';
+    
+    const result = await WebBrowser.openAuthSessionAsync(
+      authUrl,
+      'guestcheckinassistant://'
+    );
 
-      if (result.type === 'cancel' || result.type === 'dismiss') {
-        throw new Error('Google Sign-In was cancelled.');
-      }
-    } catch (e: any) {
-      if (e?.message?.includes('cancelled')) {
-        throw e;
-      }
-      console.warn('Google auth session notice:', e);
+    if (result.type !== 'success') {
+      throw new Error('Google Sign-In was not completed.');
     }
   }
 
