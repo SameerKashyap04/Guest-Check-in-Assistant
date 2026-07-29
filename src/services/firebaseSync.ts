@@ -30,6 +30,7 @@ export interface CloudGuestCheckin {
   selfie_uri?: string;
   room_number: string;
   check_in_date: string;
+  check_out_date?: string;
   additional_guests?: any[];
   created_at?: any;
   expires_at?: number; // 10-day TTL timestamp
@@ -115,8 +116,12 @@ export async function purgeExpiredTempCheckins(ownerId?: string): Promise<void> 
     snapshot.forEach((d) => {
       deleteDoc(d.ref).catch(() => {});
     });
-  } catch (e) {
-    console.warn('Purge expired temp check-ins warning:', e);
+  } catch (e: any) {
+    if (e?.code === 'permission-denied' || e?.message?.includes('permissions')) {
+      console.info('[Firestore Note] Firestore rules require read/write permissions for "guest_checkins" collection.');
+    } else {
+      console.warn('Purge expired temp check-ins warning:', e);
+    }
   }
 }
 
@@ -163,22 +168,26 @@ export function subscribeToPropertyCheckins(
       });
     };
 
+    const handlePermissionError = (error: any) => {
+      if (error?.code === 'permission-denied' || error?.message?.includes('permissions')) {
+        console.info('[Firestore Rules Hint] Update Firestore Rules in Firebase Console to allow read/write on guest_checkins.');
+      } else {
+        console.warn('Firestore listener error:', error);
+      }
+    };
+
     // 1. Primary listener by property_id
     let unsub1 = () => {};
     if (propertyId) {
       const q1 = query(checkinsRef, where('property_id', '==', propertyId));
-      unsub1 = onSnapshot(q1, handleSnapshot, (error: any) => {
-        console.warn('Firestore property listener warning:', error);
-      });
+      unsub1 = onSnapshot(q1, handleSnapshot, handlePermissionError);
     }
 
     // 2. Secondary listener by owner_id if available
     let unsub2 = () => {};
     if (ownerId && ownerId !== 'OWNER_DEFAULT_101') {
       const q2 = query(checkinsRef, where('owner_id', '==', ownerId));
-      unsub2 = onSnapshot(q2, handleSnapshot, (error: any) => {
-        console.warn('Firestore owner listener warning:', error);
-      });
+      unsub2 = onSnapshot(q2, handleSnapshot, handlePermissionError);
     }
 
     return () => {

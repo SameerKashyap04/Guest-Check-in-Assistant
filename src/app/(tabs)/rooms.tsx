@@ -3,11 +3,11 @@ import { View, Text, FlatList, TouchableOpacity, KeyboardAvoidingView, Platform,
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { useRoomsStore } from '@/store/useRoomsStore';
-import { Plus, X, Trash, Search, LayoutGrid, List, BedDouble, CheckCircle2, UserCheck, Sparkles, Wrench, Users, Calendar, Phone, IdCard, Edit } from 'lucide-react-native';
+import { Plus, X, Trash, Search, LayoutGrid, List, BedDouble, CheckCircle2, UserCheck, Sparkles, Wrench, Users, Calendar, Phone, IdCard, Edit, LogOut, UserX } from 'lucide-react-native';
 import { Input } from '@/components/Input';
 import { Button } from '@/components/Button';
 import { Room } from '@/database/rooms';
-import { getGuestsForRoom } from '@/database/stays';
+import { getGuestsForRoom, checkoutGuestOrRemoveFromRoom } from '@/database/stays';
 
 export default function RoomsScreen() {
   const { rooms, fetchRooms, createRoom, editRoom, removeRoom, isLoading } = useRoomsStore();
@@ -154,6 +154,37 @@ export default function RoomsScreen() {
         ]
       );
     }
+  };
+
+  const handleCheckoutGuest = (guest: any) => {
+    if (!editingRoom && !guest?.room_id) return;
+    const rId = editingRoom ? editingRoom.id : guest.room_id;
+    const gName = guest.full_name || 'Guest';
+    const rNum = editingRoom ? editingRoom.room_number : (guest.room_number || '');
+
+    Alert.alert(
+      "Check-out Guest?",
+      `Are you sure you want to check out ${gName}${rNum ? ` from Room ${rNum}` : ''}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Check-out Guest", 
+          style: "destructive",
+          onPress: async () => {
+            await checkoutGuestOrRemoveFromRoom(guest.id, rId);
+            if (editingRoom) {
+              const updated = await getGuestsForRoom(editingRoom.id);
+              setRoomGuests(updated);
+            }
+            await fetchRooms();
+            if (selectedGuestDetail?.id === guest.id) {
+              setSelectedGuestDetail(null);
+            }
+            Alert.alert('Checked Out', `${gName} has been removed from the room.`);
+          }
+        }
+      ]
+    );
   };
 
   const renderGridItem = ({ item }: { item: Room }) => {
@@ -454,31 +485,42 @@ export default function RoomsScreen() {
                     ) : (
                       <View className="space-y-3 mb-6">
                         {roomGuests.map((guest) => (
-                          <TouchableOpacity 
+                          <View 
                             key={guest.id} 
-                            onPress={() => setSelectedGuestDetail(guest)}
-                            activeOpacity={0.7}
                             className="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-3 flex-row items-center justify-between"
                           >
-                            <View className="flex-row items-center gap-3">
+                            <TouchableOpacity 
+                              onPress={() => setSelectedGuestDetail(guest)}
+                              className="flex-row items-center gap-3 flex-1 mr-2"
+                            >
                               <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
                                 <Text className="text-foreground font-bold text-base">
                                   {guest.full_name ? guest.full_name.charAt(0).toUpperCase() : '?'}
                                 </Text>
                               </View>
-                              <View>
-                                <Text className="text-sm font-bold text-foreground">{guest.full_name}</Text>
+                              <View className="flex-1">
+                                <Text className="text-sm font-bold text-foreground" numberOfLines={1}>{guest.full_name}</Text>
                                 <Text className="text-[11px] text-gray-500 font-medium">{guest.id_type || 'ID'}: {guest.id_number || 'N/A'}</Text>
                               </View>
-                            </View>
+                            </TouchableOpacity>
 
-                            <View className="items-end gap-1">
-                              <View className="bg-emerald-100 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full">
-                                <Text className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400">Checked In</Text>
-                              </View>
-                              <Text className="text-[10px] text-primary font-semibold">Tap to view ID Card →</Text>
+                            <View className="flex-row items-center gap-2">
+                              <TouchableOpacity 
+                                onPress={() => setSelectedGuestDetail(guest)}
+                                className="bg-primary/10 px-2.5 py-1.5 rounded-xl"
+                              >
+                                <Text className="text-[10px] font-bold text-primary">View ID</Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity 
+                                onPress={() => handleCheckoutGuest(guest)}
+                                className="bg-red-500/10 active:bg-red-500/20 px-2.5 py-1.5 rounded-xl flex-row items-center gap-1"
+                              >
+                                <UserX size={12} color="#EF4444" />
+                                <Text className="text-[10px] font-bold text-red-500">Check-out</Text>
+                              </TouchableOpacity>
                             </View>
-                          </TouchableOpacity>
+                          </View>
                         ))}
                       </View>
                     )}
@@ -494,8 +536,8 @@ export default function RoomsScreen() {
                   /* EDIT / CREATE FORM VIEW */
                   <View>
                     <Input
-                      label="Room Number"
-                      placeholder="e.g. 101"
+                      label="Room Number *"
+                      placeholder="e.g. 101, 102"
                       value={roomNumber}
                       onChangeText={setRoomNumber}
                       returnKeyType="next"
@@ -642,7 +684,7 @@ export default function RoomsScreen() {
               )}
 
               {/* GUEST INFO DETAILS */}
-              <View className="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 gap-3">
+              <View className="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 gap-3 mb-6">
                 <View className="flex-row items-center justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
                   <Text className="text-xs font-medium text-gray-500">Document Type</Text>
                   <Text className="text-xs font-bold text-foreground">{selectedGuestDetail?.id_type || 'N/A'}</Text>
@@ -668,6 +710,15 @@ export default function RoomsScreen() {
                   <Text className="text-xs font-bold text-foreground max-w-[60%] text-right">{selectedGuestDetail?.address || 'N/A'}</Text>
                 </View>
               </View>
+
+              {/* CHECK-OUT GUEST ACTION BUTTON */}
+              <TouchableOpacity
+                onPress={() => handleCheckoutGuest(selectedGuestDetail)}
+                className="bg-red-500/10 border border-red-500/30 p-4 rounded-2xl flex-row items-center justify-center gap-2 active:bg-red-500/20"
+              >
+                <UserX size={18} color="#EF4444" />
+                <Text className="font-bold text-red-500 text-sm">Check-out & Remove Guest from Room</Text>
+              </TouchableOpacity>
             </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>

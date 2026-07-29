@@ -9,6 +9,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { pushGuestCheckinToCloud } from '@/services/firebaseSync';
+import { DatePicker } from '@/components/DatePicker';
 
 export interface Room {
   id: number;
@@ -40,6 +41,22 @@ export default function SelfCheckinScreen() {
   const activeOwnerId = (searchParams?.owner_id as string) || storeOwnerId || 'OWNER_DEFAULT_101';
   const activePropertyName = (searchParams?.property_name as string) || businessName || 'Homestay Property';
 
+  const getTodayStr = () => {
+    const t = new Date();
+    const y = t.getFullYear();
+    const m = String(t.getMonth() + 1).padStart(2, '0');
+    const d = String(t.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
+  const getTomorrowStr = () => {
+    const t = new Date(Date.now() + 86400000);
+    const y = t.getFullYear();
+    const m = String(t.getMonth() + 1).padStart(2, '0');
+    const d = String(t.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  };
+
   // Form State
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -49,6 +66,8 @@ export default function SelfCheckinScreen() {
   const [idNumber, setIdNumber] = useState('');
   const [address, setAddress] = useState('');
   const [pinCode, setPinCode] = useState('');
+  const [checkInDate, setCheckInDate] = useState(getTodayStr());
+  const [checkOutDate, setCheckOutDate] = useState(getTomorrowStr());
 
   // Additional Guests State (Family / Group Check-in)
   const [additionalGuests, setAdditionalGuests] = useState<AdditionalGuest[]>([]);
@@ -332,8 +351,8 @@ export default function SelfCheckinScreen() {
             },
             {
               room_id: effectiveRoomId,
-              check_in_date: todayStr,
-              check_out_date: todayStr,
+              check_in_date: checkInDate,
+              check_out_date: checkOutDate,
             }
           );
         } catch (localDbErr) {
@@ -358,7 +377,8 @@ export default function SelfCheckinScreen() {
           back_photo_uri: backPhotoUri || '',
           selfie_uri: selfiePhotoUri || '',
           room_number: roomNum,
-          check_in_date: todayStr,
+          check_in_date: checkInDate,
+          check_out_date: checkOutDate,
           additional_guests: additionalGuests,
         });
       } catch (cloudErr) {
@@ -500,12 +520,30 @@ export default function SelfCheckinScreen() {
               })}
             </View>
 
-            <Input
+            <DatePicker
               label="Date of Birth"
-              placeholder="DD/MM/YYYY"
               value={dob}
               onChangeText={setDob}
-              icon={<Calendar size={18} color="#9498AA" />}
+              autoSelectToday={false}
+              placeholder="Select Date of Birth"
+            />
+          </GlassCard>
+
+          {/* DATES OF STAY */}
+          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">
+            Dates of Stay
+          </Text>
+          <GlassCard className="mb-6 p-4 rounded-2xl border border-gray-100 dark:border-white/10 gap-3">
+            <DatePicker
+              label="Check-in Date *"
+              value={checkInDate}
+              onChangeText={setCheckInDate}
+            />
+            <DatePicker
+              label="Check-out Date *"
+              value={checkOutDate}
+              onChangeText={setCheckOutDate}
+              autoSelectToday={false}
             />
           </GlassCard>
 
@@ -562,7 +600,7 @@ export default function SelfCheckinScreen() {
             />
           </GlassCard>
 
-          {/* 3. ID PHOTOS & OPTIONAL SELFIE */}
+          {/* 3. ID PHOTOS & GUEST SELFIE */}
           <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">
             3. Photos & Guest Selfie
           </Text>
@@ -641,15 +679,12 @@ export default function SelfCheckinScreen() {
               )}
             </View>
 
-            {/* OPTIONAL SELFIE PHOTO */}
+            {/* GUEST SELFIE PHOTO */}
             <View className="pt-3 border-t border-gray-100 dark:border-gray-800">
               <View className="flex-row items-center justify-between mb-2">
                 <View className="flex-row items-center gap-1.5">
                   <Camera size={16} color="#000000" />
                   <Text className="text-sm font-bold text-foreground">Guest Selfie Photo</Text>
-                </View>
-                <View className="bg-gray-100 dark:bg-gray-800 px-2.5 py-0.5 rounded-full">
-                  <Text className="text-[10px] font-bold text-gray-700 dark:text-gray-300">Optional</Text>
                 </View>
               </View>
 
@@ -685,10 +720,10 @@ export default function SelfCheckinScreen() {
 
           </GlassCard>
 
-          {/* 3. ADDITIONAL PERSONS (FAMILY & GROUP CHECK-IN) */}
+          {/* 4. ADDITIONAL PERSONS (FAMILY & GROUP CHECK-IN) */}
           <View className="flex-row justify-between items-center mb-3 ml-1">
             <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              3. Additional Guests / Persons
+              4. Additional Guests / Persons
             </Text>
             <TouchableOpacity
               onPress={addAdditionalPerson}
@@ -742,7 +777,7 @@ export default function SelfCheckinScreen() {
                   />
 
                   <Input
-                    label="Mobile Phone (Optional)"
+                    label="Mobile Phone"
                     placeholder="Mobile number"
                     keyboardType="phone-pad"
                     value={guest.phone}
@@ -750,7 +785,15 @@ export default function SelfCheckinScreen() {
                     icon={<Phone size={18} color="#9498AA" />}
                   />
 
-                  <Text className="text-sm font-semibold text-foreground mb-2 ml-1">Gender</Text>
+                  <DatePicker
+                    label="Date of Birth"
+                    value={guest.dob}
+                    onChangeText={(val) => updateAdditionalPerson(guest.id, 'dob', val)}
+                    autoSelectToday={false}
+                    placeholder="Select Date of Birth"
+                  />
+
+                  <Text className="text-sm font-semibold text-foreground mb-2 ml-1 mt-2">Gender</Text>
                   <View className="flex-row gap-3 mb-4">
                     {['Male', 'Female', 'Other'].map((g) => {
                       const isSel = guest.gender === g;
@@ -791,7 +834,7 @@ export default function SelfCheckinScreen() {
                   </View>
 
                   <Input
-                    label={`${guest.idType} Number (Optional)`}
+                    label={`${guest.idType} Number`}
                     placeholder="Enter ID Number"
                     value={guest.idNumber}
                     onChangeText={(val) => updateAdditionalPerson(guest.id, 'idNumber', val)}
@@ -799,7 +842,7 @@ export default function SelfCheckinScreen() {
                   />
 
                   {/* ID Front Photo */}
-                  <View className="pt-2 border-t border-gray-100 dark:border-gray-800">
+                  <View className="pt-2 border-t border-gray-100 dark:border-gray-800 mb-3">
                     <Text className="text-xs font-bold text-foreground mb-2">ID Photo (Front)</Text>
                     {guest.frontPhotoUri ? (
                       <View className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800">
@@ -826,6 +869,39 @@ export default function SelfCheckinScreen() {
                         >
                           <UploadCloud size={16} color="#000000" />
                           <Text className="text-xs font-bold text-foreground">Upload</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
+
+                  {/* Additional Guest Selfie Photo */}
+                  <View className="pt-2 border-t border-gray-100 dark:border-gray-800">
+                    <Text className="text-xs font-bold text-foreground mb-2">Person {idx + 2} Selfie Photo</Text>
+                    {guest.selfiePhotoUri ? (
+                      <View className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800">
+                        <Image source={{ uri: guest.selfiePhotoUri }} style={{ width: '100%', height: 140 }} resizeMode="cover" />
+                        <TouchableOpacity 
+                          onPress={() => updateAdditionalPerson(guest.id, 'selfiePhotoUri', null)}
+                          className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full"
+                        >
+                          <X size={14} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      </View>
+                    ) : (
+                      <View className="flex-row gap-2">
+                        <TouchableOpacity 
+                          onPress={() => pickImage('selfie', true, guest.id)}
+                          className="flex-1 bg-black/5 dark:bg-white/5 p-3 rounded-xl items-center border border-dashed border-black/20 dark:border-white/20 flex-row justify-center gap-1.5"
+                        >
+                          <Camera size={16} color="#000000" />
+                          <Text className="text-xs font-bold text-foreground">Take Selfie</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                          onPress={() => pickImage('selfie', false, guest.id)}
+                          className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-3 rounded-xl items-center border border-dashed border-gray-300 dark:border-gray-700 flex-row justify-center gap-1.5"
+                        >
+                          <ImageIcon size={16} color="#9CA3AF" />
+                          <Text className="text-xs font-bold text-foreground">Upload Selfie</Text>
                         </TouchableOpacity>
                       </View>
                     )}

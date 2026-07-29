@@ -108,3 +108,91 @@ export async function getGuestsForRoom(roomId: number): Promise<any[]> {
     return [];
   }
 }
+
+export async function checkoutGuestOrRemoveFromRoom(guestId: number, roomId: number): Promise<void> {
+  try {
+    const db = await openDatabase();
+    await db.execAsync('BEGIN TRANSACTION;');
+
+    try {
+      // 1. Remove stay records for this guest & room
+      await db.runAsync(`DELETE FROM stays WHERE guest_id = ? AND room_id = ?`, [guestId, roomId]);
+
+      // 2. Remove guest record
+      await db.runAsync(`DELETE FROM guests WHERE id = ?`, [guestId]);
+
+      // 3. Check remaining active guests in this room
+      const remaining: any = await db.getFirstAsync(
+        `SELECT COUNT(*) as count FROM stays WHERE room_id = ?`,
+        [roomId]
+      );
+
+      const remainingCount = remaining?.count || 0;
+
+      // 4. If no guests left in room, mark room status as available
+      if (remainingCount === 0) {
+        await db.runAsync(`UPDATE rooms SET status = 'available' WHERE id = ?`, [roomId]);
+      }
+
+      await db.execAsync('COMMIT;');
+    } catch (err) {
+      await db.execAsync('ROLLBACK;').catch(() => {});
+      console.error('Error during checkout guest rollback', err);
+    }
+  } catch (e) {
+    console.warn('Local SQLite error on guest checkout:', e);
+  }
+}
+
+/**
+ * Automatically checks out guests whose check_out_date is earlier than today's date
+ * and updates impacted room status to 'available'.
+ */
+export async function autoCheckoutExpiredStays(): Promise<number> {
+  try {
+    const db = await openDatabase();
+    const todayStr = new Date().toISOString().split('T')[0];
+    
+    // Find all stays where check_out_date is strictly earlier than today's date
+    const expiredStays: any[] = await db.getAllAsync(
+      `SELECT s.id as stay_id, s.guest_id, s.room_id 
+       FROM stays s 
+       WHERE s.check_out_date < ?`,
+      [todayStr]
+    );
+
+    if (!expiredStays || expiredStays.length === 0) return 0;
+
+    await db.execAsync('BEGIN TRANSACTION;');
+    try {
+      const roomIdsToUpdate = new Set<number>();
+
+      for (const stay of expiredStays) {
+        roomIdsToUpdate.add(stay.room_id);
+        await db.runAsync(`DELETE FROM stays WHERE id = ?`, [stay.stay_id]);
+        await db.runAsync(`DELETE FROM guests WHERE id = ?`, [stay.guest_id]);
+      }
+
+      // Check each impacted room to update status to available if no guests remain
+      for (const roomId of roomIdsToUpdate) {
+        const remaining: any = await db.getFirstAsync(
+          `SELECT COUNT(*) as count FROM stays WHERE room_id = ?`,
+          [roomId]
+        );
+        if ((remaining?.count || 0) === 0) {
+          await db.runAsync(`UPDATE rooms SET status = 'available' WHERE id = ?`, [roomId]);
+        }
+      }
+
+      await db.execAsync('COMMIT;');
+      return expiredStays.length;
+    } catch (err) {
+      await db.execAsync('ROLLBACK;').catch(() => {});
+      console.error('Error auto checking out expired stays:', err);
+      return 0;
+    }
+  } catch (e) {
+    console.warn('SQLite error during autoCheckoutExpiredStays:', e);
+    return 0;
+  }
+}

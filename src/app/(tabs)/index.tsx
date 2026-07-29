@@ -9,7 +9,7 @@ import { openDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useRoomsStore } from '@/store/useRoomsStore';
 import { subscribeToPropertyCheckins } from '@/services/firebaseSync';
-import { createMultipleGuestsAndStay } from '@/database/stays';
+import { createMultipleGuestsAndStay, autoCheckoutExpiredStays } from '@/database/stays';
 import { parseCheckinImportText } from '@/utils/checkinImporter';
 import { Alert } from 'react-native';
 
@@ -128,7 +128,7 @@ export default function DashboardScreen() {
               {
                 room_id: roomId,
                 check_in_date: cloudGuest.check_in_date || new Date().toISOString().split('T')[0],
-                check_out_date: cloudGuest.check_in_date || new Date().toISOString().split('T')[0]
+                check_out_date: cloudGuest.check_out_date || cloudGuest.check_in_date || new Date().toISOString().split('T')[0]
               }
             );
             fetchGuests();
@@ -151,6 +151,7 @@ export default function DashboardScreen() {
 
   const fetchGuests = async () => {
     try {
+      await autoCheckoutExpiredStays();
       const db = await openDatabase();
       const guests = await db.getAllAsync(`
         SELECT g.*, r.room_number, r.room_type, s.check_in_date, s.check_out_date
@@ -160,6 +161,7 @@ export default function DashboardScreen() {
         ORDER BY g.id DESC LIMIT 10
       `);
       setRecentGuests(guests as any[]);
+      fetchRooms();
     } catch (e) {
       console.error('Failed to fetch guests', e);
     }
