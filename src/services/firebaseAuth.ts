@@ -193,7 +193,49 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
   // Native Android / iOS Device Google Sign-In Sheet
   try {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-    const response = await GoogleSignin.signIn();
+    
+    let response;
+    try {
+      response = await GoogleSignin.signIn();
+    } catch (err: any) {
+      if (err?.code === 'DEVELOPER_ERROR' || err?.message?.includes('DEVELOPER_ERROR') || String(err?.code) === '10') {
+        console.warn('GoogleSignin DEVELOPER_ERROR detected, using WebBrowser OAuth flow fallback...');
+        const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=765584797318-q9gnbmfr650bpgm2vr1na0i3u1mb7i7e.apps.googleusercontent.com&response_type=id_token&redirect_uri=https://guest-checkin-assistant.firebaseapp.com/__/auth/handler&scope=openid%20email%20profile&nonce=123456789&prompt=select_account';
+        
+        const webResult = await WebBrowser.openAuthSessionAsync(
+          authUrl,
+          'guestcheckinassistant://'
+        );
+
+        if (webResult.type !== 'success' || !webResult.url) {
+          throw new Error('Google Sign-In was cancelled or not completed.');
+        }
+
+        const url = webResult.url;
+        const idTokenMatch = url.match(/id_token=([^&]+)/);
+        if (idTokenMatch && idTokenMatch[1]) {
+          const idToken = idTokenMatch[1];
+          const credential = GoogleAuthProvider.credential(idToken);
+          const authResult = await signInWithCredential(auth, credential);
+          const user = authResult.user;
+
+          let profile: OwnerProfile = {
+            uid: user.uid,
+            email: user.email || 'google.user@homestay.com',
+            businessName: user.displayName ? `${user.displayName}'s Homestay` : 'My Homestay',
+            propertyId: `HS-${user.uid.substring(0, 4).toUpperCase()}`,
+            createdAt: new Date().toISOString()
+          };
+
+          try {
+            await setDoc(doc(db, 'owners', user.uid), profile);
+          } catch (_) {}
+
+          return profile;
+        }
+      }
+      throw err;
+    }
 
     const userInfo = (response as any)?.data || response;
     const googleEmail = userInfo?.user?.email || (userInfo as any)?.email;
@@ -254,6 +296,6 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
     throw new Error('Could not retrieve Google account details. Please try again.');
   } catch (nativeErr: any) {
     console.error('Native Google Sign-In error:', nativeErr);
-    throw new Error(nativeErr?.message || 'Google Sign-In was cancelled or failed.');
+    throw new Error(nativeErr?.message || 'Google Sign-In failed or was cancelled.');
   }
 }
