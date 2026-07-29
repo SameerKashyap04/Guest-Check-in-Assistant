@@ -163,24 +163,15 @@ export default function RegistrationsScreen() {
         contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Search Input & Import Button */}
-        <View className="mb-4 flex-row items-center gap-2">
-          <View className="flex-1">
-            <Input 
-              placeholder="Search by name, phone, ID, room..." 
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              icon={<Search size={20} color="#9498AA" />}
-              className="mb-0"
-            />
-          </View>
-          <TouchableOpacity
-            onPress={() => setIsImportModalVisible(true)}
-            className="bg-black dark:bg-white px-4 py-3.5 rounded-2xl flex-row items-center gap-1.5"
-          >
-            <LogIn size={18} color="#FFFFFF" className="dark:text-black" />
-            <Text className="text-xs font-bold text-white dark:text-black">Import</Text>
-          </TouchableOpacity>
+        {/* Search Input */}
+        <View className="mb-4">
+          <Input 
+            placeholder="Search by name, phone, ID, room..." 
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            icon={<Search size={20} color="#9498AA" />}
+            className="mb-0"
+          />
         </View>
 
         {/* Registrations List */}

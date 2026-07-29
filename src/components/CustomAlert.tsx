@@ -10,7 +10,7 @@ import {
   AlertOptions,
   useColorScheme,
 } from 'react-native';
-import { CheckCircle2, AlertCircle, ShieldAlert, Info, Sparkles } from 'lucide-react-native';
+import { CheckCircle2, AlertCircle, ShieldAlert, Info, HelpCircle } from 'lucide-react-native';
 
 export type AlertType = 'success' | 'error' | 'warning' | 'info' | 'confirm';
 
@@ -107,7 +107,7 @@ export function CustomAlertProvider() {
       case 'confirm':
         return (
           <View style={[styles.iconCircle, { backgroundColor: 'rgba(56,189,248,0.15)' }]}>
-            <Sparkles size={32} color="#0284C7" />
+            <HelpCircle size={32} color="#0284C7" />
           </View>
         );
       default:
