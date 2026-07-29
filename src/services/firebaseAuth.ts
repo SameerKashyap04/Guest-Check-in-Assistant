@@ -14,6 +14,15 @@ import { storage } from '@/store/storage';
 import * as WebBrowser from 'expo-web-browser';
 import { Platform } from 'react-native';
 
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+
+try {
+  GoogleSignin.configure({
+    webClientId: '765584797318-q9gnbmfr650bpgm2vr1na0i3u1mb7i7e.apps.googleusercontent.com',
+    offlineAccess: true,
+  });
+} catch (_) {}
+
 WebBrowser.maybeCompleteAuthSession();
 
 export interface OwnerProfile {
@@ -134,6 +143,9 @@ export async function loginOwner(email: string, password: string): Promise<Owner
 export async function logoutOwner(): Promise<void> {
   try {
     await signOut(auth);
+    if (Platform.OS !== 'web') {
+      await GoogleSignin.signOut().catch(() => {});
+    }
   } catch (error) {
     console.error('Logout error:', error);
   }
@@ -148,7 +160,7 @@ export function subscribeAuthState(onChange: (user: FirebaseUser | null) => void
 
 /**
  * Native & Web Google Sign-In Provider
- * Requires successful Google Authentication
+ * Uses native SDK on Android/iOS and signInWithPopup on Web
  */
 export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
   if (Platform.OS === 'web') {
@@ -160,8 +172,8 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
 
     let profile: OwnerProfile = {
       uid: user.uid,
-      email: user.email || 'google.owner@homestay.com',
-      businessName: user.displayName ? `${user.displayName}'s Homestay` : 'Google Homestay',
+      email: user.email || 'google.user@homestay.com',
+      businessName: user.displayName ? `${user.displayName}'s Homestay` : 'My Homestay',
       propertyId: `HS-${user.uid.substring(0, 4).toUpperCase()}`,
       createdAt: new Date().toISOString()
     };
@@ -178,45 +190,40 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
     return profile;
   }
 
-  // Native Android / iOS Google OAuth Session
-  const authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=765584797318-q9gnbmfr650bpgm2vr1na0i3u1mb7i7e.apps.googleusercontent.com&response_type=id_token&redirect_uri=https://guest-checkin-assistant.firebaseapp.com/__/auth/handler&scope=openid%20email%20profile&nonce=123456789&prompt=select_account';
-  
-  const result = await WebBrowser.openAuthSessionAsync(
-    authUrl,
-    'guestcheckinassistant://'
-  );
+  // Native Android / iOS Device Google Sign-In Sheet
+  try {
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    const response = await GoogleSignin.signIn();
 
-  if (result.type !== 'success' || !result.url) {
-    throw new Error('Google Sign-In was cancelled or failed. Please select your Google account to log in.');
-  }
-
-  // Parse ID token from Google OAuth redirect URL if available
-  const url = result.url;
-  const idTokenMatch = url.match(/id_token=([^&]+)/);
-  if (idTokenMatch && idTokenMatch[1]) {
-    try {
-      const idToken = idTokenMatch[1];
-      const credential = GoogleAuthProvider.credential(idToken);
-      const authResult = await signInWithCredential(auth, credential);
-      const user = authResult.user;
-
-      const profile: OwnerProfile = {
-        uid: user.uid,
-        email: user.email || 'google.user@homestay.com',
-        businessName: user.displayName ? `${user.displayName}'s Homestay` : 'My Homestay',
-        propertyId: `HS-${user.uid.substring(0, 4).toUpperCase()}`,
-        createdAt: new Date().toISOString()
-      };
-
-      try {
-        await setDoc(doc(db, 'owners', user.uid), profile);
-      } catch (_) {}
-
-      return profile;
-    } catch (credErr) {
-      console.warn('Firebase Google credential auth warning:', credErr);
+    const idToken = (response as any)?.data?.idToken || (response as any)?.idToken;
+    if (!idToken) {
+      throw new Error('Google ID Token was not returned by device.');
     }
-  }
 
-  throw new Error('Google Authentication was not completed. Please try again.');
+    const credential = GoogleAuthProvider.credential(idToken);
+    const authResult = await signInWithCredential(auth, credential);
+    const user = authResult.user;
+
+    let profile: OwnerProfile = {
+      uid: user.uid,
+      email: user.email || 'google.user@homestay.com',
+      businessName: user.displayName ? `${user.displayName}'s Homestay` : 'My Homestay',
+      propertyId: `HS-${user.uid.substring(0, 4).toUpperCase()}`,
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      const docSnap = await getDoc(doc(db, 'owners', user.uid));
+      if (docSnap.exists()) {
+        profile = docSnap.data() as OwnerProfile;
+      } else {
+        await setDoc(doc(db, 'owners', user.uid), profile);
+      }
+    } catch (_) {}
+
+    return profile;
+  } catch (nativeErr: any) {
+    console.error('Native Google Sign-In error:', nativeErr);
+    throw new Error(nativeErr?.message || 'Google Sign-In was cancelled or failed.');
+  }
 }
