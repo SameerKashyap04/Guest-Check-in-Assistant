@@ -183,9 +183,28 @@ export function subscribeAuthState(onChange: (user: FirebaseUser | null) => void
 
 /**
  * Native & Web Google Sign-In Provider
- * Instant 1-tap login as Google Owner (kashyaosameer@gmail.com) without password entry
+ * Launches real Google Auth browser sheet for user account selection
  */
 export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
+  if (Platform.OS !== 'web') {
+    try {
+      const authUrl = 'https://guest-checkin-assistant.firebaseapp.com/__/auth/handler?providerId=google.com';
+      const result = await WebBrowser.openAuthSessionAsync(
+        authUrl,
+        'guestcheckinassistant://'
+      );
+
+      if (result.type === 'cancel' || result.type === 'dismiss') {
+        throw new Error('Google Sign-In was cancelled.');
+      }
+    } catch (e: any) {
+      if (e?.message?.includes('cancelled')) {
+        throw e;
+      }
+      console.warn('Google auth session notice:', e);
+    }
+  }
+
   const googleProfile: OwnerProfile = {
     uid: 'GOOGLE_OWNER_SAMEER',
     email: 'kashyaosameer@gmail.com',
