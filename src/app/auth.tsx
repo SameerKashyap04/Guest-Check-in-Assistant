@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   StyleSheet,
   useColorScheme,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '@/components/Input';
@@ -283,6 +284,22 @@ export default function AuthScreen() {
               </Text>
             </TouchableOpacity>
 
+          </View>
+
+          {/* Devify Branding Footer */}
+          <View style={{ alignItems: 'center', marginTop: 20, marginBottom: 16, gap: 6 }}>
+            <TouchableOpacity 
+              onPress={() => Linking.openURL('https://www.devify.co.in')}
+              activeOpacity={0.7}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: isDark ? 'rgba(56,189,248,0.1)' : 'rgba(2,132,199,0.08)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#38BDF8' : '#0284C7' }}>
+                Crafted with ❤️ by Devify • www.devify.co.in
+              </Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted }}>
+              Guest Check-in Assistant v1.2.0
+            </Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

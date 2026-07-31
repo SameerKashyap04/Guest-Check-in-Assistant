@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, KeyboardAvoidingView, Platform, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { useSettingsStore } from '@/store/useSettingsStore';
@@ -363,8 +363,16 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        <View className="items-center justify-center">
-          <Text className="text-muted text-sm text-gray-400">Guest Check-in Assistant v1.0.0</Text>
+        <View className="items-center justify-center py-6 gap-2">
+          <Text className="text-xs font-semibold text-gray-400">Guest Check-in Assistant v1.2.0</Text>
+          <TouchableOpacity 
+            onPress={() => Linking.openURL('https://www.devify.co.in')}
+            activeOpacity={0.7}
+            className="flex-row items-center gap-1.5 bg-primary/10 px-4 py-2 rounded-full border border-primary/20"
+          >
+            <Globe size={14} color="#38BDF8" />
+            <Text className="text-xs font-bold text-primary">Crafted with ❤️ by Devify • www.devify.co.in</Text>
+          </TouchableOpacity>
         </View>
 
       </ScrollView>
