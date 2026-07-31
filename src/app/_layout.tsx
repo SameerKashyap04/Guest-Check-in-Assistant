@@ -33,24 +33,16 @@ export default function RootLayout() {
   const storedTheme = useSettingsStore((s) => s.theme);
   const storedLanguage = useSettingsStore((s) => s.language);
 
-  // Apply stored theme to NativeWind + Web document root
+  // Force light mode on Web document root
   useEffect(() => {
     try {
       if (Platform.OS === 'web' && typeof document !== 'undefined') {
-        const isDark =
-          storedTheme === 'dark' ||
-          ((!storedTheme || storedTheme === 'system') &&
-            window.matchMedia?.('(prefers-color-scheme: dark)').matches);
-        if (isDark) {
-          document.documentElement.classList.add('dark');
-        } else {
-          document.documentElement.classList.remove('dark');
-        }
+        document.documentElement.classList.remove('dark');
       }
     } catch (e) {
       console.warn('Unable to set color scheme', e);
     }
-  }, [storedTheme]);
+  }, []);
 
   // Sync i18n language
   useEffect(() => {
@@ -76,14 +68,10 @@ export default function RootLayout() {
     init();
   }, []);
 
-  const isDark =
-    storedTheme === 'dark' ||
-    ((!storedTheme || storedTheme === 'system') && systemColorScheme === 'dark');
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
+      <ThemeProvider value={DefaultTheme}>
+        <StatusBar style="dark" />
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
           <Stack.Screen name="(tabs)" />

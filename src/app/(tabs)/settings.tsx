@@ -287,11 +287,10 @@ export default function SettingsScreen() {
         </Text>
 
         <GlassCard className="mb-6 p-2 overflow-hidden">
-          {[t('propertyProfile'), t('language'), t('theme')].map((item, index) => {
+          {[t('propertyProfile'), t('language')].map((item, index) => {
             let detailText = '';
             if (index === 0) detailText = businessName || 'Edit Details';
             if (index === 1) detailText = getLanguageLabel(language);
-            if (index === 2) detailText = getThemeLabel(theme);
 
             return (
               <TouchableOpacity 
@@ -300,10 +299,9 @@ export default function SettingsScreen() {
                 onPress={() => {
                   if (index === 0) { setTempPropName(businessName || ''); setProfileModalOpen(true); }
                   else if (index === 1) { setLangModalOpen(true); }
-                  else if (index === 2) { setThemeModalOpen(true); }
                 }}
                 className={`flex-row justify-between items-center p-4 active:bg-gray-50 dark:active:bg-gray-800/50 ${
-                  index !== 2 ? 'border-b border-gray-100 dark:border-gray-800' : ''
+                  index !== 1 ? 'border-b border-gray-100 dark:border-gray-800' : ''
                 }`}
               >
                 <Text className="text-base font-medium text-foreground">{item}</Text>
@@ -367,39 +365,9 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ULTRA PRETTY DEVIFY CREDITS & VERSION */}
+        {/* CLEAN APP VERSION FOOTER */}
         <View className="items-center justify-center pt-2 pb-8">
-          <TouchableOpacity
-            onPress={() => Linking.openURL('https://www.devify.co.in')}
-            activeOpacity={0.8}
-            className="w-full"
-          >
-            <GlassCard className="p-4 rounded-3xl border border-sky-500/25 dark:border-sky-400/20 bg-sky-500/5 dark:bg-sky-400/5 flex-row items-center justify-between">
-              <View className="flex-row items-center gap-3.5 flex-1">
-                <View className="w-10 h-10 rounded-2xl bg-sky-500/15 dark:bg-sky-400/20 items-center justify-center border border-sky-500/30">
-                  <Code2 size={19} color="#38BDF8" />
-                </View>
-                <View className="flex-1">
-                  <View className="flex-row items-center gap-1 mb-0.5">
-                    <Text className="text-[10px] font-extrabold uppercase tracking-wider text-sky-500 dark:text-sky-400">
-                      Crafted with ❤️ by
-                    </Text>
-                  </View>
-                  <Text className="text-base font-black text-foreground tracking-tight">
-                    DEVIFY
-                  </Text>
-                </View>
-              </View>
-
-              <View className="bg-sky-500/10 dark:bg-sky-400/15 px-3 py-1.5 rounded-full border border-sky-500/30 flex-row items-center gap-1.5">
-                <Globe size={12} color="#38BDF8" />
-                <Text className="text-xs font-bold text-sky-500 dark:text-sky-400">
-                  www.devify.co.in ↗
-                </Text>
-              </View>
-            </GlassCard>
-          </TouchableOpacity>
-          <Text className="text-[11px] font-semibold text-gray-400 mt-3">
+          <Text className="text-[11px] font-semibold text-gray-400">
             Guest Check-in Assistant v1.1.7
           </Text>
         </View>
