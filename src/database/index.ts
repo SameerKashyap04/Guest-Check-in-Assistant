@@ -106,3 +106,16 @@ export async function resetDatabase() {
   `);
   await initDatabase();
 }
+
+export async function assignLegacyUnassignedGuests(targetPropertyId: string) {
+  if (!targetPropertyId) return;
+  try {
+    const db = await openDatabase();
+    await db.runAsync(
+      `UPDATE guests SET property_id = ? WHERE property_id IS NULL OR property_id = '' OR property_id = 'HS-DEFAULT'`,
+      [targetPropertyId]
+    );
+  } catch (e) {
+    console.warn('Migration assignLegacyUnassignedGuests notice:', e);
+  }
+}

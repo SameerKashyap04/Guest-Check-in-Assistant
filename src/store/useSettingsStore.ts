@@ -34,6 +34,7 @@ interface SettingsState {
   selfCheckinUrl: string;
   setBusinessSetup: (name: string) => void;
   setOwnerId: (uid: string) => void;
+  setPropertyId: (id: string) => void;
   setStorageMode: (mode: 'cloud' | 'local') => void;
   setLanguage: (lang: 'en' | 'hi' | 'as') => void;
   setTheme: (theme: 'system' | 'light' | 'dark') => void;
@@ -57,6 +58,7 @@ export const useSettingsStore = create<SettingsState>()(
         set({ businessName: name, propertyId: currentPropId, hasCompletedSetup: true });
       },
       setOwnerId: (uid) => set({ ownerId: uid }),
+      setPropertyId: (id) => set({ propertyId: id }),
       setStorageMode: (mode) => set({ storageMode: mode }),
       setLanguage: (lang) => {
         try { i18n.changeLanguage(lang); } catch (_) {}

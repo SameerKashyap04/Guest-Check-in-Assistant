@@ -9,6 +9,8 @@ import { CheckCircle2, User, Hash, MapPin, Phone, Edit2, Calendar, DoorOpen, Plu
 import { Input } from '@/components/Input';
 import { createMultipleGuestsAndStay } from '@/database/stays';
 import { useRoomsStore } from '@/store/useRoomsStore';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import * as ImagePicker from 'expo-image-picker';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
 
@@ -287,6 +289,10 @@ export default function ReviewScreen() {
 
     setIsSaving(true);
     try {
+      const { propertyId } = useSettingsStore.getState();
+      const { owner } = useAuthStore.getState();
+      const activePropertyId = propertyId || owner?.propertyId || 'HS-DEFAULT';
+
       await createMultipleGuestsAndStay(
         guestsData.map(g => ({
           full_name: g.name,
@@ -295,6 +301,7 @@ export default function ReviewScreen() {
           phone: g.phone,
           photo_uri: g.photoUri || '',
           back_photo_uri: g.backPhotoUri || '',
+          property_id: activePropertyId,
           id_type: g.docType,
           dob: g.dob,
           gender: g.gender,

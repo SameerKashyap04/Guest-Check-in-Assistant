@@ -22,6 +22,8 @@ import { PinScreen } from '@/features/auth/PinScreen';
 import { GoogleLogo } from '@/components/GoogleLogo';
 import { useTranslation } from 'react-i18next';
 
+import { assignLegacyUnassignedGuests } from '@/database';
+
 export default function AuthScreen() {
   const { t } = useTranslation();
   const router = useRouter();
@@ -35,7 +37,7 @@ export default function AuthScreen() {
   const [isLoading, setIsLoading] = useState(false);
 
   const { isAuthenticated, isUnlocked, setOwner, checkPinSetup } = useAuthStore();
-  const { setBusinessSetup, setOwnerId } = useSettingsStore();
+  const { setBusinessSetup, setPropertyId, setOwnerId } = useSettingsStore();
 
   useEffect(() => {
     checkPinSetup();
@@ -58,6 +60,10 @@ export default function AuthScreen() {
       setIsLoading(true);
       const profile = await signInWithGoogleOwner();
       setBusinessSetup(profile.businessName || 'My Homestay');
+      if (profile.propertyId) {
+        setPropertyId(profile.propertyId);
+        assignLegacyUnassignedGuests(profile.propertyId).catch(() => {});
+      }
       setOwner(profile);
       setOwnerId(profile.uid);
       useAuthStore.setState({ isUnlocked: true });
@@ -98,6 +104,10 @@ export default function AuthScreen() {
 
       setOwner(profile);
       setOwnerId(profile.uid);
+      if (profile.propertyId) {
+        setPropertyId(profile.propertyId);
+        assignLegacyUnassignedGuests(profile.propertyId).catch(() => {});
+      }
       useAuthStore.setState({ isUnlocked: true });
 
       if (profile.isOffline) {
