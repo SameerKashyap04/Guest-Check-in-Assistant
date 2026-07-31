@@ -286,73 +286,9 @@ export default function AuthScreen() {
 
           </View>
 
-          {/* Ultra Modern Devify Branding Footer */}
-          <View style={{ alignItems: 'center', marginTop: 20, marginBottom: 16 }}>
-            <TouchableOpacity 
-              onPress={() => Linking.openURL('https://www.devify.co.in')}
-              activeOpacity={0.8}
-              style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                backgroundColor: isDark ? 'rgba(18,20,28,0.7)' : 'rgba(255,255,255,0.85)',
-                borderColor: isDark ? 'rgba(56,189,248,0.3)' : 'rgba(56,189,248,0.3)',
-                borderWidth: 1,
-                borderRadius: 24,
-                paddingHorizontal: 16,
-                paddingVertical: 14,
-                width: '100%',
-                shadowColor: '#000',
-                shadowOpacity: 0.05,
-                shadowRadius: 8,
-                elevation: 2,
-              }}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
-                <View style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 14,
-                  backgroundColor: 'rgba(56,189,248,0.15)',
-                  borderWidth: 1,
-                  borderColor: 'rgba(56,189,248,0.3)',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}>
-                  <Code2 size={18} color="#38BDF8" />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                    <Sparkles size={10} color="#38BDF8" />
-                    <Text style={{ fontSize: 9, fontWeight: '900', color: isDark ? '#38BDF8' : '#0284C7', letterSpacing: 0.8, textTransform: 'uppercase' }}>
-                      Engineered By
-                    </Text>
-                  </View>
-                  <Text style={{ fontSize: 14, fontWeight: '900', color: textPrimary, letterSpacing: -0.2 }}>
-                    DEVIFY
-                  </Text>
-                  <Text style={{ fontSize: 10, fontWeight: '500', color: textMuted }}>
-                    Software & Mobile Apps
-                  </Text>
-                </View>
-              </View>
-
-              <View style={{
-                backgroundColor: '#38BDF8',
-                paddingHorizontal: 12,
-                paddingVertical: 8,
-                borderRadius: 14,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 5,
-              }}>
-                <Globe size={12} color="#FFFFFF" />
-                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 11 }}>devify.co.in</Text>
-                <ExternalLink size={11} color="#FFFFFF" />
-              </View>
-            </TouchableOpacity>
-
-            <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted, marginTop: 12 }}>
+          {/* Clean App Version Footer */}
+          <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 16 }}>
+            <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted }}>
               Guest Check-in Assistant v1.1.7
             </Text>
           </View>

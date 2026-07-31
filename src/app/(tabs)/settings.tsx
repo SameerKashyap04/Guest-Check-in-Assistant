@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2, Cloud, HardDrive, Mail, KeyRound, Sparkles, Code2, ExternalLink } from 'lucide-react-native';
+import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2, Cloud, HardDrive, Mail, KeyRound, Code2, ExternalLink, Heart } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';
@@ -242,16 +242,18 @@ export default function SettingsScreen() {
                 Alert.alert('Reset Error', err?.message || 'Failed to send password reset email.');
               }
             }}
-            className="flex-row justify-between items-center p-4 border-b border-gray-100 dark:border-gray-800"
+            className="flex-row justify-between items-center p-4 border-b border-gray-100 dark:border-gray-800 active:bg-gray-50 dark:active:bg-gray-800/50"
           >
-            <View className="flex-row items-center gap-3">
-              <KeyRound size={18} color="#3B82F6" />
+            <View className="flex-row items-center gap-3.5">
+              <View className="w-10 h-10 rounded-2xl bg-sky-500/10 dark:bg-sky-400/20 items-center justify-center border border-sky-500/20">
+                <KeyRound size={18} color="#38BDF8" />
+              </View>
               <View>
-                <Text className="text-base font-medium text-foreground">Password Reset Link</Text>
+                <Text className="text-base font-semibold text-foreground">Password Reset Link</Text>
                 <Text className="text-xs text-gray-400">Send password reset email template</Text>
               </View>
             </View>
-            <ChevronRight size={18} color="#94A3B8" />
+            <ChevronRight size={20} color="#9CA3AF" />
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -264,16 +266,18 @@ export default function SettingsScreen() {
                 Alert.alert('Verification Error', err?.message || 'Failed to send verification email.');
               }
             }}
-            className="flex-row justify-between items-center p-4"
+            className="flex-row justify-between items-center p-4 active:bg-gray-50 dark:active:bg-gray-800/50"
           >
-            <View className="flex-row items-center gap-3">
-              <Mail size={18} color="#10B981" />
+            <View className="flex-row items-center gap-3.5">
+              <View className="w-10 h-10 rounded-2xl bg-emerald-500/10 dark:bg-emerald-400/20 items-center justify-center border border-emerald-500/20">
+                <Mail size={18} color="#10B981" />
+              </View>
               <View>
-                <Text className="text-base font-medium text-foreground">Email Address Verification</Text>
+                <Text className="text-base font-semibold text-foreground">Email Address Verification</Text>
                 <Text className="text-xs text-gray-400">Send email verification template</Text>
               </View>
             </View>
-            <ChevronRight size={18} color="#94A3B8" />
+            <ChevronRight size={20} color="#9CA3AF" />
           </TouchableOpacity>
         </GlassCard>
 
@@ -363,38 +367,35 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ULTRA MODERN DEVIFY CREDITS & VERSION */}
-        <View className="items-center justify-center pt-2 pb-6">
+        {/* ULTRA PRETTY DEVIFY CREDITS & VERSION */}
+        <View className="items-center justify-center pt-2 pb-8">
           <TouchableOpacity
             onPress={() => Linking.openURL('https://www.devify.co.in')}
             activeOpacity={0.8}
             className="w-full"
           >
-            <GlassCard className="p-4 rounded-3xl border border-sky-500/30 dark:border-sky-400/25 flex-row items-center justify-between">
+            <GlassCard className="p-4 rounded-3xl border border-sky-500/25 dark:border-sky-400/20 bg-sky-500/5 dark:bg-sky-400/5 flex-row items-center justify-between">
               <View className="flex-row items-center gap-3.5 flex-1">
-                <View className="w-11 h-11 rounded-2xl bg-sky-500/15 dark:bg-sky-400/20 items-center justify-center border border-sky-500/30">
-                  <Code2 size={20} color="#38BDF8" />
+                <View className="w-10 h-10 rounded-2xl bg-sky-500/15 dark:bg-sky-400/20 items-center justify-center border border-sky-500/30">
+                  <Code2 size={19} color="#38BDF8" />
                 </View>
                 <View className="flex-1">
                   <View className="flex-row items-center gap-1 mb-0.5">
-                    <Sparkles size={11} color="#38BDF8" />
-                    <Text className="text-[10px] font-black uppercase tracking-wider text-sky-500 dark:text-sky-400">
-                      Engineered By
+                    <Text className="text-[10px] font-extrabold uppercase tracking-wider text-sky-500 dark:text-sky-400">
+                      Crafted with ❤️ by
                     </Text>
                   </View>
-                  <Text className="text-base font-extrabold text-foreground tracking-tight">
+                  <Text className="text-base font-black text-foreground tracking-tight">
                     DEVIFY
-                  </Text>
-                  <Text className="text-[11px] font-medium text-gray-400">
-                    Software & Mobile Apps
                   </Text>
                 </View>
               </View>
 
-              <View className="bg-sky-500 dark:bg-sky-400 px-3.5 py-2 rounded-2xl flex-row items-center gap-1.5 shadow-sm">
-                <Globe size={13} color="#FFFFFF" />
-                <Text className="text-white font-bold text-xs">devify.co.in</Text>
-                <ExternalLink size={12} color="#FFFFFF" />
+              <View className="bg-sky-500/10 dark:bg-sky-400/15 px-3 py-1.5 rounded-full border border-sky-500/30 flex-row items-center gap-1.5">
+                <Globe size={12} color="#38BDF8" />
+                <Text className="text-xs font-bold text-sky-500 dark:text-sky-400">
+                  www.devify.co.in ↗
+                </Text>
               </View>
             </GlassCard>
           </TouchableOpacity>
