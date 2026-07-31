@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '@/components/Input';
-import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, Zap } from 'lucide-react-native';
+import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, Zap, Sparkles, Code2, Globe, ExternalLink } from 'lucide-react-native';
 import { useRouter, Stack } from 'expo-router';
 import { signUpOwner, loginOwner, signInWithGoogleOwner, resetOwnerPassword } from '@/services/firebaseAuth';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -286,33 +286,73 @@ export default function AuthScreen() {
 
           </View>
 
-          {/* Devify Branding Footer */}
+          {/* Ultra Modern Devify Branding Footer */}
           <View style={{ alignItems: 'center', marginTop: 20, marginBottom: 16 }}>
             <TouchableOpacity 
               onPress={() => Linking.openURL('https://www.devify.co.in')}
               activeOpacity={0.8}
               style={{
+                flexDirection: 'row',
                 alignItems: 'center',
-                backgroundColor: isDark ? 'rgba(56,189,248,0.08)' : 'rgba(2,132,199,0.06)',
-                borderColor: isDark ? 'rgba(56,189,248,0.25)' : 'rgba(2,132,199,0.2)',
+                justifyContent: 'space-between',
+                backgroundColor: isDark ? 'rgba(18,20,28,0.7)' : 'rgba(255,255,255,0.85)',
+                borderColor: isDark ? 'rgba(56,189,248,0.3)' : 'rgba(56,189,248,0.3)',
                 borderWidth: 1,
-                borderRadius: 20,
-                paddingHorizontal: 18,
-                paddingVertical: 10,
-                width: '100%'
+                borderRadius: 24,
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                width: '100%',
+                shadowColor: '#000',
+                shadowOpacity: 0.05,
+                shadowRadius: 8,
+                elevation: 2,
               }}
             >
-              <Text style={{ fontSize: 10, fontWeight: '800', color: isDark ? '#38BDF8' : '#0284C7', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>
-                Crafted & Engineered By
-              </Text>
-              <Text style={{ fontSize: 14, fontWeight: '900', color: textPrimary }}>
-                Devify <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted }}>| Software Solutions</Text>
-              </Text>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? '#38BDF8' : '#0284C7', marginTop: 4 }}>
-                www.devify.co.in ↗
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+                <View style={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: 14,
+                  backgroundColor: 'rgba(56,189,248,0.15)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(56,189,248,0.3)',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <Code2 size={18} color="#38BDF8" />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                    <Sparkles size={10} color="#38BDF8" />
+                    <Text style={{ fontSize: 9, fontWeight: '900', color: isDark ? '#38BDF8' : '#0284C7', letterSpacing: 0.8, textTransform: 'uppercase' }}>
+                      Engineered By
+                    </Text>
+                  </View>
+                  <Text style={{ fontSize: 14, fontWeight: '900', color: textPrimary, letterSpacing: -0.2 }}>
+                    DEVIFY
+                  </Text>
+                  <Text style={{ fontSize: 10, fontWeight: '500', color: textMuted }}>
+                    Software & Mobile Apps
+                  </Text>
+                </View>
+              </View>
+
+              <View style={{
+                backgroundColor: '#38BDF8',
+                paddingHorizontal: 12,
+                paddingVertical: 8,
+                borderRadius: 14,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 5,
+              }}>
+                <Globe size={12} color="#FFFFFF" />
+                <Text style={{ color: '#FFFFFF', fontWeight: '800', fontSize: 11 }}>devify.co.in</Text>
+                <ExternalLink size={11} color="#FFFFFF" />
+              </View>
             </TouchableOpacity>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted, marginTop: 10 }}>
+
+            <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted, marginTop: 12 }}>
               Guest Check-in Assistant v1.1.7
             </Text>
           </View>
