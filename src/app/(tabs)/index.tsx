@@ -144,22 +144,28 @@ export default function DashboardScreen() {
 
       // 1. Today's Check-ins Count
       const checkinsRes: any = await db.getFirstAsync(`
-        SELECT COUNT(*) as count FROM stays 
-        WHERE check_in_date LIKE ? OR check_in_date LIKE ? OR check_in_date LIKE ?
-      `, [`${todayIso}%`, `${todayIndian}%`, `%${todayIso}%`]);
+        SELECT COUNT(*) as count FROM stays s
+        JOIN guests g ON g.id = s.guest_id
+        WHERE g.property_id = ?
+          AND (s.check_in_date LIKE ? OR s.check_in_date LIKE ? OR s.check_in_date LIKE ?)
+      `, [activePropertyId, `${todayIso}%`, `${todayIndian}%`, `%${todayIso}%`]);
 
       // 2. Today's Check-outs Count — counts stays marked 'completed' with today's check_out_date
       const checkoutsRes: any = await db.getFirstAsync(`
-        SELECT COUNT(*) as count FROM stays 
-        WHERE status = 'completed' 
-          AND (check_out_date LIKE ? OR check_out_date LIKE ? OR check_out_date LIKE ?)
-      `, [`${todayIso}%`, `${todayIndian}%`, `%${todayIso}%`]);
+        SELECT COUNT(*) as count FROM stays s
+        JOIN guests g ON g.id = s.guest_id
+        WHERE g.property_id = ?
+          AND s.status = 'completed' 
+          AND (s.check_out_date LIKE ? OR s.check_out_date LIKE ? OR s.check_out_date LIKE ?)
+      `, [activePropertyId, `${todayIso}%`, `${todayIndian}%`, `%${todayIso}%`]);
 
       // 3. Current Active Guests Count
       const activeRes: any = await db.getFirstAsync(`
         SELECT COUNT(*) as count FROM stays s
-        WHERE s.status IS NULL OR s.status = 'active'
-      `);
+        JOIN guests g ON g.id = s.guest_id
+        WHERE g.property_id = ?
+          AND (s.status IS NULL OR s.status = 'active')
+      `, [activePropertyId]);
 
       setOverviewStats(prev => ({
         ...prev,

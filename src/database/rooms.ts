@@ -8,10 +8,32 @@ export interface Room {
   status: 'available' | 'occupied' | 'cleaning' | 'maintenance';
 }
 
-export async function getRooms(): Promise<Room[]> {
+import { useSettingsStore } from '@/store/useSettingsStore';
+
+export async function getRooms(propertyId?: string): Promise<Room[]> {
   try {
+    const activePropertyId = propertyId || useSettingsStore.getState().propertyId || 'HS-DEFAULT';
     const db = await openDatabase();
-    const rooms = await db.getAllAsync<Room>('SELECT * FROM rooms ORDER BY room_number ASC');
+    await seedDefaultRoomsIfEmpty();
+
+    const rooms = await db.getAllAsync<Room>(`
+      SELECT r.id, r.room_number, r.room_type, r.price,
+             CASE 
+               WHEN active_stays.count > 0 THEN 'occupied' 
+               ELSE r.status 
+             END as status
+      FROM rooms r
+      LEFT JOIN (
+        SELECT s.room_id, COUNT(*) as count
+        FROM stays s
+        JOIN guests g ON g.id = s.guest_id
+        WHERE (s.status IS NULL OR s.status = 'active')
+          AND g.property_id = ?
+        GROUP BY s.room_id
+      ) active_stays ON active_stays.room_id = r.id
+      ORDER BY r.room_number ASC
+    `, [activePropertyId]);
+
     if (rooms && rooms.length > 0) {
       return rooms;
     }

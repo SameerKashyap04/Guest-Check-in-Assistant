@@ -91,16 +91,21 @@ export async function createGuestAndStay(guestData: GuestData, stayData: StayDat
   return createMultipleGuestsAndStay([guestData], stayData);
 }
 
-export async function getGuestsForRoom(roomId: number): Promise<any[]> {
+import { useSettingsStore } from '@/store/useSettingsStore';
+
+export async function getGuestsForRoom(roomId: number, propertyId?: string): Promise<any[]> {
   try {
+    const activePropertyId = propertyId || useSettingsStore.getState().propertyId || 'HS-DEFAULT';
     const db = await openDatabase();
     const result = await db.getAllAsync(
       `SELECT g.*, s.check_in_date, s.check_out_date, s.created_at as stay_created_at 
        FROM guests g
        JOIN stays s ON s.guest_id = g.id
-       WHERE s.room_id = ? AND (s.status IS NULL OR s.status = 'active')
+       WHERE s.room_id = ? 
+         AND (s.status IS NULL OR s.status = 'active')
+         AND g.property_id = ?
        ORDER BY g.id DESC`,
-      [roomId]
+      [roomId, activePropertyId]
     );
     return result as any[];
   } catch (e) {

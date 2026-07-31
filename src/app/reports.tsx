@@ -32,6 +32,8 @@ export default function ReportsScreen() {
   const fetchReportData = async () => {
     try {
       setIsLoading(true);
+      const { propertyId } = useSettingsStore.getState();
+      const activePropertyId = propertyId || 'HS-DEFAULT';
       const db = await openDatabase();
       
       const guests = await db.getAllAsync<any>(`
@@ -39,8 +41,9 @@ export default function ReportsScreen() {
         FROM guests g
         LEFT JOIN stays s ON s.guest_id = g.id
         LEFT JOIN rooms r ON r.id = s.room_id
+        WHERE g.property_id = ? OR g.property_id IS NULL OR g.property_id = ''
         ORDER BY g.id DESC
-      `);
+      `, [activePropertyId]);
       
       const rooms = await db.getAllAsync<any>(`SELECT * FROM rooms`);
       
