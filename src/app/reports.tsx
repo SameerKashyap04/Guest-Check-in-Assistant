@@ -171,10 +171,11 @@ export default function ReportsScreen() {
         <tr style="background-color: ${idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC'};">
           <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 12px; text-align: center;">${idx + 1}</td>
           <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 12px; font-weight: bold; color: #0F172A;">${g.full_name || 'N/A'}</td>
-          <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 12px; text-align: center; color: #0284C7; font-weight: bold;">${g.room_number ? 'Room ' + g.room_number : 'N/A'}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 12px; text-align: center; color: #0284C7; font-weight: bold;">${g.room_number || 'N/A'}</td>
           <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 12px;">${g.id_type || 'ID'} - ${g.id_number || 'N/A'}</td>
           <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 12px;">${g.phone || 'N/A'}</td>
-          <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 12px;">${g.address || 'N/A'}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 12px; text-align: center; font-weight: bold; color: #16A34A;">${g.check_in_date || 'N/A'}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 12px; text-align: center; font-weight: bold; color: #DC2626;">${g.check_out_date || 'N/A'}</td>
           <td style="padding: 10px 12px; border-bottom: 1px solid #E2E8F0; font-size: 12px; text-align: right; font-weight: bold;">₹${g.price || 0}</td>
         </tr>
       `).join('');
@@ -234,7 +235,8 @@ export default function ReportsScreen() {
                   <th style="text-align: center;">Room</th>
                   <th>Identity Doc</th>
                   <th>Phone</th>
-                  <th>Address</th>
+                  <th style="text-align: center;">Check-in Date</th>
+                  <th style="text-align: center;">Check-out Date</th>
                   <th style="text-align: right;">Amount</th>
                 </tr>
               </thead>
@@ -271,7 +273,7 @@ export default function ReportsScreen() {
 
     try {
       setExportingCsv(true);
-      const csvHeader = 'Sl No,Guest Name,Room Number,Room Type,Room Price,ID Type,ID Number,Phone,Date of Birth,Address,Check-in Date\n';
+      const csvHeader = 'Sl No,Guest Name,Room Number,Room Type,Room Price,ID Type,ID Number,Phone,Date of Birth,Address,Check-in Date,Check-out Date\n';
       const csvRows = targetGuests.map((g, i) => {
         const clean = (val: any) => `"${String(val || '').replace(/"/g, '""')}"`;
         return [
@@ -285,7 +287,8 @@ export default function ReportsScreen() {
           clean(g.phone),
           clean(g.dob),
           clean(g.address),
-          clean(g.created_at)
+          clean(g.check_in_date),
+          clean(g.check_out_date)
         ].join(',');
       }).join('\n');
 

@@ -218,19 +218,31 @@ export default function RegistrationsScreen() {
                 </View>
 
                 {/* Sub details row */}
-                <View className="pt-2 border-t border-gray-100 dark:border-gray-800 flex-row items-center justify-between">
-                  <View className="flex-row items-center gap-2">
-                    {guest.room_number ? (
-                      <View className="bg-foreground/10 px-2 py-0.5 rounded-md">
-                        <Text className="text-[11px] font-bold text-foreground">Room {guest.room_number}</Text>
-                      </View>
-                    ) : null}
-                    <Text className="text-xs text-gray-500 font-medium">
-                      {guest.id_type || 'ID'}: {guest.id_number || 'N/A'}
-                    </Text>
+                <View className="pt-2 border-t border-gray-100 dark:border-gray-800 flex-col gap-1.5">
+                  <View className="flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-2">
+                      {guest.room_number ? (
+                        <View className="bg-primary/10 px-2 py-0.5 rounded-md">
+                          <Text className="text-[11px] font-bold text-primary">{guest.room_number}</Text>
+                        </View>
+                      ) : null}
+                      <Text className="text-xs text-gray-500 font-medium">
+                        {guest.id_type || 'ID'}: {guest.id_number || 'N/A'}
+                      </Text>
+                    </View>
+                    <Text className="text-[11px] text-primary font-bold">Tap to view details →</Text>
                   </View>
 
-                  <Text className="text-[11px] text-primary font-bold">Tap to view ID Card →</Text>
+                  {(guest.check_in_date || guest.check_out_date) && (
+                    <View className="flex-row items-center gap-3">
+                      <Text className="text-[10px] font-semibold text-gray-400">
+                        In: <Text className="text-foreground font-bold">{guest.check_in_date || 'N/A'}</Text>
+                      </Text>
+                      <Text className="text-[10px] font-semibold text-gray-400">
+                        Out: <Text className="text-foreground font-bold">{guest.check_out_date || 'N/A'}</Text>
+                      </Text>
+                    </View>
+                  )}
                 </View>
               </TouchableOpacity>
             ))}
@@ -362,9 +374,19 @@ export default function RegistrationsScreen() {
                     {selectedGuest.room_number && (
                       <View className="flex-row items-center justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
                         <Text className="text-xs font-medium text-gray-500">Assigned Room</Text>
-                        <Text className="text-xs font-bold text-foreground">Room {selectedGuest.room_number} ({selectedGuest.room_type || 'Standard'})</Text>
+                        <Text className="text-xs font-bold text-primary">{selectedGuest.room_number} ({selectedGuest.room_type || 'Standard'})</Text>
                       </View>
                     )}
+
+                    <View className="flex-row items-center justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
+                      <Text className="text-xs font-medium text-gray-500">Check-in Date</Text>
+                      <Text className="text-xs font-bold text-foreground">{selectedGuest.check_in_date || 'N/A'}</Text>
+                    </View>
+
+                    <View className="flex-row items-center justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
+                      <Text className="text-xs font-medium text-gray-500">Check-out Date</Text>
+                      <Text className="text-xs font-bold text-foreground">{selectedGuest.check_out_date || 'N/A'}</Text>
+                    </View>
 
                     <View className="flex-row items-center justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
                       <Text className="text-xs font-medium text-gray-500">Document Type</Text>
