@@ -395,7 +395,7 @@ export default function ReviewScreen() {
                         <Text className={`font-bold text-center text-base mb-0.5 ${
                           isSelected ? 'text-foreground font-extrabold' : 'text-gray-700 dark:text-gray-300'
                         }`}>
-                          Room {room.room_number}
+                          {room.room_number}
                         </Text>
                         <Text className={`text-[10px] text-center font-medium uppercase tracking-wider ${
                           isSelected ? 'text-foreground' : 'text-gray-500'

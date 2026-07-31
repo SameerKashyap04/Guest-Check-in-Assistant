@@ -212,8 +212,8 @@ export default function RoomsScreen() {
           </View>
           
           <View>
-            <Text className="text-xl font-bold text-foreground tracking-tight">Room {item.room_number}</Text>
-            <Text className="text-xs text-gray-400 font-medium mt-0.5" numberOfLines={1}>{item.room_type || 'Standard Room'}</Text>
+            <Text className="text-xl font-bold text-foreground tracking-tight">{item.room_number}</Text>
+            <Text className="text-xs text-gray-400 font-medium mt-0.5" numberOfLines={1}>{item.room_type || 'Standard'}</Text>
             <Text className="text-xs font-bold text-primary mt-1">₹{item.price || 0} / night</Text>
           </View>
         </GlassCard>
@@ -236,8 +236,8 @@ export default function RoomsScreen() {
               <BedDouble size={22} color="#000000" />
             </View>
             <View>
-              <Text className="text-lg font-bold text-foreground tracking-tight">Room {item.room_number}</Text>
-              <Text className="text-xs text-gray-400 font-medium mt-0.5">{item.room_type || 'Standard Room'} {item.price ? `• ₹${item.price}/night` : ''}</Text>
+              <Text className="text-lg font-bold text-foreground tracking-tight">{item.room_number}</Text>
+              <Text className="text-xs text-gray-400 font-medium mt-0.5">{item.room_type || 'Standard'} {item.price ? `• ₹${item.price}/night` : ''}</Text>
             </View>
           </View>
 

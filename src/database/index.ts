@@ -95,6 +95,12 @@ export async function initDatabase() {
   } catch (e) {
     // Column already exists
   }
+
+  try {
+    await db.execAsync('ALTER TABLE rooms ADD COLUMN property_id TEXT;');
+  } catch (e) {
+    // Column already exists
+  }
 }
 
 export async function resetDatabase() {
@@ -113,6 +119,10 @@ export async function assignLegacyUnassignedGuests(targetPropertyId: string) {
     const db = await openDatabase();
     await db.runAsync(
       `UPDATE guests SET property_id = ? WHERE property_id IS NULL OR property_id = '' OR property_id = 'HS-DEFAULT'`,
+      [targetPropertyId]
+    );
+    await db.runAsync(
+      `UPDATE rooms SET property_id = ? WHERE property_id IS NULL OR property_id = '' OR property_id = 'HS-DEFAULT'`,
       [targetPropertyId]
     );
   } catch (e) {

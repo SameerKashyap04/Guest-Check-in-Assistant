@@ -1,4 +1,5 @@
 import { openDatabase } from './index';
+import { useSettingsStore } from '@/store/useSettingsStore';
 
 export interface Room {
   id: number;
@@ -6,18 +7,17 @@ export interface Room {
   room_type: string | null;
   price?: number | null;
   status: 'available' | 'occupied' | 'cleaning' | 'maintenance';
+  property_id?: string | null;
 }
-
-import { useSettingsStore } from '@/store/useSettingsStore';
 
 export async function getRooms(propertyId?: string): Promise<Room[]> {
   try {
     const activePropertyId = propertyId || useSettingsStore.getState().propertyId || 'HS-DEFAULT';
     const db = await openDatabase();
-    await seedDefaultRoomsIfEmpty();
+    await seedDefaultRoomsIfEmpty(activePropertyId);
 
     const rooms = await db.getAllAsync<Room>(`
-      SELECT r.id, r.room_number, r.room_type, r.price,
+      SELECT r.id, r.room_number, r.room_type, r.price, r.property_id,
              CASE 
                WHEN active_stays.count > 0 THEN 'occupied' 
                ELSE r.status 
@@ -31,47 +31,57 @@ export async function getRooms(propertyId?: string): Promise<Room[]> {
           AND g.property_id = ?
         GROUP BY s.room_id
       ) active_stays ON active_stays.room_id = r.id
+      WHERE r.property_id = ? OR r.property_id IS NULL OR r.property_id = ''
       ORDER BY r.room_number ASC
-    `, [activePropertyId]);
+    `, [activePropertyId, activePropertyId]);
 
     if (rooms && rooms.length > 0) {
       return rooms;
     }
-    return await seedDefaultRoomsIfEmpty();
+    return await seedDefaultRoomsIfEmpty(activePropertyId);
   } catch (e) {
     console.warn('Failed to fetch rooms from DB', e);
     return getFallbackRooms();
   }
 }
 
-export async function seedDefaultRoomsIfEmpty(): Promise<Room[]> {
+export async function seedDefaultRoomsIfEmpty(propertyId?: string): Promise<Room[]> {
   try {
+    const activePropertyId = propertyId || useSettingsStore.getState().propertyId || 'HS-DEFAULT';
     const db = await openDatabase();
-    const existing = await db.getAllAsync<Room>('SELECT * FROM rooms ORDER BY room_number ASC');
+    const existing = await db.getAllAsync<Room>(
+      'SELECT * FROM rooms WHERE property_id = ? ORDER BY room_number ASC',
+      [activePropertyId]
+    );
+
     if (existing && existing.length > 0) {
       return existing;
     }
 
     const defaultRooms = [
-      { number: '101', type: 'Deluxe Room', price: 1500 },
-      { number: '102', type: 'Super Deluxe Room', price: 2000 },
+      { number: '101', type: 'Deluxe', price: 1500 },
+      { number: '102', type: 'Super Deluxe', price: 2000 },
       { number: '201', type: 'Family Suite', price: 3000 },
-      { number: '202', type: 'Executive Room', price: 2500 },
+      { number: '202', type: 'Executive', price: 2500 },
     ];
 
     for (const r of defaultRooms) {
       try {
         await db.runAsync(
-          'INSERT INTO rooms (room_number, room_type, status, price) VALUES (?, ?, ?, ?)',
+          'INSERT INTO rooms (room_number, room_type, status, price, property_id) VALUES (?, ?, ?, ?, ?)',
           r.number,
           r.type,
           'available',
-          r.price
+          r.price,
+          activePropertyId
         );
       } catch (e) {}
     }
 
-    return await db.getAllAsync<Room>('SELECT * FROM rooms ORDER BY room_number ASC');
+    return await db.getAllAsync<Room>(
+      'SELECT * FROM rooms WHERE property_id = ? ORDER BY room_number ASC',
+      [activePropertyId]
+    );
   } catch (e) {
     return getFallbackRooms();
   }
@@ -79,10 +89,10 @@ export async function seedDefaultRoomsIfEmpty(): Promise<Room[]> {
 
 export function getFallbackRooms(): Room[] {
   return [
-    { id: 101, room_number: '101', room_type: 'Deluxe Room', price: 1500, status: 'available' },
+    { id: 101, room_number: '101', room_type: 'Deluxe', price: 1500, status: 'available' },
     { id: 102, room_number: '102', room_type: 'Super Deluxe', price: 2000, status: 'available' },
     { id: 201, room_number: '201', room_type: 'Family Suite', price: 3000, status: 'available' },
-    { id: 202, room_number: '202', room_type: 'Executive Room', price: 2500, status: 'available' }
+    { id: 202, room_number: '202', room_type: 'Executive', price: 2500, status: 'available' }
   ];
 }
 
@@ -90,15 +100,18 @@ export async function addRoom(
   room_number: string,
   room_type: string | null,
   status: string = 'available',
-  price: number = 0
+  price: number = 0,
+  propertyId?: string
 ): Promise<void> {
+  const activePropertyId = propertyId || useSettingsStore.getState().propertyId || 'HS-DEFAULT';
   const db = await openDatabase();
   await db.runAsync(
-    'INSERT INTO rooms (room_number, room_type, status, price) VALUES (?, ?, ?, ?)',
-    room_number,
-    room_type,
+    'INSERT INTO rooms (room_number, room_type, status, price, property_id) VALUES (?, ?, ?, ?, ?)',
+    room_number.trim(),
+    room_type ? room_type.trim() : null,
     status,
-    price
+    price,
+    activePropertyId
   );
 }
 
@@ -112,8 +125,8 @@ export async function updateRoom(
   const db = await openDatabase();
   await db.runAsync(
     'UPDATE rooms SET room_number = ?, room_type = ?, status = ?, price = ? WHERE id = ?',
-    room_number,
-    room_type,
+    room_number.trim(),
+    room_type ? room_type.trim() : null,
     status,
     price,
     id

@@ -236,7 +236,7 @@ export default function ManualEntryScreen() {
                       <DoorOpen size={16} color={isSelected ? '#000000' : '#6B7280'} />
                       <View>
                         <Text className={`font-bold text-sm ${isSelected ? 'text-foreground' : 'text-gray-700 dark:text-gray-300'}`}>
-                          Room {room.room_number}
+                          {room.room_number}
                         </Text>
                         <Text className="text-[10px] text-gray-400 font-medium uppercase tracking-wider">
                           {room.room_type || 'Standard'}

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { getRooms, addRoom, updateRoom, deleteRoom, Room } from '@/database/rooms';
+import { useSettingsStore } from './useSettingsStore';
 
 interface RoomsState {
   rooms: Room[];
@@ -19,7 +20,8 @@ export const useRoomsStore = create<RoomsState>((set, get) => ({
   fetchRooms: async () => {
     set({ isLoading: true, error: null });
     try {
-      const rooms = await getRooms();
+      const activePropertyId = useSettingsStore.getState().propertyId;
+      const rooms = await getRooms(activePropertyId);
       set({ rooms, isLoading: false });
     } catch (error: any) {
       set({ error: error.message || 'Failed to fetch rooms', isLoading: false });
@@ -29,7 +31,8 @@ export const useRoomsStore = create<RoomsState>((set, get) => ({
   createRoom: async (room_number, room_type, status = 'available', price = 0) => {
     set({ isLoading: true, error: null });
     try {
-      await addRoom(room_number, room_type, status, price);
+      const activePropertyId = useSettingsStore.getState().propertyId;
+      await addRoom(room_number, room_type, status, price, activePropertyId);
       await get().fetchRooms();
     } catch (error: any) {
       set({ error: error.message || 'Failed to create room', isLoading: false });
