@@ -246,7 +246,7 @@ export default function ReportsScreen() {
             </table>
 
             <div class="footer">
-              Generated securely by Guest Check-in Assistant v1.2.0 • Built with ❤️ by Devify (www.devify.co.in)
+              Generated securely by Guest Check-in Assistant v1.1.5 • Built with ❤️ by Devify (www.devify.co.in)
             </div>
           </body>
         </html>

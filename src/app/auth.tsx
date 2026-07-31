@@ -287,18 +287,33 @@ export default function AuthScreen() {
           </View>
 
           {/* Devify Branding Footer */}
-          <View style={{ alignItems: 'center', marginTop: 20, marginBottom: 16, gap: 6 }}>
+          <View style={{ alignItems: 'center', marginTop: 20, marginBottom: 16 }}>
             <TouchableOpacity 
               onPress={() => Linking.openURL('https://www.devify.co.in')}
-              activeOpacity={0.7}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: isDark ? 'rgba(56,189,248,0.1)' : 'rgba(2,132,199,0.08)', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 }}
+              activeOpacity={0.8}
+              style={{
+                alignItems: 'center',
+                backgroundColor: isDark ? 'rgba(56,189,248,0.08)' : 'rgba(2,132,199,0.06)',
+                borderColor: isDark ? 'rgba(56,189,248,0.25)' : 'rgba(2,132,199,0.2)',
+                borderWidth: 1,
+                borderRadius: 20,
+                paddingHorizontal: 18,
+                paddingVertical: 10,
+                width: '100%'
+              }}
             >
-              <Text style={{ fontSize: 12, fontWeight: '700', color: isDark ? '#38BDF8' : '#0284C7' }}>
-                Crafted with ❤️ by Devify • www.devify.co.in
+              <Text style={{ fontSize: 10, fontWeight: '800', color: isDark ? '#38BDF8' : '#0284C7', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 }}>
+                Crafted & Engineered By
+              </Text>
+              <Text style={{ fontSize: 14, fontWeight: '900', color: textPrimary }}>
+                Devify <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted }}>| Software Solutions</Text>
+              </Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: isDark ? '#38BDF8' : '#0284C7', marginTop: 4 }}>
+                www.devify.co.in ↗
               </Text>
             </TouchableOpacity>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted }}>
-              Guest Check-in Assistant v1.2.0
+            <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted, marginTop: 10 }}>
+              Guest Check-in Assistant v1.1.5
             </Text>
           </View>
         </ScrollView>

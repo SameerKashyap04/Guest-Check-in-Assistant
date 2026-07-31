@@ -6,7 +6,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2, Cloud, HardDrive, Mail, KeyRound } from 'lucide-react-native';
+import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2, Cloud, HardDrive, Mail, KeyRound, Sparkles } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';
@@ -363,16 +363,34 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        <View className="items-center justify-center py-6 gap-2">
-          <Text className="text-xs font-semibold text-gray-400">Guest Check-in Assistant v1.2.0</Text>
-          <TouchableOpacity 
+        {/* BEAUTIFUL DEVIFY CREDITS & VERSION */}
+        <View className="items-center justify-center pt-2 pb-6">
+          <TouchableOpacity
             onPress={() => Linking.openURL('https://www.devify.co.in')}
-            activeOpacity={0.7}
-            className="flex-row items-center gap-1.5 bg-primary/10 px-4 py-2 rounded-full border border-primary/20"
+            activeOpacity={0.8}
+            className="w-full"
           >
-            <Globe size={14} color="#38BDF8" />
-            <Text className="text-xs font-bold text-primary">Crafted with ❤️ by Devify • www.devify.co.in</Text>
+            <GlassCard className="p-5 rounded-3xl border border-sky-500/20 bg-sky-500/5 dark:border-sky-400/20 items-center justify-center">
+              <View className="flex-row items-center gap-1.5 mb-1">
+                <Sparkles size={14} color="#38BDF8" />
+                <Text className="text-[11px] font-extrabold uppercase tracking-widest text-sky-500 dark:text-sky-400">
+                  Crafted & Engineered By
+                </Text>
+              </View>
+              <Text className="text-base font-black text-foreground tracking-tight">
+                Devify <Text className="text-xs font-semibold text-gray-400">| Software Solutions</Text>
+              </Text>
+              <View className="flex-row items-center gap-1.5 mt-2.5 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+                <Globe size={12} color="#38BDF8" />
+                <Text className="text-xs font-bold text-primary">
+                  www.devify.co.in ↗
+                </Text>
+              </View>
+            </GlassCard>
           </TouchableOpacity>
+          <Text className="text-[11px] font-semibold text-gray-400 mt-3">
+            Guest Check-in Assistant v1.1.5
+          </Text>
         </View>
 
       </ScrollView>
