@@ -145,13 +145,15 @@ export default function ManualEntryScreen() {
   return (
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background">
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 20}
         className="flex-1"
       >
         <ScrollView 
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+          keyboardDismissMode="on-drag"
+          contentContainerStyle={{ padding: 20, paddingBottom: 120, flexGrow: 1 }}
         >
           {/* PROGRESS STEPPER */}
           <View className="flex-row items-center justify-center mb-6 px-2 mt-2">
@@ -272,6 +274,9 @@ export default function ManualEntryScreen() {
                 <Input
                   label="Full Name"
                   placeholder="Enter full name"
+                  autoCapitalize="words"
+                  autoCorrect={false}
+                  returnKeyType="next"
                   onBlur={onBlur}
                   onChangeText={onChange}
                   value={value}
@@ -326,6 +331,9 @@ export default function ManualEntryScreen() {
                   <Input
                     label="ID Number"
                     placeholder="Enter ID number"
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    returnKeyType="next"
                     onBlur={onBlur}
                     onChangeText={onChange}
                     value={value}

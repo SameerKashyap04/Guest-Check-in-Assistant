@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, Image, Alert, TouchableOpacity, Platform, Modal, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, Image, Alert, TouchableOpacity, Platform, Modal, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { GlassCard } from '@/components/GlassCard';
@@ -327,7 +327,16 @@ export default function ReviewScreen() {
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 100 }}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 20}
+        className="flex-1"
+      >
+        <ScrollView 
+          contentContainerStyle={{ padding: 20, paddingBottom: 120, flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
         
         {/* PROGRESS STEPPER */}
         <View className="flex-row items-center justify-center mb-8 px-2">
@@ -882,7 +891,8 @@ export default function ReviewScreen() {
           </View>
         </Modal>
 
-      </ScrollView>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }

@@ -148,8 +148,17 @@ export default function AuthScreen() {
         <Text style={[styles.headerTitle, { color: textPrimary }]}>{t('ownerPortalTitle')}</Text>
       </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+        style={{ flex: 1 }}
+      >
+        <ScrollView 
+          contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
+        >
 
           {/* Card */}
           <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
@@ -188,6 +197,9 @@ export default function AuthScreen() {
               <Input
                 label={t('propertyName')}
                 placeholder="e.g. Sameer Homestay"
+                autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="next"
                 value={businessName}
                 onChangeText={setBusinessName}
                 icon={<Building2 size={18} color="#9498AA" />}
@@ -199,6 +211,10 @@ export default function AuthScreen() {
               placeholder="owner@homestay.com"
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="next"
               value={email}
               onChangeText={setEmail}
               icon={<Mail size={18} color="#9498AA" />}
@@ -208,6 +224,11 @@ export default function AuthScreen() {
               label={t('password')}
               placeholder="••••••••"
               secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="password"
+              returnKeyType="done"
+              onSubmitEditing={handleAuthSubmit}
               value={password}
               onChangeText={setPassword}
               icon={<Lock size={18} color="#9498AA" />}

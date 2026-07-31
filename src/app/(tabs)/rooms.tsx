@@ -433,7 +433,7 @@ export default function RoomsScreen() {
               <View className="flex-row justify-between items-center mb-6">
                 <View className="flex-row items-center gap-2.5">
                   <Text className="text-2xl font-bold text-foreground">
-                    {editingRoom ? `Room ${editingRoom.room_number}` : 'Add New Room'}
+                    {editingRoom ? `${editingRoom.room_number}` : 'Add New Room'}
                   </Text>
                   {editingRoom && (
                     <TouchableOpacity 
