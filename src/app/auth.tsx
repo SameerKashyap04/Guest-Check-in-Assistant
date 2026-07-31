@@ -313,7 +313,7 @@ export default function AuthScreen() {
               </Text>
             </TouchableOpacity>
             <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted, marginTop: 10 }}>
-              Guest Check-in Assistant v1.1.5
+              Guest Check-in Assistant v1.1.7
             </Text>
           </View>
         </ScrollView>

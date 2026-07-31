@@ -389,7 +389,7 @@ export default function SettingsScreen() {
             </GlassCard>
           </TouchableOpacity>
           <Text className="text-[11px] font-semibold text-gray-400 mt-3">
-            Guest Check-in Assistant v1.1.5
+            Guest Check-in Assistant v1.1.7
           </Text>
         </View>
 
