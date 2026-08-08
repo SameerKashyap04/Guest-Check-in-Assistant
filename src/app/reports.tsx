@@ -12,12 +12,16 @@ import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import { useTranslation } from 'react-i18next';
+import { useFeatureGate } from '@/hooks/useFeatureGate';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 export default function ReportsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { businessName } = useSettingsStore();
 
+  const featureGate = useFeatureGate();
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -154,6 +158,10 @@ export default function ReportsScreen() {
 
   // PDF Export Handler
   const handleExportPDF = async () => {
+    if (!featureGate.canExportPDF) {
+      setUpgradeModalOpen(true);
+      return;
+    }
     const targetGuests = currentFilteredGuests;
 
     if (targetGuests.length === 0) {
@@ -264,6 +272,10 @@ export default function ReportsScreen() {
 
   // CSV Export Handler
   const handleExportCSV = async () => {
+    if (!featureGate.canExportCSV) {
+      setUpgradeModalOpen(true);
+      return;
+    }
     const targetGuests = currentFilteredGuests;
 
     if (targetGuests.length === 0) {
@@ -434,6 +446,14 @@ export default function ReportsScreen() {
         />
 
       </ScrollView>
+
+      <UpgradeModal
+        visible={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        title="Unlock Authority Report Exports"
+        subtitle="Generating official PDF guest registers and CSV spreadsheets requires a Starter or Professional subscription."
+        recommendedPlan="Starter Plan (₹299/mo)"
+      />
     </SafeAreaView>
   );
 }

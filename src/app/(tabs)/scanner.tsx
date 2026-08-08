@@ -12,6 +12,8 @@ import { subscribeToPropertyCheckins, deleteCloudCheckinDoc, CloudGuestCheckin }
 import { createMultipleGuestsAndStay } from '@/database/stays';
 import { GlassCard } from '@/components/GlassCard';
 import { useTranslation } from 'react-i18next';
+import { useFeatureGate } from '@/hooks/useFeatureGate';
+import { UpgradeModal } from '@/components/UpgradeModal';
 
 const ID_TYPES = [
   { id: 'UNKNOWN', label: 'Auto-Detect', description: 'Let the system identify the document' },
@@ -28,6 +30,8 @@ export default function ScannerScreen() {
   const { businessName, propertyId, ownerId, getShareableLink } = useSettingsStore();
   const { rooms, fetchRooms } = useRoomsStore();
 
+  const featureGate = useFeatureGate();
+  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
 
@@ -156,6 +160,16 @@ export default function ScannerScreen() {
   };
 
   const startScan = (idType: string) => {
+    if (!featureGate.canUseOCR) {
+      setModalVisible(false);
+      setUpgradeModalOpen(true);
+      return;
+    }
+    if (!featureGate.canRecordCheckin()) {
+      setModalVisible(false);
+      setUpgradeModalOpen(true);
+      return;
+    }
     setModalVisible(false);
     router.push({
       pathname: '/checkin/camera',
@@ -642,6 +656,14 @@ export default function ScannerScreen() {
           </View>
         </View>
       </Modal>
+
+      <UpgradeModal
+        visible={upgradeModalOpen}
+        onClose={() => setUpgradeModalOpen(false)}
+        title="Unlock Camera OCR Scanner"
+        subtitle="Automatic document scanning and data extraction requires a Starter or Professional subscription."
+        recommendedPlan="Starter Plan (₹299/mo)"
+      />
     </SafeAreaView>
   );
 }

@@ -6,7 +6,8 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2, Cloud, HardDrive, Mail, KeyRound, Code2, ExternalLink, Heart } from 'lucide-react-native';
+import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2, Cloud, HardDrive, Mail, KeyRound, Code2, ExternalLink, Heart, Sparkles } from 'lucide-react-native';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';
@@ -19,6 +20,9 @@ export default function SettingsScreen() {
   const { setColorScheme } = useColorScheme();
   const { lock, logout, verifyPin, setupPin } = useAuthStore();
   const router = useRouter();
+  const subStore = useSubscriptionStore();
+  const activePlan = subStore.getPlan();
+  const isTrialActive = subStore.isTrialActive && !subStore.isTrialExpired();
 
   // Modals state
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -169,6 +173,49 @@ export default function SettingsScreen() {
             </View>
           </GlassCard>
         </TouchableOpacity>
+
+        {/* SUBSCRIPTION & BUSINESS PLAN CARD */}
+        <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+          Subscription & Business Plan
+        </Text>
+
+        <GlassCard className="mb-6 p-5 rounded-2xl border border-primary/30 bg-primary/5">
+          <View className="flex-row justify-between items-start mb-3">
+            <View className="flex-row items-center gap-2">
+              <View className="w-10 h-10 rounded-2xl bg-primary/20 items-center justify-center border border-primary/30">
+                <Sparkles size={20} color="#208AEF" />
+              </View>
+              <View>
+                <View className="flex-row items-center gap-2">
+                  <Text className="text-lg font-bold text-foreground">{activePlan.name} Plan</Text>
+                  {isTrialActive && (
+                    <View className="bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">
+                      <Text className="text-[10px] font-bold text-amber-500 uppercase">30-Day Free Trial</Text>
+                    </View>
+                  )}
+                </View>
+                <Text className="text-xs text-gray-400 mt-0.5">{activePlan.description}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View className="bg-black/20 p-3 rounded-xl mb-4 border border-gray-800 flex-row justify-between items-center">
+            <View>
+              <Text className="text-[11px] text-gray-400 uppercase font-semibold">Monthly Check-ins</Text>
+              <Text className="text-sm font-bold text-foreground mt-0.5">
+                {subStore.monthlyCheckinsCount} / {activePlan.maxCheckinsPerMonth === 'unlimited' ? 'Unlimited' : activePlan.maxCheckinsPerMonth}
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => router.push('/subscription/pricing' as any)}
+              className="bg-primary px-3.5 py-2 rounded-xl flex-row items-center gap-1.5 shadow-sm"
+            >
+              <Text className="text-xs font-bold text-white">Upgrade Plan</Text>
+              <ChevronRight size={14} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
+        </GlassCard>
 
         {/* STORAGE MODE SWITCHER CARD */}
         <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
