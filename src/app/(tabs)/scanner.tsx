@@ -12,8 +12,8 @@ import { subscribeToPropertyCheckins, deleteCloudCheckinDoc, CloudGuestCheckin }
 import { createMultipleGuestsAndStay } from '@/database/stays';
 import { GlassCard } from '@/components/GlassCard';
 import { useTranslation } from 'react-i18next';
-import { useFeatureGate } from '@/hooks/useFeatureGate';
-import { UpgradeModal } from '@/components/UpgradeModal';
+import { EntitlementService } from '@/services/entitlementService';
+import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 
 const ID_TYPES = [
   { id: 'UNKNOWN', label: 'Auto-Detect', description: 'Let the system identify the document' },
@@ -30,10 +30,9 @@ export default function ScannerScreen() {
   const { businessName, propertyId, ownerId, getShareableLink } = useSettingsStore();
   const { rooms, fetchRooms } = useRoomsStore();
 
-  const featureGate = useFeatureGate();
-  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   // Online Self Check-ins Portal State
   const [pendingCheckins, setPendingCheckins] = useState<CloudGuestCheckin[]>([]);
@@ -44,6 +43,15 @@ export default function ScannerScreen() {
   useEffect(() => {
     fetchRooms();
   }, []);
+
+  const checkOcrEntitlement = (): boolean => {
+    const isAllowed = EntitlementService.canUseFeature('ocrScanning');
+    if (!isAllowed) {
+      setIsUpgradeModalOpen(true);
+      return false;
+    }
+    return true;
+  };
 
   // Real-time listener for incoming Web Self Check-ins
   useEffect(() => {
@@ -160,16 +168,6 @@ export default function ScannerScreen() {
   };
 
   const startScan = (idType: string) => {
-    if (!featureGate.canUseOCR) {
-      setModalVisible(false);
-      setUpgradeModalOpen(true);
-      return;
-    }
-    if (!featureGate.canRecordCheckin()) {
-      setModalVisible(false);
-      setUpgradeModalOpen(true);
-      return;
-    }
     setModalVisible(false);
     router.push({
       pathname: '/checkin/camera',
@@ -657,12 +655,13 @@ export default function ScannerScreen() {
         </View>
       </Modal>
 
+      {/* OCR UPGRADE PAYWALL MODAL */}
       <UpgradeModal
-        visible={upgradeModalOpen}
-        onClose={() => setUpgradeModalOpen(false)}
-        title="Unlock Camera OCR Scanner"
-        subtitle="Automatic document scanning and data extraction requires a Starter or Professional subscription."
-        recommendedPlan="Starter Plan (₹299/mo)"
+        visible={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        featureName="Camera OCR Document Scanning"
+        description="Automatically extract guest details from Indian government IDs (Aadhaar, PAN, DL, Passport) in seconds with 99%+ accuracy."
+        requiredPlan="PROFESSIONAL"
       />
     </SafeAreaView>
   );

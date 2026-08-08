@@ -5,23 +5,20 @@ import { GlassCard } from '@/components/GlassCard';
 import { ChevronLeft, Download, TrendingUp, Users, Calendar, FileText, CheckCircle2, BedDouble, ShieldCheck } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
-import { openDatabase } from '@/database';
+import { openDatabase, incrementMonthlyExportCount } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
-
 import { useTranslation } from 'react-i18next';
-import { useFeatureGate } from '@/hooks/useFeatureGate';
-import { UpgradeModal } from '@/components/UpgradeModal';
+import { EntitlementService } from '@/services/entitlementService';
+import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 
 export default function ReportsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { businessName } = useSettingsStore();
 
-  const featureGate = useFeatureGate();
-  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
@@ -156,12 +153,24 @@ export default function ReportsScreen() {
     }
   };
 
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+
+  const checkExportEntitlement = async (): Promise<boolean> => {
+    const { propertyId } = useSettingsStore.getState();
+    const status = await EntitlementService.canPerformExport(propertyId || 'HS-DEFAULT');
+    if (!status.allowed) {
+      setIsUpgradeModalOpen(true);
+      return false;
+    }
+    await incrementMonthlyExportCount(propertyId || 'HS-DEFAULT');
+    return true;
+  };
+
   // PDF Export Handler
   const handleExportPDF = async () => {
-    if (!featureGate.canExportPDF) {
-      setUpgradeModalOpen(true);
-      return;
-    }
+    const isAllowed = await checkExportEntitlement();
+    if (!isAllowed) return;
+
     const targetGuests = currentFilteredGuests;
 
     if (targetGuests.length === 0) {
@@ -272,10 +281,6 @@ export default function ReportsScreen() {
 
   // CSV Export Handler
   const handleExportCSV = async () => {
-    if (!featureGate.canExportCSV) {
-      setUpgradeModalOpen(true);
-      return;
-    }
     const targetGuests = currentFilteredGuests;
 
     if (targetGuests.length === 0) {
@@ -446,13 +451,13 @@ export default function ReportsScreen() {
         />
 
       </ScrollView>
-
+      {/* REPORT EXPORT LIMIT UPGRADE MODAL */}
       <UpgradeModal
-        visible={upgradeModalOpen}
-        onClose={() => setUpgradeModalOpen(false)}
-        title="Unlock Authority Report Exports"
-        subtitle="Generating official PDF guest registers and CSV spreadsheets requires a Starter or Professional subscription."
-        recommendedPlan="Starter Plan (₹299/mo)"
+        visible={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        featureName="Monthly Export Limit Reached (5/5)"
+        description="You have reached the 5 free PDF/CSV exports included in the Free plan this month. Upgrade to Starter or Professional for unlimited exports."
+        requiredPlan="STARTER"
       />
     </SafeAreaView>
   );

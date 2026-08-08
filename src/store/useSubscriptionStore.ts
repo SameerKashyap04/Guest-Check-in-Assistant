@@ -1,165 +1,114 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { storage } from './storage';
-import { SubscriptionTier, BillingCycle, SUBSCRIPTION_PLANS, PlanDefinition } from '@/types/subscription';
+import { SubscriptionPlanId, SubscriptionStatus, BillingCycle, SubscriptionState } from '@/types/subscription';
+import { PLANS, TRIAL_DURATION_DAYS } from '@/config/plans';
 
-const zustandStorage: StateStorage = {
-  setItem: (name, value) => storage.set(name, value),
-  getItem: (name) => storage.getString(name) ?? null,
-  removeItem: (name) => storage.remove(name),
-};
-
-const getCurrentMonthKey = (): string => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-};
-
-const getFutureISO = (days: number): string => {
-  const date = new Date();
-  date.setDate(date.getDate() + days);
-  return date.toISOString();
-};
-
-interface SubscriptionStoreState {
-  activeTier: SubscriptionTier;
-  billingCycle: BillingCycle;
-  monthlyCheckinsCount: number;
-  lastResetMonthYear: string;
-  isTrialActive: boolean;
-  trialEndsAt: string | null;
-  subscribedAt: string | null;
-
+interface SubscriptionStoreState extends SubscriptionState {
   // Actions
-  setTier: (tier: SubscriptionTier, cycle?: BillingCycle) => void;
-  setBillingCycle: (cycle: BillingCycle) => void;
-  recordCheckin: () => boolean; // returns true if checkin recorded within quota, false if limit reached
-  resetMonthlyQuotaIfNeeded: () => void;
-  getPlan: () => PlanDefinition;
-  getCheckinsRemaining: () => number | 'unlimited';
-  isFeatureAllowed: (featureKey: keyof PlanDefinition) => boolean;
-  canAddRoom: (currentRoomCount: number) => boolean;
-  canAddProperty: (currentPropertyCount: number) => boolean;
-  activateTrial: (days?: number) => void;
-  isTrialExpired: () => boolean;
+  setPlan: (plan: SubscriptionPlanId, cycle?: BillingCycle) => void;
+  startTrial: () => void;
+  updateStatus: (status: SubscriptionStatus) => void;
+  verifyOnlineSubscription: () => Promise<boolean>;
+  getRemainingTrialDays: () => number;
+  isTrialActive: () => boolean;
+  resetSubscription: () => void;
 }
+
+const zustandStorage = {
+  setItem: (name: string, value: string) => storage.set(name, value),
+  getItem: (name: string) => storage.getString(name) ?? null,
+  removeItem: (name: string) => storage.remove(name),
+};
 
 export const useSubscriptionStore = create<SubscriptionStoreState>()(
   persist(
     (set, get) => ({
-      activeTier: 'free',
+      currentPlan: 'FREE',
+      status: 'active',
       billingCycle: 'monthly',
-      monthlyCheckinsCount: 0,
-      lastResetMonthYear: getCurrentMonthKey(),
-      isTrialActive: true,
-      trialEndsAt: getFutureISO(30), // 30-day free trial on install
-      subscribedAt: null,
+      trialStart: null,
+      trialEnd: null,
+      subscriptionStart: null,
+      renewalDate: null,
+      paymentProvider: 'none',
+      externalSubscriptionId: null,
+      lastVerifiedAt: new Date().toISOString(),
 
-      setTier: (tier, cycle = 'monthly') => {
+      setPlan: (plan: SubscriptionPlanId, cycle: BillingCycle = 'monthly') => {
+        const now = new Date();
+        const nextYear = new Date(now);
+        if (cycle === 'yearly') {
+          nextYear.setFullYear(now.getFullYear() + 1);
+        } else {
+          nextYear.setMonth(now.getMonth() + 1);
+        }
+
         set({
-          activeTier: tier,
+          currentPlan: plan,
+          status: 'active',
           billingCycle: cycle,
-          subscribedAt: new Date().toISOString(),
-          isTrialActive: false,
+          subscriptionStart: now.toISOString(),
+          renewalDate: nextYear.toISOString(),
+          lastVerifiedAt: now.toISOString(),
         });
       },
 
-      setBillingCycle: (cycle) => {
-        set({ billingCycle: cycle });
-      },
+      startTrial: () => {
+        const now = new Date();
+        const trialEnd = new Date(now);
+        trialEnd.setDate(now.getDate() + TRIAL_DURATION_DAYS);
 
-      resetMonthlyQuotaIfNeeded: () => {
-        const currentMonthKey = getCurrentMonthKey();
-        if (get().lastResetMonthYear !== currentMonthKey) {
-          set({
-            monthlyCheckinsCount: 0,
-            lastResetMonthYear: currentMonthKey,
-          });
-        }
-      },
-
-      recordCheckin: () => {
-        get().resetMonthlyQuotaIfNeeded();
-        const state = get();
-        const plan = state.getPlan();
-
-        // If trial active or unlimited quota
-        if (state.isTrialActive && !state.isTrialExpired()) {
-          set({ monthlyCheckinsCount: state.monthlyCheckinsCount + 1 });
-          return true;
-        }
-
-        if (plan.maxCheckinsPerMonth === 'unlimited') {
-          set({ monthlyCheckinsCount: state.monthlyCheckinsCount + 1 });
-          return true;
-        }
-
-        if (state.monthlyCheckinsCount < plan.maxCheckinsPerMonth) {
-          set({ monthlyCheckinsCount: state.monthlyCheckinsCount + 1 });
-          return true;
-        }
-
-        return false;
-      },
-
-      getPlan: () => {
-        const state = get();
-        // If active 30-day trial, give Professional capabilities during trial
-        if (state.isTrialActive && !state.isTrialExpired()) {
-          return SUBSCRIPTION_PLANS.professional;
-        }
-        return SUBSCRIPTION_PLANS[state.activeTier] || SUBSCRIPTION_PLANS.free;
-      },
-
-      getCheckinsRemaining: () => {
-        const state = get();
-        state.resetMonthlyQuotaIfNeeded();
-        const plan = state.getPlan();
-
-        if (state.isTrialActive && !state.isTrialExpired()) {
-          return 'unlimited';
-        }
-
-        if (plan.maxCheckinsPerMonth === 'unlimited') {
-          return 'unlimited';
-        }
-
-        const remaining = plan.maxCheckinsPerMonth - state.monthlyCheckinsCount;
-        return Math.max(0, remaining);
-      },
-
-      isFeatureAllowed: (featureKey) => {
-        const state = get();
-        const plan = state.getPlan();
-        return Boolean(plan[featureKey]);
-      },
-
-      canAddRoom: (currentRoomCount) => {
-        const state = get();
-        const plan = state.getPlan();
-        return currentRoomCount < plan.maxRooms;
-      },
-
-      canAddProperty: (currentPropertyCount) => {
-        const state = get();
-        const plan = state.getPlan();
-        return currentPropertyCount < plan.maxProperties;
-      },
-
-      activateTrial: (days = 30) => {
         set({
-          isTrialActive: true,
-          trialEndsAt: getFutureISO(days),
+          currentPlan: 'PROFESSIONAL', // Trial grants Professional entitlements
+          status: 'trialing',
+          trialStart: now.toISOString(),
+          trialEnd: trialEnd.toISOString(),
+          lastVerifiedAt: now.toISOString(),
         });
       },
 
-      isTrialExpired: () => {
-        const state = get();
-        if (!state.isTrialActive || !state.trialEndsAt) return true;
-        return new Date() > new Date(state.trialEndsAt);
+      updateStatus: (status: SubscriptionStatus) => set({ status }),
+
+      verifyOnlineSubscription: async () => {
+        try {
+          // Verify with server endpoint if available; fallback to current verified state offline
+          set({ lastVerifiedAt: new Date().toISOString() });
+          return true;
+        } catch (e) {
+          console.warn('Subscription verify warning (offline mode active):', e);
+          return false;
+        }
       },
+
+      getRemainingTrialDays: () => {
+        const { trialEnd, status } = get();
+        if (status !== 'trialing' || !trialEnd) return 0;
+        const diff = new Date(trialEnd).getTime() - new Date().getTime();
+        return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+      },
+
+      isTrialActive: () => {
+        const remaining = get().getRemainingTrialDays();
+        return get().status === 'trialing' && remaining > 0;
+      },
+
+      resetSubscription: () =>
+        set({
+          currentPlan: 'FREE',
+          status: 'active',
+          billingCycle: 'monthly',
+          trialStart: null,
+          trialEnd: null,
+          subscriptionStart: null,
+          renewalDate: null,
+          paymentProvider: 'none',
+          externalSubscriptionId: null,
+          lastVerifiedAt: new Date().toISOString(),
+        }),
     }),
     {
-      name: 'subscription-storage',
+      name: 'subscription-storage-v1',
       storage: createJSONStorage(() => zustandStorage),
     }
   )

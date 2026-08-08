@@ -9,21 +9,20 @@ import { Button } from '@/components/Button';
 import { Room } from '@/database/rooms';
 import { getGuestsForRoom, checkoutGuestOrRemoveFromRoom } from '@/database/stays';
 import { useTranslation } from 'react-i18next';
-import { useFeatureGate } from '@/hooks/useFeatureGate';
-import { UpgradeModal } from '@/components/UpgradeModal';
+import { EntitlementService } from '@/services/entitlementService';
+import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 
 export default function RoomsScreen() {
   const { t } = useTranslation();
   const { rooms, fetchRooms, createRoom, editRoom, removeRoom, isLoading } = useRoomsStore();
   
-  const featureGate = useFeatureGate();
-  const [upgradeModalOpen, setUpgradeModalOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
   const [roomGuests, setRoomGuests] = useState<any[]>([]);
   const [isLoadingGuests, setIsLoadingGuests] = useState(false);
   const [isEditingMode, setIsEditingMode] = useState(false);
   const [selectedGuestDetail, setSelectedGuestDetail] = useState<any | null>(null);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const [roomNumber, setRoomNumber] = useState('');
   const [roomType, setRoomType] = useState('');
@@ -97,10 +96,6 @@ export default function RoomsScreen() {
   };
 
   const openAddSheet = () => {
-    if (!featureGate.canAddRoom(rooms.length)) {
-      setUpgradeModalOpen(true);
-      return;
-    }
     setEditingRoom(null);
     setRoomGuests([]);
     setIsEditingMode(true);
@@ -733,13 +728,13 @@ export default function RoomsScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-
+      {/* ROOM LIMIT UPGRADE MODAL */}
       <UpgradeModal
-        visible={upgradeModalOpen}
-        onClose={() => setUpgradeModalOpen(false)}
-        title="Room Capacity Limit Reached"
-        subtitle={`Your current plan allows up to ${featureGate.plan.maxRooms} rooms. Upgrade to Starter or Professional plan to add more rooms.`}
-        recommendedPlan="Starter Plan (₹299/mo)"
+        visible={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        featureName="Property Room Capacity Limit Reached"
+        description={`Your current plan allows up to ${EntitlementService.getActivePlan().entitlements.maxRoomsPerProperty} rooms. Upgrade your plan to unlock more rooms.`}
+        requiredPlan="PROFESSIONAL"
       />
     </SafeAreaView>
   );

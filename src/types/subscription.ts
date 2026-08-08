@@ -1,170 +1,78 @@
-export type SubscriptionTier = 'free' | 'starter' | 'professional' | 'multi_property' | 'enterprise';
+export type SubscriptionPlanId = 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'MULTI_PROPERTY' | 'ENTERPRISE';
 
-export type BillingCycle = 'monthly' | 'annual';
+export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'cancelled' | 'expired' | 'paused';
 
-export interface PlanFeature {
-  text: string;
-  included: boolean;
-  highlight?: boolean;
+export type BillingCycle = 'monthly' | 'yearly';
+
+export interface EntitlementMatrix {
+  maxProperties: number;
+  maxRoomsPerProperty: number;
+  monthlyCheckInLimit: number | 'unlimited';
+  unlimitedCheckIns: boolean;
+  qrCheckIn: boolean;
+  offlineMode: boolean;
+  basicReports: boolean;
+  advancedReports: boolean;
+  pdfExport: boolean;
+  csvExport: boolean;
+  unlimitedExports: boolean;
+  ocrScanning: boolean;
+  staffAccounts: boolean;
+  backups: boolean;
+  restore: boolean;
+  multiProperty: boolean;
+  centralizedDashboard: boolean;
+  rolePermissions: boolean;
+  apiAccess: boolean;
+  prioritySupport: boolean;
 }
 
 export interface PlanDefinition {
-  id: SubscriptionTier;
+  id: SubscriptionPlanId;
   name: string;
-  monthlyPrice: number; // in INR ₹
-  annualPrice: number;  // in INR ₹ (includes ~2 months free)
-  badge?: string;
-  description: string;
-  maxProperties: number;
-  maxRooms: number;
-  maxCheckinsPerMonth: number | 'unlimited';
-  includesOCR: boolean;
-  includesPDFCSVExports: boolean;
-  includesStaffAccounts: boolean;
-  includesMultiProperty: boolean;
-  includesBackups: boolean;
-  includesPrioritySupport: boolean;
-  features: PlanFeature[];
+  monthlyPrice: number; // In INR ₹
+  yearlyPrice: number;  // In INR ₹
+  suitableFor: string;
+  popular?: boolean;
+  features: string[];
+  entitlements: EntitlementMatrix;
 }
 
 export interface SubscriptionState {
-  activeTier: SubscriptionTier;
+  currentPlan: SubscriptionPlanId;
+  status: SubscriptionStatus;
   billingCycle: BillingCycle;
-  monthlyCheckinsCount: number;
-  lastResetMonthYear: string; // "YYYY-MM" format
-  isTrialActive: boolean;
-  trialEndsAt: string | null;
-  subscribedAt: string | null;
+  trialStart: string | null;
+  trialEnd: string | null;
+  subscriptionStart: string | null;
+  renewalDate: string | null;
+  paymentProvider: 'razorpay' | 'stripe' | 'manual' | 'none';
+  externalSubscriptionId: string | null;
+  lastVerifiedAt: string | null;
 }
 
-export const SUBSCRIPTION_PLANS: Record<SubscriptionTier, PlanDefinition> = {
-  free: {
-    id: 'free',
-    name: 'Free',
-    monthlyPrice: 0,
-    annualPrice: 0,
-    description: 'Trial users and very small properties',
-    maxProperties: 1,
-    maxRooms: 5,
-    maxCheckinsPerMonth: 20,
-    includesOCR: false,
-    includesPDFCSVExports: false,
-    includesStaffAccounts: false,
-    includesMultiProperty: false,
-    includesBackups: false,
-    includesPrioritySupport: false,
-    features: [
-      { text: '1 Property & 5 Rooms', included: true },
-      { text: 'Up to 20 check-ins / month', included: true },
-      { text: 'Free QR Self Check-in link', included: true },
-      { text: 'Basic guest records & search', included: true },
-      { text: 'Offline data entry', included: true },
-      { text: 'Camera OCR document scan', included: false },
-      { text: 'PDF / CSV Report exports', included: false },
-      { text: 'Staff accounts & permissions', included: false },
-    ],
-  },
-  starter: {
-    id: 'starter',
-    name: 'Starter',
-    monthlyPrice: 299,
-    annualPrice: 2999,
-    badge: 'Popular for Homestays',
-    description: 'Small homestays & guest houses',
-    maxProperties: 1,
-    maxRooms: 10,
-    maxCheckinsPerMonth: 'unlimited',
-    includesOCR: true,
-    includesPDFCSVExports: true,
-    includesStaffAccounts: false,
-    includesMultiProperty: false,
-    includesBackups: true,
-    includesPrioritySupport: false,
-    features: [
-      { text: '1 Property & 10 Rooms', included: true },
-      { text: 'Unlimited guest check-ins', included: true, highlight: true },
-      { text: 'Camera OCR document scanning', included: true, highlight: true },
-      { text: 'Offline mode & automatic backup', included: true },
-      { text: 'PDF & CSV report exports', included: true },
-      { text: 'Free QR Self Check-in link', included: true },
-      { text: 'Multiple staff logins', included: false },
-      { text: 'Multi-property management', included: false },
-    ],
-  },
-  professional: {
-    id: 'professional',
-    name: 'Professional',
-    monthlyPrice: 799,
-    annualPrice: 7999,
-    badge: 'Best Value for Hotels',
-    description: 'Hotels, resorts, and busy lodges',
-    maxProperties: 1,
-    maxRooms: 30,
-    maxCheckinsPerMonth: 'unlimited',
-    includesOCR: true,
-    includesPDFCSVExports: true,
-    includesStaffAccounts: true,
-    includesMultiProperty: false,
-    includesBackups: true,
-    includesPrioritySupport: true,
-    features: [
-      { text: '1 Property & up to 30 Rooms', included: true },
-      { text: 'Unlimited check-ins & OCR scan', included: true },
-      { text: 'Unlimited PDF/CSV authority reports', included: true },
-      { text: 'Multiple staff accounts & PINs', included: true, highlight: true },
-      { text: 'Advanced occupancy analytics', included: true },
-      { text: 'Priority phone & WhatsApp support', included: true },
-      { text: 'Multi-property management', included: false },
-    ],
-  },
-  multi_property: {
-    id: 'multi_property',
-    name: 'Multi-Property',
-    monthlyPrice: 1999,
-    annualPrice: 19999,
-    badge: 'For Property Managers',
-    description: 'Property managers operating multiple homestays',
-    maxProperties: 10,
-    maxRooms: 150,
-    maxCheckinsPerMonth: 'unlimited',
-    includesOCR: true,
-    includesPDFCSVExports: true,
-    includesStaffAccounts: true,
-    includesMultiProperty: true,
-    includesBackups: true,
-    includesPrioritySupport: true,
-    features: [
-      { text: 'Up to 10 Properties & 150 Rooms', included: true, highlight: true },
-      { text: 'Centralized property dashboard', included: true },
-      { text: 'Unlimited check-ins & OCR scanning', included: true },
-      { text: 'Role-based staff permissions', included: true },
-      { text: 'Consolidated revenue & police reports', included: true },
-      { text: 'Automated cloud & local backups', included: true },
-      { text: 'Dedicated account manager', included: true },
-    ],
-  },
-  enterprise: {
-    id: 'enterprise',
-    name: 'Enterprise',
-    monthlyPrice: 4999,
-    annualPrice: 49999,
-    badge: 'Custom Integration',
-    description: 'Hotel groups, chains, and large resorts',
-    maxProperties: 999,
-    maxRooms: 9999,
-    maxCheckinsPerMonth: 'unlimited',
-    includesOCR: true,
-    includesPDFCSVExports: true,
-    includesStaffAccounts: true,
-    includesMultiProperty: true,
-    includesBackups: true,
-    includesPrioritySupport: true,
-    features: [
-      { text: 'Unlimited Properties & Rooms', included: true },
-      { text: 'Custom PMS & accounting API integration', included: true },
-      { text: 'SLA support & custom onboarding', included: true },
-      { text: 'Custom identity document workflows', included: true },
-      { text: 'On-site staff training', included: true },
-    ],
-  },
-};
+export interface SubscriptionUsage {
+  propertyId: string;
+  yearMonth: string; // 'YYYY-MM'
+  checkinCount: number;
+  exportCount: number;
+  ocrCount: number;
+}
+
+export interface PaymentEvent {
+  id: string;
+  subscriptionId: string;
+  amount: number;
+  currency: string;
+  status: 'success' | 'failed' | 'refunded' | 'pending';
+  provider: string;
+  timestamp: string;
+}
+
+export interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+  role: 'SUPER_ADMIN' | 'ADMIN';
+  createdAt: string;
+}

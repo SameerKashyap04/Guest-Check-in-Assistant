@@ -13,6 +13,8 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import * as ImagePicker from 'expo-image-picker';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
+import { EntitlementService } from '@/services/entitlementService';
+import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 
 export interface GuestItem {
   id: string;
@@ -276,6 +278,8 @@ export default function ReviewScreen() {
     );
   };
 
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+
   const handleSave = async () => {
     if (!selectedRoomId) {
       Alert.alert('Missing Info', 'Please select a room to assign to this check-in.');
@@ -287,12 +291,18 @@ export default function ReviewScreen() {
       return;
     }
 
+    const { propertyId } = useSettingsStore.getState();
+    const { owner } = useAuthStore.getState();
+    const activePropertyId = propertyId || owner?.propertyId || 'HS-DEFAULT';
+
+    const checkinStatus = await EntitlementService.canPerformCheckin(activePropertyId);
+    if (!checkinStatus.allowed) {
+      setIsUpgradeModalOpen(true);
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const { propertyId } = useSettingsStore.getState();
-      const { owner } = useAuthStore.getState();
-      const activePropertyId = propertyId || owner?.propertyId || 'HS-DEFAULT';
-
       await createMultipleGuestsAndStay(
         guestsData.map(g => ({
           full_name: g.name,
@@ -893,6 +903,14 @@ export default function ReviewScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
+      {/* MONTHLY CHECK-IN LIMIT UPGRADE MODAL */}
+      <UpgradeModal
+        visible={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        featureName="Monthly Check-in Limit Reached (20/20)"
+        description="You have reached the 20 monthly check-ins included in the Free Plan. Upgrade to Starter or Professional for unlimited guest check-ins."
+        requiredPlan="STARTER"
+      />
     </SafeAreaView>
   );
 }

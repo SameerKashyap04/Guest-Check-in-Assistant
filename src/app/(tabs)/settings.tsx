@@ -20,9 +20,6 @@ export default function SettingsScreen() {
   const { setColorScheme } = useColorScheme();
   const { lock, logout, verifyPin, setupPin } = useAuthStore();
   const router = useRouter();
-  const subStore = useSubscriptionStore();
-  const activePlan = subStore.getPlan();
-  const isTrialActive = subStore.isTrialActive && !subStore.isTrialExpired();
 
   // Modals state
   const [profileModalOpen, setProfileModalOpen] = useState(false);
@@ -174,48 +171,51 @@ export default function SettingsScreen() {
           </GlassCard>
         </TouchableOpacity>
 
-        {/* SUBSCRIPTION & BUSINESS PLAN CARD */}
+        {/* SUBSCRIPTION & BILLING CARD */}
         <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-          Subscription & Business Plan
+          Subscription & Billing
         </Text>
 
-        <GlassCard className="mb-6 p-5 rounded-2xl border border-primary/30 bg-primary/5">
-          <View className="flex-row justify-between items-start mb-3">
-            <View className="flex-row items-center gap-2">
-              <View className="w-10 h-10 rounded-2xl bg-primary/20 items-center justify-center border border-primary/30">
-                <Sparkles size={20} color="#208AEF" />
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => router.push('/subscription/manage')}
+        >
+          <GlassCard className="mb-6 p-5 border border-amber-500/30 bg-amber-500/5">
+            <View className="flex-row justify-between items-center mb-3">
+              <View className="flex-row items-center space-x-2">
+                <Sparkles size={20} color="#F59E0B" />
+                <Text className="text-xl font-bold text-foreground">
+                  {useSubscriptionStore.getState().currentPlan} Plan
+                </Text>
               </View>
-              <View>
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-lg font-bold text-foreground">{activePlan.name} Plan</Text>
-                  {isTrialActive && (
-                    <View className="bg-amber-500/20 px-2 py-0.5 rounded-full border border-amber-500/30">
-                      <Text className="text-[10px] font-bold text-amber-500 uppercase">30-Day Free Trial</Text>
-                    </View>
-                  )}
-                </View>
-                <Text className="text-xs text-gray-400 mt-0.5">{activePlan.description}</Text>
+              <View className="bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/40">
+                <Text className="text-amber-400 font-extrabold text-xs uppercase tracking-wider">
+                  {useSubscriptionStore.getState().status}
+                </Text>
               </View>
             </View>
-          </View>
 
-          <View className="bg-black/20 p-3 rounded-xl mb-4 border border-gray-800 flex-row justify-between items-center">
-            <View>
-              <Text className="text-[11px] text-gray-400 uppercase font-semibold">Monthly Check-ins</Text>
-              <Text className="text-sm font-bold text-foreground mt-0.5">
-                {subStore.monthlyCheckinsCount} / {activePlan.maxCheckinsPerMonth === 'unlimited' ? 'Unlimited' : activePlan.maxCheckinsPerMonth}
-              </Text>
+            <Text className="text-xs text-gray-500 mb-4">
+              View your feature entitlements, check-in limits, room capacity & manage billing.
+            </Text>
+
+            <View className="flex-row gap-2">
+              <TouchableOpacity
+                onPress={() => router.push('/subscription/pricing')}
+                className="flex-1 bg-amber-500 active:bg-amber-600 py-3 rounded-xl items-center justify-center shadow-sm"
+              >
+                <Text className="text-slate-950 font-bold text-xs">Upgrade Plan</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => router.push('/subscription/manage')}
+                className="flex-1 bg-gray-100 dark:bg-gray-800 py-3 rounded-xl items-center justify-center border border-gray-200 dark:border-gray-700"
+              >
+                <Text className="text-foreground font-bold text-xs">Usage & Details</Text>
+              </TouchableOpacity>
             </View>
-
-            <TouchableOpacity
-              onPress={() => router.push('/subscription/pricing' as any)}
-              className="bg-primary px-3.5 py-2 rounded-xl flex-row items-center gap-1.5 shadow-sm"
-            >
-              <Text className="text-xs font-bold text-white">Upgrade Plan</Text>
-              <ChevronRight size={14} color="#ffffff" />
-            </TouchableOpacity>
-          </View>
-        </GlassCard>
+          </GlassCard>
+        </TouchableOpacity>
 
         {/* STORAGE MODE SWITCHER CARD */}
         <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
