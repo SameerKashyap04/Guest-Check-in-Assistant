@@ -1,31 +1,60 @@
-# Payment Integration & Razorpay Gateway Architecture
-**Guest Check-in Assistant**
+# Payment Integration Guide (Razorpay / Stripe)
 
----
+## Overview
 
-## 1. Overview
-The payment architecture uses an isolated abstraction layer (`PaymentProvider`) to manage checkout, subscription renewal, signature verification, and webhook processing securely.
+The Guest Check-in Assistant monetization model uses an abstract `PaymentProvider` interface (`src/services/paymentProvider.ts`). This allows seamless integration with payment gateways such as Razorpay (primary for India) and Stripe (international).
 
----
+## Razorpay Integration Architecture
 
-## 2. Payment Integration Workflow
+### Client-side (React Native App)
 
-```
-Mobile App (PaymentProvider)
- ├── 1. Trigger createSubscription({ planId, billingCycle })
- ├── 2. Initialize Razorpay Checkout Order
- └── 3. User Completes UPI/NetBanking Payment
-       │
-       ▼
-Backend API (Server Webhook)
- ├── 4. Razorpay sends payment.captured / subscription.charged webhook
- ├── 5. Server verifies X-Razorpay-Signature using secret key
- └── 6. Server updates customer plan authoritative state in database
-```
+1. **Package Installation**:
+   ```bash
+   npm install react-native-razorpay
+   ```
 
----
+2. **Flow**:
+   - User selects a plan on `src/app/subscription/pricing.tsx`.
+   - App calls backend Cloud Function to create a Razorpay Subscription / Order ID.
+   - App launches Razorpay Checkout SDK sheet using the generated `subscription_id` or `order_id`.
+   - On payment success, Razorpay returns `razorpay_payment_id`, `razorpay_subscription_id`, and `razorpay_signature`.
 
-## 3. Webhook Security & Idempotency
-- **Signature Check**: All incoming webhooks verify HMAC SHA256 signatures with the Razorpay webhook secret.
-- **Idempotency**: Webhook payload IDs are logged to `audit_logs` to prevent duplicate credit processing.
-- **PCI Compliance**: Zero credit card, CVV, or banking credentials are ever handled or stored on client devices.
+3. **Code Example**:
+   ```typescript
+   import RazorpayCheckout from 'react-native-razorpay';
+
+   const options = {
+     description: 'Professional Plan Subscription',
+     image: 'https://guest-checkin-assistant.firebaseapp.com/icon.png',
+     currency: 'INR',
+     key: 'rzp_live_XXXXXXXXXXXX',
+     subscription_id: serverGeneratedSubId,
+     name: 'Guest Check-in Assistant',
+     prefill: {
+       email: userEmail,
+       contact: userPhone,
+       name: businessName,
+     },
+     theme: { color: '#8B5CF6' }
+   };
+
+   RazorpayCheckout.open(options).then((data) => {
+     // Verify signature on backend before activating entitlement
+     verifyPaymentSignatureOnServer(data);
+   }).catch((error) => {
+     Alert.alert('Payment Cancelled', error.description);
+   });
+   ```
+
+### Server-Side (Firebase Cloud Functions / Webhooks)
+
+1. **Webhook Listener**:
+   - `subscription.authenticated` -> Mark subscription as active.
+   - `subscription.charged` -> Extend expiry date and issue invoice.
+   - `subscription.halted` / `payment.failed` -> Set status to `past_due`, enter 7-day grace period.
+   - `subscription.cancelled` -> Mark subscription as `cancelled`.
+
+2. **Security & Signature Verification**:
+   - Never trust client-side payload alone.
+   - Compute HMAC SHA256 signature using `RAZORPAY_WEBHOOK_SECRET`.
+   - Update Firestore `/owners/{uid}` document with verified `currentPlan` and `renewalDate`.

@@ -1,115 +1,299 @@
+// ============================================================
+// Guest Check-in Assistant — Subscription Zustand Store
+// ============================================================
+//
+// Persisted via MMKV for offline-first access.
+// Never stores sensitive payment information (card numbers, etc).
+//
+
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import { storage } from './storage';
-import { SubscriptionPlanId, SubscriptionStatus, BillingCycle, SubscriptionState } from '@/types/subscription';
-import { PLANS, TRIAL_DURATION_DAYS } from '@/config/plans';
+import {
+  SubscriptionPlan,
+  SubscriptionStatus,
+  type BillingCycle,
+  type UsageMetrics,
+} from '@/types/subscription';
+import { TRIAL_CONFIG, GRACE_PERIOD } from '@/config/plans';
+import { registerSubscriptionStateAccessor } from '@/services/entitlementService';
 
-interface SubscriptionStoreState extends SubscriptionState {
-  // Actions
-  setPlan: (plan: SubscriptionPlanId, cycle?: BillingCycle) => void;
-  startTrial: () => void;
-  updateStatus: (status: SubscriptionStatus) => void;
-  verifyOnlineSubscription: () => Promise<boolean>;
-  getRemainingTrialDays: () => number;
-  isTrialActive: () => boolean;
-  resetSubscription: () => void;
-}
+// ------------------------------------------------------------------
+// MMKV Zustand Storage Adapter (matches useSettingsStore pattern)
+// ------------------------------------------------------------------
 
-const zustandStorage = {
-  setItem: (name: string, value: string) => storage.set(name, value),
-  getItem: (name: string) => storage.getString(name) ?? null,
-  removeItem: (name: string) => storage.remove(name),
+const zustandStorage: StateStorage = {
+  setItem: (name, value) => {
+    return storage.set(name, value);
+  },
+  getItem: (name) => {
+    const value = storage.getString(name);
+    return value ?? null;
+  },
+  removeItem: (name) => {
+    return storage.remove(name);
+  },
 };
 
-export const useSubscriptionStore = create<SubscriptionStoreState>()(
+// ------------------------------------------------------------------
+// Store Interface
+// ------------------------------------------------------------------
+
+interface SubscriptionState {
+  // Subscription data
+  currentPlan: SubscriptionPlan;
+  billingCycle: BillingCycle;
+  status: SubscriptionStatus;
+  isTrialing: boolean;
+  trialStartDate: string | null;
+  trialEndDate: string | null;
+  subscriptionStartDate: string | null;
+  renewalDate: string | null;
+  cancellationDate: string | null;
+  paymentProvider: string | null;
+  externalSubscriptionId: string | null;
+  lastVerifiedAt: string | null;
+  lastVerifiedPlan: SubscriptionPlan | null;
+  gracePeriodDays: number;
+
+  // Usage tracking (current month)
+  usage: UsageMetrics;
+
+  // Actions: Subscription management
+  setSubscription: (plan: SubscriptionPlan, status: SubscriptionStatus, billingCycle?: BillingCycle) => void;
+  startTrial: (plan?: SubscriptionPlan) => void;
+  endTrial: () => void;
+  cancelSubscription: () => void;
+  updateFromServer: (serverPlan: SubscriptionPlan, serverStatus: SubscriptionStatus) => void;
+  activateFromPayment: (plan: SubscriptionPlan, billingCycle: BillingCycle, orderId: string) => void;
+
+  // Actions: Usage tracking
+  incrementCheckIn: () => void;
+  incrementExport: () => void;
+  incrementOcrScan: () => void;
+  resetMonthlyCounters: () => void;
+
+  // Actions: Helpers
+  ensureCurrentMonth: () => void;
+}
+
+// ------------------------------------------------------------------
+// Helper: Get current month/year
+// ------------------------------------------------------------------
+
+function getCurrentPeriod() {
+  const now = new Date();
+  return { month: now.getMonth() + 1, year: now.getFullYear() };
+}
+
+// ------------------------------------------------------------------
+// Store Definition
+// ------------------------------------------------------------------
+
+export const useSubscriptionStore = create<SubscriptionState>()(
   persist(
-    (set, get) => ({
-      currentPlan: 'FREE',
-      status: 'active',
-      billingCycle: 'monthly',
-      trialStart: null,
-      trialEnd: null,
-      subscriptionStart: null,
-      renewalDate: null,
-      paymentProvider: 'none',
-      externalSubscriptionId: null,
-      lastVerifiedAt: new Date().toISOString(),
+    (set, get) => {
+      // Register the state accessor for the entitlement service
+      // (done inside the store factory so it captures the getter)
+      registerSubscriptionStateAccessor(() => {
+        const state = get();
+        return {
+          currentPlan: state.currentPlan,
+          status: state.status,
+          isTrialing: state.isTrialing,
+          trialEndDate: state.trialEndDate,
+          lastVerifiedAt: state.lastVerifiedAt,
+          gracePeriodDays: state.gracePeriodDays,
+          usage: state.usage,
+        };
+      });
 
-      setPlan: (plan: SubscriptionPlanId, cycle: BillingCycle = 'monthly') => {
-        const now = new Date();
-        const nextYear = new Date(now);
-        if (cycle === 'yearly') {
-          nextYear.setFullYear(now.getFullYear() + 1);
-        } else {
-          nextYear.setMonth(now.getMonth() + 1);
-        }
+      return {
+        // ------------------------------------------------------------------
+        // Default state: FREE plan, no trial, empty usage
+        // ------------------------------------------------------------------
+        currentPlan: SubscriptionPlan.FREE,
+        billingCycle: 'monthly' as BillingCycle,
+        status: SubscriptionStatus.ACTIVE,
+        isTrialing: false,
+        trialStartDate: null,
+        trialEndDate: null,
+        subscriptionStartDate: null,
+        renewalDate: null,
+        cancellationDate: null,
+        paymentProvider: null,
+        externalSubscriptionId: null,
+        lastVerifiedAt: null,
+        lastVerifiedPlan: null,
+        gracePeriodDays: GRACE_PERIOD.DEFAULT_DAYS,
 
-        set({
-          currentPlan: plan,
-          status: 'active',
-          billingCycle: cycle,
-          subscriptionStart: now.toISOString(),
-          renewalDate: nextYear.toISOString(),
-          lastVerifiedAt: now.toISOString(),
-        });
-      },
+        usage: {
+          month: getCurrentPeriod().month,
+          year: getCurrentPeriod().year,
+          checkInCount: 0,
+          exportCount: 0,
+          ocrScanCount: 0,
+          propertyId: '',
+        },
 
-      startTrial: () => {
-        const now = new Date();
-        const trialEnd = new Date(now);
-        trialEnd.setDate(now.getDate() + TRIAL_DURATION_DAYS);
+        // ------------------------------------------------------------------
+        // Subscription Management
+        // ------------------------------------------------------------------
 
-        set({
-          currentPlan: 'PROFESSIONAL', // Trial grants Professional entitlements
-          status: 'trialing',
-          trialStart: now.toISOString(),
-          trialEnd: trialEnd.toISOString(),
-          lastVerifiedAt: now.toISOString(),
-        });
-      },
+        setSubscription: (plan, status, billingCycle) => {
+          set({
+            currentPlan: plan,
+            status,
+            billingCycle: billingCycle || get().billingCycle,
+            isTrialing: false,
+            subscriptionStartDate: new Date().toISOString(),
+          });
+        },
 
-      updateStatus: (status: SubscriptionStatus) => set({ status }),
+        startTrial: (plan) => {
+          const trialPlan = plan || TRIAL_CONFIG.TRIAL_PLAN;
+          const now = new Date();
+          const trialEnd = new Date(now);
+          trialEnd.setDate(trialEnd.getDate() + TRIAL_CONFIG.TRIAL_DURATION_DAYS);
 
-      verifyOnlineSubscription: async () => {
-        try {
-          // Verify with server endpoint if available; fallback to current verified state offline
-          set({ lastVerifiedAt: new Date().toISOString() });
-          return true;
-        } catch (e) {
-          console.warn('Subscription verify warning (offline mode active):', e);
-          return false;
-        }
-      },
+          set({
+            currentPlan: trialPlan,
+            status: SubscriptionStatus.TRIALING,
+            isTrialing: true,
+            trialStartDate: now.toISOString(),
+            trialEndDate: trialEnd.toISOString(),
+          });
+        },
 
-      getRemainingTrialDays: () => {
-        const { trialEnd, status } = get();
-        if (status !== 'trialing' || !trialEnd) return 0;
-        const diff = new Date(trialEnd).getTime() - new Date().getTime();
-        return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-      },
+        endTrial: () => {
+          set({
+            currentPlan: SubscriptionPlan.FREE,
+            status: SubscriptionStatus.ACTIVE,
+            isTrialing: false,
+          });
+        },
 
-      isTrialActive: () => {
-        const remaining = get().getRemainingTrialDays();
-        return get().status === 'trialing' && remaining > 0;
-      },
+        cancelSubscription: () => {
+          set({
+            status: SubscriptionStatus.CANCELLED,
+            cancellationDate: new Date().toISOString(),
+          });
+        },
 
-      resetSubscription: () =>
-        set({
-          currentPlan: 'FREE',
-          status: 'active',
-          billingCycle: 'monthly',
-          trialStart: null,
-          trialEnd: null,
-          subscriptionStart: null,
-          renewalDate: null,
-          paymentProvider: 'none',
-          externalSubscriptionId: null,
-          lastVerifiedAt: new Date().toISOString(),
-        }),
-    }),
+        /**
+         * Called when the app successfully verifies subscription with the server.
+         * Updates the cached plan and records verification timestamp.
+         */
+        updateFromServer: (serverPlan, serverStatus) => {
+          set({
+            currentPlan: serverPlan,
+            status: serverStatus,
+            lastVerifiedAt: new Date().toISOString(),
+            lastVerifiedPlan: serverPlan,
+          });
+        },
+
+        /**
+         * Called after a successful Devify Pay payment.
+         * Activates the purchased plan and records payment provider details.
+         */
+        activateFromPayment: (plan, billingCycle, orderId) => {
+          set({
+            currentPlan: plan,
+            billingCycle,
+            status: SubscriptionStatus.ACTIVE,
+            isTrialing: false,
+            trialEndDate: null,
+            subscriptionStartDate: new Date().toISOString(),
+            paymentProvider: 'devify',
+            externalSubscriptionId: orderId,
+            lastVerifiedAt: new Date().toISOString(),
+            lastVerifiedPlan: plan,
+          });
+        },
+
+        // ------------------------------------------------------------------
+        // Usage Tracking
+        // ------------------------------------------------------------------
+
+        incrementCheckIn: () => {
+          get().ensureCurrentMonth();
+          set((state) => ({
+            usage: {
+              ...state.usage,
+              checkInCount: state.usage.checkInCount + 1,
+            },
+          }));
+        },
+
+        incrementExport: () => {
+          get().ensureCurrentMonth();
+          set((state) => ({
+            usage: {
+              ...state.usage,
+              exportCount: state.usage.exportCount + 1,
+            },
+          }));
+        },
+
+        incrementOcrScan: () => {
+          get().ensureCurrentMonth();
+          set((state) => ({
+            usage: {
+              ...state.usage,
+              ocrScanCount: state.usage.ocrScanCount + 1,
+            },
+          }));
+        },
+
+        resetMonthlyCounters: () => {
+          const { month, year } = getCurrentPeriod();
+          set((state) => ({
+            usage: {
+              ...state.usage,
+              month,
+              year,
+              checkInCount: 0,
+              exportCount: 0,
+              ocrScanCount: 0,
+            },
+          }));
+        },
+
+        /**
+         * Automatically resets counters if the stored month/year doesn't match
+         * the current calendar month. Called before any increment.
+         */
+        ensureCurrentMonth: () => {
+          const { month, year } = getCurrentPeriod();
+          const usage = get().usage;
+          if (usage.month !== month || usage.year !== year) {
+            get().resetMonthlyCounters();
+          }
+        },
+      };
+    },
     {
-      name: 'subscription-storage-v1',
+      name: 'subscription-storage',
       storage: createJSONStorage(() => zustandStorage),
+      // Do not persist functions — only data fields
+      partialize: (state) => ({
+        currentPlan: state.currentPlan,
+        billingCycle: state.billingCycle,
+        status: state.status,
+        isTrialing: state.isTrialing,
+        trialStartDate: state.trialStartDate,
+        trialEndDate: state.trialEndDate,
+        subscriptionStartDate: state.subscriptionStartDate,
+        renewalDate: state.renewalDate,
+        cancellationDate: state.cancellationDate,
+        paymentProvider: state.paymentProvider,
+        externalSubscriptionId: state.externalSubscriptionId,
+        lastVerifiedAt: state.lastVerifiedAt,
+        lastVerifiedPlan: state.lastVerifiedPlan,
+        gracePeriodDays: state.gracePeriodDays,
+        usage: state.usage,
+      }),
     }
   )
 );

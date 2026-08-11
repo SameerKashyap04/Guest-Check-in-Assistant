@@ -11,10 +11,10 @@ import { createMultipleGuestsAndStay } from '@/database/stays';
 import { useRoomsStore } from '@/store/useRoomsStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { isAtLimit, getRemainingUsage } from '@/services/entitlementService';
 import * as ImagePicker from 'expo-image-picker';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
-import { EntitlementService } from '@/services/entitlementService';
-import { UpgradeModal } from '@/components/subscription/UpgradeModal';
 
 export interface GuestItem {
   id: string;
@@ -278,8 +278,6 @@ export default function ReviewScreen() {
     );
   };
 
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-
   const handleSave = async () => {
     if (!selectedRoomId) {
       Alert.alert('Missing Info', 'Please select a room to assign to this check-in.');
@@ -291,18 +289,26 @@ export default function ReviewScreen() {
       return;
     }
 
-    const { propertyId } = useSettingsStore.getState();
-    const { owner } = useAuthStore.getState();
-    const activePropertyId = propertyId || owner?.propertyId || 'HS-DEFAULT';
-
-    const checkinStatus = await EntitlementService.canPerformCheckin(activePropertyId);
-    if (!checkinStatus.allowed) {
-      setIsUpgradeModalOpen(true);
+    // ── Subscription: check monthly check-in limit ──
+    if (isAtLimit('monthlyCheckIns')) {
+      const remaining = getRemainingUsage('monthlyCheckIns');
+      Alert.alert(
+        'Monthly Check-in Limit Reached',
+        'You have used all your check-ins for this month. Upgrade your plan to continue checking in guests.',
+        [
+          { text: 'OK', style: 'cancel' },
+          { text: 'View Plans', onPress: () => router.push('/subscription/pricing') },
+        ]
+      );
       return;
     }
 
     setIsSaving(true);
     try {
+      const { propertyId } = useSettingsStore.getState();
+      const { owner } = useAuthStore.getState();
+      const activePropertyId = propertyId || owner?.propertyId || 'HS-DEFAULT';
+
       await createMultipleGuestsAndStay(
         guestsData.map(g => ({
           full_name: g.name,
@@ -324,6 +330,9 @@ export default function ReviewScreen() {
         }
       );
       
+      // ── Subscription: increment check-in usage counter ──
+      useSubscriptionStore.getState().incrementCheckIn();
+
       Alert.alert('Success', `${guestsData.length} ${guestsData.length === 1 ? 'guest' : 'guests'} checked in successfully!`, [
         { text: 'OK', onPress: () => router.replace('/(tabs)') }
       ]);
@@ -903,14 +912,6 @@ export default function ReviewScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
-      {/* MONTHLY CHECK-IN LIMIT UPGRADE MODAL */}
-      <UpgradeModal
-        visible={isUpgradeModalOpen}
-        onClose={() => setIsUpgradeModalOpen(false)}
-        featureName="Monthly Check-in Limit Reached (20/20)"
-        description="You have reached the 20 monthly check-ins included in the Free Plan. Upgrade to Starter or Professional for unlimited guest check-ins."
-        requiredPlan="STARTER"
-      />
     </SafeAreaView>
   );
 }

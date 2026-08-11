@@ -9,8 +9,8 @@ import { Button } from '@/components/Button';
 import { Room } from '@/database/rooms';
 import { getGuestsForRoom, checkoutGuestOrRemoveFromRoom } from '@/database/stays';
 import { useTranslation } from 'react-i18next';
-import { EntitlementService } from '@/services/entitlementService';
-import { UpgradeModal } from '@/components/subscription/UpgradeModal';
+import { isRoomLimitReached, getLimit } from '@/services/entitlementService';
+import { formatLimit } from '@/config/plans';
 
 export default function RoomsScreen() {
   const { t } = useTranslation();
@@ -22,7 +22,6 @@ export default function RoomsScreen() {
   const [isLoadingGuests, setIsLoadingGuests] = useState(false);
   const [isEditingMode, setIsEditingMode] = useState(false);
   const [selectedGuestDetail, setSelectedGuestDetail] = useState<any | null>(null);
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const [roomNumber, setRoomNumber] = useState('');
   const [roomType, setRoomType] = useState('');
@@ -136,6 +135,19 @@ export default function RoomsScreen() {
     if (editingRoom) {
       await editRoom(editingRoom.id, roomNumber, roomType, roomStatus, parsedPrice);
     } else {
+      // ── Subscription: check room limit before creating ──
+      if (isRoomLimitReached(rooms.length)) {
+        const limit = getLimit('maxRoomsPerProperty');
+        Alert.alert(
+          'Room Limit Reached',
+          `Your current plan allows up to ${formatLimit(limit)} rooms. Upgrade to add more rooms.`,
+          [
+            { text: 'OK', style: 'cancel' },
+            { text: 'View Plans', onPress: () => require('expo-router').router.push('/subscription/pricing') },
+          ]
+        );
+        return;
+      }
       await createRoom(roomNumber, roomType, roomStatus, parsedPrice);
     }
     closeSheet();
@@ -728,14 +740,6 @@ export default function RoomsScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-      {/* ROOM LIMIT UPGRADE MODAL */}
-      <UpgradeModal
-        visible={isUpgradeModalOpen}
-        onClose={() => setIsUpgradeModalOpen(false)}
-        featureName="Property Room Capacity Limit Reached"
-        description={`Your current plan allows up to ${EntitlementService.getActivePlan().entitlements.maxRoomsPerProperty} rooms. Upgrade your plan to unlock more rooms.`}
-        requiredPlan="PROFESSIONAL"
-      />
     </SafeAreaView>
   );
 }

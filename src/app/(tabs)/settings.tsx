@@ -6,13 +6,59 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2, Cloud, HardDrive, Mail, KeyRound, Code2, ExternalLink, Heart, Sparkles } from 'lucide-react-native';
-import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2, Cloud, HardDrive, Mail, KeyRound, Code2, ExternalLink, Heart } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useColorScheme } from 'nativewind';
 import i18n from '@/i18n';
 import { useTranslation } from 'react-i18next';
 import { resetOwnerPassword, sendOwnerEmailVerification, changeOwnerEmail } from '@/services/firebaseAuth';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { PLANS } from '@/config/plans';
+import { PlanBadge } from '@/components/subscription/PlanBadge';
+import { UsageDashboard } from '@/components/subscription/UsageDashboard';
+import { getTrialDaysRemaining } from '@/services/entitlementService';
+import { Crown } from 'lucide-react-native';
+
+/** Subscription summary section for settings */
+function SubscriptionSection() {
+  const router = useRouter();
+  const { currentPlan, status, isTrialing } = useSubscriptionStore();
+  const planDef = PLANS[currentPlan];
+  const trialDays = getTrialDaysRemaining();
+
+  return (
+    <View className="mb-4">
+      <GlassCard className="p-4 mb-3">
+        <View className="flex-row items-center justify-between mb-3">
+          <View className="flex-row items-center">
+            <Crown size={18} color="#8B5CF6" />
+            <Text className="text-base font-bold text-slate-800 ml-2">Current Plan</Text>
+          </View>
+          <PlanBadge plan={currentPlan} status={status} />
+        </View>
+
+        {isTrialing && trialDays > 0 && (
+          <View className="bg-violet-50 rounded-xl px-3 py-2 mb-3">
+            <Text className="text-violet-700 text-xs font-semibold">
+              Trial: {trialDays} day{trialDays !== 1 ? 's' : ''} remaining — upgrade to keep your features
+            </Text>
+          </View>
+        )}
+
+        <Text className="text-sm text-slate-500 mb-3">{planDef.description}</Text>
+
+        <TouchableOpacity
+          onPress={() => router.push('/subscription/pricing')}
+          className="bg-violet-600 py-3 rounded-2xl items-center"
+        >
+          <Text className="text-white font-bold text-sm">View Plans & Upgrade</Text>
+        </TouchableOpacity>
+      </GlassCard>
+
+      <UsageDashboard />
+    </View>
+  );
+}
 
 export default function SettingsScreen() {
   const { t } = useTranslation();
@@ -167,52 +213,6 @@ export default function SettingsScreen() {
                 </View>
                 <Text className="text-xs font-medium text-gray-500">Homestay Owner</Text>
               </View>
-            </View>
-          </GlassCard>
-        </TouchableOpacity>
-
-        {/* SUBSCRIPTION & BILLING CARD */}
-        <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-          Subscription & Billing
-        </Text>
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => router.push('/subscription/manage')}
-        >
-          <GlassCard className="mb-6 p-5 border border-amber-500/30 bg-amber-500/5">
-            <View className="flex-row justify-between items-center mb-3">
-              <View className="flex-row items-center space-x-2">
-                <Sparkles size={20} color="#F59E0B" />
-                <Text className="text-xl font-bold text-foreground">
-                  {useSubscriptionStore.getState().currentPlan} Plan
-                </Text>
-              </View>
-              <View className="bg-amber-500/20 px-3 py-1 rounded-full border border-amber-500/40">
-                <Text className="text-amber-400 font-extrabold text-xs uppercase tracking-wider">
-                  {useSubscriptionStore.getState().status}
-                </Text>
-              </View>
-            </View>
-
-            <Text className="text-xs text-gray-500 mb-4">
-              View your feature entitlements, check-in limits, room capacity & manage billing.
-            </Text>
-
-            <View className="flex-row gap-2">
-              <TouchableOpacity
-                onPress={() => router.push('/subscription/pricing')}
-                className="flex-1 bg-amber-500 active:bg-amber-600 py-3 rounded-xl items-center justify-center shadow-sm"
-              >
-                <Text className="text-slate-950 font-bold text-xs">Upgrade Plan</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => router.push('/subscription/manage')}
-                className="flex-1 bg-gray-100 dark:bg-gray-800 py-3 rounded-xl items-center justify-center border border-gray-200 dark:border-gray-700"
-              >
-                <Text className="text-foreground font-bold text-xs">Usage & Details</Text>
-              </TouchableOpacity>
             </View>
           </GlassCard>
         </TouchableOpacity>
@@ -391,6 +391,12 @@ export default function SettingsScreen() {
             );
           })}
         </GlassCard>
+
+        {/* ── SUBSCRIPTION SECTION ── */}
+        <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 ml-1 mt-4">
+          Subscription
+        </Text>
+        <SubscriptionSection />
 
         <View className="flex-col gap-3 mb-8">
           <Button 

@@ -12,8 +12,8 @@ import { subscribeToPropertyCheckins, deleteCloudCheckinDoc, CloudGuestCheckin }
 import { createMultipleGuestsAndStay } from '@/database/stays';
 import { GlassCard } from '@/components/GlassCard';
 import { useTranslation } from 'react-i18next';
-import { EntitlementService } from '@/services/entitlementService';
-import { UpgradeModal } from '@/components/subscription/UpgradeModal';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { canUseFeature, isAtLimit } from '@/services/entitlementService';
 
 const ID_TYPES = [
   { id: 'UNKNOWN', label: 'Auto-Detect', description: 'Let the system identify the document' },
@@ -32,7 +32,6 @@ export default function ScannerScreen() {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [isScanning, setIsScanning] = useState(false);
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   // Online Self Check-ins Portal State
   const [pendingCheckins, setPendingCheckins] = useState<CloudGuestCheckin[]>([]);
@@ -43,15 +42,6 @@ export default function ScannerScreen() {
   useEffect(() => {
     fetchRooms();
   }, []);
-
-  const checkOcrEntitlement = (): boolean => {
-    const isAllowed = EntitlementService.canUseFeature('ocrScanning');
-    if (!isAllowed) {
-      setIsUpgradeModalOpen(true);
-      return false;
-    }
-    return true;
-  };
 
   // Real-time listener for incoming Web Self Check-ins
   useEffect(() => {
@@ -125,6 +115,9 @@ export default function ScannerScreen() {
         await deleteCloudCheckinDoc(checkin.id);
       }
 
+      // ── Subscription: increment check-in counter for approved self-check-in ──
+      useSubscriptionStore.getState().incrementCheckIn();
+
       setPendingCheckins(prev => prev.filter(item => item.id !== checkin.id));
       if (selectedCheckinDetail?.id === checkin.id) {
         setSelectedCheckinDetail(null);
@@ -168,6 +161,19 @@ export default function ScannerScreen() {
   };
 
   const startScan = (idType: string) => {
+    // ── Subscription: check OCR feature access ──
+    if (!canUseFeature('ocrScanning')) {
+      Alert.alert(
+        'OCR Scanning — Professional Feature',
+        'Automatic ID scanning with OCR is available on the Professional plan. You can still use Manual Entry or Upload ID Image.',
+        [
+          { text: 'OK', style: 'cancel' },
+          { text: 'View Plans', onPress: () => router.push('/subscription/pricing') },
+        ]
+      );
+      return;
+    }
+    useSubscriptionStore.getState().incrementOcrScan();
     setModalVisible(false);
     router.push({
       pathname: '/checkin/camera',
@@ -654,15 +660,6 @@ export default function ScannerScreen() {
           </View>
         </View>
       </Modal>
-
-      {/* OCR UPGRADE PAYWALL MODAL */}
-      <UpgradeModal
-        visible={isUpgradeModalOpen}
-        onClose={() => setIsUpgradeModalOpen(false)}
-        featureName="Camera OCR Document Scanning"
-        description="Automatically extract guest details from Indian government IDs (Aadhaar, PAN, DL, Passport) in seconds with 99%+ accuracy."
-        requiredPlan="PROFESSIONAL"
-      />
     </SafeAreaView>
   );
 }

@@ -1,78 +1,140 @@
-export type SubscriptionPlanId = 'FREE' | 'STARTER' | 'PROFESSIONAL' | 'MULTI_PROPERTY' | 'ENTERPRISE';
+// ============================================================
+// Guest Check-in Assistant — Subscription & Entitlement Types
+// ============================================================
 
-export type SubscriptionStatus = 'active' | 'trialing' | 'past_due' | 'cancelled' | 'expired' | 'paused';
+/** Subscription plan tiers ordered by capability */
+export enum SubscriptionPlan {
+  FREE = 'FREE',
+  STARTER = 'STARTER',
+  PROFESSIONAL = 'PROFESSIONAL',
+  MULTI_PROPERTY = 'MULTI_PROPERTY',
+  ENTERPRISE = 'ENTERPRISE',
+}
 
+/** Subscription lifecycle status */
+export enum SubscriptionStatus {
+  ACTIVE = 'active',
+  TRIALING = 'trialing',
+  PAST_DUE = 'past_due',
+  CANCELLED = 'cancelled',
+  EXPIRED = 'expired',
+  PAUSED = 'paused',
+}
+
+/** Billing frequency */
 export type BillingCycle = 'monthly' | 'yearly';
 
-export interface EntitlementMatrix {
-  maxProperties: number;
-  maxRoomsPerProperty: number;
-  monthlyCheckInLimit: number | 'unlimited';
-  unlimitedCheckIns: boolean;
-  qrCheckIn: boolean;
-  offlineMode: boolean;
-  basicReports: boolean;
-  advancedReports: boolean;
-  pdfExport: boolean;
-  csvExport: boolean;
-  unlimitedExports: boolean;
-  ocrScanning: boolean;
-  staffAccounts: boolean;
-  backups: boolean;
-  restore: boolean;
-  multiProperty: boolean;
-  centralizedDashboard: boolean;
-  rolePermissions: boolean;
-  apiAccess: boolean;
-  prioritySupport: boolean;
+/** Feature flags that can be gated by plan */
+export type FeatureFlag =
+  | 'qrCheckIn'
+  | 'offlineMode'
+  | 'basicReports'
+  | 'advancedReports'
+  | 'pdfExport'
+  | 'csvExport'
+  | 'unlimitedExports'
+  | 'ocrScanning'
+  | 'staffAccounts'
+  | 'backups'
+  | 'restore'
+  | 'multiProperty'
+  | 'centralizedDashboard'
+  | 'rolePermissions'
+  | 'apiAccess'
+  | 'prioritySupport';
+
+/** Numeric limits that can vary by plan */
+export type UsageLimitKey =
+  | 'maxProperties'
+  | 'maxRoomsPerProperty'
+  | 'monthlyCheckInLimit'
+  | 'monthlyExportLimit'
+  | 'maxStaffAccounts';
+
+/** Entitlements granted by a subscription plan */
+export interface PlanEntitlements {
+  /** Numeric usage limits (-1 = unlimited) */
+  limits: Record<UsageLimitKey, number>;
+  /** Feature flags enabled for this plan */
+  features: FeatureFlag[];
 }
 
+/** Pricing information for a plan */
+export interface PlanPricing {
+  monthlyPrice: number;      // in ₹
+  yearlyPrice: number;       // in ₹
+  currency: string;          // 'INR'
+  yearlySavings: number;     // how much saved vs 12× monthly
+}
+
+/** Complete plan definition */
 export interface PlanDefinition {
-  id: SubscriptionPlanId;
+  id: SubscriptionPlan;
   name: string;
-  monthlyPrice: number; // In INR ₹
-  yearlyPrice: number;  // In INR ₹
-  suitableFor: string;
-  popular?: boolean;
-  features: string[];
-  entitlements: EntitlementMatrix;
+  description: string;
+  pricing: PlanPricing;
+  entitlements: PlanEntitlements;
+  isRecommended: boolean;
+  isVisible: boolean;        // whether to show on pricing screen
 }
 
-export interface SubscriptionState {
-  currentPlan: SubscriptionPlanId;
-  status: SubscriptionStatus;
+/** Persisted subscription state for the current user */
+export interface Subscription {
+  currentPlan: SubscriptionPlan;
   billingCycle: BillingCycle;
-  trialStart: string | null;
-  trialEnd: string | null;
-  subscriptionStart: string | null;
+  status: SubscriptionStatus;
+
+  // Trial tracking
+  isTrialing: boolean;
+  trialStartDate: string | null;   // ISO date
+  trialEndDate: string | null;     // ISO date
+
+  // Subscription dates
+  subscriptionStartDate: string | null;
   renewalDate: string | null;
-  paymentProvider: 'razorpay' | 'stripe' | 'manual' | 'none';
-  externalSubscriptionId: string | null;
-  lastVerifiedAt: string | null;
+  cancellationDate: string | null;
+
+  // Payment provider reference (never store card details)
+  paymentProvider: string | null;         // e.g. 'razorpay'
+  externalSubscriptionId: string | null;  // provider's subscription ID
+
+  // Server verification
+  lastVerifiedAt: string | null;   // ISO timestamp of last server check
+  lastVerifiedPlan: SubscriptionPlan | null;
+
+  // Grace period: allow offline usage for this many days after last verification
+  gracePeriodDays: number;
 }
 
-export interface SubscriptionUsage {
-  propertyId: string;
-  yearMonth: string; // 'YYYY-MM'
-  checkinCount: number;
+/** Monthly usage counters (persisted in SQLite and Zustand) */
+export interface UsageMetrics {
+  month: number;             // 1-12
+  year: number;
+  checkInCount: number;
   exportCount: number;
-  ocrCount: number;
+  ocrScanCount: number;
+  propertyId: string;
 }
 
-export interface PaymentEvent {
-  id: string;
-  subscriptionId: string;
-  amount: number;
-  currency: string;
-  status: 'success' | 'failed' | 'refunded' | 'pending';
-  provider: string;
-  timestamp: string;
+/** Staff role for future staff accounts feature */
+export enum StaffRole {
+  OWNER = 'owner',
+  ADMIN = 'admin',
+  MANAGER = 'manager',
+  STAFF = 'staff',
 }
 
-export interface AdminUser {
-  id: string;
-  name: string;
-  email: string;
-  role: 'SUPER_ADMIN' | 'ADMIN';
-  createdAt: string;
-}
+/** Staff permissions (Professional+ feature) */
+export type StaffPermission =
+  | 'viewGuests'
+  | 'createGuest'
+  | 'editGuest'
+  | 'deleteGuest'
+  | 'checkIn'
+  | 'checkOut'
+  | 'scanID'
+  | 'generateReports'
+  | 'exportData'
+  | 'manageRooms'
+  | 'manageStaff'
+  | 'manageSubscription';

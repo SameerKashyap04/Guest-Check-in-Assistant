@@ -1,4 +1,4 @@
-import { openDatabase, incrementMonthlyCheckinCount } from './index';
+import { openDatabase } from './index';
 
 export interface GuestData {
   full_name: string;
@@ -75,10 +75,6 @@ export async function createMultipleGuestsAndStay(guestsData: GuestData[], stayD
         `UPDATE rooms SET status = 'occupied' WHERE id = ?`,
         [stayData.room_id]
       );
-
-      // 4. Increment local subscription monthly check-in counter
-      const propId = guestsData[0]?.property_id || 'HOMESTAY_DEFAULT';
-      await incrementMonthlyCheckinCount(propId);
       
       // Commit transaction
       await db.execAsync('COMMIT;');

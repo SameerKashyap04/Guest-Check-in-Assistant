@@ -64,42 +64,6 @@ export async function initDatabase() {
       FOREIGN KEY (guest_id) REFERENCES guests(id) ON DELETE CASCADE,
       FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE SET NULL
     );
-
-    CREATE TABLE IF NOT EXISTS subscription_state (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
-      current_plan TEXT NOT NULL DEFAULT 'FREE',
-      status TEXT NOT NULL DEFAULT 'active',
-      billing_cycle TEXT NOT NULL DEFAULT 'monthly',
-      trial_start DATETIME,
-      trial_end DATETIME,
-      subscription_start DATETIME,
-      renewal_date DATETIME,
-      payment_provider TEXT DEFAULT 'none',
-      external_subscription_id TEXT,
-      last_verified_at DATETIME,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS subscription_usage (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      property_id TEXT NOT NULL,
-      year_month TEXT NOT NULL,
-      checkin_count INTEGER DEFAULT 0,
-      export_count INTEGER DEFAULT 0,
-      ocr_count INTEGER DEFAULT 0,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(property_id, year_month)
-    );
-
-    CREATE TABLE IF NOT EXISTS audit_logs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      user_id TEXT,
-      property_id TEXT,
-      action TEXT NOT NULL,
-      details TEXT,
-      timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-    );
   `);
 
   try {
@@ -137,97 +101,30 @@ export async function initDatabase() {
   } catch (e) {
     // Column already exists
   }
-}
 
-export async function getCurrentYearMonth(): Promise<string> {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  return `${year}-${month}`;
-}
-
-export async function getMonthlyCheckinCount(propertyId: string): Promise<number> {
+  // ── Subscription Usage Tracking Table (v1.2.0+) ──────────────────
   try {
-    const db = await openDatabase();
-    const ym = await getCurrentYearMonth();
-    const result = await db.getFirstAsync<{ checkin_count: number }>(
-      'SELECT checkin_count FROM subscription_usage WHERE property_id = ? AND year_month = ?',
-      [propertyId, ym]
-    );
-    return result?.checkin_count ?? 0;
+    await db.execAsync(`
+      CREATE TABLE IF NOT EXISTS subscription_usage (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        month INTEGER NOT NULL,
+        year INTEGER NOT NULL,
+        check_in_count INTEGER DEFAULT 0,
+        export_count INTEGER DEFAULT 0,
+        ocr_scan_count INTEGER DEFAULT 0,
+        property_id TEXT,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(month, year, property_id)
+      );
+    `);
   } catch (e) {
-    console.error('Error fetching monthly checkin count:', e);
-    return 0;
-  }
-}
-
-export async function incrementMonthlyCheckinCount(propertyId: string): Promise<number> {
-  try {
-    const db = await openDatabase();
-    const ym = await getCurrentYearMonth();
-    await db.runAsync(
-      `INSERT INTO subscription_usage (property_id, year_month, checkin_count)
-       VALUES (?, ?, 1)
-       ON CONFLICT(property_id, year_month) DO UPDATE SET checkin_count = checkin_count + 1, updated_at = CURRENT_TIMESTAMP`,
-      [propertyId, ym]
-    );
-    return await getMonthlyCheckinCount(propertyId);
-  } catch (e) {
-    console.error('Error incrementing monthly checkin count:', e);
-    return 0;
-  }
-}
-
-export async function getMonthlyExportCount(propertyId: string): Promise<number> {
-  try {
-    const db = await openDatabase();
-    const ym = await getCurrentYearMonth();
-    const result = await db.getFirstAsync<{ export_count: number }>(
-      'SELECT export_count FROM subscription_usage WHERE property_id = ? AND year_month = ?',
-      [propertyId, ym]
-    );
-    return result?.export_count ?? 0;
-  } catch (e) {
-    console.error('Error fetching monthly export count:', e);
-    return 0;
-  }
-}
-
-export async function incrementMonthlyExportCount(propertyId: string): Promise<number> {
-  try {
-    const db = await openDatabase();
-    const ym = await getCurrentYearMonth();
-    await db.runAsync(
-      `INSERT INTO subscription_usage (property_id, year_month, export_count)
-       VALUES (?, ?, 1)
-       ON CONFLICT(property_id, year_month) DO UPDATE SET export_count = export_count + 1, updated_at = CURRENT_TIMESTAMP`,
-      [propertyId, ym]
-    );
-    return await getMonthlyExportCount(propertyId);
-  } catch (e) {
-    console.error('Error incrementing monthly export count:', e);
-    return 0;
-  }
-}
-
-export async function logAuditEvent(action: string, userId?: string, propertyId?: string, details?: string) {
-  try {
-    const db = await openDatabase();
-    await db.runAsync(
-      'INSERT INTO audit_logs (user_id, property_id, action, details) VALUES (?, ?, ?, ?)',
-      [userId ?? 'anonymous', propertyId ?? 'default', action, details ?? '']
-    );
-  } catch (e) {
-    console.warn('Failed to log audit event:', e);
+    console.warn('subscription_usage table migration notice:', e);
   }
 }
 
 export async function resetDatabase() {
   const db = await openDatabase();
   await db.execAsync(`
-    DROP TABLE IF EXISTS audit_logs;
-    DROP TABLE IF EXISTS subscription_usage;
-    DROP TABLE IF EXISTS subscription_state;
     DROP TABLE IF EXISTS stays;
     DROP TABLE IF EXISTS rooms;
     DROP TABLE IF EXISTS guests;
@@ -251,4 +148,3 @@ export async function assignLegacyUnassignedGuests(targetPropertyId: string) {
     console.warn('Migration assignLegacyUnassignedGuests notice:', e);
   }
 }
-

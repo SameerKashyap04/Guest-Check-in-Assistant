@@ -5,14 +5,15 @@ import { GlassCard } from '@/components/GlassCard';
 import { ChevronLeft, Download, TrendingUp, Users, Calendar, FileText, CheckCircle2, BedDouble, ShieldCheck } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
-import { openDatabase, incrementMonthlyExportCount } from '@/database';
+import { openDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import * as Print from 'expo-print';
 import * as Sharing from 'expo-sharing';
 import * as FileSystem from 'expo-file-system/legacy';
+
 import { useTranslation } from 'react-i18next';
-import { EntitlementService } from '@/services/entitlementService';
-import { UpgradeModal } from '@/components/subscription/UpgradeModal';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { isAtLimit, getRemainingUsage } from '@/services/entitlementService';
 
 export default function ReportsScreen() {
   const { t } = useTranslation();
@@ -153,28 +154,25 @@ export default function ReportsScreen() {
     }
   };
 
-  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-
-  const checkExportEntitlement = async (): Promise<boolean> => {
-    const { propertyId } = useSettingsStore.getState();
-    const status = await EntitlementService.canPerformExport(propertyId || 'HS-DEFAULT');
-    if (!status.allowed) {
-      setIsUpgradeModalOpen(true);
-      return false;
-    }
-    await incrementMonthlyExportCount(propertyId || 'HS-DEFAULT');
-    return true;
-  };
-
   // PDF Export Handler
   const handleExportPDF = async () => {
-    const isAllowed = await checkExportEntitlement();
-    if (!isAllowed) return;
-
     const targetGuests = currentFilteredGuests;
 
     if (targetGuests.length === 0) {
       Alert.alert('No Registrations', `No guest registrations found for ${getDurationLabel()}.`);
+      return;
+    }
+
+    // ── Subscription: check export limit ──
+    if (isAtLimit('monthlyExports')) {
+      Alert.alert(
+        'Monthly Export Limit Reached',
+        'You have used all your exports for this month. Upgrade your plan for unlimited exports.',
+        [
+          { text: 'OK', style: 'cancel' },
+          { text: 'View Plans', onPress: () => router.push('/subscription/pricing') },
+        ]
+      );
       return;
     }
 
@@ -271,6 +269,8 @@ export default function ReportsScreen() {
 
       const { uri } = await Print.printToFileAsync({ html: htmlContent });
       await shareReportFile(uri, 'application/pdf', 'Guest_Register_Report.pdf');
+      // ── Subscription: increment export counter ──
+      useSubscriptionStore.getState().incrementExport();
     } catch (e: any) {
       console.error('PDF generation error', e);
       Alert.alert('Export Error', e?.message || 'Failed to generate PDF report.');
@@ -285,6 +285,19 @@ export default function ReportsScreen() {
 
     if (targetGuests.length === 0) {
       Alert.alert('No Registrations', `No guest registrations found for ${getDurationLabel()}.`);
+      return;
+    }
+
+    // ── Subscription: check export limit ──
+    if (isAtLimit('monthlyExports')) {
+      Alert.alert(
+        'Monthly Export Limit Reached',
+        'You have used all your exports for this month. Upgrade your plan for unlimited exports.',
+        [
+          { text: 'OK', style: 'cancel' },
+          { text: 'View Plans', onPress: () => router.push('/subscription/pricing') },
+        ]
+      );
       return;
     }
 
@@ -313,6 +326,8 @@ export default function ReportsScreen() {
       const fileUri = `${FileSystem.cacheDirectory}Guest_Register_Report.csv`;
       await FileSystem.writeAsStringAsync(fileUri, csvData, { encoding: FileSystem.EncodingType.UTF8 });
       await shareReportFile(fileUri, 'text/csv', 'Guest_Register_Report.csv');
+      // ── Subscription: increment export counter ──
+      useSubscriptionStore.getState().incrementExport();
     } catch (e: any) {
       console.error('CSV generation error', e);
       Alert.alert('Export Error', e?.message || 'Failed to generate CSV report.');
@@ -451,14 +466,6 @@ export default function ReportsScreen() {
         />
 
       </ScrollView>
-      {/* REPORT EXPORT LIMIT UPGRADE MODAL */}
-      <UpgradeModal
-        visible={isUpgradeModalOpen}
-        onClose={() => setIsUpgradeModalOpen(false)}
-        featureName="Monthly Export Limit Reached (5/5)"
-        description="You have reached the 5 free PDF/CSV exports included in the Free plan this month. Upgrade to Starter or Professional for unlimited exports."
-        requiredPlan="STARTER"
-      />
     </SafeAreaView>
   );
 }

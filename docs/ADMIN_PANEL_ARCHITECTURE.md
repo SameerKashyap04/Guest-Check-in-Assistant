@@ -1,36 +1,40 @@
-# Web Admin Panel Architecture & SaaS Control Center
-**Guest Check-in Assistant**
+# Admin Panel Architecture
 
----
+## Overview
 
-## 1. Executive Summary
-The Web Admin Panel is an internal SaaS control center for the product owner and management team to monitor business growth, MRR/ARR, churn, active subscriptions, and customer support actions.
+The Admin Panel is a standalone, web-based management portal built using **Next.js (App Router)**, **TypeScript**, and **Tailwind CSS**. It connects directly to the shared Firebase backend (`Firestore` & `Firebase Auth`) used by the Guest Check-in Assistant mobile application.
 
----
-
-## 2. Technical Stack
-- **Framework**: Next.js / React Native Web Stack with TypeScript.
-- **Styling**: Tailwind CSS & NativeWind design system.
-- **State & API**: REST API services via `BackendApiService`.
-- **Security**: Server-side JWT authentication & RBAC (`SUPER_ADMIN` / `ADMIN`).
-
----
-
-## 3. Module Hierarchy
+## Directory Location & Structure
 
 ```
-src/admin/
- ├── components/
- │    └── AdminLayout.tsx (Sidebar navigation, brand header, active route states)
- └── pages/
-      ├── DashboardPage.tsx (KPI Overview: MRR, ARR, Active Subscriptions, Churn)
-      ├── SubscriptionsPage.tsx (Subscription table, plan overrides, trial extensions)
-      ├── UsersPage.tsx (Customer directory & detail inspector)
-      └── RevenuePage.tsx (Financial analytics & cohort reports)
+admin-panel/
+├── src/
+│   ├── app/
+│   │   ├── layout.tsx         # App Router Root Layout
+│   │   ├── page.tsx           # Monetization Dashboard (MRR/ARR KPIs & Live Log)
+│   │   ├── users/page.tsx     # Property Owners Directory
+│   │   ├── properties/page.tsx # Property Directory
+│   │   ├── subscriptions/page.tsx # Subscriptions Ledger
+│   │   ├── payments/page.tsx  # Payment Logs
+│   │   ├── revenue/page.tsx   # Financial & ARPU Analytics
+│   │   ├── analytics/page.tsx # Check-in & OCR Usage Stats
+│   │   ├── plans/page.tsx     # Plan & Entitlements Configuration Matrix
+│   │   ├── audit-logs/page.tsx # Immutable Admin Audit Logs
+│   │   └── login/page.tsx     # Admin Portal Authentication
+│   ├── components/
+│   │   └── AdminLayout.tsx    # Sidebar Navigation & PII Privacy Toggle
+│   └── lib/
+│       └── firebase.ts        # Shared Firebase Client SDK
 ```
 
----
+## Security & PII Protection Standards
 
-## 4. Privacy & Data Protection Rules
-- **Privacy Minimization**: The Admin Panel does NOT expose raw guest identity document images or full Aadhaar numbers by default.
-- **Audit Logging**: All admin overrides (e.g. plan upgrades, trial extensions) are recorded in `audit_logs`.
+1. **Default PII Masking**:
+   - raw identity document photos (Aadhaar/Passport scans) and full 12-digit Aadhaar numbers are masked by default.
+   - Admin UI includes a strict `PII Masking` status toggle.
+
+2. **Role-Based Access Control**:
+   - Access restricted to Firebase Auth users with `admin: true` custom claim or registered in `/admins` Firestore collection.
+
+3. **Audit Trails**:
+   - Every administrative override (e.g. extending a trial, manual plan change, unmasking PII) creates an immutable record in `/audit_logs`.

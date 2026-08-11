@@ -1,25 +1,8 @@
-# Product Analytics & Event Tracking Specification
-**Guest Check-in Assistant**
+# Analytics Metrics Specification
 
----
+## Product Usage Tracked
 
-## 1. Privacy First Tracking Policy
-Product analytics MUST NOT transmit guest personal data, identity numbers, names, or document images. All tracked properties are sanitized by `AnalyticsService`.
-
----
-
-## 2. Core Tracked Events
-
-- `app_opened`: Triggered on application launch.
-- `property_created`: Triggered when a new property is configured.
-- `first_checkin_completed`: High-value activation milestone.
-- `qr_checkin_used`: Self check-in link usage event.
-- `ocr_started`: OCR camera scan launched.
-- `ocr_completed`: Document fields successfully recognized.
-- `report_generated`: C-Form or occupancy report viewed.
-- `export_created`: PDF or CSV export generated.
-- `pricing_viewed`: User opened pricing comparison screen.
-- `upgrade_prompt_viewed`: Contextual paywall modal displayed.
-- `checkout_started`: User selected a subscription plan.
-- `subscription_started`: Payment successfully verified.
-- `trial_started`: 30-day trial activated.
+- **Monthly Active Check-ins**: Number of completed guest registrations per property.
+- **OCR Scan Volume**: Number of document OCR scans executed vs manual entries.
+- **Report Exports**: PDF and CSV exports generated per property per month.
+- **Online Self-check-in Submissions**: Web QR check-in requests processed.
