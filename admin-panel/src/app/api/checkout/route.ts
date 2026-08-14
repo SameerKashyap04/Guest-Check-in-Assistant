@@ -18,11 +18,11 @@ import {
 } from '@/lib/plans';
 
 // ------------------------------------------------------------------
-// Environment (server-side only)
+// Environment & Configuration Resolution
 // ------------------------------------------------------------------
 
-const DEVIFY_API_URL = process.env.DEVIFY_API_URL || 'https://devifypay.site';
-const DEVIFY_API_KEY = process.env.DEVIFY_API_KEY || '';
+const ENV_DEVIFY_API_URL = process.env.DEVIFY_API_URL || 'https://devifypay.site';
+const ENV_DEVIFY_API_KEY = process.env.DEVIFY_API_KEY || '';
 
 // ------------------------------------------------------------------
 // CORS headers for cross-origin requests from the Expo app
@@ -51,12 +51,33 @@ interface CheckoutRequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Validate API key is configured
-    if (!DEVIFY_API_KEY) {
-      console.error('[Checkout] DEVIFY_API_KEY is not configured');
+    // 1. Resolve DEVIFY_API_KEY and DEVIFY_API_URL (Firestore override -> process.env)
+    let devifyApiUrl = ENV_DEVIFY_API_URL;
+    let devifyApiKey = ENV_DEVIFY_API_KEY;
+
+    try {
+      const devifyDocSnap = await getDoc(doc(db, 'system_config', 'devify_config'));
+      if (devifyDocSnap.exists()) {
+        const cfg = devifyDocSnap.data();
+        if (cfg?.apiKey && cfg.apiKey !== 'sk_test_xxx') {
+          devifyApiKey = cfg.apiKey;
+        }
+        if (cfg?.apiUrl) {
+          devifyApiUrl = cfg.apiUrl;
+        }
+      }
+    } catch (err) {
+      console.warn('[Checkout] Firestore devify_config lookup notice:', err);
+    }
+
+    if (!devifyApiKey || devifyApiKey === 'sk_test_xxx') {
+      console.error('[Checkout] DEVIFY_API_KEY is not configured or using placeholder sk_test_xxx');
       return NextResponse.json(
-        { error: 'Payment service not configured' },
-        { status: 500, headers: corsHeaders }
+        {
+          error:
+            'Devify Pay API key is not configured. Please enter your API key (sk_live_... or sk_test_...) in admin-panel/.env.local or Admin Panel Payments settings.',
+        },
+        { status: 400, headers: corsHeaders }
       );
     }
 
@@ -92,12 +113,15 @@ export async function POST(request: NextRequest) {
     let planName: string = planId;
 
     try {
-      const planDocSnap = await getDoc(doc(db, "system_config", "plan_matrix"));
+      const planDocSnap = await getDoc(doc(db, 'system_config', 'plan_matrix'));
       if (planDocSnap.exists() && Array.isArray(planDocSnap.data()?.plans)) {
         const dynamicPlans: any[] = planDocSnap.data().plans;
-        const matched = dynamicPlans.find((p) => p.id === planId || p.name?.toUpperCase() === planId.toUpperCase());
+        const matched = dynamicPlans.find(
+          (p) => p.id === planId || p.name?.toUpperCase() === planId.toUpperCase()
+        );
         if (matched) {
-          const priceRupees = billingCycle === 'yearly' ? matched.yearlyPrice : matched.monthlyPrice;
+          const priceRupees =
+            billingCycle === 'yearly' ? matched.yearlyPrice : matched.monthlyPrice;
           if (priceRupees && priceRupees > 0) {
             amountPaise = priceRupees * 100;
             planName = matched.name || planId;
@@ -128,11 +152,11 @@ export async function POST(request: NextRequest) {
     const idempotencyKey = `${userId}_${planId}_${billingCycle}_${today}`;
 
     // 5. Create Devify Order
-    const orderRes = await fetch(`${DEVIFY_API_URL}/v1/orders`, {
+    const orderRes = await fetch(`${devifyApiUrl}/v1/orders`, {
       method: 'POST',
       headers: {
-        'X-Api-Key': DEVIFY_API_KEY,
-        Authorization: `Bearer ${DEVIFY_API_KEY}`,
+        'X-Api-Key': devifyApiKey,
+        Authorization: `Bearer ${devifyApiKey}`,
         'Content-Type': 'application/json',
         'Idempotency-Key': idempotencyKey,
       },
@@ -154,8 +178,13 @@ export async function POST(request: NextRequest) {
     if (!orderRes.ok) {
       const errorText = await orderRes.text();
       console.error('[Checkout] Devify order creation failed:', orderRes.status, errorText);
+      let details = errorText;
+      try {
+        const parsed = JSON.parse(errorText);
+        details = parsed.message || parsed.error || errorText;
+      } catch {}
       return NextResponse.json(
-        { error: 'Failed to create payment order' },
+        { error: `Devify Pay Order Failed (${orderRes.status}): ${details}` },
         { status: 502, headers: corsHeaders }
       );
     }
@@ -172,11 +201,11 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Create Devify Payment
-    const paymentRes = await fetch(`${DEVIFY_API_URL}/v1/payments`, {
+    const paymentRes = await fetch(`${devifyApiUrl}/v1/payments`, {
       method: 'POST',
       headers: {
-        'X-Api-Key': DEVIFY_API_KEY,
-        Authorization: `Bearer ${DEVIFY_API_KEY}`,
+        'X-Api-Key': devifyApiKey,
+        Authorization: `Bearer ${devifyApiKey}`,
         'Content-Type': 'application/json',
         'Idempotency-Key': `${idempotencyKey}_pay`,
       },
@@ -189,8 +218,13 @@ export async function POST(request: NextRequest) {
     if (!paymentRes.ok) {
       const errorText = await paymentRes.text();
       console.error('[Checkout] Devify payment creation failed:', paymentRes.status, errorText);
+      let details = errorText;
+      try {
+        const parsed = JSON.parse(errorText);
+        details = parsed.message || parsed.error || errorText;
+      } catch {}
       return NextResponse.json(
-        { error: 'Failed to create payment' },
+        { error: `Devify Pay Payment Failed (${paymentRes.status}): ${details}` },
         { status: 502, headers: corsHeaders }
       );
     }
@@ -200,7 +234,7 @@ export async function POST(request: NextRequest) {
     const checkoutUrl =
       paymentData.checkout_url ||
       paymentData.checkoutUrl ||
-      (paymentId ? `${DEVIFY_API_URL}/pay/${paymentId}` : null);
+      (paymentId ? `${devifyApiUrl}/pay/${paymentId}` : null);
 
     if (!checkoutUrl) {
       console.error('[Checkout] Devify payment response missing checkout_url:', paymentData);

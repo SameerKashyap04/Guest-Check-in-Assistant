@@ -120,12 +120,25 @@ export default function PaymentsPage() {
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  const handleSaveSettings = () => {
+  const handleSaveSettings = async () => {
     if (typeof window !== "undefined") {
       localStorage.setItem("DEVIFY_API_URL", apiUrl);
       localStorage.setItem("DEVIFY_API_KEY", apiKey);
       localStorage.setItem("DEVIFY_WEBHOOK_SECRET", webhookSecret);
     }
+
+    try {
+      const docRef = doc(db, "system_config", "devify_config");
+      await setDoc(docRef, {
+        apiUrl,
+        apiKey,
+        webhookSecret,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      console.warn("Firestore devify_config save notice:", e);
+    }
+
     setSaveSuccess(true);
     setTimeout(() => setSaveSuccess(false), 3000);
   };
