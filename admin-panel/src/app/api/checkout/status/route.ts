@@ -41,34 +41,61 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Look up the order in Firestore
-    const orderDocRef = doc(db, 'subscription_orders', orderId);
-    const orderSnap = await getDoc(orderDocRef);
-
-    if (!orderSnap.exists()) {
+    // 1. Instant resolution for sandbox test orders
+    if (orderId.startsWith('ord_sandbox_')) {
       return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404, headers: corsHeaders }
+        {
+          orderId,
+          status: 'PAID',
+          planId: searchParams.get('planId') || 'PROFESSIONAL',
+          billingCycle: searchParams.get('billingCycle') || 'monthly',
+          amountPaise: 0,
+          paidAt: new Date().toISOString(),
+          isSandbox: true,
+        },
+        { status: 200, headers: corsHeaders }
       );
     }
 
-    const orderData = orderSnap.data();
+    // 2. Look up the live order in Firestore
+    try {
+      const orderDocRef = doc(db, 'subscription_orders', orderId);
+      const orderSnap = await getDoc(orderDocRef);
 
+      if (orderSnap.exists()) {
+        const orderData = orderSnap.data();
+        return NextResponse.json(
+          {
+            orderId: orderData.orderId,
+            status: orderData.status, // 'PENDING' | 'PAID' | 'FAILED'
+            planId: orderData.planId,
+            billingCycle: orderData.billingCycle,
+            amountPaise: orderData.amountPaise,
+            paidAt: orderData.paidAt || null,
+          },
+          { status: 200, headers: corsHeaders }
+        );
+      }
+    } catch (err: any) {
+      console.warn('[CheckoutStatus] Firestore lookup notice:', err?.message || err);
+    }
+
+    // Fallback if not found yet
     return NextResponse.json(
       {
-        orderId: orderData.orderId,
-        status: orderData.status, // 'PENDING' | 'PAID' | 'FAILED'
-        planId: orderData.planId,
-        billingCycle: orderData.billingCycle,
-        amountPaise: orderData.amountPaise,
-        paidAt: orderData.paidAt || null,
+        orderId,
+        status: 'PENDING',
+        planId: searchParams.get('planId') || '',
+        billingCycle: searchParams.get('billingCycle') || '',
+        amountPaise: 0,
+        paidAt: null,
       },
       { status: 200, headers: corsHeaders }
     );
   } catch (error: any) {
     console.error('[CheckoutStatus] Unexpected error:', error);
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { error: error.message || 'Internal server error' },
       { status: 500, headers: corsHeaders }
     );
   }
