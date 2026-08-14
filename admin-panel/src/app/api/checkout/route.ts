@@ -131,6 +131,7 @@ export async function POST(request: NextRequest) {
     const orderRes = await fetch(`${DEVIFY_API_URL}/v1/orders`, {
       method: 'POST',
       headers: {
+        'X-Api-Key': DEVIFY_API_KEY,
         Authorization: `Bearer ${DEVIFY_API_KEY}`,
         'Content-Type': 'application/json',
         'Idempotency-Key': idempotencyKey,
@@ -141,6 +142,11 @@ export async function POST(request: NextRequest) {
         description: `${planName} Plan (${billingCycle})`,
         customer: {
           email: userEmail,
+        },
+        metadata: {
+          user_id: userId,
+          plan_id: planId,
+          billing_cycle: billingCycle,
         },
       }),
     });
@@ -169,8 +175,10 @@ export async function POST(request: NextRequest) {
     const paymentRes = await fetch(`${DEVIFY_API_URL}/v1/payments`, {
       method: 'POST',
       headers: {
+        'X-Api-Key': DEVIFY_API_KEY,
         Authorization: `Bearer ${DEVIFY_API_KEY}`,
         'Content-Type': 'application/json',
+        'Idempotency-Key': `${idempotencyKey}_pay`,
       },
       body: JSON.stringify({
         order_id: orderId,
@@ -189,7 +197,10 @@ export async function POST(request: NextRequest) {
 
     const paymentData = await paymentRes.json();
     const paymentId = paymentData.id || paymentData.payment_id;
-    const checkoutUrl = paymentData.checkout_url || paymentData.checkoutUrl;
+    const checkoutUrl =
+      paymentData.checkout_url ||
+      paymentData.checkoutUrl ||
+      (paymentId ? `${DEVIFY_API_URL}/pay/${paymentId}` : null);
 
     if (!checkoutUrl) {
       console.error('[Checkout] Devify payment response missing checkout_url:', paymentData);

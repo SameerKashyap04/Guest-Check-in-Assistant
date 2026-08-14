@@ -25,7 +25,9 @@ const DEVIFY_WEBHOOK_SECRET = process.env.DEVIFY_WEBHOOK_SECRET || '';
 
 /**
  * Verifies the Devify webhook signature.
- * Formula: HMAC-SHA256(DEVIFY_WEBHOOK_SECRET, timestamp + "." + rawBody)
+ * Supports both:
+ * 1. Direct HMAC-SHA256 signature over rawBody (Standard Devify Pay Developer Guide format: crypto.createHmac('sha256', secret).update(bodyText).digest('hex'))
+ * 2. Timestamped HMAC-SHA256 signature (timestamp + "." + rawBody)
  */
 function verifySignature(
   rawBody: string,
@@ -37,25 +39,44 @@ function verifySignature(
     return false;
   }
 
-  const payload = `${timestamp}.${rawBody}`;
-  const expectedSignature = createHmac('sha256', DEVIFY_WEBHOOK_SECRET)
-    .update(payload)
+  // Helper for constant-time comparison
+  const compare = (sigA: string, sigB: string) => {
+    if (sigA.length !== sigB.length) return false;
+    let mismatch = 0;
+    for (let i = 0; i < sigA.length; i++) {
+      mismatch |= sigA.charCodeAt(i) ^ sigB.charCodeAt(i);
+    }
+    return mismatch === 0;
+  };
+
+  // 1. Direct HMAC-SHA256 signature
+  const expectedDirectSig = createHmac('sha256', DEVIFY_WEBHOOK_SECRET)
+    .update(rawBody)
     .digest('hex');
 
-  // Constant-time comparison to prevent timing attacks
-  if (expectedSignature.length !== signature.length) return false;
-
-  let mismatch = 0;
-  for (let i = 0; i < expectedSignature.length; i++) {
-    mismatch |= expectedSignature.charCodeAt(i) ^ signature.charCodeAt(i);
+  if (compare(expectedDirectSig, signature)) {
+    return true;
   }
-  return mismatch === 0;
+
+  // 2. Timestamped HMAC-SHA256 signature
+  if (timestamp) {
+    const timestampedPayload = `${timestamp}.${rawBody}`;
+    const expectedTimestampedSig = createHmac('sha256', DEVIFY_WEBHOOK_SECRET)
+      .update(timestampedPayload)
+      .digest('hex');
+    if (compare(expectedTimestampedSig, signature)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
  * Checks that the webhook timestamp is within 5 minutes of now.
  */
 function isTimestampValid(timestamp: string): boolean {
+  if (!timestamp) return true; // Optional timestamp check if header omitted
   const ts = parseInt(timestamp, 10);
   if (isNaN(ts)) return false;
 
@@ -74,13 +95,22 @@ export async function POST(request: NextRequest) {
     // 1. Read raw body for signature verification
     const rawBody = await request.text();
 
-    // 2. Extract webhook headers
-    const timestamp = request.headers.get('X-Devify-Timestamp') || '';
-    const signature = request.headers.get('X-Devify-Signature') || '';
-    const event = request.headers.get('X-Devify-Event') || '';
+    // 2. Extract webhook headers (supports both case conventions)
+    const timestamp =
+      request.headers.get('x-devify-timestamp') ||
+      request.headers.get('X-Devify-Timestamp') ||
+      '';
+    const signature =
+      request.headers.get('x-devify-signature') ||
+      request.headers.get('X-Devify-Signature') ||
+      '';
+    const headerEvent =
+      request.headers.get('x-devify-event') ||
+      request.headers.get('X-Devify-Event') ||
+      '';
 
-    // 3. Validate timestamp freshness (reject > 5 minutes)
-    if (!isTimestampValid(timestamp)) {
+    // 3. Validate timestamp freshness if present
+    if (timestamp && !isTimestampValid(timestamp)) {
       console.warn('[Webhook] Rejected: timestamp too old or invalid:', timestamp);
       return NextResponse.json(
         { error: 'Invalid or expired timestamp' },
@@ -108,25 +138,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.info(`[Webhook] Received event: ${event}`, {
-      orderId: payload.order_id || payload.orderId,
-      paymentId: payload.payment_id || payload.paymentId,
+    const eventType = payload.type || payload.event || headerEvent;
+    const eventData = payload.data || payload;
+
+    console.info(`[Webhook] Received event: ${eventType}`, {
+      orderId: eventData.order_id || eventData.orderId,
+      paymentId: eventData.payment_id || eventData.paymentId,
     });
 
     // 6. Handle events
-    switch (event) {
+    switch (eventType) {
       case 'payment.success':
       case 'order.paid':
-        await handlePaymentSuccess(payload, event);
+      case 'subscription.created':
+      case 'subscription.activated':
+        await handlePaymentSuccess(eventData, eventType);
         break;
 
       case 'payment.failed':
       case 'order.failed':
-        await handlePaymentFailed(payload, event);
+        await handlePaymentFailed(eventData, eventType);
         break;
 
       default:
-        console.info(`[Webhook] Unhandled event type: ${event}`);
+        console.info(`[Webhook] Unhandled event type: ${eventType}`);
     }
 
     // Always return 200 to Devify to acknowledge receipt
