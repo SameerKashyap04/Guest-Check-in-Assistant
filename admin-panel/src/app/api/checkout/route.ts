@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
       console.info('[Checkout] Running in Sandbox Test Mode (using sk_test_xxx placeholder)');
       const sandboxOrderId = `ord_sandbox_${Date.now()}`;
       const sandboxPaymentId = `pay_sandbox_${Date.now()}`;
-      const sandboxCheckoutUrl = `https://devifypay.site/pay/${sandboxPaymentId}?test=true`;
+      const sandboxCheckoutUrl = `http://localhost:8083/subscription/payment-status?orderId=${sandboxOrderId}&planId=${planId}&billingCycle=${billingCycle}`;
 
       // Save test order record directly as PAID for instant sandbox testing
       try {

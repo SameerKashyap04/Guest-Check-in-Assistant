@@ -102,9 +102,8 @@ export default function PricingScreen() {
       // 2. Open checkout URL in browser
       //    On web: window.location.href (user leaves the page)
       //    On native: opens in-app browser, user returns after payment
-      if (Platform.OS === 'web') {
-        // Navigate to payment-status screen first, then redirect
-        // The payment-status screen will handle polling
+      if (checkout.isSandbox) {
+        // Sandbox test mode — direct activation without external popup windows
         router.push({
           pathname: '/subscription/payment-status',
           params: {
@@ -113,7 +112,16 @@ export default function PricingScreen() {
             billingCycle,
           },
         });
-        // Small delay before redirecting to payment page
+      } else if (Platform.OS === 'web') {
+        // Navigate to payment-status screen first, then redirect to hosted gateway
+        router.push({
+          pathname: '/subscription/payment-status',
+          params: {
+            orderId: checkout.orderId,
+            planId,
+            billingCycle,
+          },
+        });
         setTimeout(() => {
           if (typeof window !== 'undefined') {
             window.open(checkout.checkoutUrl, '_blank');

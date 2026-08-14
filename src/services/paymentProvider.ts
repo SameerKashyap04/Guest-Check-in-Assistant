@@ -66,6 +66,7 @@ export interface CheckoutResult {
   checkoutUrl: string;
   orderId: string;
   paymentId: string | null;
+  isSandbox?: boolean;
 }
 
 export interface OrderStatus {
@@ -133,6 +134,7 @@ export class DevifyPaymentProvider implements PaymentProvider {
       checkoutUrl: data.checkoutUrl,
       orderId: data.orderId,
       paymentId: data.paymentId || null,
+      isSandbox: Boolean(data.isSandbox),
     };
   }
 
