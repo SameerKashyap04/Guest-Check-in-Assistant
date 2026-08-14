@@ -53,14 +53,25 @@ export default function PaymentsPage() {
 
   // Load saved settings & live transactions
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedUrl = localStorage.getItem("DEVIFY_API_URL");
-      const savedKey = localStorage.getItem("DEVIFY_API_KEY");
-      const savedSecret = localStorage.getItem("DEVIFY_WEBHOOK_SECRET");
-      if (savedUrl) setApiUrl(savedUrl);
-      if (savedKey) setApiKey(savedKey);
-      if (savedSecret) setWebhookSecret(savedSecret);
-    }
+    // 1. Fetch current config directly from server .env.local & Firestore
+    fetch("/api/config/devify")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.apiUrl) setApiUrl(data.apiUrl);
+        if (data.apiKey) setApiKey(data.apiKey);
+        if (data.webhookSecret) setWebhookSecret(data.webhookSecret);
+      })
+      .catch((e) => {
+        console.warn("Could not fetch server .env.local config:", e);
+        if (typeof window !== "undefined") {
+          const savedUrl = localStorage.getItem("DEVIFY_API_URL");
+          const savedKey = localStorage.getItem("DEVIFY_API_KEY");
+          const savedSecret = localStorage.getItem("DEVIFY_WEBHOOK_SECRET");
+          if (savedUrl) setApiUrl(savedUrl);
+          if (savedKey) setApiKey(savedKey);
+          if (savedSecret) setWebhookSecret(savedSecret);
+        }
+      });
 
     fetchTransactions();
   }, []);
@@ -121,22 +132,27 @@ export default function PaymentsPage() {
   };
 
   const handleSaveSettings = async () => {
+    // 1. Write directly to server .env.local file & Firestore via API
+    try {
+      const res = await fetch("/api/config/devify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ apiUrl, apiKey, webhookSecret }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(`Failed to write to .env.local: ${data.error}`);
+        return;
+      }
+    } catch (e) {
+      console.error("Failed to write to .env.local:", e);
+    }
+
+    // 2. Also save to localStorage
     if (typeof window !== "undefined") {
       localStorage.setItem("DEVIFY_API_URL", apiUrl);
       localStorage.setItem("DEVIFY_API_KEY", apiKey);
       localStorage.setItem("DEVIFY_WEBHOOK_SECRET", webhookSecret);
-    }
-
-    try {
-      const docRef = doc(db, "system_config", "devify_config");
-      await setDoc(docRef, {
-        apiUrl,
-        apiKey,
-        webhookSecret,
-        updatedAt: new Date().toISOString(),
-      });
-    } catch (e) {
-      console.warn("Firestore devify_config save notice:", e);
     }
 
     setSaveSuccess(true);
