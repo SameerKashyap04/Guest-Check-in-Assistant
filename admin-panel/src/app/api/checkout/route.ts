@@ -285,6 +285,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 6.b Register subscription with Devify Pay API (/v1/subscriptions)
+    // This populates the Subscriptions tab in Devify Pay Admin Dashboard (Step 4 of Developer Guide)
+    try {
+      await fetch(`${devifyApiUrl}/v1/subscriptions`, {
+        method: 'POST',
+        headers: {
+          'X-Api-Key': devifyApiKey,
+          Authorization: `Bearer ${devifyApiKey}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': `${idempotencyKey}_sub`,
+        },
+        body: JSON.stringify({
+          plan_id: planId,
+          customer: {
+            name: userEmail.split('@')[0],
+            email: userEmail,
+          },
+          metadata: {
+            user_id: userId,
+            order_id: orderId,
+            billing_cycle: billingCycle,
+          },
+        }),
+      });
+    } catch (subErr) {
+      console.warn('[Checkout] Devify subscription register notice:', subErr);
+    }
+
     // 7. Save order record to Firestore (safely wrapped)
     try {
       const orderDocRef = doc(db, 'subscription_orders', orderId);
