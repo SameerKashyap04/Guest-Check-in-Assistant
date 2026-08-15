@@ -622,7 +622,7 @@ export default function ReviewScreen() {
           label="Cancel & Retake" 
           variant="ghost" 
           size="lg" 
-          onPress={() => router.back()}
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
         />
 
         {/* --- MODAL 1: ADD GUEST OPTIONS SHEET --- */}

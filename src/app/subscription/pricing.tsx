@@ -154,7 +154,7 @@ export default function PricingScreen() {
               Alert.alert(
                 'Trial Started! 🎉',
                 `You now have ${TRIAL_CONFIG.TRIAL_DURATION_DAYS} days of free access to ${PLANS[planId].name} features.`,
-                [{ text: 'Great!', onPress: () => router.back() }]
+                [{ text: 'Great!', onPress: () => handleBack() }]
               );
             },
           },
@@ -163,6 +163,14 @@ export default function PricingScreen() {
     } finally {
       setIsCheckingOut(false);
       setCheckoutPlanId(null);
+    }
+  };
+
+  const handleBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+    } else {
+      router.replace('/(tabs)');
     }
   };
 
@@ -175,7 +183,7 @@ export default function PricingScreen() {
         {/* Header */}
         <View className="px-5 pt-4 pb-2">
           <TouchableOpacity
-            onPress={() => router.back()}
+            onPress={handleBack}
             className="flex-row items-center mb-4"
           >
             <ChevronLeft size={24} color="#0F172A" />

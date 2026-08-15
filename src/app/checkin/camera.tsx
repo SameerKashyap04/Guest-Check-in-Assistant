@@ -135,7 +135,7 @@ export default function CameraScannerScreen() {
       <View style={styles.container}>
         <Text style={styles.permText}>Camera permission is required to scan ID cards.</Text>
         <Button onPress={requestPermission} title="Grant Permission" />
-        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
+        <TouchableOpacity onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')} style={{ marginTop: 16 }}>
           <Text style={styles.backText}>Go Back</Text>
         </TouchableOpacity>
       </View>
@@ -158,7 +158,7 @@ export default function CameraScannerScreen() {
 
       {/* Top overlay */}
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity style={styles.closeBtn} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.closeBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}>
           <Text style={styles.closeTxt}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Scan ID Card</Text>

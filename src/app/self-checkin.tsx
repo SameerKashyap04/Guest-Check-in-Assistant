@@ -433,7 +433,7 @@ export default function SelfCheckinScreen() {
       {/* Header Bar */}
       <View className="flex-row items-center justify-between px-4 pt-3 pb-3 border-b border-gray-200/50 dark:border-gray-800">
         <TouchableOpacity 
-          onPress={() => router.back()}
+          onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
           className="p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
         >
           <ChevronLeft size={26} color="#000000" />

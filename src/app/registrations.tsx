@@ -144,7 +144,7 @@ export default function RegistrationsScreen() {
       <View className="flex-row items-center justify-between px-4 pt-3 pb-3 border-b border-gray-200/50 dark:border-gray-800">
         <View className="flex-row items-center flex-1 mr-2">
           <TouchableOpacity 
-            onPress={() => router.back()}
+            onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
             className="mr-3 p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
           >
             <ChevronLeft size={26} color="#000000" />
