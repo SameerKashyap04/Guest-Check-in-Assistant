@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   RefreshCw,
   Building,
+  FileText,
 } from "lucide-react";
 
 // PII & Privacy Context for dynamic unmasking across all admin screens
@@ -64,6 +65,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { label: "Properties", href: "/properties", icon: Building2 },
     { label: "Subscriptions", href: "/subscriptions", icon: Shield },
     { label: "Payments", href: "/payments", icon: CreditCard },
+    { label: "Reports & Compliance", href: "/reports", icon: FileText },
     { label: "Revenue Analytics", href: "/revenue", icon: TrendingUp },
     { label: "Usage Analytics", href: "/analytics", icon: BarChart3 },
     { label: "Plan Matrix", href: "/plans", icon: Sliders },
