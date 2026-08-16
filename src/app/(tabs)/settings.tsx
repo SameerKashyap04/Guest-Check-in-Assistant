@@ -421,7 +421,7 @@ export default function SettingsScreen() {
         {/* CLEAN APP VERSION FOOTER */}
         <View className="items-center justify-center pt-2 pb-8">
           <Text className="text-[11px] font-semibold text-gray-400">
-            Guest Check-in Assistant v1.1.7
+            StayMate v1.2.0 • Simplifying Every Guest Stay
           </Text>
         </View>
 

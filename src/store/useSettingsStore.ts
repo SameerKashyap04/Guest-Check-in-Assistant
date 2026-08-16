@@ -52,7 +52,7 @@ export const useSettingsStore = create<SettingsState>()(
       storageMode: 'cloud',
       language: 'en',
       theme: 'system',
-      selfCheckinUrl: 'https://guest-checkin-assistant.vercel.app/self-checkin',
+      selfCheckinUrl: 'https://staymate.co.in/self-checkin',
       setBusinessSetup: (name) => {
         const currentPropId = get().propertyId || generatePropertyId(name);
         set({ businessName: name, propertyId: currentPropId, hasCompletedSetup: true });
@@ -69,7 +69,7 @@ export const useSettingsStore = create<SettingsState>()(
 
       getShareableLink: (customRooms?: any[]) => {
         const state = get();
-        const baseUrl = state.selfCheckinUrl || 'https://guest-checkin-assistant.vercel.app/self-checkin';
+        const baseUrl = state.selfCheckinUrl || 'https://staymate.co.in/self-checkin';
         const cleanBaseUrl = baseUrl.split('?')[0];
         const propId = state.propertyId || generatePropertyId(state.businessName);
         const ownerId = state.ownerId || 'OWNER_DEFAULT_101';

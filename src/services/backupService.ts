@@ -1,5 +1,5 @@
 // ============================================================
-// Guest Check-in Assistant — Backup Service Abstraction
+// StayMate — Backup Service Abstraction
 // ============================================================
 //
 // Provides backup/restore foundation for the Professional plan.

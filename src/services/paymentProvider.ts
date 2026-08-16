@@ -1,5 +1,5 @@
 // ============================================================
-// Guest Check-in Assistant — Devify Pay Payment Provider
+// StayMate — Devify Pay Payment Provider
 // ============================================================
 //
 // Replaces the stub payment provider with real Devify Pay integration.

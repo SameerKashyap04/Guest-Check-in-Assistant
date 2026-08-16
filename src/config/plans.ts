@@ -1,5 +1,5 @@
 // ============================================================
-// Guest Check-in Assistant — Plan Definitions & Configuration
+// StayMate — Plan Definitions & Configuration
 // ============================================================
 
 import {

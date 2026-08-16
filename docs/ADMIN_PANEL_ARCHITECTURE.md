@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Admin Panel is a standalone, web-based management portal built using **Next.js (App Router)**, **TypeScript**, and **Tailwind CSS**. It connects directly to the shared Firebase backend (`Firestore` & `Firebase Auth`) used by the Guest Check-in Assistant mobile application.
+The Admin Panel is a standalone, web-based management portal built using **Next.js (App Router)**, **TypeScript**, and **Tailwind CSS**. It connects directly to the shared Firebase backend (`Firestore` & `Firebase Auth`) used by the StayMate mobile application.
 
 ## Directory Location & Structure
 

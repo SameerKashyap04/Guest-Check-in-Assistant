@@ -33,10 +33,13 @@ export function BusinessSetupScreen() {
               <Hotel size={40} color="#000000" />
             </View>
             <Text className="text-3xl font-bold text-foreground text-center mb-2">
-              Welcome to Guest Check-in Assistant
+              Welcome to StayMate
             </Text>
-            <Text className="text-base text-gray-500 text-center">
-              Let's set up your property details to get started.
+            <Text className="text-base text-gray-500 text-center font-medium">
+              Simplifying Every Guest Stay
+            </Text>
+            <Text className="text-xs text-gray-400 text-center mt-1">
+              Smart check-in & stay management for your property.
             </Text>
           </View>
 

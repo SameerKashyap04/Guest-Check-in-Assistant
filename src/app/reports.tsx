@@ -178,7 +178,7 @@ export default function ReportsScreen() {
 
     try {
       setExportingPdf(true);
-      const propTitle = businessName || 'Guest Check-in Assistant Property';
+      const propTitle = businessName || 'StayMate Property';
       const exportDate = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' });
       const exportRevenue = targetGuests.reduce((sum, g) => sum + (Number(g.price) || 0), 0);
 
@@ -261,7 +261,7 @@ export default function ReportsScreen() {
             </table>
 
             <div class="footer">
-              Generated securely by Guest Check-in Assistant v1.1.7 • Confidential Property Document
+              Generated securely by StayMate v1.2.0 • Simplifying Every Guest Stay • Confidential Property Document
             </div>
           </body>
         </html>

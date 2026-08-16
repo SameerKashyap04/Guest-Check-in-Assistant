@@ -1,5 +1,5 @@
 // ============================================================
-// Guest Check-in Assistant — Subscription & Entitlement Types
+// StayMate — Subscription & Entitlement Types
 // ============================================================
 
 /** Subscription plan tiers ordered by capability */

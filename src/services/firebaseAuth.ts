@@ -220,7 +220,7 @@ export async function signInWithGoogleOwner(): Promise<OwnerProfile> {
         
         const webResult = await WebBrowser.openAuthSessionAsync(
           authUrl,
-          'guestcheckinassistant://'
+          'staymate://'
         );
 
         if (webResult.type !== 'success' || !webResult.url) {

@@ -1,5 +1,5 @@
 // ============================================================
-// Guest Check-in Assistant — Devify Pay Client Config
+// StayMate — Devify Pay Client Config
 // ============================================================
 //
 // Contains ONLY the admin panel API URL. No secrets here.

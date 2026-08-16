@@ -1,17 +1,20 @@
-# Guest Check-in Assistant
+# StayMate
 # 01_PROJECT_OVERVIEW.md
 
-Version: 1.0
-
-Author: Sameer Kashyap
+**Tagline**: "Simplifying Every Guest Stay"  
+**Domain**: [staymate.co.in](https://staymate.co.in)  
+**Positioning**: Smart guest check-in and stay management  
+**Expansion Potential**: Hotels, homestays, guesthouses, resorts, and property operators  
+**Version**: 1.2.0  
+**Author**: Sameer Kashyap  
 
 ---
 
 # Project Vision
 
-Guest Check-in Assistant is an offline-first, AI-powered hotel and homestay guest registration application built specifically for the Indian hospitality industry.
+StayMate is an offline-first, AI-powered guest registration and stay management application built for hotels, homestays, guesthouses, resorts, and hospitality property operators.
 
-The application's primary objective is to reduce guest check-in time from several minutes to only a few seconds by automatically recognizing government-issued identity documents, extracting guest information using OCR and intelligent parsing, validating the extracted information, and populating the check-in form automatically.
+The application's primary objective is to simplify every guest stay by reducing check-in time from several minutes to only a few seconds through automated identity recognition, offline-safe OCR data extraction, instant stay records, and digital self check-in.
 
 The application should feel as intelligent and seamless as Google Lens or Microsoft Lens while remaining completely optimized for hotel and homestay operations.
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Guest Check-in Assistant monetization model uses an abstract `PaymentProvider` interface (`src/services/paymentProvider.ts`). This allows seamless integration with payment gateways such as Razorpay (primary for India) and Stripe (international).
+The StayMate monetization model uses an abstract `PaymentProvider` interface (`src/services/paymentProvider.ts`). This allows seamless integration with payment gateways such as Razorpay (primary for India) and Stripe (international).
 
 ## Razorpay Integration Architecture
 
@@ -25,11 +25,11 @@ The Guest Check-in Assistant monetization model uses an abstract `PaymentProvide
 
    const options = {
      description: 'Professional Plan Subscription',
-     image: 'https://guest-checkin-assistant.firebaseapp.com/icon.png',
+     image: 'https://staymate.co.in/icon.png',
      currency: 'INR',
      key: 'rzp_live_XXXXXXXXXXXX',
      subscription_id: serverGeneratedSubId,
-     name: 'Guest Check-in Assistant',
+     name: 'StayMate',
      prefill: {
        email: userEmail,
        contact: userPhone,

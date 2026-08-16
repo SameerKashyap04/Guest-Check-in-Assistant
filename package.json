@@ -1,5 +1,5 @@
 {
-  "name": "guest-checkin-assistant",
+  "name": "staymate",
   "main": "expo-router/entry",
   "version": "1.2.0",
   "dependencies": {

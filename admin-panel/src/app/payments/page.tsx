@@ -95,7 +95,14 @@ export default function PaymentsPage() {
           property: data.userEmail ? `${data.userEmail}` : "Property Owner",
           amount: data.amountPaise ? `₹ ${(data.amountPaise / 100).toLocaleString("en-IN")}` : "₹ 0",
           plan: `${data.planId || "Starter"} (${data.billingCycle || "monthly"})`,
-          status: data.status === "PAID" ? "Captured" : data.status === "FAILED" ? "Failed" : "Pending",
+          status:
+            data.status === "PAID"
+              ? "Captured"
+              : data.status === "FAILED"
+              ? "Failed"
+              : data.status === "PENDING_VERIFICATION" || (data.status === "PENDING" && (data.transactionRef || data.paymentId))
+              ? "Pending"
+              : "Created",
           date: formattedDate,
         };
       });

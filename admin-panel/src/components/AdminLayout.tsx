@@ -23,7 +23,6 @@ import {
   CheckCircle2,
   RefreshCw,
   Building,
-  FileText,
 } from "lucide-react";
 
 // PII & Privacy Context for dynamic unmasking across all admin screens
@@ -65,7 +64,6 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { label: "Properties", href: "/properties", icon: Building2 },
     { label: "Subscriptions", href: "/subscriptions", icon: Shield },
     { label: "Payments", href: "/payments", icon: CreditCard },
-    { label: "Reports & Compliance", href: "/reports", icon: FileText },
     { label: "Revenue Analytics", href: "/revenue", icon: TrendingUp },
     { label: "Usage Analytics", href: "/analytics", icon: BarChart3 },
     { label: "Plan Matrix", href: "/plans", icon: Sliders },
@@ -84,10 +82,10 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </div>
             <div>
               <h1 className="font-extrabold text-base text-slate-900 leading-tight">
-                Guest Check-in
+                StayMate
               </h1>
               <p className="text-[10px] text-violet-700 font-black tracking-wider uppercase bg-violet-100 px-2 py-0.5 rounded border border-violet-200 mt-0.5 inline-block">
-                Developer Company
+                Platform Admin
               </p>
             </div>
           </div>
@@ -96,9 +94,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           <div className="mx-3 mt-3 p-2.5 bg-slate-100/90 rounded-xl border border-slate-200 text-[11px] text-slate-600 font-medium leading-tight">
             <strong className="text-slate-900 font-extrabold block mb-0.5 flex items-center gap-1">
               <Building className="w-3 h-3 text-violet-600" />
-              Company Control Only
+              Central Control Console
             </strong>
-            Internal admin for SaaS developers. Homestay owners check in guests via mobile app.
+            StayMate operations & developer console. Property owners check in guests via mobile app.
           </div>
 
           {/* Dynamic PII Privacy Toggle */}

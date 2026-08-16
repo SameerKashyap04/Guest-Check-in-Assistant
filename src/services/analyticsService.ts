@@ -1,5 +1,5 @@
 // ============================================================
-// Guest Check-in Assistant — Analytics Service Abstraction
+// StayMate — Analytics Service Abstraction
 // ============================================================
 //
 // Abstract analytics layer. No specific provider dependency.

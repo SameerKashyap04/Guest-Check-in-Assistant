@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "Guest Check-in Assistant",
-    "slug": "guest-checkin-assistant",
+    "name": "StayMate",
+    "slug": "staymate",
     "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "guestcheckinassistant",
+    "scheme": "staymate",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.devify.guestcheckinassistant"
+      "bundleIdentifier": "in.co.staymate.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +19,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.devify.guestcheckinassistant",
+      "package": "in.co.staymate.app",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
@@ -42,7 +42,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Guest Check-in Assistant to access your camera to scan guest ID documents."
+          "cameraPermission": "Allow StayMate to access your camera to scan guest ID documents."
         }
       ],
       "expo-sqlite",

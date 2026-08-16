@@ -1,5 +1,5 @@
 // ============================================================
-// Guest Check-in Assistant — Centralized Entitlement Service
+// StayMate — Centralized Entitlement Service
 // ============================================================
 //
 // All feature-gate and limit checks flow through this service.

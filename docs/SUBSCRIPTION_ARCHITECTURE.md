@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Guest Check-in Assistant uses a local-first, offline-safe subscription system. Subscription state is cached locally and never blocks the user from accessing their existing data, even without network connectivity.
+The StayMate platform uses a local-first, offline-safe subscription system. Subscription state is cached locally and never blocks the user from accessing their existing data, even without network connectivity.
 
 ## Architecture Diagram
 

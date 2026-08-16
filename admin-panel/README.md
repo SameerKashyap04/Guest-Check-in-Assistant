@@ -1,8 +1,8 @@
-# Guest Check-in Assistant — Admin Control Panel
+# StayMate — Admin Control Panel
 
-> ⚠️ **RESTRICTED SYSTEM ACCESS**: This application is exclusively for the **Software Developer Company** (platform operations team & system administrators) managing the Guest Check-in Assistant SaaS Platform.
+> ⚠️ **RESTRICTED SYSTEM ACCESS**: This application is exclusively for the **Platform Operations & Developer Team** managing the StayMate SaaS Platform.
 >
-> **NOT FOR HOMESTAY / HOTEL OWNERS**: Homestay owners, property staff, and managers perform guest check-ins, ID scanning, and room management in the main **Guest Check-in Assistant Expo Mobile & Web application**.
+> **NOT FOR PROPERTY OWNERS**: Hotel, homestay, guesthouse, resort, and property operators perform guest check-ins, ID scanning, and room management in the main **StayMate Mobile & Web application**.
 
 ---
 

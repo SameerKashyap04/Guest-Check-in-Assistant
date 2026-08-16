@@ -1,4 +1,4 @@
-# Monetization Plan for Guest Check-in Assistant
+# Monetization Plan for StayMate
 
 The best model is **B2B subscription SaaS**: property owners pay monthly or annually for faster check-ins, offline records, reports, and multi-property management. Keep the guest-facing QR check-in free so it reduces friction and drives adoption.
 

@@ -1,5 +1,5 @@
 // ============================================================
-// Guest Check-in Assistant — Subscription Zustand Store
+// StayMate — Subscription Zustand Store
 // ============================================================
 //
 // Persisted via MMKV for offline-first access.

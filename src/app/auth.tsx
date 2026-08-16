@@ -288,8 +288,8 @@ export default function AuthScreen() {
 
           {/* Clean App Version Footer */}
           <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 16 }}>
-            <Text style={{ fontSize: 11, fontWeight: '600', color: textMuted }}>
-              Guest Check-in Assistant v1.1.7
+            <Text style={{ fontSize: 11, fontWeight: '700', color: textMuted }}>
+              StayMate v1.2.0 • Simplifying Every Guest Stay
             </Text>
           </View>
         </ScrollView>

@@ -3,7 +3,7 @@ import { getApp, getApps, initializeApp } from '@firebase/app';
 import { getAuth } from '@firebase/auth';
 import { getFirestore } from '@firebase/firestore';
 
-// Firebase Configuration for Guest Check-in Assistant Cloud Sync
+// Firebase Configuration for StayMate Cloud Sync
 const firebaseConfig = {
   apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || "AIzaSyAMPlyK7NKHZqW_mwEfdofXu0LF5_pW7m8",
   authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || "guest-checkin-assistant.firebaseapp.com",

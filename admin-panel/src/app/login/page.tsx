@@ -24,9 +24,9 @@ export default function LoginPage() {
           <span className="text-[10px] font-black tracking-widest text-violet-700 bg-violet-100 px-3 py-1 rounded-full uppercase border border-violet-200 inline-block mb-2">
             Developer Company Only
           </span>
-          <h1 className="text-xl font-black text-slate-900">Platform Super-Admin Portal</h1>
+          <h1 className="text-xl font-black text-slate-900">StayMate Super-Admin Portal</h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
-            Guest Check-in Assistant — Internal Software Developer Console
+            StayMate — Internal Operations & Developer Console
           </p>
         </div>
 
@@ -35,7 +35,7 @@ export default function LoginPage() {
           <ShieldAlert className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div className="text-xs leading-relaxed text-amber-900 font-medium">
             <strong className="font-extrabold block text-amber-950 mb-0.5">Restricted Internal System</strong>
-            This console is strictly for the <span className="font-bold underline decoration-amber-400">App Developer Company</span> (system administrators & core team). Homestay and hotel owners must use the Guest Check-in mobile/web app for guest registrations.
+            This console is strictly for the <span className="font-bold underline decoration-amber-400">StayMate Platform Operations Team</span>. Hotel, homestay, resort, and guesthouse operators use the StayMate mobile/web app for guest registrations.
           </div>
         </div>
 
@@ -72,7 +72,7 @@ export default function LoginPage() {
 
         <div className="mt-6 pt-4 border-t border-slate-100 text-center">
           <p className="text-[11px] text-slate-400 font-medium">
-            Guest Check-in Assistant SaaS Platform &copy; 2026 Developer Company Operations
+            StayMate SaaS Platform &copy; 2026 Developer Company Operations
           </p>
         </div>
       </div>
