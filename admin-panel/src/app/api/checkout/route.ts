@@ -163,15 +163,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         amount: amountPaise,
         currency: 'INR',
-        description: `${planName} Plan (${billingCycle})`,
-        customer: {
-          email: userEmail,
-        },
-        metadata: {
-          user_id: userId,
-          plan_id: planId,
-          billing_cycle: billingCycle,
-        },
+        description: `StayMate ${planName} Plan (${billingCycle})`,
       }),
     });
 
