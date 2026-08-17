@@ -41,23 +41,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 1. Instant resolution for sandbox test orders
-    if (orderId.startsWith('ord_sandbox_')) {
-      return NextResponse.json(
-        {
-          orderId,
-          status: 'PAID',
-          planId: searchParams.get('planId') || 'PROFESSIONAL',
-          billingCycle: searchParams.get('billingCycle') || 'monthly',
-          amountPaise: 0,
-          paidAt: new Date().toISOString(),
-          isSandbox: true,
-        },
-        { status: 200, headers: corsHeaders }
-      );
-    }
-
-    // 2. Look up the live order in Firestore
+    // 1. Look up the live order in Firestore
     try {
       const orderDocRef = doc(db, 'subscription_orders', orderId);
       const orderSnap = await getDoc(orderDocRef);

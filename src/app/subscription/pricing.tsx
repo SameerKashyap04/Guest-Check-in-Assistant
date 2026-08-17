@@ -100,20 +100,9 @@ export default function PricingScreen() {
       );
 
       // 2. Open checkout URL in browser
-      //    On web: window.location.href (user leaves the page)
-      //    On native: opens in-app browser, user returns after payment
-      if (checkout.isSandbox) {
-        // Sandbox test mode — direct activation without external popup windows
-        router.push({
-          pathname: '/subscription/payment-status',
-          params: {
-            orderId: checkout.orderId,
-            planId,
-            billingCycle,
-          },
-        });
-      } else if (Platform.OS === 'web') {
-        // Navigate to payment-status screen first, then redirect to hosted gateway
+      //    On native: opens in-app browser with hosted Devify Pay UPI/Card gateway
+      //    On web: opens hosted gateway
+      if (Platform.OS === 'web') {
         router.push({
           pathname: '/subscription/payment-status',
           params: {
@@ -128,7 +117,7 @@ export default function PricingScreen() {
           }
         }, 500);
       } else {
-        // On native, open browser then navigate to status screen
+        // On native, open in-app browser for payment, then navigate to status screen to poll
         await devifyProvider.openCheckoutUrl(checkout.checkoutUrl);
         router.push({
           pathname: '/subscription/payment-status',

@@ -51,7 +51,7 @@ interface CheckoutRequestBody {
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Resolve DEVIFY_API_KEY and DEVIFY_API_URL (Firestore override -> process.env)
+    // 1. Resolve DEVIFY_API_KEY and DEVIFY_API_URL (Firestore override -> process.env / default)
     let devifyApiUrl = ENV_DEVIFY_API_URL;
     let devifyApiKey = ENV_DEVIFY_API_KEY;
 
@@ -70,7 +70,12 @@ export async function POST(request: NextRequest) {
       console.warn('[Checkout] Firestore devify_config lookup notice:', err);
     }
 
-    // Note: If devifyApiKey is 'sk_test_xxx' or empty, handler will run in Sandbox Test Mode below.
+    if (!devifyApiKey) {
+      return NextResponse.json(
+        { error: 'Devify Pay API Key is not configured. Please add it in the admin panel.' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
 
     // 2. Parse and validate request body
     const body: CheckoutRequestBody = await request.json();
@@ -140,53 +145,7 @@ export async function POST(request: NextRequest) {
 
     // 4. Generate idempotency key to prevent duplicate orders
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-    const idempotencyKey = `${userId}_${planId}_${billingCycle}_${today}`;
-
-    // ------------------------------------------------------------------
-    // Sandbox / Development Mode Fallback
-    // ------------------------------------------------------------------
-    const isSandbox = !devifyApiKey || devifyApiKey === 'sk_test_xxx';
-
-    if (isSandbox) {
-      console.info('[Checkout] Running in Sandbox Test Mode (using sk_test_xxx placeholder)');
-      const sandboxOrderId = `ord_sandbox_${Date.now()}`;
-      const sandboxPaymentId = `pay_sandbox_${Date.now()}`;
-      const sandboxCheckoutUrl = `http://localhost:8083/subscription/payment-status?orderId=${sandboxOrderId}&planId=${planId}&billingCycle=${billingCycle}`;
-
-      // Save test order record directly as PAID for instant sandbox testing
-      try {
-        const orderDocRef = doc(db, 'subscription_orders', sandboxOrderId);
-        await setDoc(orderDocRef, {
-          orderId: sandboxOrderId,
-          paymentId: sandboxPaymentId,
-          userId,
-          userEmail,
-          planId,
-          billingCycle,
-          amountPaise,
-          currency: 'INR',
-          status: 'PAID',
-          idempotencyKey,
-          webhookProcessedId: 'sandbox_auto_approved',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          paidAt: serverTimestamp(),
-          isSandbox: true,
-        });
-      } catch (err) {
-        console.warn('[Checkout] Sandbox Firestore write notice:', err);
-      }
-
-      return NextResponse.json(
-        {
-          checkoutUrl: sandboxCheckoutUrl,
-          orderId: sandboxOrderId,
-          paymentId: sandboxPaymentId,
-          isSandbox: true,
-        },
-        { status: 200, headers: corsHeaders }
-      );
-    }
+    const idempotencyKey = `${userId}_${planId}_${billingCycle}_${Date.now()}`;
 
     // ------------------------------------------------------------------
     // Live Devify Pay Integration Flow
