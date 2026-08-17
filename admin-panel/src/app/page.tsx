@@ -1,292 +1,294 @@
 "use client";
 
+// ─── DESIGN.md — Airbnb Design System ────────────────────────────────────────
+// All cards: white #ffffff, rounded-[14px] (rounded.md), 1px #dddddd border,
+//            Airbnb single shadow tier
+// KPI cards: property-card style
+// Plan bars:  amenity-row style progress
+// Activity:  reviews-card style (clean rows, hairline-soft dividers)
+// Primary:   Rausch #ff385c
+// ─────────────────────────────────────────────────────────────────────────────
+
 import React, { useState } from "react";
 import { AdminLayout, useAdminContext } from "@/components/AdminLayout";
 import {
-  Users,
-  Building2,
-  TrendingUp,
-  CreditCard,
-  Crown,
-  ArrowUpRight,
-  Sparkles,
-  ShieldCheck,
-  Zap,
-  Filter,
-  Plus,
-  Download,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
+  Users, Building2, TrendingUp, CreditCard, Crown,
+  ArrowUpRight, Sparkles, Plus, CheckCircle2,
 } from "lucide-react";
 
-export default function DashboardPage() {
-  const { isSyncing, refreshData } = useAdminContext();
-  const [timeRange, setTimeRange] = useState<"month" | "year" | "all">("month");
-  const [activePlanFilter, setActivePlanFilter] = useState<string>("ALL");
-  const [showManualTrialModal, setShowManualTrialModal] = useState(false);
+const C = {
+  primary:  "#ff385c",
+  ink:      "#222222",
+  body:     "#3f3f3f",
+  muted:    "#6a6a6a",
+  canvas:   "#ffffff",
+  soft:     "#f7f7f7",
+  hairline: "#dddddd",
+  hairlineSoft: "#ebebeb",
+};
 
-  // Form state for manual trial grant
-  const [propertyIdInput, setPropertyIdInput] = useState("");
-  const [trialDaysInput, setTrialDaysInput] = useState("30");
-  const [grantSuccessMsg, setGrantSuccessMsg] = useState("");
+// Airbnb single shadow tier
+const CARD_SHADOW = {
+  boxShadow: "rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px, rgba(0,0,0,0.10) 0 4px 8px",
+};
+
+export default function DashboardPage() {
+  const [timeRange, setTimeRange] = useState<"month" | "year">("month");
+  const [planFilter, setPlanFilter] = useState("ALL");
+  const [showTrialModal, setShowTrialModal] = useState(false);
+  const [propId, setPropId] = useState("");
+  const [trialDays, setTrialDays] = useState("30");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const kpis = [
     {
-      title: "Monthly Recurring Revenue (MRR)",
-      value: timeRange === "year" ? "₹ 17,85,000" : "₹ 1,48,750",
-      change: "+24.5%",
-      isPositive: true,
-      icon: TrendingUp,
-      color: "text-emerald-600",
-      bg: "bg-emerald-50 border-emerald-200",
+      title: "Monthly Recurring Revenue",
+      value: timeRange === "year" ? "₹17,85,000" : "₹1,48,750",
+      change: "+24.5%", icon: TrendingUp, accent: "#15803d", accentBg: "#f0fdf4",
     },
     {
       title: "Annualized Run Rate (ARR)",
-      value: "₹ 17,85,000",
-      change: "+18.2%",
-      isPositive: true,
-      icon: CreditCard,
-      color: "text-violet-600",
-      bg: "bg-violet-50 border-violet-200",
+      value: "₹17,85,000",
+      change: "+18.2%", icon: CreditCard, accent: C.primary, accentBg: "#fff1f2",
     },
     {
-      title: "Active Properties / Homestays",
+      title: "Active Properties",
       value: "214",
-      change: "+14 this month",
-      isPositive: true,
-      icon: Building2,
-      color: "text-sky-600",
-      bg: "bg-sky-50 border-sky-200",
+      change: "+14 this month", icon: Building2, accent: "#1d4ed8", accentBg: "#eff6ff",
     },
     {
       title: "Paid Subscriptions Ratio",
       value: "68.2%",
-      change: "+5.1%",
-      isPositive: true,
-      icon: Crown,
-      color: "text-amber-600",
-      bg: "bg-amber-50 border-amber-200",
+      change: "+5.1%", icon: Crown, accent: "#854d0e", accentBg: "#fefce8",
     },
   ];
 
   const planBreakdown = [
-    { name: "Free", count: 68, percentage: "31.8%", price: "₹0", color: "bg-slate-400" },
-    { name: "Starter", count: 82, percentage: "38.3%", price: "₹299/mo", color: "bg-amber-500" },
-    { name: "Professional", count: 54, percentage: "25.2%", price: "₹799/mo", color: "bg-violet-600" },
-    { name: "Multi-Property", count: 10, percentage: "4.7%", price: "₹1,999/mo", color: "bg-sky-500" },
+    { name: "Free",           count: 68,  pct: 31.8, color: C.hairline },
+    { name: "Starter",        count: 82,  pct: 38.3, color: "#f59e0b" },
+    { name: "Professional",   count: 54,  pct: 25.2, color: C.primary },
+    { name: "Multi-Property", count: 10,  pct: 4.7,  color: "#1d4ed8" },
   ];
 
   const [activities, setActivities] = useState([
-    {
-      id: 1,
-      title: "New Subscription Upgraded",
-      desc: "Coorg Hilltop Homestay upgraded to Professional Annual (₹7,999)",
-      time: "12 mins ago",
-      badge: "PROFESSIONAL",
-      badgeBg: "bg-violet-100 text-violet-800 border-violet-200",
-      type: "PROFESSIONAL",
-    },
-    {
-      id: 2,
-      title: "New Property Registered",
-      desc: "Manali Pine Resort registered (12 rooms)",
-      time: "45 mins ago",
-      badge: "STARTER",
-      badgeBg: "bg-amber-100 text-amber-800 border-amber-200",
-      type: "STARTER",
-    },
-    {
-      id: 3,
-      title: "Trial Started",
-      desc: "Wayanad Forest Lodge started 30-day Professional trial",
-      time: "2 hours ago",
-      badge: "TRIALING",
-      badgeBg: "bg-sky-100 text-sky-800 border-sky-200",
-      type: "TRIALING",
-    },
-    {
-      id: 4,
-      title: "High Usage Warning",
-      desc: "Goa Beachside Lodge reached 90% of check-in limit (18/20)",
-      time: "4 hours ago",
-      badge: "WARNING",
-      badgeBg: "bg-rose-100 text-rose-800 border-rose-200",
-      type: "WARNING",
-    },
+    { id: 1, title: "Subscription Upgraded", desc: "Coorg Hilltop → Professional Annual (₹7,999)", time: "12 min ago", type: "PROFESSIONAL" },
+    { id: 2, title: "New Property Registered", desc: "Manali Pine Resort registered (12 rooms)", time: "45 min ago", type: "STARTER" },
+    { id: 3, title: "Trial Started", desc: "Wayanad Forest Lodge started 30-day Professional trial", time: "2 hr ago", type: "TRIALING" },
+    { id: 4, title: "High Usage Warning", desc: "Goa Beachside Lodge at 90% check-in limit (18/20)", time: "4 hr ago", type: "WARNING" },
   ]);
 
-  const filteredActivities =
-    activePlanFilter === "ALL"
-      ? activities
-      : activities.filter((a) => a.type === activePlanFilter);
+  const filtered = planFilter === "ALL" ? activities : activities.filter(a => a.type === planFilter);
 
-  const handleGrantTrial = (e: React.FormEvent) => {
+  const typeStyle: Record<string, { bg: string; text: string; label: string }> = {
+    PROFESSIONAL: { bg: "#fff1f2", text: C.primary,   label: "PROFESSIONAL" },
+    STARTER:      { bg: "#fefce8", text: "#854d0e",   label: "STARTER" },
+    TRIALING:     { bg: "#eff6ff", text: "#1d4ed8",   label: "TRIAL" },
+    WARNING:      { bg: "#fff7ed", text: "#c2410c",   label: "WARNING" },
+  };
+
+  const handleGrant = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!propertyIdInput.trim()) return;
-
-    const newAct = {
+    if (!propId.trim()) return;
+    setActivities(prev => [{
       id: Date.now(),
       title: "Manual Trial Granted",
-      desc: `Granted ${trialDaysInput}-day Professional trial to ${propertyIdInput.toUpperCase()}`,
+      desc: `Granted ${trialDays}-day trial to ${propId.toUpperCase()}`,
       time: "Just now",
-      badge: "TRIAL GRANTED",
-      badgeBg: "bg-emerald-100 text-emerald-800 border-emerald-200",
       type: "TRIALING",
-    };
-
-    setActivities([newAct, ...activities]);
-    setGrantSuccessMsg(`Successfully granted ${trialDaysInput} days trial to ${propertyIdInput.toUpperCase()}`);
-    setPropertyIdInput("");
-
-    setTimeout(() => {
-      setGrantSuccessMsg("");
-      setShowManualTrialModal(false);
-    }, 1500);
+    }, ...prev]);
+    setSuccessMsg(`Trial granted to ${propId.toUpperCase()}`);
+    setPropId("");
+    setTimeout(() => { setSuccessMsg(""); setShowTrialModal(false); }, 1500);
   };
 
   return (
     <AdminLayout>
-      {/* Title & Header Actions */}
+      {/* ── Page header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: C.ink, letterSpacing: 0 }}>
             Monetization Dashboard
           </h1>
-          <p className="text-sm text-slate-500 font-medium mt-1">
+          <p style={{ fontSize: 14, fontWeight: 400, color: C.muted, marginTop: 4 }}>
             Real-time overview of subscriptions, MRR/ARR revenue, and property analytics.
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Time range selector */}
-          <div className="bg-white border border-slate-200 p-1 rounded-xl flex items-center shadow-sm">
-            <button
-              onClick={() => setTimeRange("month")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-                timeRange === "month"
-                  ? "bg-violet-600 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              This Month
-            </button>
-            <button
-              onClick={() => setTimeRange("year")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
-                timeRange === "year"
-                  ? "bg-violet-600 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Annual
-            </button>
+          {/* Time range — category-strip pills */}
+          <div
+            className="flex items-center p-1 gap-1"
+            style={{ backgroundColor: C.canvas, border: `1px solid ${C.hairline}`, borderRadius: 9999 }}
+          >
+            {(["month", "year"] as const).map(r => (
+              <button
+                key={r}
+                onClick={() => setTimeRange(r)}
+                style={{
+                  fontSize: 13, fontWeight: 500,
+                  paddingInline: 14, paddingBlock: 6,
+                  borderRadius: 9999,
+                  backgroundColor: timeRange === r ? C.ink : "transparent",
+                  color: timeRange === r ? "#ffffff" : C.muted,
+                  border: "none", cursor: "pointer", transition: "all 0.15s",
+                }}
+              >
+                {r === "month" ? "This Month" : "Annual"}
+              </button>
+            ))}
           </div>
 
+          {/* Rausch primary CTA */}
           <button
-            onClick={() => setShowManualTrialModal(true)}
-            className="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 active:scale-95 text-white font-bold text-xs rounded-xl shadow-md shadow-violet-500/20 transition-all flex items-center gap-2"
+            onClick={() => setShowTrialModal(true)}
+            style={{
+              display: "flex", alignItems: "center", gap: 6,
+              fontSize: 14, fontWeight: 500,
+              paddingInline: 18, paddingBlock: 10,
+              backgroundColor: C.primary, color: "#ffffff",
+              borderRadius: 8, border: "none", cursor: "pointer",
+              transition: "background 0.15s",
+            }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#e00b41")}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = C.primary)}
           >
             <Plus className="w-4 h-4" />
-            <span>Grant Trial</span>
+            Grant Trial
           </button>
         </div>
       </div>
 
-      {/* KPI Cards Grid (Light Mode) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {kpis.map((kpi, idx) => {
+      {/* ── KPI Cards — property-card style ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+        {kpis.map((kpi, i) => {
           const Icon = kpi.icon;
           return (
             <div
-              key={idx}
-              className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm hover:shadow-md transition-shadow flex flex-col justify-between"
+              key={i}
+              style={{
+                backgroundColor: C.canvas,
+                border: `1px solid ${C.hairline}`,
+                borderRadius: 14,               // rounded.md
+                padding: 20,
+                ...CARD_SHADOW,
+                transition: "box-shadow 0.15s",
+              }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLDivElement).style.boxShadow =
+                  "rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.06) 0 4px 12px, rgba(0,0,0,0.12) 0 8px 16px";
+              }}
+              onMouseLeave={e => {
+                (e.currentTarget as HTMLDivElement).style.boxShadow = CARD_SHADOW.boxShadow;
+              }}
             >
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+              <div className="flex items-start justify-between mb-4">
+                <span style={{ fontSize: 12, fontWeight: 600, color: C.muted, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {kpi.title}
                 </span>
-                <div className={`p-2.5 rounded-xl border ${kpi.bg}`}>
-                  <Icon className={`w-5 h-5 ${kpi.color}`} />
+                <div style={{
+                  width: 36, height: 36, borderRadius: 8,
+                  backgroundColor: kpi.accentBg,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                }}>
+                  <Icon style={{ width: 18, height: 18, color: kpi.accent }} />
                 </div>
               </div>
-              <div>
-                <p className="text-2xl font-black text-slate-900 tracking-tight">
-                  {kpi.value}
-                </p>
-                <div className="flex items-center gap-1.5 mt-2">
-                  <span className="text-xs font-extrabold text-emerald-600 flex items-center">
-                    <ArrowUpRight className="w-3.5 h-3.5" />
-                    {kpi.change}
-                  </span>
-                  <span className="text-xs text-slate-400 font-medium">vs last period</span>
-                </div>
+              <p style={{ fontSize: 26, fontWeight: 700, color: C.ink, letterSpacing: "-0.5px" }}>
+                {kpi.value}
+              </p>
+              <div className="flex items-center gap-1.5 mt-2">
+                <ArrowUpRight className="w-3.5 h-3.5" style={{ color: "#15803d" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#15803d" }}>{kpi.change}</span>
+                <span style={{ fontSize: 12, color: C.muted }}>vs last period</span>
               </div>
             </div>
           );
         })}
       </div>
 
-      {/* Two-Column Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        {/* Subscription Plan Distribution */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm lg:col-span-1 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-6 border-b border-slate-100 pb-4">
-              <div>
-                <h2 className="text-base font-extrabold text-slate-900">Plan Breakdown</h2>
-                <p className="text-xs text-slate-500">214 active properties</p>
-              </div>
-              <span className="text-xs font-extrabold text-violet-700 bg-violet-100 px-2.5 py-1 rounded-full border border-violet-200">
-                146 PAID
-              </span>
-            </div>
+      {/* ── Two-column: Plan Distribution + Activity Feed ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
 
-            <div className="space-y-4">
-              {planBreakdown.map((item, idx) => (
-                <div key={idx} className="space-y-1.5">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-slate-800">{item.name} ({item.price})</span>
-                    <span className="text-slate-900 font-extrabold">
-                      {item.count} properties ({item.percentage})
-                    </span>
-                  </div>
-                  <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${item.color} rounded-full transition-all duration-500`}
-                      style={{ width: item.percentage }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
+        {/* Plan breakdown — amenity-row style */}
+        <div
+          style={{
+            backgroundColor: C.canvas,
+            border: `1px solid ${C.hairline}`,
+            borderRadius: 14,
+            padding: 24,
+            ...CARD_SHADOW,
+          }}
+        >
+          <div className="flex items-center justify-between mb-5 pb-4" style={{ borderBottom: `1px solid ${C.hairlineSoft}` }}>
+            <div>
+              <h2 style={{ fontSize: 16, fontWeight: 600, color: C.ink }}>Plan Breakdown</h2>
+              <p style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>214 active properties</p>
             </div>
+            {/* guest-favorite-badge */}
+            <span style={{
+              fontSize: 11, fontWeight: 600, color: C.primary,
+              backgroundColor: "#fff1f2",
+              borderRadius: 9999, paddingInline: 10, paddingBlock: 4,
+            }}>
+              146 PAID
+            </span>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-100 text-xs text-slate-600 flex items-center justify-between">
-            <span className="font-semibold">Average Revenue Per User (ARPU)</span>
-            <span className="font-black text-emerald-600 text-sm">₹ 695 / mo</span>
+          <div className="space-y-4">
+            {planBreakdown.map((item, i) => (
+              <div key={i}>
+                <div className="flex justify-between mb-1.5">
+                  <span style={{ fontSize: 13, fontWeight: 500, color: C.body }}>{item.name}</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: C.ink }}>
+                    {item.count} ({item.pct}%)
+                  </span>
+                </div>
+                {/* Airbnb-style progress track */}
+                <div style={{ height: 4, backgroundColor: C.soft, borderRadius: 9999, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${item.pct}%`, backgroundColor: item.color, borderRadius: 9999 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-between mt-5 pt-4" style={{ borderTop: `1px solid ${C.hairlineSoft}` }}>
+            <span style={{ fontSize: 13, fontWeight: 500, color: C.body }}>ARPU</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: "#15803d" }}>₹695 / mo</span>
           </div>
         </div>
 
-        {/* Dynamic Activity Feed */}
-        <div className="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-sm lg:col-span-2">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 border-b border-slate-100 pb-4">
+        {/* Activity feed — reviews-card style */}
+        <div
+          className="lg:col-span-2"
+          style={{
+            backgroundColor: C.canvas,
+            border: `1px solid ${C.hairline}`,
+            borderRadius: 14,
+            padding: 24,
+            ...CARD_SHADOW,
+          }}
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-4" style={{ borderBottom: `1px solid ${C.hairlineSoft}` }}>
             <div>
-              <h2 className="text-base font-extrabold text-slate-900">Live Activity Feed</h2>
-              <p className="text-xs text-slate-500">Real-time subscription and onboarding logs</p>
+              <h2 style={{ fontSize: 16, fontWeight: 600, color: C.ink }}>Live Activity Feed</h2>
+              <p style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>Real-time subscription and onboarding logs</p>
             </div>
-
-            {/* Filter pills */}
-            <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-              {["ALL", "PROFESSIONAL", "STARTER", "TRIALING"].map((f) => (
+            {/* Category strip */}
+            <div className="flex items-center gap-1 p-1" style={{ backgroundColor: C.soft, borderRadius: 9999 }}>
+              {["ALL", "PROFESSIONAL", "STARTER", "TRIALING"].map(f => (
                 <button
                   key={f}
-                  onClick={() => setActivePlanFilter(f)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
-                    activePlanFilter === f
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500 hover:text-slate-900"
-                  }`}
+                  onClick={() => setPlanFilter(f)}
+                  style={{
+                    fontSize: 11, fontWeight: 600,
+                    paddingInline: 10, paddingBlock: 5,
+                    borderRadius: 9999,
+                    backgroundColor: planFilter === f ? C.canvas : "transparent",
+                    color: planFilter === f ? C.ink : C.muted,
+                    border: "none", cursor: "pointer",
+                    boxShadow: planFilter === f ? "rgba(0,0,0,0.06) 0 1px 4px" : "none",
+                    transition: "all 0.1s",
+                  }}
                 >
                   {f}
                 </button>
@@ -294,103 +296,136 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            {filteredActivities.length === 0 ? (
-              <div className="py-8 text-center text-xs text-slate-400 font-medium">
-                No activity records found for filter: {activePlanFilter}
-              </div>
-            ) : (
-              filteredActivities.map((act) => (
+          <div>
+            {filtered.length === 0 ? (
+              <p style={{ textAlign: "center", fontSize: 13, color: C.muted, padding: "24px 0" }}>
+                No activity for filter: {planFilter}
+              </p>
+            ) : filtered.map((act, i) => {
+              const ts = typeStyle[act.type] ?? typeStyle.WARNING;
+              return (
                 <div
                   key={act.id}
-                  className="flex items-start justify-between p-4 bg-slate-50/80 hover:bg-slate-100/60 rounded-xl border border-slate-200/60 transition-colors"
+                  className="flex items-start justify-between py-3"
+                  style={{ borderBottom: i < filtered.length - 1 ? `1px solid ${C.hairlineSoft}` : "none" }}
                 >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-extrabold text-slate-900">{act.title}</p>
-                      <span
-                        className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full border ${act.badgeBg}`}
-                      >
-                        {act.badge}
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <span style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{act.title}</span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 700,
+                        backgroundColor: ts.bg, color: ts.text,
+                        borderRadius: 9999, paddingInline: 7, paddingBlock: 2,
+                      }}>
+                        {ts.label}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-600 font-medium">{act.desc}</p>
+                    <p style={{ fontSize: 13, fontWeight: 400, color: C.body }}>{act.desc}</p>
                   </div>
-                  <span className="text-xs text-slate-400 font-semibold whitespace-nowrap ml-4">
+                  <span style={{ fontSize: 12, color: C.muted, whiteSpace: "nowrap", marginLeft: 16 }}>
                     {act.time}
                   </span>
                 </div>
-              ))
-            )}
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Manual Grant Trial Modal */}
-      {showManualTrialModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
+      {/* ── Grant Trial Modal — reservation-card style ── */}
+      {showTrialModal && (
+        <div className="fixed inset-0 flex items-center justify-center p-4 z-50"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div style={{
+            backgroundColor: C.canvas,
+            borderRadius: 14,
+            padding: 28,
+            maxWidth: 420,
+            width: "100%",
+            ...CARD_SHADOW,
+          }}>
+            <div className="flex items-center justify-between mb-5 pb-4" style={{ borderBottom: `1px solid ${C.hairline}` }}>
               <div className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-violet-600" />
-                <h3 className="font-extrabold text-slate-900 text-base">Grant Manual Trial</h3>
+                <Sparkles className="w-5 h-5" style={{ color: C.primary }} />
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: C.ink }}>Grant Manual Trial</h3>
               </div>
-              <button
-                onClick={() => setShowManualTrialModal(false)}
-                className="text-slate-400 hover:text-slate-600 font-bold"
-              >
+              <button onClick={() => setShowTrialModal(false)}
+                style={{ color: C.muted, background: "none", border: "none", cursor: "pointer", fontSize: 20, lineHeight: 1 }}>
                 ✕
               </button>
             </div>
 
-            {grantSuccessMsg ? (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-bold text-center flex items-center justify-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                <span>{grantSuccessMsg}</span>
+            {successMsg ? (
+              <div className="flex items-center gap-2 p-3 rounded-lg"
+                style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+                <CheckCircle2 className="w-4 h-4" style={{ color: "#15803d" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#15803d" }}>{successMsg}</span>
               </div>
             ) : (
-              <form onSubmit={handleGrantTrial} className="space-y-4">
+              <form onSubmit={handleGrant} className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: C.ink, marginBottom: 6 }}>
                     Property ID or Owner Email
                   </label>
                   <input
                     type="text"
                     placeholder="e.g. HS-8821 or owner@homestay.com"
-                    value={propertyIdInput}
-                    onChange={(e) => setPropertyIdInput(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-medium focus:outline-none focus:border-violet-600 focus:bg-white"
+                    value={propId}
+                    onChange={e => setPropId(e.target.value)}
                     required
+                    style={{
+                      width: "100%", boxSizing: "border-box",
+                      fontSize: 14, color: C.ink,
+                      padding: "12px 14px",
+                      border: `1px solid ${C.hairline}`,
+                      borderRadius: 8,
+                      outline: "none",
+                      backgroundColor: C.soft,
+                    }}
+                    onFocus={e => { e.currentTarget.style.borderColor = C.ink; e.currentTarget.style.backgroundColor = C.canvas; }}
+                    onBlur={e =>  { e.currentTarget.style.borderColor = C.hairline; e.currentTarget.style.backgroundColor = C.soft; }}
                   />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">
-                    Trial Duration (Days)
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: C.ink, marginBottom: 6 }}>
+                    Trial Duration
                   </label>
                   <select
-                    value={trialDaysInput}
-                    onChange={(e) => setTrialDaysInput(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-sm text-slate-900 font-medium focus:outline-none focus:border-violet-600 focus:bg-white"
+                    value={trialDays}
+                    onChange={e => setTrialDays(e.target.value)}
+                    style={{
+                      width: "100%",
+                      fontSize: 14, color: C.ink,
+                      padding: "12px 14px",
+                      border: `1px solid ${C.hairline}`,
+                      borderRadius: 8,
+                      backgroundColor: C.soft,
+                      outline: "none",
+                    }}
                   >
                     <option value="15">15 Days</option>
                     <option value="30">30 Days (Standard)</option>
                     <option value="60">60 Days (VIP Partner)</option>
-                    <option value="90">90 Days (Reseller Deal)</option>
+                    <option value="90">90 Days (Reseller)</option>
                   </select>
                 </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowManualTrialModal(false)}
-                    className="flex-1 py-2.5 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-50"
-                  >
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={() => setShowTrialModal(false)}
+                    style={{
+                      flex: 1, paddingBlock: 12, fontSize: 14, fontWeight: 500,
+                      border: `1px solid ${C.hairline}`, borderRadius: 8,
+                      color: C.ink, backgroundColor: C.canvas, cursor: "pointer",
+                    }}>
                     Cancel
                   </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2.5 bg-violet-600 text-white font-bold text-xs rounded-xl hover:bg-violet-700 shadow-md shadow-violet-500/20"
+                  <button type="submit"
+                    style={{
+                      flex: 1, paddingBlock: 12, fontSize: 14, fontWeight: 500,
+                      backgroundColor: C.primary, color: "#ffffff",
+                      border: "none", borderRadius: 8, cursor: "pointer",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#e00b41")}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = C.primary)}
                   >
                     Activate Trial
                   </button>

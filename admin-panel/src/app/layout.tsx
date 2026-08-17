@@ -1,15 +1,16 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// ─── Airbnb DESIGN.md ─────────────────────────────────────────────────────────
+// Inter is the closest open-source substitute for Airbnb Cereal VF.
+// next/font/google handles font loading via <link> in <head> — no @import in CSS.
+// ─────────────────────────────────────────────────────────────────────────────
+const inter = Inter({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -17,13 +18,14 @@ export const metadata: Metadata = {
   description: "StayMate Central Developer & Operations Admin Console",
 };
 
+type LayoutProps<T extends string> = { children: React.ReactNode };
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en" className={`${inter.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col" style={{ fontFamily: "var(--font-inter), -apple-system, system-ui, sans-serif" }}>
+        {children}
+      </body>
     </html>
   );
 }

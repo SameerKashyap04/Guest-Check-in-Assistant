@@ -1,240 +1,247 @@
 "use client";
 
+// ─── DESIGN.md — Airbnb Design System ────────────────────────────────────────
+// Same table + modal treatment as Users page (host-card / reservation-card)
+// Status badges: guest-favorite-badge style, rounded.full pills
+// ─────────────────────────────────────────────────────────────────────────────
+
 import React, { useState } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
-import { Shield, Crown, RefreshCcw, Calendar, CheckCircle2, AlertTriangle, Search, Filter, X, Check } from "lucide-react";
+import { Search, X, Check } from "lucide-react";
+
+const C = {
+  primary:  "#ff385c",
+  ink:      "#222222",
+  body:     "#3f3f3f",
+  muted:    "#6a6a6a",
+  canvas:   "#ffffff",
+  soft:     "#f7f7f7",
+  hairline: "#dddddd",
+  hairlineSoft: "#ebebeb",
+};
+
+const SHADOW = {
+  boxShadow: "rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px, rgba(0,0,0,0.10) 0 4px 8px",
+};
 
 interface SubRecord {
-  id: string;
-  property: string;
-  plan: string;
-  cycle: string;
-  amount: string;
-  status: "active" | "trialing" | "past_due" | "cancelled";
-  renewalDate: string;
-  provider: string;
+  id: string; property: string; plan: string; cycle: string;
+  amount: string; status: "active" | "trialing" | "past_due" | "cancelled";
+  renewalDate: string; provider: string;
 }
+
+const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
+  active:   { bg: "#f0fdf4", text: "#15803d" },
+  trialing: { bg: "#eff6ff", text: "#1d4ed8" },
+  past_due: { bg: "#fff7ed", text: "#c2410c" },
+  cancelled:{ bg: C.soft,   text: C.muted },
+};
 
 export default function SubscriptionsPage() {
   const [statusFilter, setStatusFilter] = useState("ALL");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedSub, setSelectedSub] = useState<SubRecord | null>(null);
-  const [actionMsg, setActionMsg] = useState("");
+  const [search, setSearch]           = useState("");
+  const [selected, setSelected]       = useState<SubRecord | null>(null);
+  const [msg, setMsg]                 = useState("");
 
-  const [subscriptions, setSubscriptions] = useState<SubRecord[]>([
-    {
-      id: "sub_901",
-      property: "Coorg Hilltop Homestay",
-      plan: "PROFESSIONAL",
-      cycle: "yearly",
-      amount: "₹ 7,999",
-      status: "active",
-      renewalDate: "2027-01-15",
-      provider: "Razorpay",
-    },
-    {
-      id: "sub_902",
-      property: "Manali Pine Resort",
-      plan: "STARTER",
-      cycle: "monthly",
-      amount: "₹ 299",
-      status: "active",
-      renewalDate: "2026-04-01",
-      provider: "Razorpay",
-    },
-    {
-      id: "sub_903",
-      property: "Wayanad Forest Lodge",
-      plan: "PROFESSIONAL",
-      cycle: "monthly",
-      amount: "₹ 799",
-      status: "trialing",
-      renewalDate: "2026-04-04 (Trial end)",
-      provider: "Direct Trial",
-    },
-    {
-      id: "sub_904",
-      property: "Goa Beachside Lodge",
-      plan: "STARTER",
-      cycle: "monthly",
-      amount: "₹ 299",
-      status: "past_due",
-      renewalDate: "2026-03-10 (Past due)",
-      provider: "Razorpay",
-    },
+  const [subs, setSubs] = useState<SubRecord[]>([
+    { id: "sub_901", property: "Coorg Hilltop Homestay",      plan: "PROFESSIONAL", cycle: "yearly",  amount: "₹7,999", status: "active",   renewalDate: "2027-01-15",          provider: "Razorpay"     },
+    { id: "sub_902", property: "Manali Pine Resort",           plan: "STARTER",      cycle: "monthly", amount: "₹299",   status: "active",   renewalDate: "2026-04-01",          provider: "Razorpay"     },
+    { id: "sub_903", property: "Wayanad Forest Lodge",         plan: "PROFESSIONAL", cycle: "monthly", amount: "₹799",   status: "trialing", renewalDate: "2026-04-04 (Trial end)", provider: "Direct Trial" },
+    { id: "sub_904", property: "Goa Beachside Lodge",          plan: "STARTER",      cycle: "monthly", amount: "₹299",   status: "past_due", renewalDate: "2026-03-10 (Past due)", provider: "Razorpay"     },
   ]);
 
-  const filteredSubs = subscriptions.filter((s) => {
-    const matchesSearch =
-      s.property.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "ALL" || s.status.toUpperCase() === statusFilter;
-    return matchesSearch && matchesStatus;
+  const filtered = subs.filter(s => {
+    const matchSearch = [s.property, s.id].some(v => v.toLowerCase().includes(search.toLowerCase()));
+    const matchStatus = statusFilter === "ALL" || s.status.toUpperCase() === statusFilter.replace("_", "_");
+    return matchSearch && matchStatus;
   });
 
-  const handleStatusChange = (newStatus: SubRecord["status"]) => {
-    if (!selectedSub) return;
-    setSubscriptions((prev) =>
-      prev.map((s) => (s.id === selectedSub.id ? { ...s, status: newStatus } : s))
-    );
-    setSelectedSub({ ...selectedSub, status: newStatus });
-    setActionMsg(`Subscription ${selectedSub.id} marked as ${newStatus.toUpperCase()}`);
-    setTimeout(() => setActionMsg(""), 2000);
+  const changeStatus = (newStatus: SubRecord["status"]) => {
+    if (!selected) return;
+    setSubs(prev => prev.map(s => s.id === selected.id ? { ...s, status: newStatus } : s));
+    setSelected({ ...selected, status: newStatus });
+    setMsg(`${selected.id} marked as ${newStatus.toUpperCase()}`);
+    setTimeout(() => setMsg(""), 2500);
+  };
+
+  const inputStyle = {
+    fontSize: 14, color: C.ink,
+    padding: "10px 14px",
+    border: `1px solid ${C.hairline}`,
+    borderRadius: 8, outline: "none",
+    backgroundColor: C.soft,
   };
 
   return (
     <AdminLayout>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Subscriptions Ledger
-          </h1>
-          <p className="text-sm text-slate-500 font-medium mt-1">
+          <h1 style={{ fontSize: 28, fontWeight: 700, color: C.ink }}>Subscriptions</h1>
+          <p style={{ fontSize: 14, fontWeight: 400, color: C.muted, marginTop: 4 }}>
             Monitor active subscriptions, trial statuses, and billing cycles.
           </p>
         </div>
       </div>
 
-      {/* Filter and Search */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
+      {/* Filters */}
+      <div className="flex flex-col md:flex-row gap-3 mb-6">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+          <Search className="w-4 h-4 absolute left-3.5 top-3" style={{ color: C.muted }} />
           <input
-            type="text"
-            placeholder="Search property name or subscription ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-600 shadow-sm"
+            type="text" placeholder="Search by property or subscription ID…"
+            value={search} onChange={e => setSearch(e.target.value)}
+            style={{ ...inputStyle, width: "100%", paddingLeft: 36, boxSizing: "border-box" }}
+            onFocus={e => { e.currentTarget.style.borderColor = C.ink; e.currentTarget.style.backgroundColor = C.canvas; }}
+            onBlur={e  => { e.currentTarget.style.borderColor = C.hairline; e.currentTarget.style.backgroundColor = C.soft; }}
           />
         </div>
-
-        <div className="flex items-center gap-1.5 bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
-          {["ALL", "ACTIVE", "TRIALING", "PAST_DUE"].map((status) => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                statusFilter === status
-                  ? "bg-violet-600 text-white shadow-sm"
-                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
-              }`}
+        <div className="flex items-center gap-1 p-1" style={{ backgroundColor: C.canvas, border: `1px solid ${C.hairline}`, borderRadius: 9999 }}>
+          {["ALL", "ACTIVE", "TRIALING", "PAST_DUE"].map(st => (
+            <button key={st} onClick={() => setStatusFilter(st)}
+              style={{
+                fontSize: 11, fontWeight: 600,
+                paddingInline: 12, paddingBlock: 6,
+                borderRadius: 9999,
+                backgroundColor: statusFilter === st ? C.ink : "transparent",
+                color: statusFilter === st ? "#ffffff" : C.muted,
+                border: "none", cursor: "pointer", whiteSpace: "nowrap",
+              }}
             >
-              {status}
+              {st}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200/90 rounded-2xl overflow-hidden shadow-sm">
-        <table className="w-full text-left text-sm text-slate-700">
-          <thead className="bg-slate-50 text-xs font-bold text-slate-500 border-b border-slate-200 uppercase tracking-wider">
-            <tr>
-              <th className="px-6 py-4">Subscription ID</th>
-              <th className="px-6 py-4">Property</th>
-              <th className="px-6 py-4">Plan & Cycle</th>
-              <th className="px-6 py-4">Billing Amount</th>
-              <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4">Renewal / Trial Date</th>
-              <th className="px-6 py-4 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {filteredSubs.map((sub) => (
-              <tr key={sub.id} className="hover:bg-slate-50/80 transition-colors">
-                <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">
-                  {sub.id}
-                </td>
-                <td className="px-6 py-4 font-extrabold text-slate-900">{sub.property}</td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-900 text-xs">{sub.plan}</span>
-                    <span className="text-[10px] text-slate-600 uppercase bg-slate-100 px-2 py-0.5 rounded border border-slate-200 font-bold">
-                      {sub.cycle}
-                    </span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 font-extrabold text-emerald-600">{sub.amount}</td>
-                <td className="px-6 py-4">
-                  <span
-                    className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border ${
-                      sub.status === "active"
-                        ? "bg-emerald-100 text-emerald-800 border-emerald-200"
-                        : sub.status === "trialing"
-                        ? "bg-sky-100 text-sky-800 border-sky-200"
-                        : "bg-rose-100 text-rose-800 border-rose-200"
-                    }`}
-                  >
-                    {sub.status.toUpperCase()}
-                  </span>
-                </td>
-                <td className="px-6 py-4 text-xs font-semibold text-slate-500">{sub.renewalDate}</td>
-                <td className="px-6 py-4 text-right">
-                  <button
-                    onClick={() => setSelectedSub(sub)}
-                    className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-lg transition-colors border border-slate-200"
-                  >
-                    Override
-                  </button>
-                </td>
+      {/* Table */}
+      <div style={{ backgroundColor: C.canvas, border: `1px solid ${C.hairline}`, borderRadius: 14, overflow: "hidden", ...SHADOW }}>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, color: C.body }}>
+            <thead>
+              <tr style={{ borderBottom: `1px solid ${C.hairline}`, backgroundColor: C.soft }}>
+                {["Sub ID", "Property", "Plan & Cycle", "Amount", "Status", "Renewal Date", ""].map(h => (
+                  <th key={h} style={{
+                    padding: "12px 20px", textAlign: "left",
+                    fontSize: 11, fontWeight: 700, color: C.muted,
+                    textTransform: "uppercase", letterSpacing: "0.05em",
+                  }}>{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filtered.map((sub, i) => {
+                const sb = STATUS_BADGE[sub.status] ?? STATUS_BADGE.cancelled;
+                return (
+                  <tr key={sub.id}
+                    style={{ borderBottom: i < filtered.length - 1 ? `1px solid ${C.hairlineSoft}` : "none" }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = C.soft)}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = "transparent")}
+                  >
+                    <td style={{ padding: "16px 20px", fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: C.muted }}>{sub.id}</td>
+                    <td style={{ padding: "16px 20px", fontWeight: 600, color: C.ink }}>{sub.property}</td>
+                    <td style={{ padding: "16px 20px" }}>
+                      <div className="flex items-center gap-2">
+                        <span style={{ fontWeight: 600, color: C.ink, fontSize: 13 }}>{sub.plan}</span>
+                        <span style={{
+                          fontSize: 10, fontWeight: 700, color: C.muted,
+                          backgroundColor: C.soft, borderRadius: 9999,
+                          paddingInline: 7, paddingBlock: 2, textTransform: "uppercase",
+                        }}>
+                          {sub.cycle}
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "16px 20px", fontWeight: 700, color: "#15803d" }}>{sub.amount}</td>
+                    <td style={{ padding: "16px 20px" }}>
+                      <span style={{
+                        fontSize: 11, fontWeight: 600,
+                        backgroundColor: sb.bg, color: sb.text,
+                        borderRadius: 9999, paddingInline: 9, paddingBlock: 3,
+                      }}>
+                        {sub.status.replace("_", " ").toUpperCase()}
+                      </span>
+                    </td>
+                    <td style={{ padding: "16px 20px", fontSize: 12, color: C.muted }}>{sub.renewalDate}</td>
+                    <td style={{ padding: "16px 20px", textAlign: "right" }}>
+                      <button onClick={() => setSelected(sub)}
+                        style={{
+                          fontSize: 12, fontWeight: 500,
+                          paddingInline: 14, paddingBlock: 7,
+                          backgroundColor: C.soft, color: C.ink,
+                          border: `1px solid ${C.hairline}`,
+                          borderRadius: 8, cursor: "pointer",
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = C.ink)}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = C.hairline)}
+                      >
+                        Override
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
 
-      {/* Dynamic Sub Override Modal */}
-      {selectedSub && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white border border-slate-200 rounded-3xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-4 border-b border-slate-100 pb-3">
-              <h3 className="font-extrabold text-slate-900 text-base">
-                Subscription Override ({selectedSub.id})
-              </h3>
-              <button
-                onClick={() => setSelectedSub(null)}
-                className="text-slate-400 hover:text-slate-600 font-bold p-1"
-              >
-                <X className="w-5 h-5" />
+      {/* Override modal */}
+      {selected && (
+        <div className="fixed inset-0 flex items-center justify-center p-4 z-50"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div style={{ backgroundColor: C.canvas, borderRadius: 14, padding: 28, maxWidth: 440, width: "100%", ...SHADOW }}>
+            <div className="flex items-center justify-between mb-5 pb-4" style={{ borderBottom: `1px solid ${C.hairline}` }}>
+              <div>
+                <h3 style={{ fontSize: 18, fontWeight: 700, color: C.ink }}>Override Subscription</h3>
+                <p style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>{selected.id}</p>
+              </div>
+              <button onClick={() => setSelected(null)}
+                style={{ width: 32, height: 32, borderRadius: 9999, backgroundColor: C.soft, border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <X className="w-4 h-4" style={{ color: C.muted }} />
               </button>
             </div>
 
-            {actionMsg && (
-              <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-bold rounded-xl flex items-center gap-2">
-                <Check className="w-4 h-4 text-emerald-600" />
-                <span>{actionMsg}</span>
+            {msg && (
+              <div className="mb-4 flex items-center gap-2 p-3 rounded-lg"
+                style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0" }}>
+                <Check className="w-4 h-4" style={{ color: "#15803d" }} />
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#15803d" }}>{msg}</span>
               </div>
             )}
 
-            <div className="space-y-4 mb-6">
-              <p className="text-xs text-slate-600 font-medium">
-                Property: <strong className="text-slate-900">{selectedSub.property}</strong>
-              </p>
+            <p style={{ fontSize: 13, color: C.body, marginBottom: 14 }}>
+              Property: <strong style={{ color: C.ink }}>{selected.property}</strong>
+            </p>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-800 mb-2">
-                  Override Status Dynamically
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  {(["active", "trialing", "past_due", "cancelled"] as const).map((st) => (
-                    <button
-                      key={st}
-                      onClick={() => handleStatusChange(st)}
-                      className={`py-2 px-3 rounded-xl text-xs font-extrabold border transition-all ${
-                        selectedSub.status === st
-                          ? "bg-violet-600 text-white border-violet-600 shadow-sm"
-                          : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50"
-                      }`}
-                    >
-                      {st.toUpperCase()}
-                    </button>
-                  ))}
-                </div>
-              </div>
+            <p style={{ fontSize: 12, fontWeight: 600, color: C.ink, marginBottom: 10 }}>Override Status</p>
+            <div className="grid grid-cols-2 gap-2 mb-6">
+              {(["active", "trialing", "past_due", "cancelled"] as const).map(st => {
+                const active = selected.status === st;
+                return (
+                  <button key={st} onClick={() => changeStatus(st)}
+                    style={{
+                      paddingBlock: 10,
+                      fontSize: 12, fontWeight: 600,
+                      borderRadius: 8,
+                      backgroundColor: active ? C.ink : C.soft,
+                      color: active ? "#ffffff" : C.body,
+                      border: `1px solid ${active ? C.ink : C.hairline}`,
+                      cursor: "pointer", textTransform: "uppercase",
+                    }}
+                  >
+                    {st.replace("_", " ")}
+                  </button>
+                );
+              })}
             </div>
 
-            <button
-              onClick={() => setSelectedSub(null)}
-              className="w-full py-2.5 bg-slate-900 text-white font-bold text-xs rounded-xl hover:bg-slate-800"
+            <button onClick={() => setSelected(null)}
+              style={{
+                width: "100%", paddingBlock: 12,
+                fontSize: 14, fontWeight: 500,
+                backgroundColor: C.ink, color: "#ffffff",
+                border: "none", borderRadius: 8, cursor: "pointer",
+              }}
             >
               Close
             </button>
