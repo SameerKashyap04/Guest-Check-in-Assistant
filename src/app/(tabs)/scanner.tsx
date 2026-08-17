@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, Modal, Image,
+  StyleSheet, Alert, Modal, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -15,13 +16,15 @@ import { useRouter } from 'expo-router';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { useRoomsStore } from '@/store/useRoomsStore';
 import { createMultipleGuestsAndStay } from '@/database/stays';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
+import { isAtLimit } from '@/services/entitlementService';
 import { AIRBNB } from '@/theme/airbnb';
 
-// ─── Airbnb Check-in Screen for StayMate ──────────────────────────────────────
-// Exact 1:1 port of renderScanner() & startReview() from staymate-airbnb-redesign/app.html
+// ─── Airbnb Dynamic Check-in Screen for StayMate ─────────────────────────────
+// Real-time OCR scanner + dynamic room assignment + live database persistence
 // ─────────────────────────────────────────────────────────────────────────────
 
 type DocType = 'AUTO' | 'AADHAAR' | 'PAN' | 'VOTER' | 'DRIVING' | 'PASSPORT';
@@ -38,36 +41,64 @@ export default function CheckinScannerScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
 
-  // Review Sheet State
+  // Review Sheet State (defaults empty for real user/OCR input)
   const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [fullName, setFullName] = useState('Rohan Sharma');
-  const [idNumber, setIdNumber] = useState('5481 9283 0192');
+  const [fullName, setFullName] = useState('');
+  const [idNumber, setIdNumber] = useState('');
   const [gender, setGender] = useState('Male');
-  const [dob, setDob] = useState('14/08/1994');
-  const [address, setAddress] = useState('14 MG Road, Guwahati, Assam 781001');
-  const [phone, setPhone] = useState('+91 98765 43210');
+  const [dob, setDob] = useState('');
+  const [address, setAddress] = useState('');
+  const [phone, setPhone] = useState('');
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
   const cameraRef = useRef<any>(null);
 
-  useEffect(() => {
-    fetchRooms();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchRooms();
+    }, [])
+  );
 
   useEffect(() => {
     if (rooms.length > 0 && !selectedRoomId) {
-      setSelectedRoomId(rooms[0].id);
+      const firstAvailable = rooms.find(r => r.status === 'available') || rooms[0];
+      setSelectedRoomId(firstAvailable.id);
     }
-  }, [rooms]);
+  }, [rooms, selectedRoomId]);
+
+  const resetForm = () => {
+    setFullName('');
+    setIdNumber('');
+    setGender('Male');
+    setDob('');
+    setAddress('');
+    setPhone('');
+    setCapturedPhotoUri(null);
+  };
 
   const handleCapture = async () => {
     if (!cameraRef.current || isProcessing) return;
+
+    if (isAtLimit('monthlyCheckIns')) {
+      Alert.alert(
+        'Check-in Limit Reached',
+        'You have reached your monthly check-in limit. Upgrade your plan to continue checking in guests.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'View Plans', onPress: () => router.push('/subscription/pricing') },
+        ]
+      );
+      return;
+    }
+
     try {
       setIsProcessing(true);
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 });
       if (photo?.uri) {
         setCapturedPhotoUri(photo.uri);
+        useSubscriptionStore.getState().incrementOcrScan();
+
         const parsed = await OCRPipeline.processImage(photo.uri, selectedDoc);
         if (parsed) {
           if (parsed.fullName) setFullName(parsed.fullName);
@@ -87,6 +118,18 @@ export default function CheckinScannerScreen() {
   };
 
   const handlePickGallery = async () => {
+    if (isAtLimit('monthlyCheckIns')) {
+      Alert.alert(
+        'Check-in Limit Reached',
+        'You have reached your monthly check-in limit. Upgrade your plan to continue checking in guests.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'View Plans', onPress: () => router.push('/subscription/pricing') },
+        ]
+      );
+      return;
+    }
+
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
@@ -97,6 +140,8 @@ export default function CheckinScannerScreen() {
       if (!result.canceled && result.assets[0]?.uri) {
         const uri = result.assets[0].uri;
         setCapturedPhotoUri(uri);
+        useSubscriptionStore.getState().incrementOcrScan();
+
         const parsed = await OCRPipeline.processImage(uri, selectedDoc);
         if (parsed) {
           if (parsed.fullName) setFullName(parsed.fullName);
@@ -149,7 +194,10 @@ export default function CheckinScannerScreen() {
         }
       );
 
+      useSubscriptionStore.getState().incrementCheckIn();
       setIsReviewOpen(false);
+      resetForm();
+
       Alert.alert('Check-in Complete!', `${fullName} has been checked in successfully.`, [
         { text: 'View Dashboard', onPress: () => router.replace('/(tabs)') },
       ]);
@@ -183,7 +231,7 @@ export default function CheckinScannerScreen() {
           </Text>
         </View>
 
-        {/* ── Document Type Grid (3x2 as in Screenshot 3) ── */}
+        {/* ── Document Type Grid (3x2) ── */}
         <Text style={styles.sectionLabel}>DOCUMENT TYPE</Text>
         <View style={styles.docTypeGrid}>
           {docTypes.map(doc => {
@@ -245,9 +293,13 @@ export default function CheckinScannerScreen() {
 
           {/* Center Guide Label */}
           <View style={styles.centerGuide}>
-            <Text style={styles.centerGuideText}>
-              Align the document within the frame
-            </Text>
+            {isProcessing ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={styles.centerGuideText}>
+                Align the document within the frame
+              </Text>
+            )}
           </View>
 
           {/* Top Camera Controls */}
@@ -299,7 +351,7 @@ export default function CheckinScannerScreen() {
           variant="secondary"
           icon={<Edit3 size={17} color={AIRBNB.colors.ink} />}
           onPress={() => {
-            setCapturedPhotoUri(null);
+            resetForm();
             setIsReviewOpen(true);
           }}
         />
@@ -315,14 +367,14 @@ export default function CheckinScannerScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.webTitle}>Web self check-ins</Text>
-            <Text style={styles.webSubtitle}>2 pending your approval</Text>
+            <Text style={styles.webSubtitle}>View pending online registrations</Text>
           </View>
           <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
         </TouchableOpacity>
       </ScrollView>
 
       {/* ══════════════════════════════════════════════════
-          CONFIRM & CHECK IN MODAL SHEET (app.html port)
+          CONFIRM & CHECK IN MODAL SHEET
       ══════════════════════════════════════════════════ */}
       <Modal visible={isReviewOpen} transparent animationType="slide">
         <TouchableOpacity
@@ -341,7 +393,9 @@ export default function CheckinScannerScreen() {
               <View style={styles.sheetHeader}>
                 <View>
                   <Text style={styles.sheetTitle}>Confirm guest details</Text>
-                  <Text style={styles.sheetSubtitle}>Extracted from {selectedDoc}</Text>
+                  <Text style={styles.sheetSubtitle}>
+                    {capturedPhotoUri ? `Extracted from ${selectedDoc}` : 'Manual check-in entry'}
+                  </Text>
                 </View>
                 <TouchableOpacity
                   style={styles.iconBtn}
@@ -388,6 +442,7 @@ export default function CheckinScannerScreen() {
                   value={phone}
                   onChangeText={setPhone}
                   placeholder="+91 98765 43210"
+                  keyboardType="phone-pad"
                 />
                 <Input
                   label="Address"
@@ -412,7 +467,7 @@ export default function CheckinScannerScreen() {
                           onPress={() => setSelectedRoomId(r.id)}
                         >
                           <Text style={[styles.roomChipText, active && styles.roomChipTextActive]}>
-                            Room {r.room_number} ({r.room_type || 'Standard'})
+                            Room {r.room_number} ({r.room_type || 'Standard'}) · {r.status}
                           </Text>
                         </TouchableOpacity>
                       );

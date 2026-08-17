@@ -1,22 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   Modal, StyleSheet, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   List, Grid, X,
 } from 'lucide-react-native';
 import { useRoomsStore } from '@/store/useRoomsStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { updateStay, getGuestById } from '@/database/stays';
+import { getGuestsForRoom, checkoutGuestOrRemoveFromRoom } from '@/database/stays';
 import { Room } from '@/database/rooms';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { AIRBNB } from '@/theme/airbnb';
 
 // ─── Airbnb Rooms Screen for StayMate ─────────────────────────────────────────
-// Exact 1:1 port of renderRooms() & openRoom() from staymate-airbnb-redesign/app.html
+// Dynamic room inventory, real guest association & live status management
 // ─────────────────────────────────────────────────────────────────────────────
 
 type FilterTab = 'all' | 'available' | 'occupied' | 'cleaning' | 'maintenance';
@@ -39,9 +40,11 @@ export default function RoomsScreen() {
   const [roomTypeInput, setRoomTypeInput] = useState('Standard');
   const [basePriceInput, setBasePriceInput] = useState('1800');
 
-  useEffect(() => {
-    fetchRooms();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      fetchRooms();
+    }, [])
+  );
 
   // Filtered list
   const filteredRooms = rooms.filter(r => {
@@ -49,7 +52,7 @@ export default function RoomsScreen() {
     return r.status === activeFilter;
   });
 
-  // Mini stats count
+  // Mini stats count (dynamic from live rooms array)
   const totalCount = rooms.length;
   const availCount = rooms.filter(r => r.status === 'available').length;
   const occCount = rooms.filter(r => r.status === 'occupied').length;
@@ -59,6 +62,15 @@ export default function RoomsScreen() {
   const handleOpenRoom = async (room: Room) => {
     setSelectedRoom(room);
     setRoomGuest(null);
+    try {
+      const activePropertyId = propertyId || undefined;
+      const guests = await getGuestsForRoom(room.id, activePropertyId);
+      if (guests && guests.length > 0) {
+        setRoomGuest(guests[0]);
+      }
+    } catch (e) {
+      console.error('Failed to load guest for room', e);
+    }
   };
 
   const handleStatusChange = async (newStatus: 'available' | 'occupied' | 'cleaning' | 'maintenance') => {
@@ -73,7 +85,7 @@ export default function RoomsScreen() {
   };
 
   const handleCheckoutGuest = async () => {
-    if (!roomGuest?.stayId || !selectedRoom) return;
+    if (!roomGuest || !selectedRoom) return;
     Alert.alert('Check out guest?', `Check out ${roomGuest.full_name || 'guest'} from Room ${selectedRoom.room_number}?`, [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -81,12 +93,10 @@ export default function RoomsScreen() {
         style: 'destructive',
         onPress: async () => {
           try {
-            await updateStay(roomGuest.stayId, {
-              status: 'completed',
-              check_out_date: new Date().toISOString().split('T')[0],
-            });
+            await checkoutGuestOrRemoveFromRoom(roomGuest.id, selectedRoom.id);
             await editRoom(selectedRoom.id, selectedRoom.room_number, selectedRoom.room_type, 'cleaning', selectedRoom.price || 1800);
             setSelectedRoom(null);
+            setRoomGuest(null);
             fetchRooms();
             Alert.alert('Checked Out', 'Room is now marked for Cleaning.');
           } catch (e) {
@@ -150,7 +160,7 @@ export default function RoomsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ── 5-Column Mini Metrics (Screenshot 2) ── */}
+        {/* ── 5-Column Mini Metrics (Dynamic) ── */}
         <View style={styles.statsRow}>
           <View style={styles.statCol}>
             <Text style={[styles.statNum, { color: AIRBNB.colors.ink }]}>{totalCount}</Text>
@@ -351,7 +361,7 @@ export default function RoomsScreen() {
                     <Text style={styles.inRoomHeading}>CURRENT GUEST</Text>
                     <Text style={styles.inRoomGuestName}>{roomGuest.full_name}</Text>
                     <Text style={styles.inRoomGuestMeta}>
-                      Checked in: {roomGuest.checkInDate || 'Today'} · {roomGuest.phone || 'No phone'}
+                      Checked in: {roomGuest.check_in_date || 'Active'} · {roomGuest.phone || 'No phone recorded'}
                     </Text>
                     <Button
                       label="Check Out Guest"

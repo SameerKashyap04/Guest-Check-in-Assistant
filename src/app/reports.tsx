@@ -258,7 +258,7 @@ export default function ReportsScreen() {
 
         {/* Export History Section */}
         <Text style={styles.sectionLabel}>EXPORT HISTORY</Text>
-        {['August 2026', 'July 2026', 'June 2026'].map((m, i, arr) => (
+        {getRecentMonths().map((m, i, arr) => (
           <TouchableOpacity
             key={m}
             style={[styles.historyRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}
@@ -277,6 +277,16 @@ export default function ReportsScreen() {
       </ScrollView>
     </SafeAreaView>
   );
+}
+
+function getRecentMonths(): string[] {
+  const months: string[] = [];
+  const now = new Date();
+  for (let i = 0; i < 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push(d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' }));
+  }
+  return months;
 }
 
 const styles = StyleSheet.create({

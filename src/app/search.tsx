@@ -77,8 +77,10 @@ export default function SearchScreen() {
 
         <View style={styles.searchPill}>
           <Search size={17} color={AIRBNB.colors.muted} />
-          <InputRaw
+          <TextInput
+            style={styles.searchInput}
             placeholder="Name, phone, room, ID…"
+            placeholderTextColor={AIRBNB.colors.mutedSoft}
             value={query}
             onChangeText={handleSearch}
             autoFocus
@@ -246,6 +248,12 @@ const styles = StyleSheet.create({
     borderRadius: AIRBNB.radius.full,
     paddingHorizontal: 16,
     height: 44,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 14.5,
+    color: AIRBNB.colors.ink,
+    paddingVertical: 0,
   },
   resultsBar: {
     paddingHorizontal: 20,

@@ -1,114 +1,89 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Modal, StyleSheet, Alert,
+  Modal, StyleSheet, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   Search, Bell, Check, ChevronRight, Mail,
-  Shield, MapPin, Phone, Calendar, User, X,
+  Shield, MapPin, Phone, User, X, Plus,
+  ScanLine,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useRoomsStore } from '@/store/useRoomsStore';
-import { getRecentStays, getGuestById } from '@/database/stays';
+import { getRecentStays, getDashboardStats, DashboardStats } from '@/database/stays';
 import { Button } from '@/components/Button';
 import { AIRBNB } from '@/theme/airbnb';
 
-// ─── Airbnb Dashboard for StayMate ────────────────────────────────────────────
-// Exact 1:1 port of renderHome() & openGuest() from staymate-airbnb-redesign/app.html
+// ─── Airbnb Dynamic Dashboard for StayMate ────────────────────────────────────
+// Real-time metrics & live database guest records matching reference designs
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { businessName } = useSettingsStore();
+  const { businessName, propertyId } = useSettingsStore();
+  const { owner } = useAuthStore();
   const { rooms, fetchRooms } = useRoomsStore();
 
+  const [refreshing, setRefreshing] = useState(false);
+  const [stats, setStats] = useState<DashboardStats>({
+    todayCheckins: 0,
+    todayCheckouts: 0,
+    activeGuests: 0,
+    pendingVerify: 0,
+  });
   const [recentGuests, setRecentGuests] = useState<any[]>([]);
   const [selectedGuest, setSelectedGuest] = useState<any | null>(null);
   const [isSelfCheckinOpen, setIsSelfCheckinOpen] = useState(false);
 
-  useEffect(() => {
-    fetchRooms();
-    loadRecentCheckins();
-  }, []);
-
-  const loadRecentCheckins = async () => {
+  const loadData = async () => {
     try {
-      const stays = await getRecentStays(6);
-      const list: any[] = [];
-      for (const s of stays) {
-        if (s.guest_id || s.primary_guest_id) {
-          const gId = s.guest_id || s.primary_guest_id;
-          const g = await getGuestById(gId);
-          if (g) {
-            list.push({
-              ...g,
-              stayId: s.id,
-              roomNumber: s.room_number || '204',
-              timeLabel: s.check_in_date ? formatTime(s.check_in_date) : 'Today',
-              verified: true,
-            });
-          }
-        }
-      }
+      await fetchRooms();
+      const currentStats = await getDashboardStats(propertyId || undefined);
+      setStats(currentStats);
 
-      if (list.length === 0) {
-        // Fallback demo matching reference design
-        setRecentGuests([
-          {
-            id: 1,
-            full_name: 'Rohan Sharma',
-            id_number: 'XXXX XXXX 4821',
-            id_type: 'Aadhaar',
-            phone: '+91 98765 43210',
-            dob: '14/08/1994',
-            gender: 'Male',
-            address: '14 MG Road, Guwahati, Assam 781001',
-            roomNumber: '204',
-            timeLabel: '9:42 AM',
-            verified: true,
-          },
-          {
-            id: 2,
-            full_name: 'Priya Nair',
-            id_number: 'K91XXXXX',
-            id_type: 'Passport',
-            phone: '+91 98123 45678',
-            dob: '22/01/1997',
-            gender: 'Female',
-            address: 'Kochi, Kerala',
-            roomNumber: '108',
-            timeLabel: '8:15 AM',
-            verified: true,
-          },
-          {
-            id: 3,
-            full_name: 'Arjun Verma',
-            id_number: 'AS01 XXXXXXXXX',
-            id_type: 'Driving Licence',
-            phone: '+91 97654 32109',
-            dob: '05/11/1990',
-            gender: 'Male',
-            address: 'Silchar, Assam',
-            roomNumber: '301',
-            timeLabel: 'Yesterday',
-            verified: false,
-          },
-        ]);
-      } else {
-        setRecentGuests(list);
-      }
+      const stays = await getRecentStays(10, propertyId || undefined);
+      const formatted = stays.map(s => ({
+        id: s.id,
+        guest_id: s.guest_id,
+        full_name: s.full_name || 'Guest',
+        id_number: s.id_number || 'N/A',
+        id_type: s.id_type || 'ID',
+        phone: s.phone || 'N/A',
+        address: s.address || 'N/A',
+        dob: s.dob || 'N/A',
+        gender: s.gender || 'N/A',
+        roomNumber: s.room_number || 'N/A',
+        timeLabel: s.check_in_date ? formatTime(s.check_in_date) : 'Today',
+        verified: !!(s.id_number && s.photo_uri),
+      }));
+      setRecentGuests(formatted);
     } catch (e) {
-      console.error('Error loading stays', e);
+      console.error('Failed to refresh dashboard', e);
     }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadData();
+    }, [propertyId])
+  );
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
   };
 
   const formatTime = (isoString: string) => {
     try {
       const d = new Date(isoString);
+      if (isNaN(d.getTime())) return isoString;
       return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     } catch {
       return 'Today';
@@ -125,26 +100,40 @@ export default function DashboardScreen() {
       .join('');
   };
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
+  };
+
+  const hostName = (businessName ? businessName.split(' ')[0] : '') || (owner?.businessName ? owner.businessName.split(' ')[0] : '') || (owner?.email ? owner.email.split('@')[0] : 'Host');
+
   const todayFormatted = new Date().toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
   });
 
-  const activeGuestCount = rooms.filter(r => r.status === 'occupied').length || 14;
-
   return (
     <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={AIRBNB.colors.primary}
+          />
+        }
       >
         {/* ── Top Date & Greeting Row ── */}
         <View style={styles.topHeader}>
           <View>
             <Text style={styles.dateLabel}>{todayFormatted}</Text>
             <Text style={styles.greetingTitle}>
-              Good morning, {businessName ? businessName.split(' ')[0] : 'Meera'}
+              {getGreeting()}, {hostName}
             </Text>
           </View>
           <View style={styles.liveSyncBadge}>
@@ -169,83 +158,105 @@ export default function DashboardScreen() {
             onPress={() => router.push('/reports')}
           >
             <Bell size={18} color={AIRBNB.colors.ink} />
-            <View style={styles.bellDot} />
+            {stats.pendingVerify > 0 && <View style={styles.bellDot} />}
           </TouchableOpacity>
         </View>
 
-        {/* ── 2x2 Metric Cards (Screenshot 1) ── */}
+        {/* ── 2x2 Dynamic Metric Cards ── */}
         <View style={styles.metricsGrid}>
           {/* Today's Check-ins */}
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>TODAY'S CHECK-INS</Text>
-            <Text style={styles.metricVal}>6</Text>
+            <Text style={styles.metricVal}>{stats.todayCheckins}</Text>
           </View>
           {/* Today's Check-outs */}
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>TODAY'S CHECK-OUTS</Text>
-            <Text style={styles.metricVal}>3</Text>
+            <Text style={styles.metricVal}>{stats.todayCheckouts}</Text>
           </View>
           {/* Active Guests (Rausch Pink) */}
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>ACTIVE GUESTS</Text>
             <Text style={[styles.metricVal, { color: AIRBNB.colors.primary }]}>
-              {activeGuestCount}
+              {stats.activeGuests}
             </Text>
           </View>
           {/* Pending Verify */}
           <View style={styles.metricCard}>
             <Text style={styles.metricLabel}>PENDING VERIFY</Text>
-            <Text style={styles.metricVal}>2</Text>
+            <Text style={styles.metricVal}>{stats.pendingVerify}</Text>
           </View>
         </View>
 
         {/* ── Recent Check-ins Header ── */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Recent check-ins</Text>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => router.push('/search')}
-          >
-            <Text style={styles.viewAllLink}>View all</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ── Guest Row List ── */}
-        <View style={styles.guestList}>
-          {recentGuests.map((guest, idx) => (
+          {recentGuests.length > 0 && (
             <TouchableOpacity
-              key={guest.id || idx}
-              style={[
-                styles.guestRow,
-                idx === recentGuests.length - 1 && { borderBottomWidth: 0 },
-              ]}
               activeOpacity={0.7}
-              onPress={() => setSelectedGuest(guest)}
+              onPress={() => router.push('/search')}
             >
-              {/* Pink Gradient Avatar */}
-              <View style={styles.avatarGradient}>
-                <Text style={styles.avatarText}>{getInitials(guest.full_name)}</Text>
-              </View>
-
-              {/* Guest Info */}
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                  <Text style={styles.guestName}>{guest.full_name}</Text>
-                  {guest.verified && (
-                    <Check size={14} color={AIRBNB.colors.emerald} strokeWidth={2.5} />
-                  )}
-                </View>
-                <Text style={styles.guestMeta}>
-                  Room {guest.roomNumber || '204'} · {guest.id_number}
-                </Text>
-              </View>
-
-              {/* Time & Chevron */}
-              <Text style={styles.timeLabel}>{guest.timeLabel}</Text>
-              <ChevronRight size={17} color={AIRBNB.colors.mutedSoft} />
+              <Text style={styles.viewAllLink}>View all</Text>
             </TouchableOpacity>
-          ))}
+          )}
         </View>
+
+        {/* ── Dynamic Guest Row List or Empty State ── */}
+        {recentGuests.length > 0 ? (
+          <View style={styles.guestList}>
+            {recentGuests.map((guest, idx) => (
+              <TouchableOpacity
+                key={guest.id || idx}
+                style={[
+                  styles.guestRow,
+                  idx === recentGuests.length - 1 && { borderBottomWidth: 0 },
+                ]}
+                activeOpacity={0.7}
+                onPress={() => setSelectedGuest(guest)}
+              >
+                {/* Pink Gradient Avatar */}
+                <View style={styles.avatarGradient}>
+                  <Text style={styles.avatarText}>{getInitials(guest.full_name)}</Text>
+                </View>
+
+                {/* Guest Info */}
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                    <Text style={styles.guestName} numberOfLines={1}>
+                      {guest.full_name}
+                    </Text>
+                    {guest.verified && (
+                      <Check size={14} color={AIRBNB.colors.emerald} strokeWidth={2.5} />
+                    )}
+                  </View>
+                  <Text style={styles.guestMeta} numberOfLines={1}>
+                    Room {guest.roomNumber} · {guest.id_number}
+                  </Text>
+                </View>
+
+                {/* Time & Chevron */}
+                <Text style={styles.timeLabel}>{guest.timeLabel}</Text>
+                <ChevronRight size={17} color={AIRBNB.colors.mutedSoft} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        ) : (
+          <View style={styles.emptyStateCard}>
+            <View style={styles.emptyIconWell}>
+              <ScanLine size={24} color={AIRBNB.colors.primary} />
+            </View>
+            <Text style={styles.emptyTitle}>No check-ins yet today</Text>
+            <Text style={styles.emptySubtitle}>
+              Tap below to scan a guest ID or enter details manually.
+            </Text>
+            <Button
+              label="+ Check in new guest"
+              variant="primary"
+              style={{ marginTop: 12, height: 44 }}
+              onPress={() => router.push('/(tabs)/scanner')}
+            />
+          </View>
+        )}
 
         {/* ── Import Self Check-in Card ── */}
         <TouchableOpacity
@@ -259,7 +270,7 @@ export default function DashboardScreen() {
           <View style={{ flex: 1 }}>
             <Text style={styles.importTitle}>Import self check-in</Text>
             <Text style={styles.importSubtitle}>
-              Paste WhatsApp guest code to auto-fill
+              Paste WhatsApp guest code or view online submissions
             </Text>
           </View>
           <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
@@ -309,19 +320,19 @@ export default function DashboardScreen() {
                     <User size={16} color={AIRBNB.colors.muted} />
                     <Text style={styles.detailKey}>Gender / DOB:</Text>
                     <Text style={styles.detailVal}>
-                      {selectedGuest.gender || 'Male'} · {selectedGuest.dob || '14/08/1994'}
+                      {selectedGuest.gender || 'N/A'} · {selectedGuest.dob || 'N/A'}
                     </Text>
                   </View>
                   <View style={styles.detailRow}>
                     <Phone size={16} color={AIRBNB.colors.muted} />
                     <Text style={styles.detailKey}>Phone:</Text>
-                    <Text style={styles.detailVal}>{selectedGuest.phone || '+91 98765 43210'}</Text>
+                    <Text style={styles.detailVal}>{selectedGuest.phone || 'N/A'}</Text>
                   </View>
                   <View style={styles.detailRow}>
                     <MapPin size={16} color={AIRBNB.colors.muted} />
                     <Text style={styles.detailKey}>Address:</Text>
                     <Text style={styles.detailVal} numberOfLines={2}>
-                      {selectedGuest.address || 'Guwahati, Assam'}
+                      {selectedGuest.address || 'N/A'}
                     </Text>
                   </View>
                 </View>
@@ -375,12 +386,12 @@ export default function DashboardScreen() {
               </TouchableOpacity>
             </View>
 
-            <Text style={{ ...AIRBNB.typography.bodySm, color: AIRBNB.colors.muted, marginBottom: 14 }}>
-              Guests can scan your property QR code or submit details via WhatsApp link.
+            <Text style={{ ...AIRBNB.typography.bodySm, color: AIRBNB.colors.muted, marginBottom: 16 }}>
+              Guests can scan your property QR code or submit details online via their self-check-in link.
             </Text>
 
             <Button
-              label="View Pending Registrations (2)"
+              label="View Pending Registrations"
               variant="primary"
               onPress={() => {
                 setIsSelfCheckinOpen(false);
@@ -575,6 +586,37 @@ const styles = StyleSheet.create({
   timeLabel: {
     ...AIRBNB.typography.caption,
     color: AIRBNB.colors.muted,
+  },
+
+  // Empty State Card
+  emptyStateCard: {
+    backgroundColor: AIRBNB.colors.canvas,
+    borderWidth: 1,
+    borderColor: AIRBNB.colors.hairlineSoft,
+    borderRadius: AIRBNB.radius.md,
+    padding: 20,
+    alignItems: 'center',
+    ...AIRBNB.shadow.card,
+  },
+  emptyIconWell: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: AIRBNB.colors.surfaceStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  emptyTitle: {
+    ...AIRBNB.typography.titleMd,
+    color: AIRBNB.colors.ink,
+  },
+  emptySubtitle: {
+    ...AIRBNB.typography.bodySm,
+    color: AIRBNB.colors.muted,
+    textAlign: 'center',
+    marginTop: 4,
+    maxWidth: 260,
   },
 
   // Import Card
