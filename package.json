@@ -64,6 +64,10 @@
   "scripts": {
     "start": "expo start",
     "build": "npx expo export -p web",
+    "build:apk:desktop": "cd android && ./gradlew assembleRelease && cp app/build/outputs/apk/release/*.apk ~/Desktop/StayMate-release.apk && echo '✅ StayMate Release APK copied to Desktop: ~/Desktop/StayMate-release.apk'",
+    "build:apk:local": "cd android && ./gradlew assembleRelease",
+    "build:apk:debug": "cd android && ./gradlew assembleDebug",
+    "build:apk:eas": "npx eas-cli build --platform android --profile preview",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
     "ios": "expo run:ios",

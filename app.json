@@ -9,7 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "in.co.staymate.app"
+      "bundleIdentifier": "com.staymate.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +19,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "in.co.staymate.app",
+      "package": "com.staymate.app",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
