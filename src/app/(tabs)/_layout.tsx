@@ -83,6 +83,22 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="rooms"
+        options={{
+          title: t('rooms'),
+          tabBarIcon: ({ focused }) => (
+            <View style={styles.tabItem}>
+              <BedDouble
+                color={focused ? AIRBNB.colors.ink : AIRBNB.colors.mutedSoft}
+                size={22}
+                strokeWidth={2}
+              />
+              <View style={[styles.activeDot, { opacity: focused ? 1 : 0 }]} />
+            </View>
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="scanner"
         options={{
           title: t('checkin'),
@@ -99,22 +115,6 @@ export default function TabLayout() {
             color: AIRBNB.colors.primary,
             marginTop: 2,
           },
-        }}
-      />
-      <Tabs.Screen
-        name="rooms"
-        options={{
-          title: t('rooms'),
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.tabItem}>
-              <BedDouble
-                color={focused ? AIRBNB.colors.ink : AIRBNB.colors.mutedSoft}
-                size={22}
-                strokeWidth={2}
-              />
-              <View style={[styles.activeDot, { opacity: focused ? 1 : 0 }]} />
-            </View>
-          ),
         }}
       />
       <Tabs.Screen
