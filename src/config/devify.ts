@@ -12,11 +12,7 @@ const getDefaultAdminUrl = (): string => {
   if (process.env.EXPO_PUBLIC_ADMIN_API_URL) {
     return process.env.EXPO_PUBLIC_ADMIN_API_URL;
   }
-  // Android emulator routes host machine localhost via 10.0.2.2
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:3000';
-  }
-  return 'http://localhost:3000';
+  return 'https://admin-guest-check-in-assistant.vercel.app';
 };
 
 /**
