@@ -7,18 +7,34 @@ function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
+// Airbnb single shadow tier — the only elevation level in the system
+const AIRBNB_SHADOW = {
+  shadowColor: '#000000',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.10,
+  shadowRadius: 8,
+  elevation: 3,
+};
+
 export interface GlassCardProps extends ViewProps {
-  variant?: 'default' | 'elevated';
+  /**
+   * default  – white canvas, hairline-soft border (#ebebeb), Airbnb shadow
+   * elevated – alias for default (same treatment)
+   * subtle   – white canvas, flat, no shadow, no border
+   */
+  variant?: 'default' | 'elevated' | 'subtle';
 }
 
 export const GlassCard = React.forwardRef<View, GlassCardProps>(
-  ({ className, variant = 'default', children, ...props }, ref) => {
+  ({ className, variant = 'default', children, style, ...props }, ref) => {
+    const isSubtle = variant === 'subtle';
     return (
       <View
         ref={ref}
+        style={[!isSubtle ? AIRBNB_SHADOW : undefined, style]}
         className={cn(
-          "bg-white dark:bg-[#181A24] rounded-3xl border border-gray-200/60 dark:border-gray-800 shadow-sm",
-          variant === 'elevated' && "shadow-md shadow-black/5 dark:shadow-black/30",
+          'bg-white rounded-2xl',
+          !isSubtle && 'border border-[#ebebeb]',
           className
         )}
         {...props}

@@ -204,68 +204,81 @@ export default function RoomsScreen() {
     );
   };
 
+  const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
+    available:   { bg: '#e5f6e6', text: '#008a05' },
+    occupied:    { bg: '#e7f3fb', text: '#0f7dc2' },
+    cleaning:    { bg: '#fef3cd', text: '#b45900' },
+    maintenance: { bg: '#fdeae5', text: '#c13515' },
+  };
+
   const renderGridItem = ({ item }: { item: Room }) => {
     const config = getStatusConfig(item.status);
+    const colors = STATUS_COLORS[item.status] || { bg: '#f2f2f2', text: '#6a6a6a' };
 
     return (
-      <TouchableOpacity 
-        activeOpacity={0.7} 
+      <TouchableOpacity
+        activeOpacity={0.7}
         onPress={() => openEditSheet(item)}
-        className="w-[48%] mb-4"
+        style={{ width: '47.5%', marginBottom: 14 }}
       >
-        <GlassCard variant="elevated" className={`p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-col justify-between min-h-[130px]`}>
-          <View className="flex-row justify-between items-start mb-3">
-            <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-              <BedDouble size={20} color="#000000" />
+        <View style={{
+          backgroundColor: '#ffffff', borderRadius: 14, padding: 14,
+          borderWidth: 1, borderColor: '#ebebeb',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+          minHeight: 130, justifyContent: 'space-between',
+        }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#f2f2f2', alignItems: 'center', justifyContent: 'center' }}>
+              <BedDouble size={18} color="#222222" />
             </View>
-            <View className={`flex-row items-center gap-1.5 px-2.5 py-1 rounded-full ${config.badgeBg} ${config.borderColor} border`}>
-              {config.icon}
-              <Text className={`text-[11px] font-bold capitalize ${config.textColor}`}>
-                {config.label}
-              </Text>
+            <View style={{ backgroundColor: colors.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 9999 }}>
+              <Text style={{ fontSize: 10.5, fontWeight: '700', color: colors.text }}>{config.label}</Text>
             </View>
           </View>
-          
           <View>
-            <Text className="text-xl font-bold text-foreground tracking-tight">{item.room_number}</Text>
-            <Text className="text-xs text-gray-400 font-medium mt-0.5" numberOfLines={1}>{item.room_type || 'Standard'}</Text>
-            <Text className="text-xs font-bold text-primary mt-1">₹{item.price || 0} / night</Text>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#222222', letterSpacing: -0.3 }}>{item.room_number}</Text>
+            <Text style={{ fontSize: 12, color: '#6a6a6a', marginTop: 2 }} numberOfLines={1}>{item.room_type || 'Standard'}</Text>
+            <Text style={{ fontSize: 12.5, fontWeight: '600', color: '#ff385c', marginTop: 4 }}>₹{item.price || 0}/night</Text>
           </View>
-        </GlassCard>
+        </View>
       </TouchableOpacity>
     );
   };
+
 
   const renderListItem = ({ item }: { item: Room }) => {
     const config = getStatusConfig(item.status);
+    const colors = STATUS_COLORS[item.status] || { bg: '#f2f2f2', text: '#6a6a6a' };
 
     return (
-      <TouchableOpacity 
-        activeOpacity={0.7} 
+      <TouchableOpacity
+        activeOpacity={0.7}
         onPress={() => openEditSheet(item)}
-        className="mb-3"
+        style={{ marginBottom: 10 }}
       >
-        <GlassCard variant="elevated" className="p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row justify-between items-center">
-          <View className="flex-row items-center space-x-3 gap-3">
-            <View className="w-11 h-11 rounded-xl bg-primary/10 items-center justify-center">
-              <BedDouble size={22} color="#000000" />
+        <View style={{
+          backgroundColor: '#ffffff', borderRadius: 14, padding: 14,
+          borderWidth: 1, borderColor: '#ebebeb',
+          shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+          flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+        }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 38, height: 38, borderRadius: 10, backgroundColor: '#f2f2f2', alignItems: 'center', justifyContent: 'center' }}>
+              <BedDouble size={20} color="#222222" />
             </View>
             <View>
-              <Text className="text-lg font-bold text-foreground tracking-tight">{item.room_number}</Text>
-              <Text className="text-xs text-gray-400 font-medium mt-0.5">{item.room_type || 'Standard'} {item.price ? `• ₹${item.price}/night` : ''}</Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: '#222222' }}>{item.room_number}</Text>
+              <Text style={{ fontSize: 12.5, color: '#6a6a6a', marginTop: 2 }}>{item.room_type || 'Standard'}{item.price ? ` · ₹${item.price}/night` : ''}</Text>
             </View>
           </View>
-
-          <View className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full ${config.badgeBg} ${config.borderColor} border`}>
-            {config.icon}
-            <Text className={`text-xs font-bold capitalize ${config.textColor}`}>
-              {config.label}
-            </Text>
+          <View style={{ backgroundColor: colors.bg, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 9999 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: colors.text }}>{config.label}</Text>
           </View>
-        </GlassCard>
+        </View>
       </TouchableOpacity>
     );
   };
+
 
   const filterOptions = [
     { label: 'All', count: total },
@@ -276,128 +289,109 @@ export default function RoomsScreen() {
   ];
 
   return (
-    <SafeAreaView edges={['left', 'right', 'top']} className="flex-1 bg-background">
-      {/* Top Header */}
-      <View className="px-5 pt-6 mt-2 pb-2 flex-row justify-between items-center">
+    <SafeAreaView edges={['left', 'right', 'top']} style={{ flex: 1, backgroundColor: '#f7f7f7' }}>
+      {/* ── Header ── */}
+      <View style={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
         <View>
-          <Text className="text-3xl font-bold text-foreground">Rooms</Text>
-          <Text className="text-xs text-gray-400 font-medium mt-0.5">{total} Total Properties & Rooms</Text>
+          <Text style={{ fontSize: 20, fontWeight: '700', color: '#222222' }}>Rooms</Text>
+          <Text style={{ fontSize: 12.5, color: '#6a6a6a', marginTop: 2 }}>{total} Total Properties & Rooms</Text>
         </View>
-        <TouchableOpacity 
+        <TouchableOpacity
           onPress={openAddSheet}
           activeOpacity={0.8}
-          className="bg-primary h-11 px-4 rounded-xl flex-row items-center gap-2 shadow-md shadow-primary/20"
+          style={{ backgroundColor: '#ff385c', height: 40, paddingHorizontal: 14, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}
         >
-          <Plus size={20} color="#ffffff" />
-          <Text className="text-white font-semibold text-sm">{t('addRoom')}</Text>
+          <Plus size={18} color="#ffffff" />
+          <Text style={{ fontSize: 13.5, fontWeight: '500', color: '#ffffff' }}>{t('addRoom')}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Quick Summary Cards Horizontal Row */}
-      <View className="my-3">
+      {/* ── Stats Scroll ── */}
+      <View style={{ marginBottom: 8 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
-          <GlassCard className="p-3 px-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row items-center gap-3">
-            <View className="w-8 h-8 rounded-lg bg-emerald-500/15 items-center justify-center">
-              <CheckCircle2 size={18} color="#10B981" />
+          {[
+            { label: t('available'), count: available, bg: '#e5f6e6', text: '#008a05', icon: <CheckCircle2 size={16} color="#008a05" /> },
+            { label: t('occupied'), count: occupied, bg: '#e7f3fb', text: '#0f7dc2', icon: <UserCheck size={16} color="#0f7dc2" /> },
+            { label: t('cleaning'), count: cleaning, bg: '#fef3cd', text: '#b45900', icon: <Sparkles size={16} color="#b45900" /> },
+            { label: t('maintenance'), count: maintenance, bg: '#fdeae5', text: '#c13515', icon: <Wrench size={16} color="#c13515" /> },
+          ].map((s) => (
+            <View key={s.label} style={{
+              flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10,
+              backgroundColor: '#ffffff', borderRadius: 9999, borderWidth: 1, borderColor: '#ebebeb',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
+            }}>
+              {s.icon}
+              <View>
+                <Text style={{ fontSize: 10.5, color: '#6a6a6a', fontWeight: '500' }}>{s.label}</Text>
+                <Text style={{ fontSize: 14, fontWeight: '700', color: '#222222' }}>{s.count}</Text>
+              </View>
             </View>
-            <View>
-              <Text className="text-xs font-medium text-gray-400">{t('available')}</Text>
-              <Text className="text-base font-bold text-foreground">{available}</Text>
-            </View>
-          </GlassCard>
-
-          <GlassCard className="p-3 px-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row items-center gap-3">
-            <View className="w-8 h-8 rounded-lg bg-sky-500/15 items-center justify-center">
-              <UserCheck size={18} color="#0EA5E9" />
-            </View>
-            <View>
-              <Text className="text-xs font-medium text-gray-400">{t('occupied')}</Text>
-              <Text className="text-base font-bold text-foreground">{occupied}</Text>
-            </View>
-          </GlassCard>
-
-          <GlassCard className="p-3 px-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row items-center gap-3">
-            <View className="w-8 h-8 rounded-lg bg-amber-500/15 items-center justify-center">
-              <Sparkles size={18} color="#F59E0B" />
-            </View>
-            <View>
-              <Text className="text-xs font-medium text-gray-400">{t('cleaning')}</Text>
-              <Text className="text-base font-bold text-foreground">{cleaning}</Text>
-            </View>
-          </GlassCard>
-
-          <GlassCard className="p-3 px-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row items-center gap-3">
-            <View className="w-8 h-8 rounded-lg bg-rose-500/15 items-center justify-center">
-              <Wrench size={18} color="#F43F5E" />
-            </View>
-            <View>
-              <Text className="text-xs font-medium text-gray-400">{t('maintenance')}</Text>
-              <Text className="text-base font-bold text-foreground">{maintenance}</Text>
-            </View>
-          </GlassCard>
+          ))}
         </ScrollView>
       </View>
 
-      {/* Search & Layout View Toggle */}
-      <View className="px-5 mb-3 flex-row gap-3 items-center">
-        <View className="flex-1 flex-row items-center bg-white dark:bg-black/30 border border-gray-100 dark:border-white/10 rounded-xl px-3.5 py-2.5">
-          <Search size={18} color="#9498AA" className="mr-2" />
-          <TextInput 
+      {/* ── Search + View Toggle ── */}
+      <View style={{ paddingHorizontal: 20, marginBottom: 10, flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+        <View style={{
+          flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+          backgroundColor: '#ffffff', borderRadius: 9999, paddingHorizontal: 14, paddingVertical: 10,
+          borderWidth: 1, borderColor: '#dddddd',
+        }}>
+          <Search size={17} color="#929292" />
+          <TextInput
             placeholder="Search room number or type..."
-            placeholderTextColor="#9498AA"
+            placeholderTextColor="#929292"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            className="flex-1 text-sm text-foreground p-0 font-medium"
+            style={{ flex: 1, fontSize: 13.5, color: '#222222', padding: 0 }}
           />
           {searchQuery ? (
             <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <X size={16} color="#9498AA" />
+              <X size={15} color="#929292" />
             </TouchableOpacity>
           ) : null}
         </View>
 
-        <View className="flex-row bg-white dark:bg-black/30 border border-gray-100 dark:border-white/10 rounded-xl p-1">
-          <TouchableOpacity 
+        <View style={{ flexDirection: 'row', backgroundColor: '#f2f2f2', borderRadius: 8, padding: 3 }}>
+          <TouchableOpacity
             onPress={() => setIsGridView(true)}
-            className={`p-1.5 rounded-lg ${isGridView ? 'bg-primary' : 'bg-transparent'}`}
+            style={{ padding: 6, borderRadius: 6, backgroundColor: isGridView ? '#222222' : 'transparent' }}
           >
-            <LayoutGrid size={18} color={isGridView ? '#FFFFFF' : '#9498AA'} />
+            <LayoutGrid size={17} color={isGridView ? '#ffffff' : '#6a6a6a'} />
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => setIsGridView(false)}
-            className={`p-1.5 rounded-lg ${!isGridView ? 'bg-primary' : 'bg-transparent'}`}
+            style={{ padding: 6, borderRadius: 6, backgroundColor: !isGridView ? '#222222' : 'transparent' }}
           >
-            <List size={18} color={!isGridView ? '#FFFFFF' : '#9498AA'} />
+            <List size={17} color={!isGridView ? '#ffffff' : '#6a6a6a'} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Filter Tabs */}
-      <View className="mb-3">
+      {/* ── Filter Tabs ── */}
+      <View style={{ marginBottom: 10 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
           {filterOptions.map(f => (
-            <TouchableOpacity 
+            <TouchableOpacity
               key={f.label}
               onPress={() => setFilter(f.label)}
               activeOpacity={0.7}
-              className={`flex-row items-center gap-1.5 px-3.5 py-1.5 rounded-full border ${
-                filter === f.label 
-                  ? 'bg-primary border-primary' 
-                  : 'bg-white/80 border-gray-100 dark:bg-black/30 dark:border-white/10'
-              }`}
+              style={{
+                flexDirection: 'row', alignItems: 'center', gap: 6,
+                paddingHorizontal: 14, paddingVertical: 7, borderRadius: 9999,
+                backgroundColor: filter === f.label ? '#222222' : '#ffffff',
+                borderWidth: 1, borderColor: filter === f.label ? '#222222' : '#dddddd',
+              }}
             >
-              <Text className={`font-semibold text-xs ${filter === f.label ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}>
-                {f.label}
-              </Text>
-              <View className={`px-1.5 py-0.5 rounded-full ${filter === f.label ? 'bg-white/20' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                <Text className={`text-[10px] font-bold ${filter === f.label ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                  {f.count}
-                </Text>
+              <Text style={{ fontSize: 12.5, fontWeight: '600', color: filter === f.label ? '#ffffff' : '#222222' }}>{f.label}</Text>
+              <View style={{ backgroundColor: filter === f.label ? 'rgba(255,255,255,0.2)' : '#f2f2f2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 9999 }}>
+                <Text style={{ fontSize: 10, fontWeight: '700', color: filter === f.label ? '#ffffff' : '#6a6a6a' }}>{f.count}</Text>
               </View>
             </TouchableOpacity>
           ))}
         </ScrollView>
       </View>
+
 
       {/* Room Cards List / Grid */}
       <FlatList
@@ -412,18 +406,18 @@ export default function RoomsScreen() {
         renderItem={isGridView ? renderGridItem : renderListItem}
         ListEmptyComponent={
           !isLoading ? (
-            <View className="py-12 items-center justify-center">
-              <View className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-3">
-                <BedDouble size={28} color="#9498AA" />
+            <View style={{ paddingVertical: 48, alignItems: 'center', justifyContent: 'center' }}>
+              <View style={{ width: 60, height: 60, borderRadius: 30, backgroundColor: '#f2f2f2', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                <BedDouble size={26} color="#929292" />
               </View>
-              <Text className="text-gray-600 dark:text-gray-300 font-semibold text-base">No rooms found</Text>
-              <Text className="text-gray-400 text-xs mt-1 text-center">Try adjusting your filter or search query</Text>
+              <Text style={{ fontSize: 15, fontWeight: '600', color: '#222222' }}>No rooms found</Text>
+              <Text style={{ fontSize: 13, color: '#6a6a6a', marginTop: 4, textAlign: 'center' }}>Try adjusting your filter or search query</Text>
             </View>
           ) : null
         }
       />
 
-      {/* Add / Edit / Room Details Modal */}
+      {/* ── Room Modal ── */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -431,20 +425,23 @@ export default function RoomsScreen() {
         onRequestClose={closeSheet}
         statusBarTranslucent={true}
       >
-        <KeyboardAvoidingView 
+        <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1 }}
         >
-          <TouchableOpacity 
-            activeOpacity={1} 
+          <TouchableOpacity
+            activeOpacity={1}
             onPress={closeSheet}
-            className="flex-1 bg-black/60 justify-end"
+            style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
           >
-            <TouchableOpacity 
+            <TouchableOpacity
               activeOpacity={1}
               onPress={(e) => e.stopPropagation?.()}
-              className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6"
+              style={{ backgroundColor: '#ffffff', borderRadius: 24, borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }}
             >
+              {/* Handle */}
+              <View style={{ width: 36, height: 4, borderRadius: 9999, backgroundColor: '#dddddd', alignSelf: 'center', marginTop: 10, marginBottom: 6 }} />
+
               <View className="flex-row justify-between items-center mb-6">
                 <View className="flex-row items-center gap-2.5">
                   <Text className="text-2xl font-bold text-foreground">

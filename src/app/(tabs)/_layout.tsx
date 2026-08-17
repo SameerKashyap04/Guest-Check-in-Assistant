@@ -1,112 +1,172 @@
 import React from 'react';
 import { Tabs, Redirect } from 'expo-router';
 import { Home, BedDouble, Settings, ScanLine } from 'lucide-react-native';
-import { useColorScheme } from 'nativewind';
-import { BlurView } from 'expo-blur';
-import { Platform, View, StyleSheet } from 'react-native';
+import { Platform, View } from 'react-native';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTranslation } from 'react-i18next';
 
+// Airbnb single shadow tier
+const TAB_BAR_SHADOW = Platform.select({
+  ios: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.10,
+    shadowRadius: 8,
+  },
+  android: {
+    elevation: 8,
+  },
+  default: {},
+});
+
 export default function TabLayout() {
   const { isUnlocked } = useAuthStore();
-  const { colorScheme } = useColorScheme();
   const { t } = useTranslation();
-  const isDark = colorScheme === 'dark';
-  
+
   if (!isUnlocked) {
     return <Redirect href="/auth" />;
   }
-  
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: '#38BDF8',
-        tabBarInactiveTintColor: isDark ? '#9498AA' : '#64748B',
+        // Rausch red for active tab
+        tabBarActiveTintColor: '#222222',
+        tabBarInactiveTintColor: '#929292',
         tabBarShowLabel: true,
+        tabBarLabelStyle: {
+          fontSize: 10.5,
+          fontWeight: '700',
+          marginTop: 1,
+        },
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
-          paddingVertical: 4,
-        },
-        tabBarLabelStyle: {
-          fontSize: 10,
-          fontWeight: '700',
-          marginTop: 1,
-          paddingBottom: Platform.OS === 'ios' ? 0 : 2,
+          paddingVertical: 6,
         },
         tabBarStyle: {
           position: 'absolute',
           bottom: Platform.OS === 'ios' ? 20 : 16,
-          left: 20,
-          right: 20,
-          marginHorizontal: 20,
-          height: 56,
-          borderRadius: 28,
+          left: 16,
+          right: 16,
+          height: 68,
+          borderRadius: 9999,
           borderTopWidth: 0,
-          borderWidth: 1.5,
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.75)',
-          backgroundColor: 'transparent',
-          elevation: 10,
-          shadowColor: isDark ? '#38BDF8' : '#0F172A',
-          shadowOffset: { width: 0, height: 8 },
-          shadowOpacity: isDark ? 0.35 : 0.18,
-          shadowRadius: 16,
+          borderWidth: 1,
+          borderColor: '#ebebeb',
+          backgroundColor: 'rgba(255, 255, 255, 0.92)',
+          ...TAB_BAR_SHADOW,
         },
         tabBarBackground: () => (
-          <View style={StyleSheet.absoluteFill} className="overflow-hidden rounded-full">
-            <BlurView
-              tint={isDark ? 'dark' : 'light'}
-              intensity={Platform.OS === 'ios' ? 85 : 100}
-              style={StyleSheet.absoluteFill}
-              className="bg-white/70 dark:bg-[#0D0F14]/75"
-            />
-          </View>
+          <View
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: 9999,
+              backgroundColor: 'rgba(255, 255, 255, 0.92)',
+              overflow: 'hidden',
+            }}
+          />
         ),
-      }}>
+      }}
+    >
+      {/* Dashboard */}
       <Tabs.Screen
         name="index"
         options={{
           title: t('dashboard'),
-          tabBarIcon: ({ color }) => (
-            <View className="w-7 h-7 items-center justify-center">
-              <Home color={color} size={20} />
+          tabBarIcon: ({ color, focused }) => (
+            <View style={{ alignItems: 'center', gap: 3 }}>
+              <Home color={focused ? '#222222' : '#929292'} size={22} strokeWidth={focused ? 2.5 : 2} />
+              {/* Rausch active dot */}
+              <View
+                style={{
+                  width: 4,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: '#ff385c',
+                  opacity: focused ? 1 : 0,
+                }}
+              />
             </View>
           ),
         }}
       />
-      <Tabs.Screen
-        name="scanner"
-        options={{
-          title: t('checkin'),
-          tabBarIcon: ({ color }) => (
-            <View className="w-7 h-7 items-center justify-center">
-              <View className="bg-[#38BDF8] -mt-4 w-11 h-11 rounded-full items-center justify-center shadow-lg shadow-[#38BDF8]/40 border-2 border-white dark:border-[#12141C]">
-                <ScanLine color="#FFFFFF" size={20} />
-              </View>
-            </View>
-          ),
-          tabBarLabel: t('checkin'),
-        }}
-      />
+
+      {/* Rooms */}
       <Tabs.Screen
         name="rooms"
         options={{
           title: t('rooms'),
-          tabBarIcon: ({ color }) => (
-            <View className="w-7 h-7 items-center justify-center">
-              <BedDouble color={color} size={20} />
+          tabBarIcon: ({ focused }) => (
+            <View style={{ alignItems: 'center', gap: 3 }}>
+              <BedDouble color={focused ? '#222222' : '#929292'} size={22} strokeWidth={focused ? 2.5 : 2} />
+              <View
+                style={{
+                  width: 4,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: '#ff385c',
+                  opacity: focused ? 1 : 0,
+                }}
+              />
             </View>
           ),
         }}
       />
+
+      {/* Check-in FAB (centre) */}
+      <Tabs.Screen
+        name="scanner"
+        options={{
+          title: t('checkin'),
+          tabBarLabel: () => null,
+          tabBarIcon: () => (
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                // Rausch gradient simulated via background
+                backgroundColor: '#ff385c',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 30, // lifts FAB above tab bar
+                // Glow shadow
+                shadowColor: '#ff385c',
+                shadowOffset: { width: 0, height: 10 },
+                shadowOpacity: 0.55,
+                shadowRadius: 16,
+                elevation: 14,
+                // White ring
+                borderWidth: 5,
+                borderColor: '#ffffff',
+              }}
+            >
+              <ScanLine color="#ffffff" size={22} strokeWidth={2.2} />
+            </View>
+          ),
+        }}
+      />
+
+      {/* Settings */}
       <Tabs.Screen
         name="settings"
         options={{
           title: t('settings'),
-          tabBarIcon: ({ color }) => (
-            <View className="w-7 h-7 items-center justify-center">
-              <Settings color={color} size={20} />
+          tabBarIcon: ({ focused }) => (
+            <View style={{ alignItems: 'center', gap: 3 }}>
+              <Settings color={focused ? '#222222' : '#929292'} size={22} strokeWidth={focused ? 2.5 : 2} />
+              <View
+                style={{
+                  width: 4,
+                  height: 4,
+                  borderRadius: 2,
+                  backgroundColor: '#ff385c',
+                  opacity: focused ? 1 : 0,
+                }}
+              />
             </View>
           ),
         }}
@@ -114,3 +174,5 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+

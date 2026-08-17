@@ -15,24 +15,34 @@ export interface InputProps extends TextInputProps {
 }
 
 const Input = forwardRef<TextInput, InputProps>(
-  ({ label, error, icon, className, type, ...props }, ref) => {
+  ({ label, error, icon, className, type, style, ...props }, ref) => {
     const [isFocused, setIsFocused] = useState(false);
 
     return (
-      <View className={cn("w-full mb-4", className)}>
+      <View className={cn('w-full mb-4', className)}>
         {label && (
-          <Text className="text-sm font-medium text-foreground mb-1.5 ml-1">
+          <Text
+            style={{ fontSize: 12.5, fontWeight: '500', color: '#6a6a6a', marginBottom: 6, marginLeft: 2 }}
+          >
             {label}
           </Text>
         )}
         <View
-          className={cn(
-            "flex-row items-center bg-white dark:bg-black/20 border rounded-2xl px-4 h-14",
-            isFocused ? "border-primary" : "border-transparent dark:border-transparent",
-            error ? "border-red-500" : ""
-          )}
+          style={[
+            {
+              flexDirection: 'row',
+              alignItems: 'center',
+              backgroundColor: '#ffffff',
+              height: 56,
+              borderRadius: 8,
+              paddingHorizontal: 14,
+              borderWidth: isFocused ? 2 : 1,
+              borderColor: error ? '#c13515' : isFocused ? '#222222' : '#dddddd',
+            },
+            style as any,
+          ]}
         >
-          {icon && <View className="mr-3">{icon}</View>}
+          {icon && <View style={{ marginRight: 10 }}>{icon}</View>}
           {Platform.OS === 'web' && type === 'date' ? (
             <input
               type="date"
@@ -43,19 +53,26 @@ const Input = forwardRef<TextInput, InputProps>(
                 border: 'none',
                 outline: 'none',
                 background: 'transparent',
-                fontSize: '16px',
-                color: 'inherit',
+                fontSize: '15px',
+                color: '#222222',
                 fontFamily: 'inherit',
-                fontWeight: 500,
-                cursor: 'pointer'
+                fontWeight: '400',
+                cursor: 'pointer',
               }}
             />
           ) : (
             <TextInput
               ref={ref}
-              className="flex-1 text-base text-foreground font-medium"
-              placeholderTextColor="#9CA3AF"
-              style={Platform.OS === 'web' ? { outlineStyle: 'none' } as any : undefined}
+              style={[
+                {
+                  flex: 1,
+                  fontSize: 15,
+                  fontWeight: '400',
+                  color: '#222222',
+                },
+                Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : undefined,
+              ]}
+              placeholderTextColor="#929292"
               onFocus={(e) => {
                 setIsFocused(true);
                 props.onFocus?.(e);
@@ -69,7 +86,9 @@ const Input = forwardRef<TextInput, InputProps>(
           )}
         </View>
         {error && (
-          <Text className="text-sm text-red-500 mt-1 ml-1">{error}</Text>
+          <Text style={{ fontSize: 12.5, color: '#c13515', marginTop: 4, marginLeft: 2 }}>
+            {error}
+          </Text>
         )}
       </View>
     );
@@ -79,4 +98,3 @@ const Input = forwardRef<TextInput, InputProps>(
 Input.displayName = 'Input';
 
 export { Input };
-

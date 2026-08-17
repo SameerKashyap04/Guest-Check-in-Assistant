@@ -1,0 +1,898 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>StayMate — Airbnb-style Redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --primary:#ff385c;
+    --primary-active:#e00b41;
+    --primary-disabled:#ffd1da;
+    --ink:#222222;
+    --body:#3f3f3f;
+    --muted:#6a6a6a;
+    --muted-soft:#929292;
+    --hairline:#dddddd;
+    --hairline-soft:#ebebeb;
+    --border-strong:#c1c1c1;
+    --canvas:#ffffff;
+    --surface-soft:#f7f7f7;
+    --surface-strong:#f2f2f2;
+    --on-primary:#ffffff;
+    --emerald:#008a05;
+    --emerald-bg:#e5f6e6;
+    --sky:#0f7dc2;
+    --sky-bg:#e7f3fb;
+    --amber:#b45900;
+    --amber-bg:#fff2e0;
+    --rose:#c13515;
+    --rose-bg:#fdeae5;
+    --r-xs:4px; --r-sm:8px; --r-md:14px; --r-lg:20px; --r-xl:32px; --r-full:9999px;
+    --shadow: rgba(0,0,0,.02) 0 0 0 1px, rgba(0,0,0,.04) 0 2px 6px 0, rgba(0,0,0,.1) 0 4px 8px 0;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    margin:0; font-family:'Inter',-apple-system,system-ui,Roboto,'Helvetica Neue',sans-serif;
+    background:
+      radial-gradient(1200px 600px at 20% -10%, #fff5f2 0%, transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, #fff0f4 0%, transparent 55%),
+      #fafafa;
+    color:var(--ink);
+    display:flex; align-items:center; justify-content:center; min-height:100vh; padding:32px 16px;
+  }
+  .stage{display:flex; flex-direction:column; align-items:center; gap:18px;}
+  .stage-label{font-size:13px; font-weight:600; color:var(--muted); letter-spacing:.02em;}
+  .stage-label b{color:var(--primary);}
+
+  /* ---------- Phone frame ---------- */
+  .phone{
+    width:390px; height:844px; background:#0b0b0c; border-radius:54px; padding:12px;
+    box-shadow: 0 40px 80px -20px rgba(0,0,0,.45), 0 10px 30px rgba(0,0,0,.15);
+    position:relative;
+  }
+  .phone::before{ /* speaker/camera pill */
+    content:''; position:absolute; top:26px; left:50%; transform:translateX(-50%);
+    width:100px; height:22px; background:#0b0b0c; border-radius:20px; z-index:30;
+  }
+  .phone-inner{
+    width:100%; height:100%; background:var(--canvas); border-radius:42px; overflow:hidden;
+    position:relative; display:flex; flex-direction:column;
+  }
+  .statusbar{
+    height:48px; flex:0 0 auto; display:flex; align-items:center; justify-content:space-between;
+    padding:0 28px; font-size:15px; font-weight:600; color:var(--ink); position:relative; z-index:20; background:var(--canvas);
+  }
+  .statusbar .icons{display:flex; align-items:center; gap:5px;}
+
+  .screen-area{flex:1; overflow-y:auto; position:relative; background:var(--canvas); scrollbar-width:none;}
+  .screen-area::-webkit-scrollbar{display:none;}
+  .pad{padding:4px 20px 110px;}
+
+  /* ---------- Tab bar ---------- */
+  .tabbar{
+    position:absolute; left:16px; right:16px; bottom:16px; height:68px; z-index:40;
+    background:rgba(255,255,255,.88); backdrop-filter:blur(16px);
+    border:1px solid var(--hairline-soft); border-radius:var(--r-full);
+    box-shadow: var(--shadow);
+    display:flex; align-items:center; justify-content:space-around; padding:0 8px;
+  }
+  .tab{background:none; border:none; display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--muted-soft); font-family:inherit; font-size:10.5px; font-weight:600; cursor:pointer; flex:1; padding:6px 0;}
+  .tab.active{color:var(--ink);}
+  .tab .dot{width:4px; height:4px; border-radius:50%; background:var(--primary); opacity:0; margin-top:1px;}
+  .tab.active .dot{opacity:1;}
+  .tab-fab{
+    width:56px; height:56px; border-radius:50%; background:linear-gradient(155deg,#ff5a7a,var(--primary) 60%,var(--primary-active));
+    display:flex; align-items:center; justify-content:center; color:#fff; margin-top:-30px;
+    box-shadow: 0 10px 24px -4px rgba(255,56,92,.55), 0 0 0 6px #fff;
+    border:none; cursor:pointer; flex-shrink:0;
+  }
+  .tab-fab-label{font-size:10.5px; font-weight:700; color:var(--primary); margin-top:2px;}
+
+  svg.icon{width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;}
+
+  /* ---------- Typography ---------- */
+  h1,h2,h3,p{margin:0;}
+  .display-lg{font-size:22px; font-weight:600; letter-spacing:-.4px; line-height:1.2;}
+  .display-md{font-size:20px; font-weight:700; line-height:1.25;}
+  .title-md{font-size:16px; font-weight:600;}
+  .title-sm{font-size:15px; font-weight:500;}
+  .body-md{font-size:15px; font-weight:400; color:var(--body); line-height:1.5;}
+  .body-sm{font-size:13.5px; font-weight:400; color:var(--muted);}
+  .caption{font-size:12.5px; font-weight:500; color:var(--muted);}
+  .micro{font-size:11px; font-weight:700; letter-spacing:.02em;}
+
+  /* ---------- Buttons ---------- */
+  .btn{font-family:inherit; border:none; cursor:pointer; border-radius:var(--r-sm); font-size:15px; font-weight:600; height:50px; display:flex; align-items:center; justify-content:center; gap:8px; width:100%;}
+  .btn-primary{background:var(--primary); color:#fff;}
+  .btn-primary:active{background:var(--primary-active);}
+  .btn-secondary{background:#fff; color:var(--ink); border:1px solid var(--ink);}
+  .btn-soft{background:var(--surface-strong); color:var(--ink);}
+  .btn-text{background:none; color:var(--ink); font-weight:600; height:auto; width:auto;}
+  .btn-sm{height:36px; font-size:13.5px; padding:0 16px; width:auto; border-radius:var(--r-full);}
+
+  /* ---------- Common bits ---------- */
+  .row{display:flex; align-items:center;}
+  .between{justify-content:space-between;}
+  .chip{
+    display:inline-flex; align-items:center; gap:6px; padding:7px 12px; border-radius:var(--r-full);
+    font-size:12.5px; font-weight:600; border:1px solid var(--hairline); background:#fff; color:var(--ink); cursor:pointer; white-space:nowrap;
+  }
+  .chip.active{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .card{background:#fff; border:1px solid var(--hairline-soft); border-radius:var(--r-md); box-shadow:var(--shadow);}
+  .avatar{width:44px; height:44px; border-radius:50%; background:linear-gradient(135deg,#ffd1da,#ff9db0); display:flex; align-items:center; justify-content:center; font-weight:700; color:#8a0030; flex-shrink:0; font-size:15px;}
+  .divider{height:1px; background:var(--hairline-soft); border:none; margin:16px 0;}
+  .badge{font-size:11px; font-weight:700; padding:3px 9px; border-radius:var(--r-full); display:inline-flex; align-items:center; gap:4px;}
+  .sync-dot{width:7px; height:7px; border-radius:50%; background:#17b26a; box-shadow:0 0 0 3px #e5f9ee;}
+
+  /* ---------- Overlay full screens ---------- */
+  .overlay{position:absolute; inset:0; background:#fff; z-index:80; display:none; flex-direction:column;}
+  .overlay.show{display:flex;}
+  .overlay-header{flex:0 0 auto; padding:18px 20px 12px; display:flex; align-items:center; gap:14px; border-bottom:1px solid var(--hairline-soft);}
+  .icon-btn{width:34px; height:34px; border-radius:50%; background:var(--surface-strong); border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink); flex-shrink:0;}
+  .overlay-body{flex:1; overflow-y:auto; scrollbar-width:none;}
+  .overlay-body::-webkit-scrollbar{display:none;}
+
+  /* ---------- Bottom sheet ---------- */
+  .scrim{position:absolute; inset:0; background:rgba(0,0,0,.5); z-index:90; opacity:0; pointer-events:none; transition:opacity .2s ease;}
+  .scrim.show{opacity:1; pointer-events:auto;}
+  .sheet{
+    position:absolute; left:0; right:0; bottom:0; background:#fff; border-radius:24px 24px 0 0; z-index:91;
+    transform:translateY(100%); transition:transform .28s cubic-bezier(.2,.8,.2,1); max-height:82%; display:flex; flex-direction:column;
+    box-shadow:0 -10px 40px rgba(0,0,0,.2);
+  }
+  .sheet.show{transform:translateY(0);}
+  .sheet-handle{width:36px; height:4px; background:var(--hairline); border-radius:var(--r-full); margin:10px auto 6px;}
+  .sheet-body{overflow-y:auto; padding:6px 20px 28px; scrollbar-width:none;}
+  .sheet-body::-webkit-scrollbar{display:none;}
+
+  /* ---------- Dashboard specific ---------- */
+  .metric-card{background:#fff; border:1px solid var(--hairline-soft); border-radius:var(--r-md); padding:14px; box-shadow:var(--shadow);}
+  .metric-num{font-size:26px; font-weight:700; letter-spacing:-.5px;}
+  .search-pill{
+    flex:1; display:flex; align-items:center; gap:10px; background:#fff; border:1px solid var(--hairline);
+    border-radius:var(--r-full); padding:13px 18px; box-shadow:var(--shadow); color:var(--muted); cursor:pointer;
+  }
+  .reports-btn{width:48px; height:48px; border-radius:50%; background:#fff; border:1px solid var(--hairline); box-shadow:var(--shadow); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink); flex-shrink:0; position:relative;}
+  .guest-row{display:flex; gap:12px; align-items:center; padding:12px 0; cursor:pointer;}
+
+  /* ---------- Scanner ---------- */
+  .doc-type-card{border:1.5px solid var(--hairline); border-radius:var(--r-md); padding:16px 14px; display:flex; flex-direction:column; align-items:center; gap:8px; cursor:pointer; background:#fff;}
+  .doc-type-card.active{border-color:var(--ink); background:var(--surface-soft);}
+  .viewfinder{
+    aspect-ratio:3/4; border-radius:var(--r-lg); position:relative; overflow:hidden;
+    background:linear-gradient(160deg,#20242b,#33383f 55%,#20242b);
+  }
+  .frame-guide{position:absolute; inset:14%; border:2.5px dashed rgba(255,255,255,.55); border-radius:16px;}
+  .corner{position:absolute; width:26px; height:26px; border:3px solid #fff;}
+  .corner.tl{top:12%; left:12%; border-right:none; border-bottom:none; border-radius:8px 0 0 0;}
+  .corner.tr{top:12%; right:12%; border-left:none; border-bottom:none; border-radius:0 8px 0 0;}
+  .corner.bl{bottom:12%; left:12%; border-right:none; border-top:none; border-radius:0 0 0 8px;}
+  .corner.br{bottom:12%; right:12%; border-left:none; border-top:none; border-radius:0 0 8px 0;}
+  .cam-controls{position:absolute; bottom:14px; left:0; right:0; display:flex; align-items:center; justify-content:space-around; padding:0 20px;}
+  .cam-icon-btn{width:42px; height:42px; border-radius:50%; background:rgba(255,255,255,.16); border:1px solid rgba(255,255,255,.3); display:flex; align-items:center; justify-content:center; color:#fff; cursor:pointer;}
+  .shutter{width:64px; height:64px; border-radius:50%; background:#fff; border:4px solid rgba(255,255,255,.4); cursor:pointer;}
+  .cam-top{position:absolute; top:14px; left:0; right:0; display:flex; justify-content:space-between; padding:0 16px;}
+
+  /* ---------- Rooms ---------- */
+  .room-card{border:1px solid var(--hairline-soft); border-radius:var(--r-md); overflow:hidden; box-shadow:var(--shadow); background:#fff; cursor:pointer;}
+  .room-photo{height:74px; display:flex; align-items:flex-end; padding:8px; position:relative;}
+  .status-pill{font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:var(--r-full); position:absolute; top:8px; left:8px;}
+
+  /* ---------- Settings ---------- */
+  .settings-row{display:flex; align-items:center; gap:14px; padding:14px 0; cursor:pointer;}
+  .settings-icon{width:36px; height:36px; border-radius:10px; background:var(--surface-strong); display:flex; align-items:center; justify-content:center; color:var(--ink); flex-shrink:0;}
+  .usage-track{height:8px; border-radius:var(--r-full); background:var(--surface-strong); overflow:hidden;}
+  .usage-fill{height:100%; border-radius:var(--r-full); background:var(--primary);}
+
+  /* ---------- Pricing ---------- */
+  .plan-card{border:1.5px solid var(--hairline); border-radius:var(--r-lg); padding:20px; position:relative; background:#fff;}
+  .plan-card.featured{border-color:var(--primary); box-shadow:0 0 0 1px var(--primary);}
+  .toggle-track{background:var(--surface-strong); border-radius:var(--r-full); padding:4px; display:flex; position:relative;}
+  .toggle-opt{flex:1; text-align:center; padding:8px 10px; font-size:13px; font-weight:600; border-radius:var(--r-full); position:relative; z-index:2; cursor:pointer; color:var(--muted);}
+  .toggle-opt.active{color:#fff;}
+  .toggle-thumb{position:absolute; top:4px; bottom:4px; width:calc(50% - 4px); background:var(--ink); border-radius:var(--r-full); transition:transform .22s ease; z-index:1;}
+
+  /* ---------- PIN screen ---------- */
+  .pin-dot{width:14px; height:14px; border-radius:50%; border:1.5px solid var(--ink);}
+  .pin-dot.filled{background:var(--ink);}
+  .keypad{display:grid; grid-template-columns:repeat(3,1fr); gap:14px;}
+  .key{aspect-ratio:1; border-radius:50%; border:none; background:var(--surface-soft); font-size:22px; font-weight:500; color:var(--ink); display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  .key:active{background:var(--surface-strong);}
+
+  .fade-in{animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  @media (max-width:430px){
+    body{padding:0;}
+    .stage-label{display:none;}
+    .phone{width:100vw; height:100vh; border-radius:0; padding:0;}
+    .phone::before{display:none;}
+    .phone-inner{border-radius:0;}
+  }
+</style>
+</head>
+<body>
+
+<div class="stage">
+  <div class="stage-label">StayMate — redesigned in the <b>Airbnb</b> visual language · tap around, it's fully interactive</div>
+  <div class="phone">
+    <div class="phone-inner">
+      <div class="statusbar">
+        <span id="clock">9:41</span>
+        <div class="icons">
+          <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><rect x="0" y="1" width="4" height="10" rx="1" fill="#222"/><rect x="5.5" y="1" width="4" height="10" rx="1" fill="#222"/><rect x="11" y="1" width="4" height="10" rx="1" fill="#222"/></svg>
+          <svg width="16" height="12" viewBox="0 0 16 12" fill="none"><path d="M8 2C10.5 2 12.8 3 14.5 4.7L13.1 6.1C11.7 4.7 9.9 4 8 4C6.1 4 4.3 4.7 2.9 6.1L1.5 4.7C3.2 3 5.5 2 8 2Z" fill="#222"/><circle cx="8" cy="9" r="1.6" fill="#222"/></svg>
+          <svg width="24" height="12" viewBox="0 0 24 12" fill="none"><rect x="1" y="1" width="20" height="10" rx="2.5" stroke="#222" stroke-width="1"/><rect x="2.5" y="2.5" width="15" height="7" rx="1.3" fill="#222"/><rect x="22" y="4" width="1.5" height="4" rx="0.7" fill="#222"/></svg>
+        </div>
+      </div>
+
+      <div class="screen-area" id="screenArea"></div>
+
+      <nav class="tabbar" id="tabbar">
+        <button class="tab" data-tab="dashboard" onclick="showTab('dashboard')"></button>
+        <button class="tab" data-tab="rooms" onclick="showTab('rooms')"></button>
+        <button class="tab-fab" onclick="showTab('scanner')" aria-label="Check-in"></button>
+        <button class="tab" data-tab="settings" onclick="showTab('settings')"></button>
+      </nav>
+
+      <!-- overlays -->
+      <div class="overlay" id="overlaySearch"></div>
+      <div class="overlay" id="overlayReview"></div>
+      <div class="overlay" id="overlayReports"></div>
+      <div class="overlay" id="overlayPricing"></div>
+
+      <!-- sheets -->
+      <div class="scrim" id="scrim" onclick="closeSheet()"></div>
+      <div class="sheet" id="guestSheet"></div>
+      <div class="sheet" id="docSheet"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===================== ICONS ===================== */
+const ICONS = {
+  home:'<path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V20a1 1 0 0 0 1 1H9.5a1 1 0 0 0 1-1v-4a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v4a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1V9.5"/>',
+  bed:'<path d="M2 18v-7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v7"/><path d="M2 18v2"/><path d="M22 18v2"/><path d="M2 13V7a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M14 9h6a2 2 0 0 1 2 2v2"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.1A1.7 1.7 0 0 0 4.7 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.6 1Z"/>',
+  camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5l1.6-2.4A2 2 0 0 1 9.8 2.6h4.4a2 2 0 0 1 1.7 1L17.5 6H21a2 2 0 0 1 2 2Z"/><circle cx="12" cy="13" r="4"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>',
+  bell:'<path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/>',
+  chevronRight:'<path d="m9 18 6-6-6-6"/>',
+  chevronLeft:'<path d="m15 18-6-6 6-6"/>',
+  x:'<path d="M18 6 6 18"/><path d="M6 6l12 12"/>',
+  plus:'<path d="M12 5v14"/><path d="M5 12h14"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  filter:'<path d="M22 3H2l8 9.5V19l4 2v-8.5Z"/>',
+  lock:'<rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/>',
+  fingerprint:'<path d="M12 2a8 8 0 0 0-8 8c0 4 1 7 2 9"/><path d="M12 2a8 8 0 0 1 8 8c0 2.4-.3 4.3-.8 6"/><path d="M8 20c1.5-2 2-4.5 2-7a2 2 0 0 1 4 0c0 1 0 2-.3 3"/><path d="M12 6a6 6 0 0 0-6 6c0 2.8-.5 5-1.3 6.7"/><path d="M12 6a6 6 0 0 1 6 6c0 1 0 2-.2 3"/>',
+  calendar:'<rect x="3" y="4.5" width="18" height="16.5" rx="2.5"/><path d="M16 2.5v4"/><path d="M8 2.5v4"/><path d="M3 9.5h18"/>',
+  mail:'<rect x="2" y="4.5" width="20" height="15" rx="2.5"/><path d="m3 6 9 7 9-7"/>',
+  phoneIcon:'<path d="M6.6 10.8a15.3 15.3 0 0 0 6.6 6.6l2.2-2.2a1.5 1.5 0 0 1 1.5-.4c1.2.4 2.5.6 3.8.6a1.5 1.5 0 0 1 1.5 1.5V21a1.5 1.5 0 0 1-1.5 1.5C10.7 22.5 1.5 13.3 1.5 2.5A1.5 1.5 0 0 1 3 1h3.7a1.5 1.5 0 0 1 1.5 1.5c0 1.3.2 2.6.6 3.8a1.5 1.5 0 0 1-.4 1.5Z"/>',
+  upload:'<path d="M12 16V4"/><path d="m6 9 6-6 6 6"/><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>',
+  flashOff:'<path d="M11 2 5 12h5l-1 10 8-13h-5l2-7Z" opacity=".5"/><path d="M3 3l18 18"/>',
+  flip:'<path d="M17 2.1 21 6l-4 3.9"/><path d="M3 12a9 9 0 0 1 15-6.7l3 3"/><path d="M7 21.9 3 18l4-3.9"/><path d="M21 12a9 9 0 0 1-15 6.7l-3-3"/>',
+  image:'<rect x="3" y="3" width="18" height="18" rx="2.5"/><circle cx="9" cy="9" r="1.8"/><path d="m21 15-5-5-9 9"/>',
+  grid:'<rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/>',
+  list:'<path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/>',
+  cloud:'<path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4-2A5 5 0 0 0 6.5 19h11Z"/>',
+  users:'<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/>',
+  edit:'<path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>',
+  globe:'<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18"/><path d="M12 3a14 14 0 0 0 0 18"/>',
+  moon:'<path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z"/>',
+  shield:'<path d="M12 2.5 4 5.5v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10v-6Z"/><path d="m9 12 2 2 4-4.5"/>',
+  wifi:'<path d="M2 8.5a16 16 0 0 1 20 0"/><path d="M5.5 12a11 11 0 0 1 13 0"/><path d="M9 15.5a6 6 0 0 1 6 0"/><path d="M12 19h.01"/>',
+  star:'<path d="m12 2 3.1 6.6 7.2.9-5.3 5 1.4 7.2L12 18.3 5.6 21.7 7 14.5l-5.3-5 7.2-.9Z"/>',
+  clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/>',
+  download:'<path d="M12 3v13"/><path d="m6 11 6 6 6-6"/><path d="M5 21h14"/>',
+  share:'<circle cx="18" cy="5" r="2.6"/><circle cx="6" cy="12" r="2.6"/><circle cx="18" cy="19" r="2.6"/><path d="m8.3 10.7 7.4-4.2"/><path d="m8.3 13.3 7.4 4.2"/>',
+  trash:'<path d="M4 7h16"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/>',
+  mapPin:'<path d="M12 21s7-6.6 7-12a7 7 0 1 0-14 0c0 5.4 7 12 7 12Z"/><circle cx="12" cy="9" r="2.6"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 8h.01"/><path d="M11 12h1v5h1"/>',
+  arrowRight:'<path d="M5 12h14"/><path d="m13 6 6 6-6 6"/>',
+};
+function icon(name, size=22, cls=''){
+  return `<svg class="icon ${cls}" width="${size}" height="${size}" viewBox="0 0 24 24">${ICONS[name]||''}</svg>`;
+}
+
+/* ===================== DATA ===================== */
+const GUESTS = [
+  {id:1, name:'Rohan Sharma', room:'204', type:'Aadhaar', idNum:'XXXX XXXX 4821', phone:'+91 98765 43210', email:'rohan.sharma@email.com', nat:'Indian', gender:'Male', address:'14 MG Road, Guwahati, Assam 781001', time:'9:42 AM', verified:true, roomType:'Deluxe'},
+  {id:2, name:'Priya Nair', room:'108', type:'Passport', idNum:'K91XXXXX', phone:'+91 90123 44556', email:'priya.nair@email.com', nat:'Indian', gender:'Female', address:'22 Lake View, Kochi, Kerala 682001', time:'8:15 AM', verified:true, roomType:'Suite'},
+  {id:3, name:'Arjun Verma', room:'301', type:'Driving Licence', idNum:'AS01 XXXXXXXXX', phone:'+91 99887 65432', email:'arjun.v@email.com', nat:'Indian', gender:'Male', address:'7 Hilltop Colony, Shillong, Meghalaya', time:'Yesterday', verified:false, roomType:'Standard'},
+];
+const ROOMS = [
+  {num:'101', type:'Standard', price:1800, status:'available'},
+  {num:'102', type:'Standard', price:1800, status:'occupied'},
+  {num:'108', type:'Suite', price:4200, status:'occupied'},
+  {num:'204', type:'Deluxe', price:2600, status:'occupied'},
+  {num:'205', type:'Deluxe', price:2600, status:'cleaning'},
+  {num:'301', type:'Standard', price:1900, status:'occupied'},
+  {num:'302', type:'Cottage', price:3600, status:'maintenance'},
+  {num:'303', type:'Cottage', price:3600, status:'available'},
+];
+const STATUS_META = {
+  available:{label:'Available', color:'var(--emerald)', bg:'var(--emerald-bg)'},
+  occupied:{label:'Occupied', color:'var(--sky)', bg:'var(--sky-bg)'},
+  cleaning:{label:'Cleaning', color:'var(--amber)', bg:'var(--amber-bg)'},
+  maintenance:{label:'Maintenance', color:'var(--rose)', bg:'var(--rose-bg)'},
+};
+const PLANS = [
+  {name:'Free', priceM:0, priceY:0, rooms:'2 rooms', checkins:'15 check-ins / mo', ocr:false, tag:null},
+  {name:'Starter', priceM:349, priceY:3499, rooms:'8 rooms', checkins:'100 check-ins / mo', ocr:true, tag:null},
+  {name:'Professional', priceM:799, priceY:7999, rooms:'25 rooms', checkins:'Unlimited check-ins', ocr:true, tag:'Most popular'},
+  {name:'Multi-Property', priceM:1799, priceY:17999, rooms:'Unlimited rooms · 5 properties', checkins:'Unlimited check-ins', ocr:true, tag:null},
+  {name:'Enterprise', priceM:null, priceY:null, rooms:'Unlimited everything', checkins:'Dedicated support', ocr:true, tag:null},
+];
+
+let billingAnnual = false;
+let roomFilter = 'all';
+let roomView = 'grid';
+let docType = 'auto';
+let pinBuffer = '';
+const PIN_CODE = '1234';
+
+/* ===================== SCREEN RENDER ===================== */
+const screenArea = document.getElementById('screenArea');
+const tabbar = document.getElementById('tabbar');
+
+function setClock(){
+  const d = new Date();
+  let h = d.getHours()%12; if(h===0) h=12;
+  const m = d.getMinutes().toString().padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}`;
+}
+setClock(); setInterval(setClock, 15000);
+
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.tab===name));
+  if(name==='dashboard') screenArea.innerHTML = renderDashboard();
+  if(name==='rooms') screenArea.innerHTML = renderRooms();
+  if(name==='scanner') screenArea.innerHTML = renderScanner();
+  if(name==='settings') screenArea.innerHTML = renderSettings();
+  screenArea.scrollTop = 0;
+}
+
+/* ---------- Greeting ---------- */
+function greeting(){
+  const h = new Date().getHours();
+  if(h<12) return 'Good morning';
+  if(h<17) return 'Good afternoon';
+  return 'Good evening';
+}
+function todayStr(){
+  return new Date().toLocaleDateString('en-IN',{weekday:'long', day:'numeric', month:'long'});
+}
+
+/* ---------- Dashboard ---------- */
+function renderDashboard(){
+  return `
+  <div class="pad fade-in">
+    <div class="row between" style="padding-top:18px;">
+      <div>
+        <div class="body-sm" style="margin-bottom:2px;">${todayStr()}</div>
+        <h1 class="display-lg">${greeting()}, Meera</h1>
+      </div>
+      <div class="row" style="gap:6px; background:var(--emerald-bg); padding:6px 10px; border-radius:var(--r-full); height:fit-content;">
+        <span class="sync-dot"></span>
+        <span class="micro" style="color:var(--emerald);">Live Sync</span>
+      </div>
+    </div>
+
+    <div class="row" style="gap:10px; margin-top:18px;">
+      <div class="search-pill" onclick="openSearch()">
+        ${icon('search',18)}
+        <span class="body-sm" style="color:var(--muted-soft);">Search guests, rooms, IDs…</span>
+      </div>
+      <div class="reports-btn" onclick="openReports()">
+        ${icon('bell',20)}
+        <span style="position:absolute; top:6px; right:6px; width:8px; height:8px; background:var(--primary); border-radius:50%; border:1.5px solid #fff;"></span>
+      </div>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:20px;">
+      <div class="metric-card"><div class="micro" style="color:var(--muted);">TODAY'S CHECK-INS</div><div class="metric-num" style="margin-top:6px;">6</div></div>
+      <div class="metric-card"><div class="micro" style="color:var(--muted);">TODAY'S CHECK-OUTS</div><div class="metric-num" style="margin-top:6px;">3</div></div>
+      <div class="metric-card"><div class="micro" style="color:var(--muted);">ACTIVE GUESTS</div><div class="metric-num" style="margin-top:6px; color:var(--primary);">14</div></div>
+      <div class="metric-card"><div class="micro" style="color:var(--muted);">PENDING VERIFY</div><div class="metric-num" style="margin-top:6px;">2</div></div>
+    </div>
+
+    <div class="row between" style="margin-top:26px; margin-bottom:4px;">
+      <h2 class="title-md">Recent check-ins</h2>
+      <span class="body-sm" style="color:var(--ink); font-weight:600; cursor:pointer;">View all</span>
+    </div>
+    <div>
+      ${GUESTS.map(g=>`
+        <div class="guest-row" onclick="openGuest(${g.id})">
+          <div class="avatar">${g.name.split(' ').map(n=>n[0]).join('')}</div>
+          <div style="flex:1; min-width:0;">
+            <div class="row" style="gap:6px;">
+              <span class="title-sm">${g.name}</span>
+              ${g.verified?`<span style="color:var(--emerald);">${icon('check',14)}</span>`:''}
+            </div>
+            <div class="body-sm">Room ${g.room} · ${g.idNum}</div>
+          </div>
+          <div style="text-align:right; flex-shrink:0;">
+            <div class="caption">${g.time}</div>
+          </div>
+          <span style="color:var(--muted-soft);">${icon('chevronRight',18)}</span>
+        </div>
+        <hr class="divider" style="margin:0;">
+      `).join('')}
+    </div>
+
+    <div class="card" style="margin-top:18px; padding:16px; display:flex; align-items:center; gap:12px;" onclick="alert('Paste a WhatsApp #GUEST_IMPORT_DATA# code to auto-fill a guest.')">
+      <div class="settings-icon" style="background:var(--surface-soft);">${icon('mail',18)}</div>
+      <div style="flex:1;">
+        <div class="title-sm">Import self check-in</div>
+        <div class="body-sm">Paste WhatsApp guest code to auto-fill</div>
+      </div>
+      ${icon('chevronRight',18)}
+    </div>
+  </div>`;
+}
+
+/* ---------- Guest detail sheet ---------- */
+function openGuest(id){
+  const g = GUESTS.find(x=>x.id===id);
+  document.getElementById('guestSheet').innerHTML = `
+    <div class="sheet-handle"></div>
+    <div class="sheet-body">
+      <div class="row between" style="margin-bottom:10px;">
+        <div class="row" style="gap:10px;">
+          <div class="avatar" style="width:52px;height:52px;">${g.name.split(' ').map(n=>n[0]).join('')}</div>
+          <div>
+            <div class="row" style="gap:6px;"><span class="title-md">${g.name}</span>${g.verified?`<span style="color:var(--emerald);">${icon('check',15)}</span>`:''}</div>
+            <div class="body-sm">${g.verified?'Verified registration':'Awaiting verification'}</div>
+          </div>
+        </div>
+        <button class="icon-btn" onclick="closeSheet()">${icon('x',16)}</button>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:14px 0;">
+        <div style="aspect-ratio:1; border-radius:var(--r-md); background:linear-gradient(135deg,#ffe1e6,#ffc9d4); display:flex; align-items:center; justify-content:center; color:#c13515;">${icon('image',26)}<span class="caption" style="margin-left:6px;">Selfie</span></div>
+        <div style="aspect-ratio:1; border-radius:var(--r-md); background:var(--surface-soft); display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; color:var(--muted);">
+          <div style="display:flex; gap:6px;">${icon('image',18)}${icon('image',18)}</div>
+          <span class="caption">ID front / back</span>
+        </div>
+      </div>
+      <div class="card" style="padding:14px;">
+        ${metaRow('Room', `${g.room} · ${g.roomType}`)}
+        ${metaRow('Document', `${g.type} — ${g.idNum}`)}
+        ${metaRow('Phone', g.phone)}
+        ${metaRow('Email', g.email)}
+        ${metaRow('Nationality', g.nat)}
+        ${metaRow('Gender', g.gender)}
+        ${metaRow('Address', g.address, true)}
+      </div>
+      <div class="row" style="gap:10px; margin-top:16px;">
+        <button class="btn btn-secondary">${icon('edit',17)} Edit</button>
+        <button class="btn btn-primary">${icon('phoneIcon',17)} Contact</button>
+      </div>
+    </div>`;
+  openSheet('guestSheet');
+}
+function metaRow(label, val, last=false){
+  return `<div class="row between" style="padding:9px 0; ${last?'':'border-bottom:1px solid var(--hairline-soft);'}">
+    <span class="body-sm" style="color:var(--muted-soft);">${label}</span>
+    <span class="body-sm" style="color:var(--ink); font-weight:500; text-align:right; max-width:65%;">${val}</span>
+  </div>`;
+}
+
+/* ---------- Search overlay ---------- */
+function openSearch(){
+  const ov = document.getElementById('overlaySearch');
+  ov.innerHTML = `
+    <div class="overlay-header">
+      <button class="icon-btn" onclick="closeOverlay('overlaySearch')">${icon('chevronLeft',18)}</button>
+      <div class="search-pill" style="box-shadow:none; padding:11px 16px;">
+        ${icon('search',17)}
+        <input autofocus placeholder="Name, phone, room, ID…" style="border:none; outline:none; font-family:inherit; font-size:14.5px; width:100%; background:transparent;">
+      </div>
+    </div>
+    <div class="overlay-body">
+      <div class="pad" style="padding-top:14px;">
+        <div class="caption" style="margin-bottom:8px;">RECENT</div>
+        ${GUESTS.map(g=>`
+          <div class="guest-row" onclick="openGuest(${g.id}); closeOverlay('overlaySearch');">
+            <div class="avatar">${g.name.split(' ').map(n=>n[0]).join('')}</div>
+            <div style="flex:1;"><div class="title-sm">${g.name}</div><div class="body-sm">Room ${g.room} · ${g.phone}</div></div>
+            ${icon('chevronRight',17)}
+          </div><hr class="divider" style="margin:0;">
+        `).join('')}
+      </div>
+    </div>`;
+  ov.classList.add('show');
+}
+
+/* ---------- Reports overlay ---------- */
+function openReports(){
+  const ov = document.getElementById('overlayReports');
+  ov.innerHTML = `
+    <div class="overlay-header">
+      <button class="icon-btn" onclick="closeOverlay('overlayReports')">${icon('chevronLeft',18)}</button>
+      <span class="title-md">Compliance reports</span>
+    </div>
+    <div class="overlay-body"><div class="pad" style="padding-top:16px;">
+      <div class="row" style="gap:8px; overflow-x:auto; padding-bottom:4px;">
+        <span class="chip active">This month</span><span class="chip">Custom range</span><span class="chip">By room</span>
+      </div>
+      <div class="card" style="padding:18px; margin-top:16px; text-align:center;">
+        <div class="settings-icon" style="margin:0 auto 10px; width:44px; height:44px; background:var(--surface-soft);">${icon('shield',20)}</div>
+        <div class="title-md">Police Form C</div>
+        <div class="body-sm" style="margin-top:4px;">142 registrations logged this month, ready for export</div>
+        <div class="row" style="gap:8px; margin-top:16px;">
+          <button class="btn btn-soft">${icon('download',16)} CSV</button>
+          <button class="btn btn-primary">${icon('share',16)} PDF</button>
+        </div>
+      </div>
+      <div class="caption" style="margin:20px 0 8px;">EXPORT HISTORY</div>
+      ${['August 2026','July 2026','June 2026'].map(m=>`
+        <div class="row between" style="padding:12px 0; border-bottom:1px solid var(--hairline-soft);">
+          <div class="row" style="gap:10px;"><span class="settings-icon" style="width:32px;height:32px;background:var(--surface-soft);">${icon('calendar',15)}</span><span class="body-md">${m}</span></div>
+          <span style="color:var(--muted-soft);">${icon('download',16)}</span>
+        </div>
+      `).join('')}
+    </div></div>`;
+  ov.classList.add('show');
+}
+
+/* ---------- Rooms ---------- */
+function renderRooms(){
+  const counts = {all:ROOMS.length};
+  Object.keys(STATUS_META).forEach(s=>counts[s]=ROOMS.filter(r=>r.status===s).length);
+  const filtered = roomFilter==='all'?ROOMS:ROOMS.filter(r=>r.status===roomFilter);
+  return `
+  <div class="pad fade-in">
+    <div class="row between" style="padding-top:18px;">
+      <h1 class="display-lg">Rooms</h1>
+      <button class="icon-btn" onclick="toggleRoomView()">${icon(roomView==='grid'?'list':'grid',17)}</button>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(5,1fr); gap:6px; margin-top:16px;">
+      ${roomMini('Total', counts.all, 'var(--ink)')}
+      ${roomMini('Avail', counts.available, 'var(--emerald)')}
+      ${roomMini('Occ', counts.occupied, 'var(--sky)')}
+      ${roomMini('Clean', counts.cleaning, 'var(--amber)')}
+      ${roomMini('Maint', counts.maintenance, 'var(--rose)')}
+    </div>
+    <div class="row" style="gap:8px; overflow-x:auto; margin-top:16px; padding-bottom:2px;">
+      ${['all','available','occupied','cleaning','maintenance'].map(s=>`
+        <span class="chip ${roomFilter===s?'active':''}" onclick="setRoomFilter('${s}')">${s==='all'?'All':STATUS_META[s].label}</span>
+      `).join('')}
+    </div>
+    <div style="margin-top:16px; display:${roomView==='grid'?'grid':'flex'}; ${roomView==='grid'?'grid-template-columns:1fr 1fr; gap:10px;':'flex-direction:column; gap:10px;'}">
+      ${filtered.map(r=> roomView==='grid'? roomCardGrid(r) : roomCardList(r)).join('')}
+    </div>
+    <button class="btn btn-primary" style="margin-top:20px; box-shadow:var(--shadow);" onclick="alert('Add Room — checks your plan room limit before creating.')">${icon('plus',18)} Add room</button>
+  </div>`;
+}
+function roomMini(label,val,color){
+  return `<div style="text-align:center;"><div class="micro" style="color:${color}; font-size:16px;">${val}</div><div class="caption" style="font-size:10px;">${label}</div></div>`;
+}
+function roomCardGrid(r){
+  const m = STATUS_META[r.status];
+  return `<div class="room-card" onclick="alert('Room ${r.num} — manage type, price, status or check out guests.')">
+    <div class="room-photo" style="background:linear-gradient(135deg,#fdf1e7,#f6e2d3);">
+      <span class="status-pill" style="background:${m.bg}; color:${m.color};">${m.label}</span>
+    </div>
+    <div style="padding:10px 12px 12px;">
+      <div class="row between"><span class="title-sm">Room ${r.num}</span></div>
+      <div class="body-sm">${r.type}</div>
+      <div class="title-sm" style="margin-top:4px;">₹${r.price.toLocaleString('en-IN')}<span class="caption">/night</span></div>
+    </div>
+  </div>`;
+}
+function roomCardList(r){
+  const m = STATUS_META[r.status];
+  return `<div class="room-card" style="display:flex; align-items:center; padding:10px 12px; gap:12px;" onclick="alert('Room ${r.num} — manage type, price, status or check out guests.')">
+    <div style="width:52px;height:52px;border-radius:12px;background:linear-gradient(135deg,#fdf1e7,#f6e2d3); flex-shrink:0;"></div>
+    <div style="flex:1;">
+      <div class="row between"><span class="title-sm">Room ${r.num}</span><span class="title-sm">₹${r.price.toLocaleString('en-IN')}</span></div>
+      <div class="row between" style="margin-top:2px;"><span class="body-sm">${r.type}</span><span class="status-pill" style="position:static; background:${m.bg}; color:${m.color};">${m.label}</span></div>
+    </div>
+  </div>`;
+}
+function setRoomFilter(s){ roomFilter=s; screenArea.innerHTML = renderRooms(); }
+function toggleRoomView(){ roomView = roomView==='grid'?'list':'grid'; screenArea.innerHTML = renderRooms(); }
+
+/* ---------- Scanner / Check-in ---------- */
+function renderScanner(){
+  const types = [
+    {id:'auto', label:'Auto-detect', icon:'search'},
+    {id:'aadhaar', label:'Aadhaar', icon:'shield'},
+    {id:'pan', label:'PAN Card', icon:'mapPin'},
+    {id:'voter', label:'Voter ID', icon:'users'},
+    {id:'dl', label:'Driving Licence', icon:'edit'},
+    {id:'passport', label:'Passport', icon:'globe'},
+  ];
+  return `
+  <div class="pad fade-in">
+    <div style="padding-top:18px;">
+      <h1 class="display-lg">Check-in</h1>
+      <p class="body-sm" style="margin-top:4px;">Scan an ID to auto-fill guest details, or enter manually</p>
+    </div>
+
+    <div class="caption" style="margin-top:20px; margin-bottom:8px;">DOCUMENT TYPE</div>
+    <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
+      ${types.map(t=>`
+        <div class="doc-type-card ${docType===t.id?'active':''}" onclick="setDocType('${t.id}')">
+          ${icon(t.icon,20)}
+          <span class="caption" style="text-align:center; color:${docType===t.id?'var(--ink)':'var(--muted)'}; font-weight:${docType===t.id?600:500};">${t.label}</span>
+        </div>`).join('')}
+    </div>
+
+    <div class="caption" style="margin-top:22px; margin-bottom:8px;">SCAN DOCUMENT</div>
+    <div class="viewfinder">
+      <div class="cam-top">
+        <span class="cam-icon-btn">${icon('flashOff',18)}</span>
+        <span class="cam-icon-btn">${icon('flip',18)}</span>
+      </div>
+      <div class="frame-guide">
+        <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+      </div>
+      <div style="position:absolute; top:40%; left:0; right:0; text-align:center; color:rgba(255,255,255,.75); font-size:12.5px; font-weight:500;">Align the document within the frame</div>
+      <div class="cam-controls">
+        <span class="cam-icon-btn">${icon('image',18)}</span>
+        <div class="shutter" onclick="startReview()"></div>
+        <span style="width:42px;"></span>
+      </div>
+    </div>
+
+    <div class="row between" style="margin-top:18px; align-items:center;">
+      <hr style="flex:1; border:none; height:1px; background:var(--hairline-soft);">
+      <span class="caption" style="margin:0 12px;">OR</span>
+      <hr style="flex:1; border:none; height:1px; background:var(--hairline-soft);">
+    </div>
+    <button class="btn btn-secondary" style="margin-top:14px;" onclick="startReview()">${icon('edit',17)} Enter details manually</button>
+
+    <div class="card" style="margin-top:20px; padding:14px;" onclick="alert('2 self check-ins are waiting for your approval.')">
+      <div class="row between">
+        <div class="row" style="gap:10px;">
+          <span class="settings-icon" style="background:var(--surface-soft);">${icon('wifi',17)}</span>
+          <div><div class="title-sm">Web self check-ins</div><div class="body-sm">2 pending your approval</div></div>
+        </div>
+        ${icon('chevronRight',18)}
+      </div>
+    </div>
+  </div>`;
+}
+function setDocType(id){ docType=id; screenArea.innerHTML = renderScanner(); }
+function startReview(){
+  const ov = document.getElementById('overlayReview');
+  ov.innerHTML = `
+    <div class="overlay-header">
+      <button class="icon-btn" onclick="closeOverlay('overlayReview')">${icon('x',17)}</button>
+      <span class="title-md">Confirm & check in</span>
+    </div>
+    <div class="overlay-body"><div class="pad" style="padding-top:16px;">
+      <div class="row" style="gap:6px; background:var(--emerald-bg); padding:8px 12px; border-radius:var(--r-md); margin-bottom:18px;">
+        ${icon('check',16)}<span class="caption" style="color:var(--emerald); font-weight:700;">Document parsed automatically — please verify</span>
+      </div>
+
+      ${field('Full name','Rohan Sharma')}
+      ${field('ID number','XXXX XXXX 4821')}
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">${field('Date of birth','14 Mar 1991')}${field('Gender','Male')}</div>
+      ${field('Phone number','+91 98765 43210')}
+      ${field('Address','14 MG Road, Guwahati, Assam 781001')}
+
+      <div class="row between" style="margin:18px 0 8px;">
+        <span class="title-sm">Co-guests / family</span>
+        <button class="btn-sm btn-soft" style="border:none;" onclick="alert('Add another guest to this same stay.')">${icon('plus',14)} Add</button>
+      </div>
+      <div class="body-sm">No co-guests added yet</div>
+
+      <div class="caption" style="margin:18px 0 8px;">STAY DETAILS</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        ${selectField('Room','Room 204 · Deluxe')}
+        ${selectField('Rate','₹2,600 / night')}
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+        ${field('Check-in','18 Aug 2026')}
+        ${field('Check-out','21 Aug 2026')}
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:20px;" onclick="completeCheckin()">${icon('check',17)} Complete check-in</button>
+    </div></div>`;
+  ov.classList.add('show');
+}
+function field(label,val){
+  return `<div style="margin-bottom:12px;">
+    <label class="caption" style="display:block; margin-bottom:6px;">${label}</label>
+    <input value="${val}" style="width:100%; height:48px; border:1px solid var(--hairline); border-radius:var(--r-sm); padding:0 14px; font-family:inherit; font-size:14.5px; color:var(--ink); outline:none;">
+  </div>`;
+}
+function selectField(label,val){
+  return `<div style="margin-bottom:12px;">
+    <label class="caption" style="display:block; margin-bottom:6px;">${label}</label>
+    <div class="row between" style="height:48px; border:1px solid var(--hairline); border-radius:var(--r-sm); padding:0 14px; font-size:14.5px;">
+      <span>${val}</span>${icon('chevronRight',15)}
+    </div>
+  </div>`;
+}
+function completeCheckin(){
+  closeOverlay('overlayReview');
+  showTab('dashboard');
+}
+
+/* ---------- Settings ---------- */
+function renderSettings(){
+  return `
+  <div class="pad fade-in">
+    <h1 class="display-lg" style="padding-top:18px;">Settings</h1>
+
+    <div class="card" style="margin-top:16px; padding:16px; display:flex; gap:12px; align-items:center;" onclick="alert('Edit property name, address & branding.')">
+      <div style="width:52px;height:52px;border-radius:14px;background:linear-gradient(135deg,var(--primary),#ff6b85); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700;">SM</div>
+      <div style="flex:1;">
+        <div class="title-md">Sunrise Homestay</div>
+        <div class="body-sm">HS-4821 · Homestay Owner</div>
+      </div>
+      ${icon('chevronRight',18)}
+    </div>
+
+    <div class="card" style="margin-top:14px; padding:16px;">
+      <div class="row between">
+        <div><div class="title-sm">Professional plan</div><div class="body-sm">12 days left on trial</div></div>
+        <span class="badge" style="background:var(--surface-strong); color:var(--ink);">PRO</span>
+      </div>
+      <div style="margin-top:14px;">
+        <div class="row between caption" style="margin-bottom:5px;"><span>Check-ins</span><span>84 / 100</span></div>
+        <div class="usage-track"><div class="usage-fill" style="width:84%;"></div></div>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="row between caption" style="margin-bottom:5px;"><span>Reports &amp; exports</span><span>6 / 10</span></div>
+        <div class="usage-track"><div class="usage-fill" style="width:60%; background:var(--ink);"></div></div>
+      </div>
+      <div class="row between" style="margin-top:12px;">
+        <span class="body-sm">AI Document OCR</span>
+        <span class="badge" style="background:var(--emerald-bg); color:var(--emerald);">Active</span>
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px;" onclick="openPricing()">View plans &amp; upgrade</button>
+    </div>
+
+    <div class="caption" style="margin:20px 0 4px;">DATA STORAGE</div>
+    <div class="settings-row" onclick="alert('Switch between Cloud sync and 100% offline Local mode.')">
+      <span class="settings-icon">${icon('cloud',18)}</span>
+      <div style="flex:1;"><div class="title-sm">Cloud mode</div><div class="body-sm">Synced live across staff devices</div></div>
+      ${toggleSwitch(true)}
+    </div>
+
+    <div class="caption" style="margin:16px 0 4px;">GENERAL</div>
+    ${settingsRow('mapPin','Property name & address')}
+    ${settingsRow('globe','Language — English')}
+    ${settingsRow('moon','Theme — System default')}
+
+    <div class="caption" style="margin:16px 0 4px;">SECURITY</div>
+    ${settingsRow('lock','Change security PIN')}
+    <div class="settings-row">
+      <span class="settings-icon">${icon('fingerprint',18)}</span>
+      <div style="flex:1;"><div class="title-sm">Biometric unlock</div><div class="body-sm">Face ID / Fingerprint</div></div>
+      ${toggleSwitch(true)}
+    </div>
+    ${settingsRow('clock','Auto-lock — After 5 minutes')}
+
+    <div class="row" style="gap:10px; margin-top:24px;">
+      <button class="btn btn-soft" onclick="lockApp()">${icon('lock',16)} Lock app</button>
+      <button class="btn btn-secondary" style="color:var(--rose); border-color:var(--rose);">${icon('logout',16)} Log out</button>
+    </div>
+  </div>`;
+}
+function settingsRow(iconName,label){
+  return `<div class="settings-row" onclick="alert('${label}')">
+    <span class="settings-icon">${icon(iconName,18)}</span>
+    <div style="flex:1;" class="title-sm">${label}</div>
+    ${icon('chevronRight',17)}
+  </div>`;
+}
+function toggleSwitch(on){
+  return `<div style="width:42px; height:25px; border-radius:var(--r-full); background:${on?'var(--primary)':'var(--hairline)'}; position:relative; flex-shrink:0;">
+    <div style="width:19px; height:19px; border-radius:50%; background:#fff; position:absolute; top:3px; left:${on?'20px':'3px'}; box-shadow:0 1px 3px rgba(0,0,0,.3);"></div>
+  </div>`;
+}
+
+/* ---------- Pricing overlay ---------- */
+function openPricing(){
+  const ov = document.getElementById('overlayPricing');
+  renderPricing();
+  ov.classList.add('show');
+}
+function renderPricing(){
+  const ov = document.getElementById('overlayPricing');
+  ov.innerHTML = `
+    <div class="overlay-header">
+      <button class="icon-btn" onclick="closeOverlay('overlayPricing')">${icon('x',17)}</button>
+      <span class="title-md">Plans &amp; pricing</span>
+    </div>
+    <div class="overlay-body"><div class="pad" style="padding-top:16px;">
+      <div class="toggle-track" style="width:220px; margin:0 auto 22px;">
+        <div class="toggle-thumb" style="transform:translateX(${billingAnnual?'100%':'0'});"></div>
+        <div class="toggle-opt ${!billingAnnual?'active':''}" onclick="setBilling(false)">Monthly</div>
+        <div class="toggle-opt ${billingAnnual?'active':''}" onclick="setBilling(true)">Annual · save 15%</div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:14px;">
+        ${PLANS.map(p=>`
+          <div class="plan-card ${p.tag?'featured':''}">
+            ${p.tag?`<span class="badge" style="position:absolute; top:-11px; left:20px; background:var(--primary); color:#fff;">${p.tag}</span>`:''}
+            <div class="row between">
+              <span class="title-md">${p.name}</span>
+              <span class="display-md">${p.priceM===null?'Custom':(p.priceM===0?'Free':'₹'+(billingAnnual?Math.round(p.priceY/12):p.priceM).toLocaleString('en-IN'))}${p.priceM?'<span class="caption">/mo</span>':''}</span>
+            </div>
+            <div class="body-sm" style="margin-top:8px;">${p.rooms}</div>
+            <div class="body-sm">${p.checkins}</div>
+            <div class="row" style="gap:6px; margin-top:8px;">
+              ${icon('check',15)}<span class="body-sm">${p.ocr?'AI Document OCR included':'OCR not included'}</span>
+            </div>
+            <button class="btn ${p.tag?'btn-primary':'btn-secondary'}" style="margin-top:14px; height:44px;">${p.priceM===null?'Contact sales':'Choose plan'}</button>
+          </div>
+        `).join('')}
+      </div>
+    </div></div>`;
+}
+function setBilling(v){ billingAnnual=v; renderPricing(); }
+
+/* ---------- Sheets / overlays plumbing ---------- */
+function openSheet(id){
+  document.getElementById('scrim').classList.add('show');
+  document.getElementById(id).classList.add('show');
+}
+function closeSheet(){
+  document.getElementById('scrim').classList.remove('show');
+  document.querySelectorAll('.sheet').forEach(s=>s.classList.remove('show'));
+}
+function closeOverlay(id){ document.getElementById(id).classList.remove('show'); }
+
+/* ===================== AUTH / PIN ===================== */
+function renderPin(mode){ // mode: 'setup' | 'unlock'
+  return `
+  <div class="fade-in" style="height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:0 30px;">
+    <div style="width:64px;height:64px;border-radius:18px;background:linear-gradient(135deg,var(--primary),#ff6b85); display:flex; align-items:center; justify-content:center; color:#fff; margin-bottom:22px;">${icon('lock',28)}</div>
+    <h1 class="display-lg" style="text-align:center;">${mode==='unlock'?'Welcome back':'Set your PIN'}</h1>
+    <p class="body-sm" style="text-align:center; margin-top:6px;">${mode==='unlock'?'Enter your 4-digit PIN to unlock StayMate':'Choose a 4-digit PIN to secure the app'}</p>
+    <div class="row" style="gap:14px; margin:30px 0;" id="pinDots">
+      ${[0,1,2,3].map(i=>`<div class="pin-dot" id="dot${i}"></div>`).join('')}
+    </div>
+    <div class="keypad" style="width:240px;">
+      ${[1,2,3,4,5,6,7,8,9].map(n=>`<button class="key" onclick="pressKey('${n}','${mode}')">${n}</button>`).join('')}
+      <button class="key" onclick="pressBiometric('${mode}')" style="color:var(--primary);">${icon('fingerprint',22)}</button>
+      <button class="key" onclick="pressKey('0','${mode}')">0</button>
+      <button class="key" onclick="pressBack()">${icon('chevronLeft',20)}</button>
+    </div>
+  </div>`;
+}
+function pressKey(n, mode){
+  if(pinBuffer.length>=4) return;
+  pinBuffer += n;
+  updateDots();
+  if(pinBuffer.length===4){
+    setTimeout(()=>{ unlockApp(); }, 250);
+  }
+}
+function pressBack(){ pinBuffer = pinBuffer.slice(0,-1); updateDots(); }
+function pressBiometric(mode){ unlockApp(); }
+function updateDots(){
+  for(let i=0;i<4;i++){
+    const d = document.getElementById('dot'+i);
+    if(d) d.classList.toggle('filled', i<pinBuffer.length);
+  }
+}
+function unlockApp(){
+  pinBuffer='';
+  tabbar.style.display='flex';
+  document.querySelectorAll('.tab')[0].classList.add('active');
+  showTab('dashboard');
+}
+function lockApp(){
+  tabbar.style.display='none';
+  screenArea.innerHTML = renderPin('unlock');
+}
+
+/* ===================== INIT ===================== */
+tabbar.style.display='none';
+screenArea.innerHTML = renderPin('unlock');
+</script>
+</body>
+</html>

@@ -185,291 +185,266 @@ export default function DashboardScreen() {
   );
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
-      <ScrollView 
-        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+    <SafeAreaView edges={['top', 'left', 'right']} style={{ flex: 1, backgroundColor: '#f7f7f7' }}>
+      <ScrollView
+        contentContainerStyle={{ padding: 20, paddingBottom: 110 }}
+        showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl 
-            refreshing={refreshing} 
+          <RefreshControl
+            refreshing={refreshing}
             onRefresh={async () => {
               setRefreshing(true);
               await fetchGuests();
               setRefreshing(false);
-            }} 
+            }}
+            tintColor="#ff385c"
           />
         }
       >
-        <View className="mb-6 mt-2">
-          <Text className="text-3xl font-extrabold text-foreground tracking-tight">{greeting}</Text>
-          <Text className="text-sm text-gray-500 mt-1 font-medium">{todayDate}</Text>
+        {/* ── Header ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingTop: 8, marginBottom: 20 }}>
+          <View>
+            <Text style={{ fontSize: 13.5, fontWeight: '400', color: '#6a6a6a', marginBottom: 3 }}>{todayDate}</Text>
+            <Text style={{ fontSize: 22, fontWeight: '600', color: '#222222', letterSpacing: -0.4 }}>{greeting}, {businessName || 'Host'} 👋</Text>
+          </View>
+          {/* Live Sync badge */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#e5f6e6', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9999, marginTop: 4 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#008a05', shadowColor: '#008a05', shadowOpacity: 0.4, shadowRadius: 3, elevation: 2 }} />
+            <Text style={{ fontSize: 11, fontWeight: '700', color: '#008a05', letterSpacing: 0.2 }}>Live Sync</Text>
+          </View>
         </View>
 
-        <View className="flex-row items-center gap-3 mb-6">
-          <TouchableOpacity 
-            className="flex-1"
+        {/* ── Search + Reports ── */}
+        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 24, alignItems: 'center' }}>
+          <TouchableOpacity
+            style={{
+              flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10,
+              backgroundColor: '#ffffff', borderRadius: 9999, paddingHorizontal: 18, paddingVertical: 13,
+              borderWidth: 1, borderColor: '#dddddd',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+            }}
             onPress={() => router.push('/search')}
             activeOpacity={0.7}
           >
-            <View pointerEvents="none">
-              <Input 
-                placeholder={t('searchByNamePhoneRoom')} 
-                icon={<Search size={20} color="#9498AA" />}
-                editable={false}
-                className="mb-0"
-              />
-            </View>
+            <Search size={18} color="#929292" />
+            <Text style={{ fontSize: 13.5, color: '#929292', fontWeight: '400' }}>{t('searchByNamePhoneRoom')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            className="w-14 h-14 bg-white dark:bg-black/20 border border-gray-100 dark:border-white/10 rounded-2xl items-center justify-center"
-            style={Platform.OS === 'web' ? ({ transition: 'all 0.2s ease' } as any) : undefined}
-            activeOpacity={0.7}
+
+          {/* Reports button */}
+          <TouchableOpacity
+            style={{
+              width: 48, height: 48, borderRadius: 24, backgroundColor: '#ffffff',
+              borderWidth: 1, borderColor: '#dddddd', alignItems: 'center', justifyContent: 'center',
+              shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+            }}
             onPress={() => router.push('/reports')}
+            activeOpacity={0.7}
           >
-            <FileBarChart size={24} color="#38BDF8" />
+            <FileBarChart size={20} color="#222222" />
+            {/* Rausch notification dot */}
+            <View style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: '#ff385c', borderWidth: 1.5, borderColor: '#fff' }} />
           </TouchableOpacity>
         </View>
 
-        <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
+        {/* ── Section label ── */}
+        <Text style={{ fontSize: 11, fontWeight: '700', color: '#6a6a6a', letterSpacing: 0.6, textTransform: 'uppercase', marginBottom: 12 }}>
           {t('todaysOverview')}
         </Text>
-        
-        <View className="flex-row flex-wrap justify-between">
-          <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl">
-            <LogIn size={28} color="#38BDF8" className="mb-2" />
-            <Text className="text-3xl font-bold text-foreground">{overviewStats.todayCheckins}</Text>
-            <Text className="text-xs text-gray-500 font-medium">{t('todayCheckins')}</Text>
-          </GlassCard>
-          
-          <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl">
-            <LogOut size={28} color="#14B8A6" className="mb-2" />
-            <Text className="text-3xl font-bold text-foreground">{overviewStats.todayCheckouts}</Text>
-            <Text className="text-xs text-gray-500 font-medium">{t('todayCheckouts')}</Text>
-          </GlassCard>
 
-          <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl">
-            <Users size={28} color="#F59E0B" className="mb-2" />
-            <Text className="text-3xl font-bold text-foreground">{overviewStats.activeGuests}</Text>
-            <Text className="text-xs text-gray-500 font-medium">{t('activeGuests')}</Text>
-          </GlassCard>
-
-          <GlassCard variant="elevated" className="w-[48%] mb-4 p-5 flex-col items-center rounded-2xl">
-            <AlertCircle size={28} color="#EF4444" className="mb-2" />
-            <Text className="text-3xl font-bold text-foreground">{overviewStats.pendingVerif}</Text>
-            <Text className="text-xs text-gray-500 font-medium">{t('pendingVerif')}</Text>
-          </GlassCard>
+        {/* ── Metrics 2×2 Grid ── */}
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 28 }}>
+          {[
+            { label: t('todayCheckins'), value: overviewStats.todayCheckins, icon: <LogIn size={18} color="#008a05" /> },
+            { label: t('todayCheckouts'), value: overviewStats.todayCheckouts, icon: <LogOut size={18} color="#0f7dc2" /> },
+            { label: t('activeGuests'), value: overviewStats.activeGuests, icon: <Users size={18} color="#b45900" /> },
+            { label: t('pendingVerif'), value: overviewStats.pendingVerif, icon: <AlertCircle size={18} color="#ff385c" /> },
+          ].map((stat) => (
+            <View
+              key={stat.label}
+              style={{
+                width: '47.5%', backgroundColor: '#ffffff', borderRadius: 14,
+                padding: 14, borderWidth: 1, borderColor: '#ebebeb',
+                shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+              }}
+            >
+              {stat.icon}
+              <Text style={{ fontSize: 26, fontWeight: '700', color: '#222222', letterSpacing: -0.5, marginTop: 6 }}>{stat.value}</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#6a6a6a', textTransform: 'uppercase', letterSpacing: 0.3, marginTop: 2 }}>{stat.label}</Text>
+            </View>
+          ))}
         </View>
 
-        <View className="flex-row justify-between items-center mb-4 mt-4">
-          <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider">
+        {/* ── Recent Check-ins header ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <Text style={{ fontSize: 11, fontWeight: '700', color: '#6a6a6a', letterSpacing: 0.6, textTransform: 'uppercase' }}>
             {t('recentCheckins')}
           </Text>
-          <TouchableOpacity 
+          <TouchableOpacity
             onPress={() => router.push('/registrations')}
             activeOpacity={0.7}
-            className="flex-row items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-full"
           >
-            <Text className="text-xs font-bold text-primary">{t('viewAll')} →</Text>
+            <Text style={{ fontSize: 13, fontWeight: '400', color: '#6a6a6a' }}>{t('viewAll')} →</Text>
           </TouchableOpacity>
         </View>
-        
-        <GlassCard className="mb-6 p-5 rounded-2xl">
+
+        {/* ── Guest list card ── */}
+        <View
+          style={{
+            backgroundColor: '#ffffff', borderRadius: 14, borderWidth: 1, borderColor: '#ebebeb',
+            shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 8, elevation: 3,
+            marginBottom: 16,
+          }}
+        >
           {recentGuests.length === 0 ? (
-            <Text className="text-gray-500 text-center py-4">{t('noRecentCheckins')}</Text>
+            <View style={{ padding: 24, alignItems: 'center' }}>
+              <Text style={{ fontSize: 14, color: '#6a6a6a', textAlign: 'center' }}>{t('noRecentCheckins')}</Text>
+            </View>
           ) : (
             recentGuests.map((guest, index) => (
-              <TouchableOpacity 
+              <TouchableOpacity
                 key={guest.id}
                 activeOpacity={0.7}
                 onPress={() => setSelectedGuest(guest)}
-                className={`flex-row justify-between items-center ${index !== recentGuests.length - 1 ? 'border-b border-gray-100 dark:border-gray-800 pb-3 mb-3' : ''}`}
+                style={{
+                  flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+                  paddingHorizontal: 16, paddingVertical: 14,
+                  borderBottomWidth: index !== recentGuests.length - 1 ? 1 : 0,
+                  borderBottomColor: '#ebebeb',
+                }}
               >
-                <View className="flex-row items-center flex-1 mr-2">
-                  <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-3">
-                    <Text className="text-foreground font-bold text-lg">
+                {/* Avatar + info */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                  <View style={{
+                    width: 40, height: 40, borderRadius: 20, marginRight: 12,
+                    backgroundColor: '#ffd1da', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <Text style={{ fontSize: 15, fontWeight: '700', color: '#8a0030' }}>
                       {guest.full_name ? guest.full_name.charAt(0).toUpperCase() : '?'}
                     </Text>
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-base font-semibold text-foreground" numberOfLines={1}>{guest.full_name}</Text>
-                    <View className="flex-row items-center gap-1.5 mt-0.5">
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14, fontWeight: '600', color: '#222222' }} numberOfLines={1}>{guest.full_name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
                       {guest.room_number ? (
-                        <View className="bg-foreground/10 px-1.5 py-0.5 rounded">
-                          <Text className="text-[11px] font-bold text-foreground">Room {guest.room_number}</Text>
+                        <View style={{ backgroundColor: '#f2f2f2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                          <Text style={{ fontSize: 11, fontWeight: '700', color: '#222222' }}>Room {guest.room_number}</Text>
                         </View>
                       ) : null}
-                      <Text className="text-xs text-gray-500" numberOfLines={1}>ID: {guest.id_number || 'N/A'}</Text>
+                      <Text style={{ fontSize: 12.5, color: '#6a6a6a' }} numberOfLines={1}>ID: {guest.id_number || 'N/A'}</Text>
                     </View>
                   </View>
                 </View>
 
-                <View className="items-end gap-1">
-                  <View className="bg-emerald-100 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border border-emerald-200 dark:border-emerald-800/40">
-                    <Text className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400">Verified</Text>
+                {/* Verified badge + chevron */}
+                <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                  <View style={{ backgroundColor: '#e5f6e6', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 9999 }}>
+                    <Text style={{ fontSize: 10.5, fontWeight: '700', color: '#008a05' }}>Verified</Text>
                   </View>
-                  <Text className="text-[10px] text-primary font-semibold">Tap to view ID Card →</Text>
+                  <Text style={{ fontSize: 11, color: '#6a6a6a' }}>View →</Text>
                 </View>
               </TouchableOpacity>
             ))
           )}
-        </GlassCard>
-
+        </View>
       </ScrollView>
 
-      {/* Guest Details Modal */}
+      {/* ── Guest Details Bottom Sheet ── */}
       <Modal
         animationType="slide"
         transparent={true}
         visible={!!selectedGuest}
         onRequestClose={() => setSelectedGuest(null)}
       >
-        <TouchableOpacity 
-          activeOpacity={1} 
+        <TouchableOpacity
+          activeOpacity={1}
           onPress={() => setSelectedGuest(null)}
-          className="flex-1 bg-black/50 justify-end"
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
         >
-          <TouchableOpacity 
+          <TouchableOpacity
             activeOpacity={1}
             onPress={(e) => e.stopPropagation?.()}
-            className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6 max-h-[85%]"
+            style={{ backgroundColor: '#ffffff', borderRadius: 24, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, maxHeight: '88%' }}
           >
+            {/* Handle bar */}
+            <View style={{ width: 36, height: 4, borderRadius: 9999, backgroundColor: '#dddddd', alignSelf: 'center', marginTop: 10, marginBottom: 6 }} />
+
             {selectedGuest && (
-              <View>
-                <View className="flex-row justify-between items-center mb-6">
-                  <View className="flex-row items-center gap-3">
-                    <View className="w-12 h-12 rounded-full bg-primary/10 items-center justify-center">
-                      <User size={24} color="#000000" />
+              <View style={{ flex: 0 }}>
+                {/* Sheet header */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 14, borderBottomWidth: 1, borderBottomColor: '#ebebeb' }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#ffd1da', alignItems: 'center', justifyContent: 'center' }}>
+                      <Text style={{ fontSize: 16, fontWeight: '700', color: '#8a0030' }}>
+                        {selectedGuest.full_name ? selectedGuest.full_name.charAt(0).toUpperCase() : '?'}
+                      </Text>
                     </View>
                     <View>
-                      <Text className="text-xl font-bold text-foreground">{selectedGuest.full_name}</Text>
-                      <Text className="text-xs text-emerald-600 font-semibold">Verified Registration</Text>
+                      <Text style={{ fontSize: 18, fontWeight: '700', color: '#222222' }}>{selectedGuest.full_name}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '600', color: '#008a05' }}>Verified Registration</Text>
                     </View>
                   </View>
-                  <TouchableOpacity onPress={() => setSelectedGuest(null)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
-                    <X size={20} color="#9CA3AF" />
+                  <TouchableOpacity
+                    onPress={() => setSelectedGuest(null)}
+                    style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#f2f2f2', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <X size={18} color="#6a6a6a" />
                   </TouchableOpacity>
                 </View>
 
-                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-                  
-                  {/* GUEST SELFIE PHOTO (IF AVAILABLE) */}
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20, paddingBottom: 32 }}>
+                  {/* Selfie */}
                   {selectedGuest.selfie_uri ? (
-                    <View className="mb-4">
-                      <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
-                        Guest Selfie Photo
-                      </Text>
-                      <View className="bg-sky-50 dark:bg-sky-950/30 p-3 rounded-2xl border border-sky-100 dark:border-sky-800/40">
-                        <View className="bg-primary/20 px-2.5 py-1 rounded-md self-start mb-2">
-                          <Text className="text-xs font-bold text-primary">Self Check-in Selfie</Text>
-                        </View>
-                        <Image 
-                          source={{ uri: selectedGuest.selfie_uri }} 
-                          style={{ width: '100%', height: 180, borderRadius: 12 }}
-                          resizeMode="cover"
-                        />
-                      </View>
+                    <View style={{ marginBottom: 16 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#6a6a6a', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>Guest Selfie</Text>
+                      <Image source={{ uri: selectedGuest.selfie_uri }} style={{ width: '100%', height: 180, borderRadius: 12 }} resizeMode="cover" />
                     </View>
                   ) : null}
 
-                  {/* ID CARD PHOTOS (FRONT & BACK) */}
+                  {/* ID Photos */}
                   {(selectedGuest.photo_uri || selectedGuest.back_photo_uri) ? (
-                    <View className="mb-4">
-                      <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">
-                        ID Card Photos ({selectedGuest.photo_uri && selectedGuest.back_photo_uri ? 'Front & Back' : 'Scanned ID'})
+                    <View style={{ marginBottom: 16 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: '#6a6a6a', textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 8 }}>
+                        ID Card Photos
                       </Text>
-                      <View className="gap-3">
+                      <View style={{ gap: 10 }}>
                         {selectedGuest.photo_uri ? (
-                          <View className="bg-gray-50 dark:bg-gray-800/40 p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
-                            <View className="bg-gray-200 dark:bg-gray-700 px-2.5 py-1 rounded-md self-start mb-2">
-                              <Text className="text-xs font-bold text-foreground">Front Side ID</Text>
-                            </View>
-                            <Image 
-                              source={{ uri: selectedGuest.photo_uri }} 
-                              style={{ width: '100%', height: 160, borderRadius: 12 }}
-                              resizeMode="cover"
-                            />
+                          <View style={{ backgroundColor: '#f7f7f7', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: '#ebebeb' }}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#6a6a6a', marginBottom: 6 }}>Front Side</Text>
+                            <Image source={{ uri: selectedGuest.photo_uri }} style={{ width: '100%', height: 160, borderRadius: 8 }} resizeMode="cover" />
                           </View>
                         ) : null}
-
                         {selectedGuest.back_photo_uri ? (
-                          <View className="bg-gray-50 dark:bg-gray-800/40 p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
-                            <View className="bg-gray-200 dark:bg-gray-700 px-2.5 py-1 rounded-md self-start mb-2">
-                              <Text className="text-xs font-bold text-foreground">Back Side ID</Text>
-                            </View>
-                            <Image 
-                              source={{ uri: selectedGuest.back_photo_uri }} 
-                              style={{ width: '100%', height: 160, borderRadius: 12 }}
-                              resizeMode="cover"
-                            />
+                          <View style={{ backgroundColor: '#f7f7f7', borderRadius: 12, padding: 10, borderWidth: 1, borderColor: '#ebebeb' }}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#6a6a6a', marginBottom: 6 }}>Back Side</Text>
+                            <Image source={{ uri: selectedGuest.back_photo_uri }} style={{ width: '100%', height: 160, borderRadius: 8 }} resizeMode="cover" />
                           </View>
                         ) : null}
                       </View>
                     </View>
                   ) : null}
 
-                  <View className="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl mb-4 border border-gray-100 dark:border-gray-800 space-y-3">
-                    
-                    {selectedGuest.room_number && (
-                      <View className="flex-row items-center gap-3">
-                        <DoorOpen size={18} color="#6B7280" />
-                        <View>
-                          <Text className="text-xs text-gray-400 font-medium">Assigned Room</Text>
-                          <Text className="text-sm font-bold text-foreground">Room {selectedGuest.room_number} ({selectedGuest.room_type || 'Standard'})</Text>
+                  {/* Guest info rows */}
+                  <View style={{ backgroundColor: '#f7f7f7', borderRadius: 14, borderWidth: 1, borderColor: '#ebebeb', overflow: 'hidden' }}>
+                    {[
+                      { label: 'Assigned Room', value: selectedGuest.room_number ? `Room ${selectedGuest.room_number} (${selectedGuest.room_type || 'Standard'})` : null, icon: <DoorOpen size={16} color="#6a6a6a" /> },
+                      { label: `Document (${selectedGuest.id_type || 'ID'})`, value: selectedGuest.id_number || 'N/A', icon: <IdCard size={16} color="#6a6a6a" /> },
+                      { label: 'Phone', value: selectedGuest.phone || 'N/A', icon: <Phone size={16} color="#6a6a6a" /> },
+                      { label: 'Email', value: selectedGuest.email || 'N/A', icon: <Mail size={16} color="#6a6a6a" /> },
+                      { label: 'Nationality / Gender', value: `${selectedGuest.nationality || 'Indian'} • ${selectedGuest.gender || 'N/A'}`, icon: <Globe size={16} color="#6a6a6a" /> },
+                      { label: 'Address', value: [selectedGuest.address, selectedGuest.city, selectedGuest.state, selectedGuest.pin_code].filter(Boolean).join(', ') || 'N/A', icon: <MapPin size={16} color="#6a6a6a" /> },
+                      { label: 'Checked In', value: selectedGuest.created_at ? new Date(selectedGuest.created_at).toLocaleString() : 'Recent', icon: <Calendar size={16} color="#6a6a6a" /> },
+                    ].filter(r => r.value).map((row, i, arr) => (
+                      <View
+                        key={row.label}
+                        style={{ flexDirection: 'row', alignItems: 'flex-start', paddingHorizontal: 14, paddingVertical: 12, gap: 10, borderBottomWidth: i < arr.length - 1 ? 1 : 0, borderBottomColor: '#ebebeb' }}
+                      >
+                        {row.icon}
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 11, color: '#929292', fontWeight: '500', marginBottom: 2 }}>{row.label}</Text>
+                          <Text style={{ fontSize: 13.5, color: '#222222', fontWeight: '500' }}>{row.value}</Text>
                         </View>
                       </View>
-                    )}
-
-                    <View className="flex-row items-center gap-3">
-                      <IdCard size={18} color="#6B7280" />
-                      <View>
-                        <Text className="text-xs text-gray-400 font-medium">Document ID ({selectedGuest.id_type || 'ID'})</Text>
-                        <Text className="text-sm font-semibold text-foreground">{selectedGuest.id_number || 'N/A'}</Text>
-                      </View>
-                    </View>
-
-                    <View className="flex-row items-center gap-3">
-                      <Phone size={18} color="#6B7280" />
-                      <View>
-                        <Text className="text-xs text-gray-400 font-medium">Phone</Text>
-                        <Text className="text-sm font-semibold text-foreground">{selectedGuest.phone || 'N/A'}</Text>
-                      </View>
-                    </View>
-
-                    <View className="flex-row items-center gap-3">
-                      <Mail size={18} color="#6B7280" />
-                      <View>
-                        <Text className="text-xs text-gray-400 font-medium">Email</Text>
-                        <Text className="text-sm font-semibold text-foreground">{selectedGuest.email || 'N/A'}</Text>
-                      </View>
-                    </View>
-
-                    <View className="flex-row items-center gap-3">
-                      <Globe size={18} color="#6B7280" />
-                      <View>
-                        <Text className="text-xs text-gray-400 font-medium">Nationality / Gender</Text>
-                        <Text className="text-sm font-semibold text-foreground">{selectedGuest.nationality || 'Indian'} • {selectedGuest.gender || 'N/A'}</Text>
-                      </View>
-                    </View>
-
-                    <View className="flex-row items-center gap-3">
-                      <MapPin size={18} color="#6B7280" />
-                      <View className="flex-1">
-                        <Text className="text-xs text-gray-400 font-medium">Address</Text>
-                        <Text className="text-sm font-semibold text-foreground">
-                          {[selectedGuest.address, selectedGuest.city, selectedGuest.state, selectedGuest.country, selectedGuest.pin_code].filter(Boolean).join(', ') || 'N/A'}
-                        </Text>
-                      </View>
-                    </View>
-
-                    <View className="flex-row items-center gap-3">
-                      <Calendar size={18} color="#6B7280" />
-                      <View>
-                        <Text className="text-xs text-gray-400 font-medium">Registration Time</Text>
-                        <Text className="text-sm font-semibold text-foreground">
-                          {selectedGuest.created_at ? new Date(selectedGuest.created_at).toLocaleString() : 'Recent'}
-                        </Text>
-                      </View>
-                    </View>
-
+                    ))}
                   </View>
                 </ScrollView>
               </View>
@@ -478,28 +453,30 @@ export default function DashboardScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* MANUAL IMPORT MODAL */}
+      {/* ── Manual Import Modal ── */}
       <Modal visible={isImportModalVisible} transparent animationType="slide">
-        <TouchableOpacity 
-          activeOpacity={1} 
+        <TouchableOpacity
+          activeOpacity={1}
           onPress={() => setIsImportModalVisible(false)}
-          className="flex-1 bg-black/60 justify-end"
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}
         >
-          <TouchableOpacity activeOpacity={1} className="bg-background rounded-t-3xl p-6 border-t border-gray-200 dark:border-gray-800">
-            <View className="flex-row justify-between items-center mb-4">
-              <View className="flex-row items-center gap-2">
-                <LogIn size={20} color="#000000" className="dark:text-white" />
-                <Text className="text-lg font-bold text-foreground">Import Web Self Check-in</Text>
-              </View>
-              <TouchableOpacity onPress={() => setIsImportModalVisible(false)} className="p-1 rounded-full bg-gray-100 dark:bg-gray-800">
-                <X size={20} color="#6B7280" />
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{ backgroundColor: '#ffffff', borderRadius: 24, borderBottomLeftRadius: 0, borderBottomRightRadius: 0, padding: 24 }}
+          >
+            <View style={{ width: 36, height: 4, borderRadius: 9999, backgroundColor: '#dddddd', alignSelf: 'center', marginBottom: 16 }} />
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#222222' }}>Import Check-in</Text>
+              <TouchableOpacity
+                onPress={() => setIsImportModalVisible(false)}
+                style={{ width: 34, height: 34, borderRadius: 17, backgroundColor: '#f2f2f2', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <X size={18} color="#6a6a6a" />
               </TouchableOpacity>
             </View>
-
-            <Text className="text-xs text-gray-500 mb-3">
-              Paste the check-in text or code received on WhatsApp from the guest to import their details directly into your database.
+            <Text style={{ fontSize: 13.5, color: '#6a6a6a', marginBottom: 14 }}>
+              Paste the check-in text or code received on WhatsApp from the guest.
             </Text>
-
             <Input
               label="Paste Check-in Code / WhatsApp Message *"
               placeholder="Paste WhatsApp message or #GUEST_IMPORT_DATA...# code here"
@@ -507,30 +484,26 @@ export default function DashboardScreen() {
               onChangeText={setImportText}
               multiline
               numberOfLines={5}
-              style={{ minHeight: 110, textAlignVertical: 'top' }}
+              style={{ minHeight: 110, textAlignVertical: 'top' } as any}
             />
-
-            <View className="flex-row gap-3 mt-4">
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 8 }}>
               <TouchableOpacity
                 onPress={() => setIsImportModalVisible(false)}
-                className="flex-1 py-3.5 rounded-xl border border-gray-300 dark:border-gray-700 items-center justify-center"
+                style={{ flex: 1, height: 48, borderRadius: 8, borderWidth: 1, borderColor: '#dddddd', alignItems: 'center', justifyContent: 'center' }}
               >
-                <Text className="font-bold text-foreground">Cancel</Text>
+                <Text style={{ fontSize: 15, fontWeight: '500', color: '#222222' }}>Cancel</Text>
               </TouchableOpacity>
-              
               <TouchableOpacity
                 disabled={isImporting}
                 onPress={handleExecuteImport}
-                className="flex-1 py-3.5 rounded-xl bg-black dark:bg-white items-center justify-center flex-row gap-1.5"
+                style={{ flex: 1, height: 48, borderRadius: 8, backgroundColor: '#ff385c', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 8, opacity: isImporting ? 0.5 : 1 }}
               >
                 {isImporting ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
+                  <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
                   <>
-                    <Download size={16} color="#FFFFFF" />
-                    <Text className="font-bold text-white dark:text-black">
-                      Save to App
-                    </Text>
+                    <Download size={16} color="#ffffff" />
+                    <Text style={{ fontSize: 15, fontWeight: '500', color: '#ffffff' }}>Save to App</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -541,3 +514,4 @@ export default function DashboardScreen() {
     </SafeAreaView>
   );
 }
+
