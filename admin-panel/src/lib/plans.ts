@@ -37,7 +37,7 @@ export const SERVER_PLANS: Record<SubscriptionPlan, ServerPlanPricing> = {
   },
   STARTER: {
     name: 'Starter',
-    monthlyPrice: 299,
+    monthlyPrice: 5,
     yearlyPrice: 2999,
   },
   PROFESSIONAL: {

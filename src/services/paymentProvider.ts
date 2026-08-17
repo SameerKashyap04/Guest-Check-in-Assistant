@@ -161,7 +161,7 @@ export class DevifyPaymentProvider implements PaymentProvider {
         ? (billingCycle === 'yearly' ? 1999000 : 199900) 
         : plan === 'PROFESSIONAL' 
         ? (billingCycle === 'yearly' ? 799000 : 79900) 
-        : (billingCycle === 'yearly' ? 499000 : 49900);
+        : (billingCycle === 'yearly' ? 299900 : 500);
       const planName = plan === 'ENTERPRISE' ? 'Enterprise' : plan === 'PROFESSIONAL' ? 'Professional' : 'Starter';
       const idempotencyKey = `direct_${userId}_${plan}_${billingCycle}_${Date.now()}`;
 

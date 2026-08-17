@@ -154,7 +154,7 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
     name: 'Starter',
     description: 'For small homestays with unlimited check-ins',
     pricing: {
-      monthlyPrice: 299,
+      monthlyPrice: 5,
       yearlyPrice: 2999,
       currency: 'INR',
       yearlySavings: 299 * 12 - 2999,  // ₹589
