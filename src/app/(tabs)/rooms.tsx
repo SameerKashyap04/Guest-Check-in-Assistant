@@ -4,7 +4,7 @@ import {
   Modal, StyleSheet, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import {
   List, Grid, X,
 } from 'lucide-react-native';

@@ -4,13 +4,12 @@ import {
   Modal, StyleSheet, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import {
   Search, Bell, Check, ChevronRight, Mail,
-  Shield, MapPin, Phone, User, X, Plus,
+  Shield, MapPin, Phone, User, X,
   ScanLine,
 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';

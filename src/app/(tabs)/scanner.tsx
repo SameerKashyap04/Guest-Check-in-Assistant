@@ -4,7 +4,6 @@ import {
   StyleSheet, Alert, Modal, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import {
@@ -12,7 +11,7 @@ import {
   Zap, ZapOff, SwitchCamera, Image as ImageIcon, Check,
   ChevronRight, Wifi, X,
 } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
 import { useSettingsStore } from '@/store/useSettingsStore';
