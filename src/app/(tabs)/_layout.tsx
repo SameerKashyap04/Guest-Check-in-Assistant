@@ -1,27 +1,22 @@
 import React from 'react';
 import { Tabs, Redirect } from 'expo-router';
 import { Home, BedDouble, Settings, ScanLine } from 'lucide-react-native';
-import { Platform, View } from 'react-native';
+import { useColorScheme } from 'nativewind';
+import { BlurView } from 'expo-blur';
+import { Platform, View, StyleSheet } from 'react-native';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTranslation } from 'react-i18next';
+import { AIRBNB } from '@/theme/airbnb';
 
-// Airbnb single shadow tier
-const TAB_BAR_SHADOW = Platform.select({
-  ios: {
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.10,
-    shadowRadius: 8,
-  },
-  android: {
-    elevation: 8,
-  },
-  default: {},
-});
+// ─── Airbnb Floating Tab Bar for StayMate ─────────────────────────────────────
+// Exact 1:1 port of .tabbar & .tab-fab from staymate-airbnb-redesign/app.html
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function TabLayout() {
   const { isUnlocked } = useAuthStore();
+  const { colorScheme } = useColorScheme();
   const { t } = useTranslation();
+  const isDark = colorScheme === 'dark';
 
   if (!isUnlocked) {
     return <Redirect href="/auth" />;
@@ -31,19 +26,20 @@ export default function TabLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        // Rausch red for active tab
-        tabBarActiveTintColor: '#222222',
-        tabBarInactiveTintColor: '#929292',
+        tabBarActiveTintColor: AIRBNB.colors.ink,
+        tabBarInactiveTintColor: AIRBNB.colors.mutedSoft,
         tabBarShowLabel: true,
-        tabBarLabelStyle: {
-          fontSize: 10.5,
-          fontWeight: '700',
-          marginTop: 1,
-        },
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
           paddingVertical: 6,
+          flex: 1,
+        },
+        tabBarLabelStyle: {
+          fontSize: 10.5,
+          fontWeight: '600',
+          marginTop: 2,
+          letterSpacing: 0,
         },
         tabBarStyle: {
           position: 'absolute',
@@ -51,122 +47,88 @@ export default function TabLayout() {
           left: 16,
           right: 16,
           height: 68,
-          borderRadius: 9999,
+          borderRadius: AIRBNB.radius.full,
           borderTopWidth: 0,
           borderWidth: 1,
-          borderColor: '#ebebeb',
-          backgroundColor: 'rgba(255, 255, 255, 0.92)',
-          ...TAB_BAR_SHADOW,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : AIRBNB.colors.hairlineSoft,
+          backgroundColor: 'transparent',
+          ...AIRBNB.shadow.tabBar,
         },
         tabBarBackground: () => (
-          <View
-            style={{
-              position: 'absolute',
-              inset: 0,
-              borderRadius: 9999,
-              backgroundColor: 'rgba(255, 255, 255, 0.92)',
-              overflow: 'hidden',
-            }}
-          />
+          <View style={StyleSheet.absoluteFill} className="overflow-hidden rounded-full">
+            <BlurView
+              tint={isDark ? 'dark' : 'light'}
+              intensity={Platform.OS === 'ios' ? 88 : 95}
+              style={StyleSheet.absoluteFill}
+              className="bg-white/90 dark:bg-[#121214]/90"
+            />
+          </View>
         ),
       }}
     >
-      {/* Dashboard */}
       <Tabs.Screen
         name="index"
         options={{
           title: t('dashboard'),
-          tabBarIcon: ({ color, focused }) => (
-            <View style={{ alignItems: 'center', gap: 3 }}>
-              <Home color={focused ? '#222222' : '#929292'} size={22} strokeWidth={focused ? 2.5 : 2} />
-              {/* Rausch active dot */}
-              <View
-                style={{
-                  width: 4,
-                  height: 4,
-                  borderRadius: 2,
-                  backgroundColor: '#ff385c',
-                  opacity: focused ? 1 : 0,
-                }}
+          tabBarIcon: ({ focused }) => (
+            <View style={styles.tabItem}>
+              <Home
+                color={focused ? AIRBNB.colors.ink : AIRBNB.colors.mutedSoft}
+                size={22}
+                strokeWidth={2}
               />
+              <View style={[styles.activeDot, { opacity: focused ? 1 : 0 }]} />
             </View>
           ),
         }}
       />
-
-      {/* Rooms */}
+      <Tabs.Screen
+        name="scanner"
+        options={{
+          title: t('checkin'),
+          tabBarIcon: () => (
+            <View style={styles.fabWrapper}>
+              <View style={styles.fab}>
+                <ScanLine color="#FFFFFF" size={24} strokeWidth={2.2} />
+              </View>
+            </View>
+          ),
+          tabBarLabelStyle: {
+            fontSize: 10.5,
+            fontWeight: '700',
+            color: AIRBNB.colors.primary,
+            marginTop: 2,
+          },
+        }}
+      />
       <Tabs.Screen
         name="rooms"
         options={{
           title: t('rooms'),
           tabBarIcon: ({ focused }) => (
-            <View style={{ alignItems: 'center', gap: 3 }}>
-              <BedDouble color={focused ? '#222222' : '#929292'} size={22} strokeWidth={focused ? 2.5 : 2} />
-              <View
-                style={{
-                  width: 4,
-                  height: 4,
-                  borderRadius: 2,
-                  backgroundColor: '#ff385c',
-                  opacity: focused ? 1 : 0,
-                }}
+            <View style={styles.tabItem}>
+              <BedDouble
+                color={focused ? AIRBNB.colors.ink : AIRBNB.colors.mutedSoft}
+                size={22}
+                strokeWidth={2}
               />
+              <View style={[styles.activeDot, { opacity: focused ? 1 : 0 }]} />
             </View>
           ),
         }}
       />
-
-      {/* Check-in FAB (centre) */}
-      <Tabs.Screen
-        name="scanner"
-        options={{
-          title: t('checkin'),
-          tabBarLabel: () => null,
-          tabBarIcon: () => (
-            <View
-              style={{
-                width: 56,
-                height: 56,
-                borderRadius: 28,
-                // Rausch gradient simulated via background
-                backgroundColor: '#ff385c',
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginBottom: 30, // lifts FAB above tab bar
-                // Glow shadow
-                shadowColor: '#ff385c',
-                shadowOffset: { width: 0, height: 10 },
-                shadowOpacity: 0.55,
-                shadowRadius: 16,
-                elevation: 14,
-                // White ring
-                borderWidth: 5,
-                borderColor: '#ffffff',
-              }}
-            >
-              <ScanLine color="#ffffff" size={22} strokeWidth={2.2} />
-            </View>
-          ),
-        }}
-      />
-
-      {/* Settings */}
       <Tabs.Screen
         name="settings"
         options={{
           title: t('settings'),
           tabBarIcon: ({ focused }) => (
-            <View style={{ alignItems: 'center', gap: 3 }}>
-              <Settings color={focused ? '#222222' : '#929292'} size={22} strokeWidth={focused ? 2.5 : 2} />
-              <View
-                style={{
-                  width: 4,
-                  height: 4,
-                  borderRadius: 2,
-                  backgroundColor: '#ff385c',
-                  opacity: focused ? 1 : 0,
-                }}
+            <View style={styles.tabItem}>
+              <Settings
+                color={focused ? AIRBNB.colors.ink : AIRBNB.colors.mutedSoft}
+                size={22}
+                strokeWidth={2}
               />
+              <View style={[styles.activeDot, { opacity: focused ? 1 : 0 }]} />
             </View>
           ),
         }}
@@ -175,4 +137,33 @@ export default function TabLayout() {
   );
 }
 
-
+const styles = StyleSheet.create({
+  tabItem: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 28,
+  },
+  activeDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: AIRBNB.colors.primary,
+    marginTop: 2,
+  },
+  fabWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -30,
+  },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: AIRBNB.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 6,
+    borderColor: '#ffffff',
+    ...AIRBNB.shadow.fab,
+  },
+});

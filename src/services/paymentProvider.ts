@@ -93,6 +93,7 @@ export interface OrderStatus {
 export class DevifyPaymentProvider implements PaymentProvider {
   readonly name = 'devify';
   private candidateUrls: string[];
+  private baseUrl: string;
 
   constructor() {
     const primary = DEVIFY_CONFIG.ADMIN_API_URL || 'https://admin-guest-check-in-assistant.vercel.app';

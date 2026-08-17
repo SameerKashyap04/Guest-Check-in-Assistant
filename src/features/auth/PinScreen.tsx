@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Vibration, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, Vibration, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as LocalAuthentication from 'expo-local-authentication';
 import { PinPad } from '@/components/PinPad';
 import { useAuthStore } from '@/store/useAuthStore';
-import { ShieldAlert, ShieldCheck, LogOut } from 'lucide-react-native';
+import { Lock, LogOut } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
+import { AIRBNB } from '@/theme/airbnb';
+
+// ─── Airbnb PinScreen for StayMate ───────────────────────────────────────────
+// Direct port of renderPin() from staymate-airbnb-redesign/app.html
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface PinScreenProps {
   onSuccess?: () => void;
@@ -69,8 +74,8 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
                 router.replace('/auth');
               } catch (e) {}
             }
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -78,7 +83,7 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
   const handleBiometric = async () => {
     try {
       const result = await LocalAuthentication.authenticateAsync({
-        promptMessage: 'Authenticate to unlock',
+        promptMessage: 'Authenticate to unlock StayMate',
         fallbackLabel: 'Use PIN',
       });
       if (result.success) {
@@ -130,40 +135,45 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background justify-center items-center px-6">
-      <View className="bg-primary/5 dark:bg-primary/10 rounded-3xl p-8 mb-8 items-center">
-        {step === 'enter' ? (
-          <ShieldCheck size={64} color="#38BDF8" className="mb-6" />
-        ) : (
-          <ShieldAlert size={64} color="#38BDF8" className="mb-6" />
-        )}
-        <Text className="text-2xl font-bold text-foreground mb-2 text-center">
-          {step === 'enter' ? t('enterPin') : step === 'setup' ? t('setupPin') : t('confirmPin')}
-        </Text>
-        <Text className="text-sm text-gray-500 text-center px-4">
-          {step === 'enter'
-            ? t('enterPinDesc')
-            : t('setupPinDesc')}
-        </Text>
+    <SafeAreaView style={styles.screen}>
+      {/* Icon Well */}
+      <View style={styles.iconWell}>
+        <Lock size={28} color="#ffffff" />
       </View>
 
-      <View className="flex-row gap-4 mb-12">
-        {[0, 1, 2, 3].map((i) => (
+      {/* Headline & Subtitle */}
+      <Text style={styles.title}>
+        {step === 'enter' ? 'Welcome back' : step === 'setup' ? 'Set your PIN' : 'Confirm your PIN'}
+      </Text>
+      <Text style={styles.subtitle}>
+        {step === 'enter'
+          ? 'Enter your 4-digit PIN to unlock StayMate'
+          : step === 'setup'
+          ? 'Choose a 4-digit PIN to secure the app'
+          : 'Re-enter your 4-digit PIN'}
+      </Text>
+
+      {/* 4 PIN Dots */}
+      <View style={styles.dotsRow}>
+        {[0, 1, 2, 3].map(i => (
           <View
             key={i}
-            className={`w-4 h-4 rounded-full ${
-              pin.length > i ? 'bg-primary' : 'bg-gray-200/50 dark:bg-gray-700/40'
-            }`}
+            style={[
+              styles.pinDot,
+              pin.length > i && styles.pinDotFilled,
+            ]}
           />
         ))}
       </View>
 
+      {/* Error Message */}
       {error ? (
-        <Text className="text-red-500 mb-6 font-medium">{error}</Text>
+        <Text style={styles.errorText}>{error}</Text>
       ) : (
-        <View className="h-6 mb-6" />
+        <View style={{ height: 24, marginBottom: 14 }} />
       )}
 
+      {/* Keypad */}
       <PinPad
         onKeyPress={handleKeyPress}
         onDelete={handleDelete}
@@ -171,14 +181,87 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
         showBiometric={isBiometricSupported && step === 'enter'}
       />
 
+      {/* Logout Link */}
       <TouchableOpacity
         onPress={handleLogout}
         activeOpacity={0.7}
-        className="mt-6 py-2 px-4 rounded-full bg-gray-100 dark:bg-gray-800 flex-row items-center gap-1.5"
+        style={styles.logoutBtn}
       >
-        <LogOut size={14} color="#EF4444" />
-        <Text className="text-xs font-bold text-red-500">{t('logoutSwitchAccount')}</Text>
+        <LogOut size={14} color={AIRBNB.colors.muted} />
+        <Text style={styles.logoutText}>{t('logoutSwitchAccount')}</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: AIRBNB.colors.canvas,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+  },
+  iconWell: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    backgroundColor: AIRBNB.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 22,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: '600',
+    color: AIRBNB.colors.ink,
+    textAlign: 'center',
+    letterSpacing: -0.4,
+  },
+  subtitle: {
+    fontSize: 13.5,
+    color: AIRBNB.colors.muted,
+    textAlign: 'center',
+    marginTop: 6,
+    paddingHorizontal: 16,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    gap: 14,
+    marginTop: 28,
+    marginBottom: 14,
+  },
+  pinDot: {
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    borderWidth: 1.5,
+    borderColor: AIRBNB.colors.ink,
+    backgroundColor: 'transparent',
+  },
+  pinDotFilled: {
+    backgroundColor: AIRBNB.colors.ink,
+  },
+  errorText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: AIRBNB.colors.rose,
+    marginBottom: 14,
+    textAlign: 'center',
+  },
+  logoutBtn: {
+    marginTop: 24,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: AIRBNB.radius.full,
+    backgroundColor: AIRBNB.colors.surfaceSoft,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  logoutText: {
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: AIRBNB.colors.muted,
+  },
+});

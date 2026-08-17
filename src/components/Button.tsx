@@ -1,90 +1,53 @@
 import React, { forwardRef } from 'react';
-import { Text, TouchableOpacity, TouchableOpacityProps, ActivityIndicator, View } from 'react-native';
-import { clsx, type ClassValue } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { Text, TouchableOpacity, TouchableOpacityProps, ActivityIndicator, View, StyleSheet } from 'react-native';
+import { AIRBNB } from '@/theme/airbnb';
 
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+// ─── Airbnb Button System for StayMate ───────────────────────────────────────
+// Direct 1:1 port of .btn variants from staymate-airbnb-redesign/app.html
+// ─────────────────────────────────────────────────────────────────────────────
 
-interface ButtonProps extends TouchableOpacityProps {
+export interface ButtonProps extends TouchableOpacityProps {
   label: string;
-  /**
-   * primary  – Rausch #ff385c fill, white text, 8px radius
-   * secondary – white canvas, ink border + text, 8px radius
-   * soft     – surface-strong #f2f2f2 fill, ink text
-   * pill     – Rausch fill, full pill radius, compact
-   * ghost    – transparent, ink text
-   * danger   – rose red fill, white text
-   */
-  variant?: 'primary' | 'secondary' | 'soft' | 'pill' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'soft' | 'outline' | 'ghost' | 'danger';
   size?: 'sm' | 'md' | 'lg';
   isLoading?: boolean;
   icon?: React.ReactNode;
 }
 
 const Button = forwardRef<React.ElementRef<typeof TouchableOpacity>, ButtonProps>(
-  ({ label, variant = 'primary', size = 'md', isLoading, icon, className, disabled, style, ...props }, ref) => {
-
-    const containerVariants: Record<string, string> = {
-      primary:   'bg-[#ff385c] rounded-[8px]',
-      secondary: 'bg-white rounded-[8px] border border-[#222222]',
-      soft:      'bg-[#f2f2f2] rounded-[8px]',
-      pill:      'bg-[#ff385c] rounded-full',
-      ghost:     'bg-transparent rounded-[8px]',
-      danger:    'bg-[#c13515] rounded-[8px]',
-    };
-
-    const textVariants: Record<string, string> = {
-      primary:   'text-white',
-      secondary: 'text-[#222222]',
-      soft:      'text-[#222222]',
-      pill:      'text-white',
-      ghost:     'text-[#222222]',
-      danger:    'text-white',
-    };
-
-    const heights: Record<string, string> = {
-      sm: 'h-9',
-      md: 'h-12',
-      lg: 'h-[50px]',
-    };
-
-    const textSizes: Record<string, string> = {
-      sm: 'text-sm',
-      md: 'text-base',
-      lg: 'text-base',
-    };
-
+  ({ label, variant = 'primary', size = 'md', isLoading, icon, style, disabled, ...props }, ref) => {
     const isDisabled = disabled || isLoading;
-    const loaderColor = (variant === 'secondary' || variant === 'soft' || variant === 'ghost') ? '#222222' : '#FFFFFF';
 
     return (
       <TouchableOpacity
         ref={ref}
         disabled={isDisabled}
         activeOpacity={0.8}
-        className={cn(
-          'flex-row items-center justify-center gap-2 px-6',
-          containerVariants[variant],
-          heights[size],
-          isDisabled && 'opacity-50',
-          className
-        )}
+        style={[
+          styles.base,
+          styles[variant],
+          size === 'sm' && styles.sizeSm,
+          size === 'lg' && styles.sizeLg,
+          isDisabled && styles.disabled,
+          style,
+        ]}
         {...props}
       >
         {isLoading ? (
-          <ActivityIndicator color={loaderColor} size="small" />
+          <ActivityIndicator
+            color={variant === 'primary' ? '#ffffff' : variant === 'danger' ? AIRBNB.colors.rose : AIRBNB.colors.ink}
+            style={{ marginRight: 8 }}
+          />
         ) : icon ? (
-          icon
+          <View style={{ marginRight: 8 }}>{icon}</View>
         ) : null}
         <Text
-          className={cn(
-            'font-[500]',
-            textVariants[variant],
-            textSizes[size]
-          )}
-          style={{ fontWeight: '500' }}
+          style={[
+            styles.label,
+            styles[`${variant}Label` as keyof typeof styles],
+            size === 'sm' && styles.labelSm,
+            size === 'lg' && styles.labelLg,
+          ]}
         >
           {label}
         </Text>
@@ -93,7 +56,92 @@ const Button = forwardRef<React.ElementRef<typeof TouchableOpacity>, ButtonProps
   }
 );
 
+const styles = StyleSheet.create({
+  base: {
+    height: 50,
+    borderRadius: AIRBNB.radius.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    width: '100%',
+  },
+  sizeSm: {
+    height: 36,
+    paddingHorizontal: 16,
+    borderRadius: AIRBNB.radius.full,
+    width: 'auto',
+  },
+  sizeLg: {
+    height: 56,
+    paddingHorizontal: 28,
+  },
+  disabled: {
+    opacity: 0.45,
+  },
+
+  // ── Variants ──
+  primary: {
+    backgroundColor: AIRBNB.colors.primary,
+  },
+  secondary: {
+    backgroundColor: AIRBNB.colors.canvas,
+    borderWidth: 1,
+    borderColor: AIRBNB.colors.ink,
+  },
+  soft: {
+    backgroundColor: AIRBNB.colors.surfaceStrong,
+  },
+  outline: {
+    backgroundColor: AIRBNB.colors.canvas,
+    borderWidth: 1,
+    borderColor: AIRBNB.colors.hairline,
+  },
+  ghost: {
+    backgroundColor: 'transparent',
+    height: 'auto',
+    width: 'auto',
+    paddingHorizontal: 0,
+  },
+  danger: {
+    backgroundColor: AIRBNB.colors.canvas,
+    borderWidth: 1,
+    borderColor: AIRBNB.colors.rose,
+  },
+
+  // ── Text Labels ──
+  label: {
+    fontSize: 15,
+    fontWeight: '600',
+    letterSpacing: 0,
+  },
+  labelSm: {
+    fontSize: 13.5,
+  },
+  labelLg: {
+    fontSize: 16,
+  },
+  primaryLabel: {
+    color: '#ffffff',
+  },
+  secondaryLabel: {
+    color: AIRBNB.colors.ink,
+  },
+  softLabel: {
+    color: AIRBNB.colors.ink,
+  },
+  outlineLabel: {
+    color: AIRBNB.colors.ink,
+  },
+  ghostLabel: {
+    color: AIRBNB.colors.ink,
+  },
+  dangerLabel: {
+    color: AIRBNB.colors.rose,
+  },
+});
+
 Button.displayName = 'Button';
 
 export { Button };
-
+export default Button;

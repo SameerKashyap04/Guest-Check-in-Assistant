@@ -202,3 +202,55 @@ export async function autoCheckoutExpiredStays(): Promise<number> {
     return 0;
   }
 }
+
+/**
+ * Get recent check-ins / stays for dashboard
+ */
+export async function getRecentStays(limit: number = 6, propertyId?: string): Promise<any[]> {
+  try {
+    const activePropertyId = propertyId || useSettingsStore.getState().propertyId || 'HS-DEFAULT';
+    const db = await openDatabase();
+    const result = await db.getAllAsync(
+      `SELECT s.*, g.full_name, g.id_number, g.id_type, g.phone, g.address, g.dob, g.gender, r.room_number, r.room_type
+       FROM stays s
+       JOIN guests g ON g.id = s.guest_id
+       LEFT JOIN rooms r ON r.id = s.room_id
+       WHERE g.property_id = ? OR g.property_id IS NULL OR g.property_id = ''
+       ORDER BY s.id DESC
+       LIMIT ?`,
+      [activePropertyId, limit]
+    );
+    return result as any[];
+  } catch (e) {
+    console.error('Failed to get recent stays', e);
+    return [];
+  }
+}
+
+export async function getGuestById(id: number): Promise<any | null> {
+  try {
+    const db = await openDatabase();
+    const result = await db.getFirstAsync(
+      `SELECT * FROM guests WHERE id = ?`,
+      [id]
+    );
+    return result || null;
+  } catch (e) {
+    console.error('Failed to get guest by ID', e);
+    return null;
+  }
+}
+
+export async function updateStay(stayId: number, data: Partial<{ status: string; check_out_date: string }>): Promise<void> {
+  try {
+    const db = await openDatabase();
+    if (data.status && data.check_out_date) {
+      await db.runAsync(`UPDATE stays SET status = ?, check_out_date = ? WHERE id = ?`, [data.status, data.check_out_date, stayId]);
+    } else if (data.status) {
+      await db.runAsync(`UPDATE stays SET status = ? WHERE id = ?`, [data.status, stayId]);
+    }
+  } catch (e) {
+    console.error('Failed to update stay', e);
+  }
+}
+
