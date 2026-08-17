@@ -148,11 +148,11 @@ export default function PaymentsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        alert(`Failed to write to .env.local: ${data.error}`);
+        alert(`Failed to save configuration: ${data.error || "Unknown error"}`);
         return;
       }
-    } catch (e) {
-      console.error("Failed to write to .env.local:", e);
+    } catch (e: any) {
+      console.error("Failed to save configuration:", e);
     }
 
     // 2. Also save to localStorage

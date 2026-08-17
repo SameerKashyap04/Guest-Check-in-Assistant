@@ -32,10 +32,11 @@ const DEVIFY_WEBHOOK_SECRET = process.env.DEVIFY_WEBHOOK_SECRET || '';
 function verifySignature(
   rawBody: string,
   timestamp: string,
-  signature: string
+  signature: string,
+  secret: string
 ): boolean {
-  if (!DEVIFY_WEBHOOK_SECRET) {
-    console.error('[Webhook] DEVIFY_WEBHOOK_SECRET is not configured');
+  if (!secret) {
+    console.error('[Webhook] Webhook secret is not configured');
     return false;
   }
 
@@ -50,7 +51,7 @@ function verifySignature(
   };
 
   // 1. Direct HMAC-SHA256 signature
-  const expectedDirectSig = createHmac('sha256', DEVIFY_WEBHOOK_SECRET)
+  const expectedDirectSig = createHmac('sha256', secret)
     .update(rawBody)
     .digest('hex');
 
@@ -61,7 +62,7 @@ function verifySignature(
   // 2. Timestamped HMAC-SHA256 signature
   if (timestamp) {
     const timestampedPayload = `${timestamp}.${rawBody}`;
-    const expectedTimestampedSig = createHmac('sha256', DEVIFY_WEBHOOK_SECRET)
+    const expectedTimestampedSig = createHmac('sha256', secret)
       .update(timestampedPayload)
       .digest('hex');
     if (compare(expectedTimestampedSig, signature)) {
@@ -92,6 +93,20 @@ function isTimestampValid(timestamp: string): boolean {
 
 export async function POST(request: NextRequest) {
   try {
+    // 0. Resolve webhook secret (Firestore override -> process.env)
+    let webhookSecret = DEVIFY_WEBHOOK_SECRET;
+    try {
+      const devifyDocSnap = await getDoc(doc(db, 'system_config', 'devify_config'));
+      if (devifyDocSnap.exists()) {
+        const cfg = devifyDocSnap.data();
+        if (cfg?.webhookSecret && cfg.webhookSecret !== 'whsec_xxx') {
+          webhookSecret = cfg.webhookSecret;
+        }
+      }
+    } catch (err) {
+      console.warn('[Webhook] Firestore devify_config lookup notice:', err);
+    }
+
     // 1. Read raw body for signature verification
     const rawBody = await request.text();
 
@@ -119,7 +134,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 4. Verify HMAC-SHA256 signature
-    if (!verifySignature(rawBody, timestamp, signature)) {
+    if (!verifySignature(rawBody, timestamp, signature, webhookSecret)) {
       console.warn('[Webhook] Rejected: invalid signature');
       return NextResponse.json(
         { error: 'Invalid signature' },
