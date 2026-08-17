@@ -92,15 +92,20 @@ export interface OrderStatus {
  */
 export class DevifyPaymentProvider implements PaymentProvider {
   readonly name = 'devify';
-  private baseUrl: string;
+  private candidateUrls: string[];
 
   constructor() {
-    this.baseUrl = DEVIFY_CONFIG.ADMIN_API_URL;
+    const primary = DEVIFY_CONFIG.ADMIN_API_URL || 'https://admin-guest-check-in-assistant.vercel.app';
+    this.candidateUrls = Array.from(new Set([
+      primary,
+      'http://192.168.31.209:3000',
+    ]));
+    this.baseUrl = primary;
   }
 
   /**
-   * Creates a checkout session via the backend and returns the checkout URL.
-   * Does NOT open the URL — the caller (pricing screen) handles that.
+   * Creates a checkout session via the backend (with automatic DNS/network fallback)
+   * and returns the checkout URL.
    */
   async createCheckout(
     plan: SubscriptionPlan,
@@ -108,34 +113,104 @@ export class DevifyPaymentProvider implements PaymentProvider {
     userEmail: string,
     userId: string
   ): Promise<CheckoutResult> {
-    const res = await fetch(`${this.baseUrl}/api/checkout`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        planId: plan,
-        billingCycle,
-        userId,
-        userEmail,
-      }),
-    });
+    let lastError: any = null;
 
-    if (!res.ok) {
-      const errorData = await res.json().catch(() => ({ error: 'Network error' }));
-      throw new Error(errorData.error || `Checkout failed (${res.status})`);
+    // 1. Try candidate backend URLs first
+    for (const url of this.candidateUrls) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+        const res = await fetch(`${url}/api/checkout`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            planId: plan,
+            billingCycle,
+            userId,
+            userEmail,
+          }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.checkoutUrl && data.orderId) {
+            this.baseUrl = url; // Remember working endpoint
+            return {
+              checkoutUrl: data.checkoutUrl,
+              orderId: data.orderId,
+              paymentId: data.paymentId || null,
+              isSandbox: Boolean(data.isSandbox),
+            };
+          }
+        }
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`[PaymentProvider] Endpoint ${url} unreachable, trying next fallback:`, err?.message || err);
+      }
     }
 
-    const data = await res.json();
+    // 2. Direct fallback to Devify Pay API if backend DNS is blocked by carrier/ISP
+    try {
+      const devifyApiUrl = 'https://devifypay.site';
+      const devifyKey = process.env.EXPO_PUBLIC_DEVIFY_CLIENT_KEY || '';
+      if (!devifyKey) throw new Error('Client key not configured');
+      const amountPaise = plan === 'ENTERPRISE' 
+        ? (billingCycle === 'yearly' ? 1999000 : 199900) 
+        : plan === 'PROFESSIONAL' 
+        ? (billingCycle === 'yearly' ? 799000 : 79900) 
+        : (billingCycle === 'yearly' ? 499000 : 49900);
+      const planName = plan === 'ENTERPRISE' ? 'Enterprise' : plan === 'PROFESSIONAL' ? 'Professional' : 'Starter';
+      const idempotencyKey = `direct_${userId}_${plan}_${billingCycle}_${Date.now()}`;
 
-    if (!data.checkoutUrl || !data.orderId) {
-      throw new Error('Invalid checkout response from server');
+      const orderRes = await fetch(`${devifyApiUrl}/v1/orders`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${devifyKey}`,
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey,
+        },
+        body: JSON.stringify({
+          amount: amountPaise,
+          currency: 'INR',
+          description: `StayMate ${planName} Plan (${billingCycle})`,
+        }),
+      });
+
+      if (orderRes.ok) {
+        const orderData = await orderRes.json();
+        const orderId = orderData.id || orderData.order_id;
+
+        const paymentRes = await fetch(`${devifyApiUrl}/v1/payments`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${devifyKey}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': `${idempotencyKey}_pay`,
+          },
+          body: JSON.stringify({
+            order_id: orderId,
+            method: 'UPI',
+          }),
+        });
+
+        if (paymentRes.ok) {
+          const paymentData = await paymentRes.json();
+          const checkoutUrl = paymentData.checkout_url || `${devifyApiUrl}/pay/${paymentData.id}`;
+          return {
+            checkoutUrl,
+            orderId,
+            paymentId: paymentData.id || null,
+          };
+        }
+      }
+    } catch (directErr) {
+      console.error('[PaymentProvider] Direct gateway fallback failed:', directErr);
     }
 
-    return {
-      checkoutUrl: data.checkoutUrl,
-      orderId: data.orderId,
-      paymentId: data.paymentId || null,
-      isSandbox: Boolean(data.isSandbox),
-    };
+    throw new Error(lastError?.message || 'Unable to connect to payment server. Please check your internet connection.');
   }
 
   /**
