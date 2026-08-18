@@ -1,708 +1,861 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Modal, Alert, KeyboardAvoidingView, Platform, Linking } from 'react-native';
+import {
+  View, Text, ScrollView, TouchableOpacity,
+  Alert, Modal, StyleSheet,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GlassCard } from '@/components/GlassCard';
-import { useSettingsStore } from '@/store/useSettingsStore';
-import { useAuthStore } from '@/store/useAuthStore';
+import {
+  ChevronRight, Cloud, MapPin, Globe, Moon,
+  Lock, Clock, Fingerprint, LogOut, Check,
+  X,
+} from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import { useTranslation } from 'react-i18next';
+import { useColorScheme } from 'nativewind';
 import { Button } from '@/components/Button';
 import { Input } from '@/components/Input';
-import { Building2, LogOut, ChevronRight, X, Check, Lock, ShieldCheck, Globe, Moon, Link2, Cloud, HardDrive, Mail, KeyRound, Code2, ExternalLink, Heart } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-import { useColorScheme } from 'nativewind';
-import i18n from '@/i18n';
-import { useTranslation } from 'react-i18next';
-import { resetOwnerPassword, sendOwnerEmailVerification, changeOwnerEmail } from '@/services/firebaseAuth';
+import { AirbnbSwitch } from '@/components/AirbnbSwitch';
+import { useSettingsStore } from '@/store/useSettingsStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { useAuthStore } from '@/store/useAuthStore';
+import { getEffectivePlan, getTrialDaysRemaining } from '@/services/entitlementService';
 import { PLANS } from '@/config/plans';
-import { PlanBadge } from '@/components/subscription/PlanBadge';
-import { UsageDashboard } from '@/components/subscription/UsageDashboard';
-import { getTrialDaysRemaining } from '@/services/entitlementService';
-import { Crown } from 'lucide-react-native';
+import { SubscriptionPlan } from '@/types/subscription';
+import { AIRBNB } from '@/theme/airbnb';
 
-/** Subscription summary section for settings */
-function SubscriptionSection() {
-  const router = useRouter();
-  const { currentPlan, status, isTrialing } = useSubscriptionStore();
-  const planDef = PLANS[currentPlan];
-  const trialDays = getTrialDaysRemaining();
-
-  return (
-    <View className="mb-4">
-      <GlassCard className="p-4 mb-3">
-        <View className="flex-row items-center justify-between mb-3">
-          <View className="flex-row items-center">
-            <Crown size={18} color="#8B5CF6" />
-            <Text className="text-base font-bold text-slate-800 ml-2">Current Plan</Text>
-          </View>
-          <PlanBadge plan={currentPlan} status={status} />
-        </View>
-
-        {isTrialing && trialDays > 0 && (
-          <View className="bg-violet-50 rounded-xl px-3 py-2 mb-3">
-            <Text className="text-violet-700 text-xs font-semibold">
-              Trial: {trialDays} day{trialDays !== 1 ? 's' : ''} remaining — upgrade to keep your features
-            </Text>
-          </View>
-        )}
-
-        <Text className="text-sm text-slate-500 mb-3">{planDef.description}</Text>
-
-        <TouchableOpacity
-          onPress={() => router.push('/subscription/pricing')}
-          className="bg-violet-600 py-3 rounded-2xl items-center"
-        >
-          <Text className="text-white font-bold text-sm">View Plans & Upgrade</Text>
-        </TouchableOpacity>
-      </GlassCard>
-
-      <UsageDashboard />
-    </View>
-  );
-}
+// ─── Airbnb Settings for StayMate ─────────────────────────────────────────────
+// Exact 1:1 port of renderSettings() from staymate-airbnb-redesign/app.html
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function SettingsScreen() {
-  const { t } = useTranslation();
-  const { businessName, language, theme, selfCheckinUrl, propertyId, storageMode, setBusinessSetup, setLanguage, setTheme, setSelfCheckinUrl, setStorageMode } = useSettingsStore();
-  const { setColorScheme } = useColorScheme();
-  const { lock, logout, verifyPin, setupPin } = useAuthStore();
+  const { t, i18n } = useTranslation();
+  const { colorScheme, setColorScheme } = useColorScheme();
   const router = useRouter();
 
-  // Modals state
+  const {
+    businessName, propertyId, storageMode,
+    setStorageMode, setBusinessSetup, setLanguage, setTheme,
+  } = useSettingsStore();
+
+  const { currentPlan, usage, isTrialing } = useSubscriptionStore();
+  const { logout, verifyPin, setupPin } = useAuthStore();
+
+  // Dialog State
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [tempPropName, setTempPropName] = useState(businessName || '');
   const [langModalOpen, setLangModalOpen] = useState(false);
   const [themeModalOpen, setThemeModalOpen] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
   const [autoLockModalOpen, setAutoLockModalOpen] = useState(false);
+  const [autoLockTimeout, setAutoLockTimeout] = useState(5);
+  const [biometricEnabled, setBiometricEnabled] = useState(true);
 
-  // Form states
-  const [tempPropName, setTempPropName] = useState(businessName || '');
+  // PIN Form State
   const [currentPinInput, setCurrentPinInput] = useState('');
   const [newPinInput, setNewPinInput] = useState('');
   const [confirmPinInput, setConfirmPinInput] = useState('');
-  const [biometricsEnabled, setBiometricsEnabled] = useState(false);
-  const [autoLockSetting, setAutoLockSetting] = useState('After 5 min');
-  const [customMinutes, setCustomMinutes] = useState('');
 
-  const handleLock = () => {
-    lock();
-    router.replace('/auth');
+  const trialDays = getTrialDaysRemaining();
+  const effectivePlan: SubscriptionPlan = getEffectivePlan({
+    currentPlan,
+    status: useSubscriptionStore.getState().status,
+    isTrialing,
+    trialEndDate: useSubscriptionStore.getState().trialEndDate,
+    lastVerifiedAt: useSubscriptionStore.getState().lastVerifiedAt,
+    gracePeriodDays: useSubscriptionStore.getState().gracePeriodDays,
+    usage,
+  });
+  const planConfig = PLANS[effectivePlan];
+  const checkInLimit = planConfig.entitlements.limits.monthlyCheckInLimit;
+  const exportLimit = planConfig.entitlements.limits.monthlyExportLimit;
+
+  const handleToggleStorage = async (val: boolean) => {
+    setStorageMode(val ? 'cloud' : 'local');
   };
 
-  const handleLogout = () => {
-    Alert.alert(
-      'Log Out Account?',
-      'Are you sure you want to log out? You will need to sign in again with your email and password.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Log Out',
-          style: 'destructive',
-          onPress: () => {
-            logout();
-            router.replace('/auth');
-          }
-        }
-      ]
-    );
-  };
-
-  const handleSaveProfile = () => {
+  const handleSavePropertyProfile = async () => {
     if (!tempPropName.trim()) {
-      Alert.alert('Validation Error', 'Property Name cannot be empty');
+      Alert.alert('Required', 'Property name cannot be empty');
       return;
     }
     setBusinessSetup(tempPropName.trim());
     setProfileModalOpen(false);
-    Alert.alert('Success', 'Property profile updated successfully!');
   };
 
-  const handleChangePin = async () => {
+  const handleUpdatePin = async () => {
     if (newPinInput.length !== 4 || isNaN(Number(newPinInput))) {
-      Alert.alert('Invalid PIN', 'New PIN must be a 4-digit number');
+      Alert.alert('Invalid PIN', 'New PIN must be 4 digits');
       return;
     }
     if (newPinInput !== confirmPinInput) {
-      Alert.alert('PIN Mismatch', 'New PIN and Confirm PIN do not match');
+      Alert.alert('Mismatch', "New PIN and confirm PIN don't match");
       return;
     }
-
-    const isValidCurrent = await verifyPin(currentPinInput);
-    if (!isValidCurrent && currentPinInput !== '1234') {
-      Alert.alert('Incorrect PIN', 'Current security PIN is incorrect');
+    const valid = await verifyPin(currentPinInput);
+    if (!valid && currentPinInput !== '1234') {
+      Alert.alert('Incorrect PIN', 'Current PIN is incorrect');
       return;
     }
-
-    const success = await setupPin(newPinInput);
-    if (success) {
+    const ok = await setupPin(newPinInput);
+    if (ok) {
       setPinModalOpen(false);
       setCurrentPinInput('');
       setNewPinInput('');
       setConfirmPinInput('');
-      Alert.alert('Success', 'Security PIN changed successfully!');
+      Alert.alert('Success', 'Security PIN updated successfully!');
     } else {
       Alert.alert('Error', 'Failed to save new PIN');
     }
   };
 
-  const handleToggleBiometrics = () => {
-    const nextState = !biometricsEnabled;
-    setBiometricsEnabled(nextState);
-    Alert.alert('Biometrics', nextState ? 'Biometric login enabled for quick access.' : 'Biometric login disabled.');
+  const getInitials = (name?: string | null) => {
+    if (!name) return 'SM';
+    return name
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(n => n[0].toUpperCase())
+      .join('');
   };
 
-  const getLanguageLabel = (lang: string) => {
-    switch (lang) {
-      case 'hi': return 'Hindi (हिंदी)';
-      case 'as': return 'Assamese (অসমীয়া)';
-      default: return 'English (US)';
-    }
-  };
+  const checkinPct = checkInLimit > 0
+    ? Math.min(100, Math.round((usage.checkInCount / checkInLimit) * 100))
+    : 0;
 
-  const getThemeLabel = (t: string) => {
-    switch (t) {
-      case 'light': return 'Light Mode';
-      case 'dark': return 'Dark Mode';
-      default: return 'System Default';
-    }
-  };
-
-  const handleGeneralSettingPress = (item: string) => {
-    if (item === 'Property Profile') {
-      setTempPropName(businessName || '');
-      setProfileModalOpen(true);
-    } else if (item === 'Language') {
-      setLangModalOpen(true);
-    } else if (item === 'Theme (Dark/Light)') {
-      setThemeModalOpen(true);
-    }
-  };
-
-  const handleSecuritySettingPress = (item: string) => {
-    if (item === 'Change PIN') {
-      setPinModalOpen(true);
-    } else if (item === 'Biometrics') {
-      handleToggleBiometrics();
-    } else if (item === 'Auto-Lock') {
-      setAutoLockModalOpen(true);
-    }
-  };
+  const exportPct = exportLimit > 0
+    ? Math.min(100, Math.round((usage.exportCount / exportLimit) * 100))
+    : 0;
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background">
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 100 }}>
-        
-        {/* PROPERTY HEADER CARD */}
-        <TouchableOpacity 
+    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ── Header ── */}
+        <Text style={styles.title}>Settings</Text>
+
+        {/* ── Property Hero Card ── */}
+        <TouchableOpacity
+          style={styles.propertyCard}
           activeOpacity={0.8}
           onPress={() => {
             setTempPropName(businessName || '');
             setProfileModalOpen(true);
           }}
         >
-          <GlassCard className="mb-6 flex-row items-center p-5">
-            <View className="w-20 h-20 rounded-full bg-indigo-50 dark:bg-indigo-900/20 items-center justify-center mr-5">
-              <View className="w-16 h-16 bg-primary rounded-full items-center justify-center shadow-lg shadow-primary/30">
-                <Building2 size={32} color="#ffffff" />
-              </View>
-            </View>
-            <View className="flex-1">
-              <Text className="text-2xl font-bold text-foreground mb-1">{businessName || 'Property Name'}</Text>
-              <View className="flex-row items-center gap-2 mt-0.5">
-                <View className="bg-primary/10 px-2.5 py-0.5 rounded-md border border-primary/20">
-                  <Text className="text-[11px] font-extrabold text-primary">ID: {propertyId || 'DEFAULT'}</Text>
-                </View>
-                <Text className="text-xs font-medium text-gray-500">Homestay Owner</Text>
-              </View>
-            </View>
-          </GlassCard>
+          <View style={styles.propertyAvatar}>
+            <Text style={styles.propertyAvatarText}>
+              {getInitials(businessName)}
+            </Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.propertyName} numberOfLines={1}>
+              {businessName || 'Sunrise Homestay'}
+            </Text>
+            <Text style={styles.propertyMeta}>
+              {propertyId || 'HS-4821'} · Homestay Owner
+            </Text>
+          </View>
+          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
         </TouchableOpacity>
 
-        {/* STORAGE MODE SWITCHER CARD */}
-        <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-          {t('storageMode')}
-        </Text>
-
-        <GlassCard className="mb-6 p-4 rounded-2xl border border-gray-200 dark:border-gray-800">
-          <Text className="text-xs text-gray-500 mb-3">
-            Choose whether to store guest check-ins in Cloud Storage (Firebase) or Local Device Storage.
-          </Text>
-
-          <View className="flex-row gap-3">
-            <TouchableOpacity
-              onPress={() => setStorageMode('cloud')}
-              className={`flex-1 p-4 rounded-2xl border items-center justify-center ${
-                storageMode === 'cloud'
-                  ? 'bg-black dark:bg-white border-black dark:border-white'
-                  : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
-              }`}
-            >
-              <View className="flex-row items-center gap-1.5 mb-0.5">
-                <Cloud size={16} color={storageMode === 'cloud' ? (Platform.OS === 'web' ? '#38BDF8' : '#000000') : '#38BDF8'} />
-                <Text className={`font-bold text-sm ${storageMode === 'cloud' ? 'text-white dark:text-black' : 'text-foreground'}`}>
-                  {t('cloudStorage')}
-                </Text>
-              </View>
-              <Text className={`text-[10px] text-center mt-1 ${storageMode === 'cloud' ? 'text-white/80 dark:text-black/80' : 'text-gray-400'}`}>
-                Auto-syncs Web & Mobile
+        {/* ── Subscription Card ── */}
+        <View style={styles.subCard}>
+          <View style={styles.subHeaderRow}>
+            <View>
+              <Text style={styles.subPlanTitle}>
+                {planConfig.name} plan
               </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => setStorageMode('local')}
-              className={`flex-1 p-4 rounded-2xl border items-center justify-center ${
-                storageMode === 'local'
-                  ? 'bg-black dark:bg-white border-black dark:border-white'
-                  : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
-              }`}
-            >
-              <View className="flex-row items-center gap-1.5 mb-0.5">
-                <HardDrive size={16} color={storageMode === 'local' ? (Platform.OS === 'web' ? '#64748B' : '#000000') : '#64748B'} />
-                <Text className={`font-bold text-sm ${storageMode === 'local' ? 'text-white dark:text-black' : 'text-foreground'}`}>
-                  {t('localStorage')}
-                </Text>
-              </View>
-              <Text className={`text-[10px] text-center mt-1 ${storageMode === 'local' ? 'text-white/80 dark:text-black/80' : 'text-gray-400'}`}>
-                Offline SQLite Only
+              <Text style={styles.subTrialSubtitle}>
+                {isTrialing ? `${trialDays} days left on trial` : 'Active subscription'}
               </Text>
-            </TouchableOpacity>
+            </View>
+            <View style={styles.proBadge}>
+              <Text style={styles.proBadgeText}>PRO</Text>
+            </View>
           </View>
-        </GlassCard>
 
-        {/* EMAIL & ACCOUNT SECURITY TEMPLATES */}
-        <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-          Account Security & Verification
-        </Text>
-
-        <GlassCard className="mb-6 p-2 overflow-hidden">
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={async () => {
-              const { owner } = useAuthStore.getState();
-              if (!owner?.email) {
-                Alert.alert('No Account Email', 'Please log in with an email account.');
-                return;
-              }
-              try {
-                await resetOwnerPassword(owner.email);
-                Alert.alert('Password Reset Email Sent', `A password reset link was sent to ${owner.email}. Please check your inbox.`);
-              } catch (err: any) {
-                Alert.alert('Reset Error', err?.message || 'Failed to send password reset email.');
-              }
-            }}
-            className="flex-row justify-between items-center p-4 border-b border-gray-100 dark:border-gray-800 active:bg-gray-50 dark:active:bg-gray-800/50"
-          >
-            <View className="flex-row items-center gap-3.5">
-              <View className="w-10 h-10 rounded-2xl bg-sky-500/10 dark:bg-sky-400/20 items-center justify-center border border-sky-500/20">
-                <KeyRound size={18} color="#38BDF8" />
-              </View>
-              <View>
-                <Text className="text-base font-semibold text-foreground">Password Reset Link</Text>
-                <Text className="text-xs text-gray-400">Send password reset email template</Text>
-              </View>
+          {/* Check-ins Progress Bar */}
+          <View style={styles.progressWrap}>
+            <View style={styles.progressLabelRow}>
+              <Text style={styles.progressLabel}>Check-ins this month</Text>
+              <Text style={styles.progressVal}>
+                {checkInLimit === -1 ? `${usage.checkInCount} / Unlimited` : `${usage.checkInCount} / ${checkInLimit}`}
+              </Text>
             </View>
-            <ChevronRight size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={async () => {
-              try {
-                await sendOwnerEmailVerification();
-                Alert.alert('Verification Sent', 'Email address verification link sent to your registered email address.');
-              } catch (err: any) {
-                Alert.alert('Verification Error', err?.message || 'Failed to send verification email.');
-              }
-            }}
-            className="flex-row justify-between items-center p-4 active:bg-gray-50 dark:active:bg-gray-800/50"
-          >
-            <View className="flex-row items-center gap-3.5">
-              <View className="w-10 h-10 rounded-2xl bg-emerald-500/10 dark:bg-emerald-400/20 items-center justify-center border border-emerald-500/20">
-                <Mail size={18} color="#10B981" />
-              </View>
-              <View>
-                <Text className="text-base font-semibold text-foreground">Email Address Verification</Text>
-                <Text className="text-xs text-gray-400">Send email verification template</Text>
-              </View>
+            <View style={styles.track}>
+              <View style={[styles.fill, { width: checkInLimit === -1 ? '100%' : `${checkinPct}%`, backgroundColor: AIRBNB.colors.primary }]} />
             </View>
-            <ChevronRight size={20} color="#9CA3AF" />
-          </TouchableOpacity>
-        </GlassCard>
+          </View>
 
-        {/* GENERAL SETTINGS */}
-        <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-          General Settings
-        </Text>
+          {/* Reports Progress Bar */}
+          <View style={styles.progressWrap}>
+            <View style={styles.progressLabelRow}>
+              <Text style={styles.progressLabel}>Reports &amp; exports</Text>
+              <Text style={styles.progressVal}>
+                {exportLimit === -1 ? `${usage.exportCount} / Unlimited` : `${usage.exportCount} / ${exportLimit}`}
+              </Text>
+            </View>
+            <View style={styles.track}>
+              <View style={[styles.fill, { width: exportLimit === -1 ? '100%' : `${exportPct}%`, backgroundColor: AIRBNB.colors.ink }]} />
+            </View>
+          </View>
 
-        <GlassCard className="mb-6 p-2 overflow-hidden">
-          {[t('propertyProfile'), t('language')].map((item, index) => {
-            let detailText = '';
-            if (index === 0) detailText = businessName || 'Edit Details';
-            if (index === 1) detailText = getLanguageLabel(language);
+          {/* AI Document OCR Row */}
+          <View style={styles.ocrRow}>
+            <Text style={styles.ocrLabel}>AI Document OCR</Text>
+            <View style={styles.activePill}>
+              <Text style={styles.activePillText}>Active</Text>
+            </View>
+          </View>
 
-            return (
-              <TouchableOpacity 
-                key={item}
-                activeOpacity={0.7}
-                onPress={() => {
-                  if (index === 0) { setTempPropName(businessName || ''); setProfileModalOpen(true); }
-                  else if (index === 1) { setLangModalOpen(true); }
-                }}
-                className={`flex-row justify-between items-center p-4 active:bg-gray-50 dark:active:bg-gray-800/50 ${
-                  index !== 1 ? 'border-b border-gray-100 dark:border-gray-800' : ''
-                }`}
-              >
-                <Text className="text-base font-medium text-foreground">{item}</Text>
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-xs font-semibold text-gray-400" numberOfLines={1}>{detailText}</Text>
-                  <ChevronRight size={20} color="#9CA3AF" />
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </GlassCard>
-
-        {/* SECURITY SETTINGS */}
-        <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-          Security
-        </Text>
-
-        <GlassCard className="mb-8 p-2 overflow-hidden">
-          {['Change PIN', 'Biometrics', 'Auto-Lock'].map((item, index) => {
-            let detailText = '';
-            if (item === 'Change PIN') detailText = 'Security PIN';
-            if (item === 'Biometrics') detailText = biometricsEnabled ? 'Enabled' : 'Disabled';
-            if (item === 'Auto-Lock') detailText = autoLockSetting;
-
-            return (
-              <TouchableOpacity 
-                key={item}
-                activeOpacity={0.7}
-                onPress={() => handleSecuritySettingPress(item)}
-                className={`flex-row justify-between items-center p-4 active:bg-gray-50 dark:active:bg-gray-800/50 ${
-                  index !== 2 ? 'border-b border-gray-100 dark:border-gray-800' : ''
-                }`}
-              >
-                <Text className="text-base font-medium text-foreground">{item}</Text>
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-xs font-semibold text-gray-400">{detailText}</Text>
-                  <ChevronRight size={20} color="#9CA3AF" />
-                </View>
-              </TouchableOpacity>
-            );
-          })}
-        </GlassCard>
-
-        {/* ── SUBSCRIPTION SECTION ── */}
-        <Text className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-2 ml-1 mt-4">
-          Subscription
-        </Text>
-        <SubscriptionSection />
-
-        <View className="flex-col gap-3 mb-8">
-          <Button 
-            label={t('lockApp')} 
-            variant="outline" 
-            icon={<Lock size={18} color="#6B7280" className="mr-2" />}
-            onPress={handleLock}
+          {/* View Plans Button */}
+          <Button
+            label="View plans &amp; upgrade"
+            variant="primary"
+            style={{ marginTop: 14 }}
+            onPress={() => router.push('/subscription/pricing')}
           />
+        </View>
 
-          <TouchableOpacity
-            onPress={handleLogout}
-            activeOpacity={0.8}
-            className="w-full py-3.5 rounded-2xl bg-red-500/10 border border-red-500/30 flex-row items-center justify-center gap-2"
-          >
-            <LogOut size={18} color="#EF4444" />
-            <Text className="text-sm font-bold text-red-600 dark:text-red-400">
-              {t('logOutAccount')}
+        {/* ── DATA STORAGE Section ── */}
+        <Text style={styles.sectionLabel}>DATA STORAGE</Text>
+        <View style={styles.settingsRow}>
+          <View style={styles.iconWell}>
+            <Cloud size={18} color={AIRBNB.colors.ink} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>Cloud mode</Text>
+            <Text style={styles.rowSubtitle}>
+              {storageMode === 'cloud' ? 'Synced live across staff devices' : 'Local storage only'}
             </Text>
-          </TouchableOpacity>
+          </View>
+          <AirbnbSwitch
+            value={storageMode === 'cloud'}
+            onValueChange={handleToggleStorage}
+          />
         </View>
 
-        {/* CLEAN APP VERSION FOOTER */}
-        <View className="items-center justify-center pt-2 pb-8">
-          <Text className="text-[11px] font-semibold text-gray-400">
-            StayMate v1.2.0 • Simplifying Every Guest Stay
-          </Text>
+        {/* ── GENERAL Section ── */}
+        <Text style={styles.sectionLabel}>GENERAL</Text>
+
+        <TouchableOpacity
+          style={styles.settingsRow}
+          activeOpacity={0.7}
+          onPress={() => setProfileModalOpen(true)}
+        >
+          <View style={styles.iconWell}>
+            <MapPin size={18} color={AIRBNB.colors.ink} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>Property name &amp; address</Text>
+          </View>
+          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.settingsRow}
+          activeOpacity={0.7}
+          onPress={() => setLangModalOpen(true)}
+        >
+          <View style={styles.iconWell}>
+            <Globe size={18} color={AIRBNB.colors.ink} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>
+              Language — {i18n.language === 'hi' ? 'Hindi' : 'English'}
+            </Text>
+          </View>
+          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.settingsRow}
+          activeOpacity={0.7}
+          onPress={() => setThemeModalOpen(true)}
+        >
+          <View style={styles.iconWell}>
+            <Moon size={18} color={AIRBNB.colors.ink} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>
+              Theme — {colorScheme === 'dark' ? 'Dark' : 'System default'}
+            </Text>
+          </View>
+          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
+        </TouchableOpacity>
+
+        {/* ── SECURITY Section ── */}
+        <Text style={styles.sectionLabel}>SECURITY</Text>
+
+        <TouchableOpacity
+          style={styles.settingsRow}
+          activeOpacity={0.7}
+          onPress={() => setPinModalOpen(true)}
+        >
+          <View style={styles.iconWell}>
+            <Lock size={18} color={AIRBNB.colors.ink} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>Change security PIN</Text>
+          </View>
+          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
+        </TouchableOpacity>
+
+        <View style={styles.settingsRow}>
+          <View style={styles.iconWell}>
+            <Fingerprint size={18} color={AIRBNB.colors.ink} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>Biometric unlock</Text>
+            <Text style={styles.rowSubtitle}>Face ID / Fingerprint</Text>
+          </View>
+          <AirbnbSwitch
+            value={biometricEnabled}
+            onValueChange={setBiometricEnabled}
+          />
         </View>
 
+        <TouchableOpacity
+          style={styles.settingsRow}
+          activeOpacity={0.7}
+          onPress={() => setAutoLockModalOpen(true)}
+        >
+          <View style={styles.iconWell}>
+            <Clock size={18} color={AIRBNB.colors.ink} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>
+              Auto-lock — {autoLockTimeout === 0 ? 'Immediately' : `After ${autoLockTimeout} minutes`}
+            </Text>
+          </View>
+          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
+        </TouchableOpacity>
+
+        {/* ── Bottom Action Buttons ── */}
+        <View style={styles.bottomBtnsRow}>
+          <Button
+            label="Lock app"
+            variant="soft"
+            icon={<Lock size={16} color={AIRBNB.colors.ink} />}
+            style={{ flex: 1 }}
+            onPress={() => useAuthStore.setState({ isUnlocked: false })}
+          />
+          <Button
+            label="Log out"
+            variant="danger"
+            icon={<LogOut size={16} color={AIRBNB.colors.rose} />}
+            style={{ flex: 1 }}
+            onPress={() => {
+              Alert.alert('Log out?', 'You will need to sign in again with your email and password.', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Log Out',
+                  style: 'destructive',
+                  onPress: () => {
+                    logout();
+                    router.replace('/auth');
+                  },
+                },
+              ]);
+            }}
+          />
+        </View>
       </ScrollView>
 
-      {/* MODAL 1: PROPERTY PROFILE */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={profileModalOpen}
-        onRequestClose={() => setProfileModalOpen(false)}
-        statusBarTranslucent={true}
-      >
-        <TouchableOpacity 
-          activeOpacity={1} 
-          onPress={() => setProfileModalOpen(false)} 
-          className="flex-1 bg-black/60 justify-end"
+      {/* ══════════════════════════════════════════════════
+          PROPERTY PROFILE MODAL
+      ══════════════════════════════════════════════════ */}
+      <Modal visible={profileModalOpen} transparent animationType="slide">
+        <TouchableOpacity
+          style={styles.scrim}
+          activeOpacity={1}
+          onPress={() => setProfileModalOpen(false)}
         >
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
-            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation?.()} className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6">
-              <View className="flex-row justify-between items-center mb-6">
-                <Text className="text-xl font-bold text-foreground">Property Profile</Text>
-                <TouchableOpacity onPress={() => setProfileModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
-                  <X size={20} color="#9CA3AF" />
-                </TouchableOpacity>
-              </View>
+          <TouchableOpacity
+            style={styles.sheet}
+            activeOpacity={1}
+            onPress={e => e.stopPropagation?.()}
+          >
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Property Details</Text>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => setProfileModalOpen(false)}
+              >
+                <X size={16} color={AIRBNB.colors.ink} />
+              </TouchableOpacity>
+            </View>
 
-              <Input
-                label="Property / Hotel Name"
-                placeholder="Enter property name"
-                value={tempPropName}
-                onChangeText={setTempPropName}
-                icon={<Building2 size={18} color="#9498AA" />}
-              />
+            <Input
+              label="Property / Business Name"
+              value={tempPropName}
+              onChangeText={setTempPropName}
+              placeholder="e.g. Sunrise Homestay"
+            />
 
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
               <Button
-                label="Save Profile"
-                onPress={handleSaveProfile}
-                className="mt-4"
+                label="Cancel"
+                variant="outline"
+                style={{ flex: 1 }}
+                onPress={() => setProfileModalOpen(false)}
               />
-            </TouchableOpacity>
-          </KeyboardAvoidingView>
+              <Button
+                label="Save"
+                variant="primary"
+                style={{ flex: 1 }}
+                onPress={handleSavePropertyProfile}
+              />
+            </View>
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
-
-
-      {/* MODAL 2: LANGUAGE SELECTOR */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={langModalOpen}
-        onRequestClose={() => setLangModalOpen(false)}
-        statusBarTranslucent={true}
-      >
-        <TouchableOpacity 
-          activeOpacity={1} 
-          onPress={() => setLangModalOpen(false)} 
-          className="flex-1 bg-black/60 justify-end"
+      {/* ══════════════════════════════════════════════════
+          SECURITY PIN MODAL
+      ══════════════════════════════════════════════════ */}
+      <Modal visible={pinModalOpen} transparent animationType="slide">
+        <TouchableOpacity
+          style={styles.scrim}
+          activeOpacity={1}
+          onPress={() => setPinModalOpen(false)}
         >
-          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation?.()} className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6">
-            <View className="flex-row justify-between items-center mb-6">
-              <Text className="text-xl font-bold text-foreground">Select Language</Text>
-              <TouchableOpacity onPress={() => setLangModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
-                <X size={20} color="#9CA3AF" />
+          <TouchableOpacity
+            style={styles.sheet}
+            activeOpacity={1}
+            onPress={e => e.stopPropagation?.()}
+          >
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Change Security PIN</Text>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => setPinModalOpen(false)}
+              >
+                <X size={16} color={AIRBNB.colors.ink} />
+              </TouchableOpacity>
+            </View>
+
+            <Input
+              label="Current PIN"
+              value={currentPinInput}
+              onChangeText={setCurrentPinInput}
+              placeholder="4-digit PIN"
+              secureTextEntry
+              keyboardType="numeric"
+              maxLength={4}
+            />
+            <Input
+              label="New PIN"
+              value={newPinInput}
+              onChangeText={setNewPinInput}
+              placeholder="New 4-digit PIN"
+              secureTextEntry
+              keyboardType="numeric"
+              maxLength={4}
+            />
+            <Input
+              label="Confirm New PIN"
+              value={confirmPinInput}
+              onChangeText={setConfirmPinInput}
+              placeholder="Confirm 4-digit PIN"
+              secureTextEntry
+              keyboardType="numeric"
+              maxLength={4}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <Button
+                label="Cancel"
+                variant="outline"
+                style={{ flex: 1 }}
+                onPress={() => setPinModalOpen(false)}
+              />
+              <Button
+                label="Update PIN"
+                variant="primary"
+                style={{ flex: 1 }}
+                onPress={handleUpdatePin}
+              />
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ══════════════════════════════════════════════════
+          LANGUAGE MODAL
+      ══════════════════════════════════════════════════ */}
+      <Modal visible={langModalOpen} transparent animationType="slide">
+        <TouchableOpacity
+          style={styles.scrim}
+          activeOpacity={1}
+          onPress={() => setLangModalOpen(false)}
+        >
+          <TouchableOpacity
+            style={styles.sheet}
+            activeOpacity={1}
+            onPress={e => e.stopPropagation?.()}
+          >
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Select Language</Text>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => setLangModalOpen(false)}
+              >
+                <X size={16} color={AIRBNB.colors.ink} />
               </TouchableOpacity>
             </View>
 
             {[
-              { id: 'en', label: 'English (US)' },
-              { id: 'hi', label: 'Hindi (हिंदी)' },
-              { id: 'as', label: 'Assamese (অসমীয়া)' }
-            ].map((opt) => (
+              { code: 'en', label: 'English (India)' },
+              { code: 'hi', label: 'Hindi (हिंदी)' },
+            ].map(l => (
               <TouchableOpacity
-                key={opt.id}
+                key={l.code}
+                style={styles.dialogOptionRow}
                 onPress={() => {
-                  setLanguage(opt.id as any);
-                  i18n.changeLanguage(opt.id);
+                  i18n.changeLanguage(l.code);
                   setLangModalOpen(false);
                 }}
-                className={`flex-row justify-between items-center p-4 rounded-xl mb-3 border ${
-                  language === opt.id ? 'border-primary bg-primary/10' : 'border-gray-200 dark:border-gray-800'
-                }`}
               >
-                <Text className={`font-semibold text-base ${language === opt.id ? 'text-primary font-bold' : 'text-foreground'}`}>
-                  {opt.label}
-                </Text>
-                {language === opt.id && <Check size={20} color="#38BDF8" />}
+                <Text style={styles.dialogOptionText}>{l.label}</Text>
+                {i18n.language === l.code && <Check size={18} color={AIRBNB.colors.primary} />}
               </TouchableOpacity>
             ))}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
-      {/* MODAL 3: THEME SELECTOR */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={themeModalOpen}
-        onRequestClose={() => setThemeModalOpen(false)}
-        statusBarTranslucent={true}
-      >
-        <TouchableOpacity 
-          activeOpacity={1} 
-          onPress={() => setThemeModalOpen(false)} 
-          className="flex-1 bg-black/60 justify-end"
+      {/* ══════════════════════════════════════════════════
+          THEME MODAL
+      ══════════════════════════════════════════════════ */}
+      <Modal visible={themeModalOpen} transparent animationType="slide">
+        <TouchableOpacity
+          style={styles.scrim}
+          activeOpacity={1}
+          onPress={() => setThemeModalOpen(false)}
         >
-          <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation?.()} className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6">
-            <View className="flex-row justify-between items-center mb-6">
-              <Text className="text-xl font-bold text-foreground">Theme Preference</Text>
-              <TouchableOpacity onPress={() => setThemeModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
-                <X size={20} color="#9CA3AF" />
+          <TouchableOpacity
+            style={styles.sheet}
+            activeOpacity={1}
+            onPress={e => e.stopPropagation?.()}
+          >
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Appearance</Text>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => setThemeModalOpen(false)}
+              >
+                <X size={16} color={AIRBNB.colors.ink} />
               </TouchableOpacity>
             </View>
 
             {[
+              { id: 'light', label: 'Light' },
+              { id: 'dark', label: 'Dark' },
               { id: 'system', label: 'System Default' },
-              { id: 'light', label: 'Light Mode' },
-              { id: 'dark', label: 'Dark Mode' }
-            ].map((opt) => (
+            ].map(thm => (
               <TouchableOpacity
-                key={opt.id}
+                key={thm.id}
+                style={styles.dialogOptionRow}
                 onPress={() => {
-                  setTheme(opt.id as any);
-                  try {
-                    setColorScheme(opt.id as any);
-                  } catch (e) {}
+                  setColorScheme(thm.id as any);
                   setThemeModalOpen(false);
                 }}
-                className={`flex-row justify-between items-center p-4 rounded-xl mb-3 border ${
-                  theme === opt.id ? 'border-primary bg-primary/10' : 'border-gray-200 dark:border-gray-800'
-                }`}
               >
-                <Text className={`font-semibold text-base ${theme === opt.id ? 'text-primary font-bold' : 'text-foreground'}`}>
-                  {opt.label}
-                </Text>
-                {theme === opt.id && <Check size={20} color="#38BDF8" />}
+                <Text style={styles.dialogOptionText}>{thm.label}</Text>
+                {colorScheme === thm.id && <Check size={18} color={AIRBNB.colors.primary} />}
               </TouchableOpacity>
             ))}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
-      {/* MODAL 4: CHANGE PIN */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={pinModalOpen}
-        onRequestClose={() => setPinModalOpen(false)}
-        statusBarTranslucent={true}
-      >
-        <TouchableOpacity 
-          activeOpacity={1} 
-          onPress={() => setPinModalOpen(false)} 
-          className="flex-1 bg-black/60 justify-end"
+      {/* ══════════════════════════════════════════════════
+          AUTO-LOCK MODAL
+      ══════════════════════════════════════════════════ */}
+      <Modal visible={autoLockModalOpen} transparent animationType="slide">
+        <TouchableOpacity
+          style={styles.scrim}
+          activeOpacity={1}
+          onPress={() => setAutoLockModalOpen(false)}
         >
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
-            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation?.()} className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6">
-              <View className="flex-row justify-between items-center mb-6">
-                <Text className="text-xl font-bold text-foreground">Change Security PIN</Text>
-                <TouchableOpacity onPress={() => setPinModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
-                  <X size={20} color="#9CA3AF" />
-                </TouchableOpacity>
-              </View>
+          <TouchableOpacity
+            style={styles.sheet}
+            activeOpacity={1}
+            onPress={e => e.stopPropagation?.()}
+          >
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Auto-lock Timer</Text>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => setAutoLockModalOpen(false)}
+              >
+                <X size={16} color={AIRBNB.colors.ink} />
+              </TouchableOpacity>
+            </View>
 
-              <Input
-                label="Current PIN"
-                placeholder="Enter current 4-digit PIN (default 1234)"
-                secureTextEntry
-                keyboardType="numeric"
-                maxLength={4}
-                value={currentPinInput}
-                onChangeText={setCurrentPinInput}
-                icon={<Lock size={18} color="#9498AA" />}
-              />
-
-              <Input
-                label="New 4-Digit PIN"
-                placeholder="Enter new PIN"
-                secureTextEntry
-                keyboardType="numeric"
-                maxLength={4}
-                value={newPinInput}
-                onChangeText={setNewPinInput}
-                icon={<Lock size={18} color="#9498AA" />}
-              />
-
-              <Input
-                label="Confirm New PIN"
-                placeholder="Confirm new PIN"
-                secureTextEntry
-                keyboardType="numeric"
-                maxLength={4}
-                value={confirmPinInput}
-                onChangeText={setConfirmPinInput}
-                icon={<Lock size={18} color="#9498AA" />}
-              />
-
-              <Button
-                label="Update Security PIN"
-                onPress={handleChangePin}
-                className="mt-4"
-              />
-            </TouchableOpacity>
-          </KeyboardAvoidingView>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* MODAL 5: AUTO-LOCK TIMEOUT */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={autoLockModalOpen}
-        onRequestClose={() => setAutoLockModalOpen(false)}
-        statusBarTranslucent={true}
-      >
-        <TouchableOpacity 
-          activeOpacity={1} 
-          onPress={() => setAutoLockModalOpen(false)} 
-          className="flex-1 bg-black/60 justify-end"
-        >
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ width: '100%' }}>
-            <TouchableOpacity activeOpacity={1} onPress={(e) => e.stopPropagation?.()} className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6">
-              <View className="flex-row justify-between items-center mb-6">
-                <Text className="text-xl font-bold text-foreground">Auto-Lock Timer</Text>
-                <TouchableOpacity onPress={() => setAutoLockModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
-                  <X size={20} color="#9CA3AF" />
-                </TouchableOpacity>
-              </View>
-
-              {['Immediately', 'After 1 min', 'After 5 min', 'After 15 min'].map((timer) => (
-                <TouchableOpacity
-                  key={timer}
-                  onPress={() => {
-                    setAutoLockSetting(timer);
-                    setAutoLockModalOpen(false);
-                  }}
-                  className={`flex-row justify-between items-center p-4 rounded-xl mb-3 border ${
-                    autoLockSetting === timer ? 'border-primary bg-primary/10' : 'border-gray-200 dark:border-gray-800'
-                  }`}
-                >
-                  <Text className={`font-semibold text-base ${autoLockSetting === timer ? 'text-primary font-bold' : 'text-foreground'}`}>
-                    {timer}
-                  </Text>
-                  {autoLockSetting === timer && <Check size={20} color="#38BDF8" />}
-                </TouchableOpacity>
-              ))}
-
-              {/* Custom Time Option */}
-              <View className="mt-2 pt-4 border-t border-gray-100 dark:border-gray-800">
-                <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">Custom Timer</Text>
-                <View className="flex-row items-center gap-3">
-                  <View className="flex-1">
-                    <Input
-                      placeholder="Enter minutes (e.g. 10)"
-                      keyboardType="numeric"
-                      value={customMinutes}
-                      onChangeText={setCustomMinutes}
-                      className="mb-0"
-                    />
-                  </View>
-                  <Button
-                    label="Set"
-                    onPress={() => {
-                      const mins = parseInt(customMinutes, 10);
-                      if (!isNaN(mins) && mins > 0) {
-                        setAutoLockSetting(`After ${mins} mins`);
-                        setCustomMinutes('');
-                        setAutoLockModalOpen(false);
-                      } else {
-                        Alert.alert('Invalid Time', 'Please enter a valid number of minutes.');
-                      }
-                    }}
-                    className="h-14 px-6"
-                  />
-                </View>
-              </View>
-            </TouchableOpacity>
-          </KeyboardAvoidingView>
+            {[
+              { val: 0, label: 'Immediately' },
+              { val: 1, label: '1 Minute' },
+              { val: 5, label: '5 Minutes' },
+              { val: 15, label: '15 Minutes' },
+            ].map(opt => (
+              <TouchableOpacity
+                key={opt.val}
+                style={styles.dialogOptionRow}
+                onPress={() => {
+                  setAutoLockTimeout(opt.val);
+                  setAutoLockModalOpen(false);
+                }}
+              >
+                <Text style={styles.dialogOptionText}>{opt.label}</Text>
+                {autoLockTimeout === opt.val && <Check size={18} color={AIRBNB.colors.primary} />}
+              </TouchableOpacity>
+            ))}
+          </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: AIRBNB.colors.canvas,
+  },
+  scroll: {
+    paddingHorizontal: 20,
+    paddingTop: 4,
+    paddingBottom: 110,
+  },
+  title: {
+    ...AIRBNB.typography.displayLg,
+    color: AIRBNB.colors.ink,
+    paddingTop: 18,
+  },
+
+  // Property Hero Card
+  propertyCard: {
+    backgroundColor: AIRBNB.colors.canvas,
+    borderWidth: 1,
+    borderColor: AIRBNB.colors.hairlineSoft,
+    borderRadius: AIRBNB.radius.md,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    marginTop: 16,
+    ...AIRBNB.shadow.card,
+  },
+  propertyAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 14,
+    backgroundColor: AIRBNB.colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  propertyAvatarText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#ffffff',
+  },
+  propertyName: {
+    ...AIRBNB.typography.titleMd,
+    color: AIRBNB.colors.ink,
+  },
+  propertyMeta: {
+    ...AIRBNB.typography.bodySm,
+    color: AIRBNB.colors.muted,
+    marginTop: 2,
+  },
+
+  // Subscription Card
+  subCard: {
+    backgroundColor: AIRBNB.colors.canvas,
+    borderWidth: 1,
+    borderColor: AIRBNB.colors.hairlineSoft,
+    borderRadius: AIRBNB.radius.md,
+    padding: 16,
+    marginTop: 14,
+    ...AIRBNB.shadow.card,
+  },
+  subHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  subPlanTitle: {
+    ...AIRBNB.typography.titleSm,
+    color: AIRBNB.colors.ink,
+  },
+  subTrialSubtitle: {
+    ...AIRBNB.typography.bodySm,
+    color: AIRBNB.colors.muted,
+    marginTop: 2,
+  },
+  proBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: AIRBNB.radius.full,
+    backgroundColor: AIRBNB.colors.surfaceStrong,
+  },
+  proBadgeText: {
+    ...AIRBNB.typography.micro,
+    color: AIRBNB.colors.ink,
+  },
+  progressWrap: {
+    marginBottom: 12,
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  progressLabel: {
+    ...AIRBNB.typography.caption,
+    color: AIRBNB.colors.muted,
+  },
+  progressVal: {
+    ...AIRBNB.typography.caption,
+    fontWeight: '600',
+    color: AIRBNB.colors.ink,
+  },
+  track: {
+    height: 8,
+    borderRadius: AIRBNB.radius.full,
+    backgroundColor: AIRBNB.colors.surfaceStrong,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: '100%',
+    borderRadius: AIRBNB.radius.full,
+  },
+  ocrRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: AIRBNB.colors.hairlineSoft,
+  },
+  ocrLabel: {
+    ...AIRBNB.typography.bodySm,
+    color: AIRBNB.colors.ink,
+  },
+  activePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: AIRBNB.radius.full,
+    backgroundColor: AIRBNB.colors.emeraldBg,
+  },
+  activePillText: {
+    ...AIRBNB.typography.micro,
+    color: AIRBNB.colors.emerald,
+  },
+
+  // Section Headers
+  sectionLabel: {
+    ...AIRBNB.typography.caption,
+    color: AIRBNB.colors.muted,
+    marginTop: 20,
+    marginBottom: 4,
+  },
+  settingsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: AIRBNB.colors.hairlineSoft,
+  },
+  iconWell: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: AIRBNB.colors.surfaceStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  rowTitle: {
+    ...AIRBNB.typography.titleSm,
+    color: AIRBNB.colors.ink,
+  },
+  rowSubtitle: {
+    ...AIRBNB.typography.bodySm,
+    color: AIRBNB.colors.muted,
+    marginTop: 2,
+  },
+  bottomBtnsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 24,
+    marginBottom: 20,
+  },
+
+  // Sheet
+  scrim: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: AIRBNB.colors.canvas,
+    borderTopLeftRadius: AIRBNB.radius.sheet,
+    borderTopRightRadius: AIRBNB.radius.sheet,
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 28,
+    maxHeight: '82%',
+    ...AIRBNB.shadow.sheet,
+  },
+  sheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: AIRBNB.radius.full,
+    backgroundColor: AIRBNB.colors.hairline,
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 6,
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    ...AIRBNB.typography.titleMd,
+    color: AIRBNB.colors.ink,
+  },
+  iconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: AIRBNB.colors.surfaceStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dialogOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: AIRBNB.colors.hairlineSoft,
+  },
+  dialogOptionText: {
+    ...AIRBNB.typography.titleSm,
+    color: AIRBNB.colors.ink,
+  },
+});
