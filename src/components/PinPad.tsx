@@ -1,6 +1,11 @@
 import React from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { Fingerprint, Delete } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Fingerprint, ChevronLeft } from 'lucide-react-native';
+import { AIRBNB } from '@/theme/airbnb';
+
+// ─── Airbnb Keypad for StayMate ───────────────────────────────────────────────
+// Direct port of .keypad and .key from staymate-airbnb-redesign/app.html
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface PinPadProps {
   onKeyPress: (key: string) => void;
@@ -18,21 +23,20 @@ export function PinPad({ onKeyPress, onDelete, onBiometric, showBiometric = fals
   ];
 
   return (
-    <View className="w-full max-w-sm self-center">
+    <View style={styles.grid}>
       {keys.map((row, rowIndex) => (
-        <View key={rowIndex} className="flex-row justify-between mb-6">
-          {row.map((key) => {
+        <View key={rowIndex} style={styles.row}>
+          {row.map(key => {
             if (key === 'biometric') {
               return (
                 <TouchableOpacity
                   key={key}
                   onPress={onBiometric}
                   disabled={!showBiometric}
-                  className={`w-20 h-20 items-center justify-center rounded-full ${
-                    !showBiometric ? 'opacity-0' : 'active:bg-gray-100 dark:active:bg-gray-800'
-                  }`}
+                  style={[styles.key, !showBiometric && { opacity: 0 }]}
+                  activeOpacity={0.7}
                 >
-                  <Fingerprint size={32} color="#38BDF8" />
+                  <Fingerprint size={22} color={AIRBNB.colors.primary} />
                 </TouchableOpacity>
               );
             }
@@ -41,9 +45,10 @@ export function PinPad({ onKeyPress, onDelete, onBiometric, showBiometric = fals
                 <TouchableOpacity
                   key={key}
                   onPress={onDelete}
-                  className="w-20 h-20 items-center justify-center rounded-full active:bg-gray-100 dark:active:bg-gray-800"
+                  style={styles.key}
+                  activeOpacity={0.7}
                 >
-                  <Delete size={32} color="#9CA3AF" />
+                  <ChevronLeft size={20} color={AIRBNB.colors.ink} />
                 </TouchableOpacity>
               );
             }
@@ -51,9 +56,10 @@ export function PinPad({ onKeyPress, onDelete, onBiometric, showBiometric = fals
               <TouchableOpacity
                 key={key}
                 onPress={() => onKeyPress(key)}
-                className="w-20 h-20 items-center justify-center rounded-full active:bg-gray-100 dark:active:bg-gray-800"
+                style={styles.key}
+                activeOpacity={0.7}
               >
-                <Text className="text-3xl font-medium text-foreground">{key}</Text>
+                <Text style={styles.keyText}>{key}</Text>
               </TouchableOpacity>
             );
           })}
@@ -62,3 +68,28 @@ export function PinPad({ onKeyPress, onDelete, onBiometric, showBiometric = fals
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  grid: {
+    width: 250,
+    alignSelf: 'center',
+    gap: 14,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  key: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: AIRBNB.colors.surfaceSoft,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  keyText: {
+    fontSize: 22,
+    fontWeight: '500',
+    color: AIRBNB.colors.ink,
+  },
+});
