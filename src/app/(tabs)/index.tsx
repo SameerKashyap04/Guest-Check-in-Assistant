@@ -118,7 +118,7 @@ export default function DashboardScreen() {
   if (currentHour < 12) greetingKey = 'goodMorning';
   else if (currentHour < 18) greetingKey = 'goodAfternoon';
   const greeting = t(greetingKey);
-  const todayDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  const todayDate = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
   const userName = (customUserName && customUserName.trim()) || 'Sameer';
 
@@ -203,35 +203,42 @@ export default function DashboardScreen() {
           />
         }
       >
-        <View className="mb-6 mt-2">
-          <Text className="text-sm text-gray-500 mb-1 font-medium">{todayDate}</Text>
-          <Text className="text-3xl font-extrabold text-foreground tracking-tight">{greeting}, {userName}</Text>
+        <View className="mb-5 mt-2">
+          <Text className="text-sm font-medium text-gray-500 mb-1">{todayDate}</Text>
+          <View className="flex-row items-center justify-between">
+            <Text className="text-3xl font-extrabold text-foreground tracking-tight flex-1 mr-2" numberOfLines={1}>
+              {greeting}, {userName}
+            </Text>
+            <View className="flex-row items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
+              <View className="w-2 h-2 rounded-full bg-emerald-500" />
+              <Text className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Live</Text>
+            </View>
+          </View>
         </View>
 
-        <View className="flex-row items-center gap-3 mb-6">
-          <TouchableOpacity 
-            className="flex-1"
-            onPress={() => router.push('/search')}
-            activeOpacity={0.7}
+        <TouchableOpacity 
+          className="mb-6"
+          onPress={() => router.push('/search')}
+          activeOpacity={0.8}
+        >
+          <View 
+            className="flex-row items-center bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 px-4"
+            style={{
+              height: 52,
+              borderRadius: 9999,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.05,
+              shadowRadius: 8,
+              elevation: 2,
+            }}
           >
-            <View pointerEvents="none">
-              <Input 
-                placeholder={t('searchByNamePhoneRoom')} 
-                icon={<Search size={20} color="#9498AA" />}
-                editable={false}
-                className="mb-0"
-              />
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            className="w-14 h-14 bg-white dark:bg-black/20 border border-gray-100 dark:border-white/10 rounded-2xl items-center justify-center"
-            style={Platform.OS === 'web' ? ({ transition: 'all 0.2s ease' } as any) : undefined}
-            activeOpacity={0.7}
-            onPress={() => router.push('/reports')}
-          >
-            <FileBarChart size={24} color="#38BDF8" />
-          </TouchableOpacity>
-        </View>
+            <Search size={20} color="#717171" strokeWidth={2.2} />
+            <Text className="text-[15px] text-gray-500 dark:text-gray-400 ml-3 font-normal">
+              Search guests, rooms, IDs...
+            </Text>
+          </View>
+        </TouchableOpacity>
 
         <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
           {t('todaysOverview')}
