@@ -7,6 +7,7 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { Input } from '@/components/Input';
 import { openDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useRoomsStore } from '@/store/useRoomsStore';
 import { subscribeToPropertyCheckins, subscribeToPendingCheckinCount } from '@/services/firebaseSync';
 import { createMultipleGuestsAndStay, autoCheckoutExpiredStays } from '@/database/stays';
@@ -17,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 export default function DashboardScreen() {
   const { t } = useTranslation();
   const { businessName, propertyId, ownerId, storageMode, getShareableLink } = useSettingsStore();
+  const { owner } = useAuthStore();
   const { rooms, fetchRooms } = useRoomsStore();
   const [refreshing, setRefreshing] = useState(false);
   const [recentGuests, setRecentGuests] = useState<any[]>([]);
@@ -118,6 +120,11 @@ export default function DashboardScreen() {
   const greeting = t(greetingKey);
   const todayDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
+  const rawName =
+    (owner?.email ? owner.email.split('@')[0] : '') ||
+    (businessName || owner?.businessName || 'Sameer');
+  const userName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+
   const fetchGuests = async () => {
     try {
       await autoCheckoutExpiredStays();
@@ -200,8 +207,8 @@ export default function DashboardScreen() {
         }
       >
         <View className="mb-6 mt-2">
-          <Text className="text-3xl font-extrabold text-foreground tracking-tight">{greeting}</Text>
-          <Text className="text-sm text-gray-500 mt-1 font-medium">{todayDate}</Text>
+          <Text className="text-sm text-gray-500 mb-1 font-medium">{todayDate}</Text>
+          <Text className="text-3xl font-extrabold text-foreground tracking-tight">{greeting}, {userName}</Text>
         </View>
 
         <View className="flex-row items-center gap-3 mb-6">
