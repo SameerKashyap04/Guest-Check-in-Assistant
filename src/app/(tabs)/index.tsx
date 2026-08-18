@@ -118,7 +118,7 @@ export default function DashboardScreen() {
   if (currentHour < 12) greetingKey = 'goodMorning';
   else if (currentHour < 18) greetingKey = 'goodAfternoon';
   const greeting = t(greetingKey);
-  const todayDate = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const todayDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   const userName = (customUserName && customUserName.trim()) || 'Sameer';
 
@@ -203,69 +203,32 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* ── Top Header ── */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 18 }}>
-          <View style={{ flex: 1, paddingRight: 10 }}>
-            <Text style={{ fontSize: 13.5, fontWeight: '500', color: '#6a6a6a', marginBottom: 2 }}>{todayDate}</Text>
-            <Text style={{ fontSize: 26, fontWeight: '700', color: '#222222', letterSpacing: -0.4 }} numberOfLines={1}>
-              {greeting}, {userName}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#e5f6e6', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 9999, gap: 5 }}>
-            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#008a05' }} />
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#008a05' }}>Live</Text>
-          </View>
+        <View className="mb-6 mt-2">
+          <Text className="text-sm text-gray-500 mb-1 font-medium">{todayDate}</Text>
+          <Text className="text-3xl font-extrabold text-foreground tracking-tight">{greeting}, {userName}</Text>
         </View>
 
-        {/* ── Search Bar & Reports SVG Button ── */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+        <View className="flex-row items-center gap-3 mb-6">
           <TouchableOpacity 
-            style={{
-              flex: 1,
-              height: 50,
-              backgroundColor: '#ffffff',
-              borderRadius: 9999,
-              borderWidth: 1,
-              borderColor: '#ebebeb',
-              flexDirection: 'row',
-              alignItems: 'center',
-              paddingHorizontal: 16,
-              gap: 10,
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.04,
-              shadowRadius: 5,
-              elevation: 2,
-            }}
+            className="flex-1"
             onPress={() => router.push('/search')}
             activeOpacity={0.7}
           >
-            <Search size={18} color="#6a6a6a" />
-            <Text style={{ fontSize: 14.5, color: '#717171', flex: 1, fontWeight: '400' }} numberOfLines={1}>
-              Search guests, rooms, IDs...
-            </Text>
+            <View pointerEvents="none">
+              <Input 
+                placeholder={t('searchByNamePhoneRoom')} 
+                icon={<Search size={20} color="#9498AA" />}
+                editable={false}
+                className="mb-0"
+              />
+            </View>
           </TouchableOpacity>
-
           <TouchableOpacity 
-            style={{
-              width: 50,
-              height: 50,
-              backgroundColor: '#ffffff',
-              borderRadius: 16,
-              borderWidth: 1,
-              borderColor: '#ebebeb',
-              alignItems: 'center',
-              justifyContent: 'center',
-              shadowColor: '#000',
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.04,
-              shadowRadius: 5,
-              elevation: 2,
-            }}
+            className="w-14 h-14 bg-white dark:bg-black/20 border border-gray-100 dark:border-white/10 rounded-2xl items-center justify-center"
             activeOpacity={0.7}
             onPress={() => router.push('/reports')}
           >
-            <FileBarChart size={22} color="#0096EB" />
+            <FileBarChart size={24} color="#38BDF8" />
           </TouchableOpacity>
         </View>
 

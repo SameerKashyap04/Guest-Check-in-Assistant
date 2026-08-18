@@ -318,7 +318,6 @@ export default function ScannerScreen() {
               <TouchableOpacity
                 key={type.id}
                 className="flex-row items-center p-4 mb-3 rounded-2xl bg-white dark:bg-black/20 border border-transparent dark:border-transparent"
-                style={Platform.OS === 'web' ? ({ transition: 'all 0.2s ease' } as any) : undefined}
                 activeOpacity={0.7}
                 onPress={() => startScan(type.id)}
               >

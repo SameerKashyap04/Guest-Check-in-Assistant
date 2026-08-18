@@ -413,7 +413,6 @@ export default function ReviewScreen() {
                         key={room.id}
                         onPress={() => setSelectedRoomId(room.id)}
                         activeOpacity={0.7}
-                        style={Platform.OS === 'web' ? ({ transition: 'all 0.2s' } as any) : undefined}
                         className={`px-5 py-3.5 rounded-2xl border ${
                           isSelected 
                             ? 'border-foreground bg-foreground/10 dark:border-white dark:bg-white/15' 
