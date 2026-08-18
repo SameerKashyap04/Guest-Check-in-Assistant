@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ChevronRight, Cloud, MapPin, Globe, Moon,
   Lock, Clock, Fingerprint, LogOut, Check,
-  X,
+  X, User,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -33,8 +33,8 @@ export default function SettingsScreen() {
   const router = useRouter();
 
   const {
-    businessName, propertyId, storageMode,
-    setStorageMode, setBusinessSetup, setLanguage, setTheme,
+    businessName, userName, propertyId, storageMode,
+    setStorageMode, setBusinessSetup, setUserName, setLanguage, setTheme,
   } = useSettingsStore();
 
   const { currentPlan, usage, isTrialing } = useSubscriptionStore();
@@ -43,6 +43,8 @@ export default function SettingsScreen() {
   // Dialog State
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [tempPropName, setTempPropName] = useState(businessName || '');
+  const [userNameModalOpen, setUserNameModalOpen] = useState(false);
+  const [tempUserName, setTempUserName] = useState(userName || 'Sameer');
   const [langModalOpen, setLangModalOpen] = useState(false);
   const [themeModalOpen, setThemeModalOpen] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
@@ -79,6 +81,9 @@ export default function SettingsScreen() {
       return;
     }
     setBusinessSetup(tempPropName.trim());
+    if (tempUserName.trim()) {
+      setUserName(tempUserName.trim());
+    }
     setProfileModalOpen(false);
   };
 
@@ -141,6 +146,7 @@ export default function SettingsScreen() {
           activeOpacity={0.8}
           onPress={() => {
             setTempPropName(businessName || '');
+            setTempUserName(userName || 'Sameer');
             setProfileModalOpen(true);
           }}
         >
@@ -154,7 +160,7 @@ export default function SettingsScreen() {
               {businessName || 'Sunrise Homestay'}
             </Text>
             <Text style={styles.propertyMeta}>
-              {propertyId || 'HS-4821'} · Homestay Owner
+              {propertyId || 'HS-4821'} · {userName || 'Sameer'} (Owner)
             </Text>
           </View>
           <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
@@ -243,7 +249,28 @@ export default function SettingsScreen() {
         <TouchableOpacity
           style={styles.settingsRow}
           activeOpacity={0.7}
-          onPress={() => setProfileModalOpen(true)}
+          onPress={() => {
+            setTempUserName(userName || 'Sameer');
+            setUserNameModalOpen(true);
+          }}
+        >
+          <View style={styles.iconWell}>
+            <User size={18} color={AIRBNB.colors.ink} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowTitle}>User name — {userName || 'Sameer'}</Text>
+          </View>
+          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.settingsRow}
+          activeOpacity={0.7}
+          onPress={() => {
+            setTempPropName(businessName || '');
+            setTempUserName(userName || 'Sameer');
+            setProfileModalOpen(true);
+          }}
         >
           <View style={styles.iconWell}>
             <MapPin size={18} color={AIRBNB.colors.ink} />
@@ -390,6 +417,13 @@ export default function SettingsScreen() {
             </View>
 
             <Input
+              label="Your Name / Host Name"
+              value={tempUserName}
+              onChangeText={setTempUserName}
+              placeholder="e.g. Sameer"
+            />
+
+            <Input
               label="Property / Business Name"
               value={tempPropName}
               onChangeText={setTempPropName}
@@ -408,6 +442,65 @@ export default function SettingsScreen() {
                 variant="primary"
                 style={{ flex: 1 }}
                 onPress={handleSavePropertyProfile}
+              />
+            </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* ══════════════════════════════════════════════════
+          USER NAME MODAL
+      ══════════════════════════════════════════════════ */}
+      <Modal visible={userNameModalOpen} transparent animationType="slide">
+        <TouchableOpacity
+          style={styles.scrim}
+          activeOpacity={1}
+          onPress={() => setUserNameModalOpen(false)}
+        >
+          <TouchableOpacity
+            style={styles.sheet}
+            activeOpacity={1}
+            onPress={e => e.stopPropagation?.()}
+          >
+            <View style={styles.sheetHandle} />
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetTitle}>Change User Name</Text>
+              <TouchableOpacity
+                style={styles.iconBtn}
+                onPress={() => setUserNameModalOpen(false)}
+              >
+                <X size={16} color={AIRBNB.colors.ink} />
+              </TouchableOpacity>
+            </View>
+
+            <Input
+              label="Your Name / Greeting Name"
+              value={tempUserName}
+              onChangeText={setTempUserName}
+              placeholder="e.g. Sameer"
+              autoFocus
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
+              <Button
+                label="Cancel"
+                variant="outline"
+                style={{ flex: 1 }}
+                onPress={() => setUserNameModalOpen(false)}
+              />
+              <Button
+                label="Save"
+                variant="primary"
+                style={{ flex: 1 }}
+                onPress={() => {
+                  if (!tempUserName.trim()) {
+                    Alert.alert('Required', 'User name cannot be empty');
+                    return;
+                  }
+                  setUserName(tempUserName.trim());
+                  setUserNameModalOpen(false);
+                  Alert.alert('Updated', 'User name updated successfully!');
+                }}
               />
             </View>
           </TouchableOpacity>

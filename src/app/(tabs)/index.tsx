@@ -17,7 +17,7 @@ import { useTranslation } from 'react-i18next';
 
 export default function DashboardScreen() {
   const { t } = useTranslation();
-  const { businessName, propertyId, ownerId, storageMode, getShareableLink } = useSettingsStore();
+  const { businessName, userName: customUserName, propertyId, ownerId, storageMode, getShareableLink } = useSettingsStore();
   const { owner } = useAuthStore();
   const { rooms, fetchRooms } = useRoomsStore();
   const [refreshing, setRefreshing] = useState(false);
@@ -120,10 +120,7 @@ export default function DashboardScreen() {
   const greeting = t(greetingKey);
   const todayDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-  const rawName =
-    (owner?.email ? owner.email.split('@')[0] : '') ||
-    (businessName || owner?.businessName || 'Sameer');
-  const userName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+  const userName = (customUserName && customUserName.trim()) || 'Sameer';
 
   const fetchGuests = async () => {
     try {

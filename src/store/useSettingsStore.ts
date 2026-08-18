@@ -26,6 +26,7 @@ import i18n from '@/i18n';
 interface SettingsState {
   hasCompletedSetup: boolean;
   businessName: string | null;
+  userName: string;
   propertyId: string;
   ownerId: string;
   storageMode: 'cloud' | 'local';
@@ -33,6 +34,7 @@ interface SettingsState {
   theme: 'system' | 'light' | 'dark';
   selfCheckinUrl: string;
   setBusinessSetup: (name: string) => void;
+  setUserName: (name: string) => void;
   setOwnerId: (uid: string) => void;
   setPropertyId: (id: string) => void;
   setStorageMode: (mode: 'cloud' | 'local') => void;
@@ -47,6 +49,7 @@ export const useSettingsStore = create<SettingsState>()(
     (set, get) => ({
       hasCompletedSetup: false,
       businessName: null,
+      userName: 'Sameer',
       propertyId: generatePropertyId(null),
       ownerId: 'OWNER_DEFAULT_101',
       storageMode: 'cloud',
@@ -56,6 +59,9 @@ export const useSettingsStore = create<SettingsState>()(
       setBusinessSetup: (name) => {
         const currentPropId = get().propertyId || generatePropertyId(name);
         set({ businessName: name, propertyId: currentPropId, hasCompletedSetup: true });
+      },
+      setUserName: (name) => {
+        set({ userName: name?.trim() || 'Sameer' });
       },
       setOwnerId: (uid) => set({ ownerId: uid }),
       setPropertyId: (id) => set({ propertyId: id }),
