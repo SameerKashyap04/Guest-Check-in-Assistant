@@ -71,6 +71,7 @@ export default function PricingScreen() {
       rooms: '2 rooms',
       checkins: '15 check-ins / mo',
       ocr: false,
+      cloud: false,
       tag: null,
     },
     {
@@ -81,6 +82,7 @@ export default function PricingScreen() {
       rooms: '8 rooms',
       checkins: '100 check-ins / mo',
       ocr: true,
+      cloud: false,
       tag: null,
     },
     {
@@ -91,6 +93,7 @@ export default function PricingScreen() {
       rooms: '25 rooms',
       checkins: 'Unlimited check-ins',
       ocr: true,
+      cloud: true,
       tag: 'Most popular',
     },
     {
@@ -101,6 +104,7 @@ export default function PricingScreen() {
       rooms: 'Unlimited rooms · 5 properties',
       checkins: 'Unlimited check-ins',
       ocr: true,
+      cloud: true,
       tag: null,
     },
     {
@@ -111,6 +115,7 @@ export default function PricingScreen() {
       rooms: 'Unlimited everything',
       checkins: 'Dedicated support',
       ocr: true,
+      cloud: true,
       tag: null,
     },
   ];
@@ -193,6 +198,13 @@ export default function PricingScreen() {
                   <Check size={15} color={AIRBNB.colors.ink} />
                   <Text style={styles.ocrText}>
                     {p.ocr ? 'AI Document OCR included' : 'OCR not included'}
+                  </Text>
+                </View>
+
+                <View style={[styles.ocrRow, { marginTop: 4 }]}>
+                  <Check size={15} color={p.cloud ? AIRBNB.colors.ink : AIRBNB.colors.mutedSoft} />
+                  <Text style={[styles.ocrText, !p.cloud && { color: AIRBNB.colors.muted }]}>
+                    {p.cloud ? 'Live Cloud sync & backup' : 'Local storage only (No cloud)'}
                   </Text>
                 </View>
 

@@ -34,6 +34,7 @@ export type FeatureFlag =
   | 'csvExport'
   | 'unlimitedExports'
   | 'ocrScanning'
+  | 'cloudSync'
   | 'staffAccounts'
   | 'backups'
   | 'restore'

@@ -70,8 +70,27 @@ export default function SettingsScreen() {
   const planConfig = PLANS[effectivePlan];
   const checkInLimit = planConfig.entitlements.limits.monthlyCheckInLimit;
   const exportLimit = planConfig.entitlements.limits.monthlyExportLimit;
+  const isCloudStorageAllowed = [
+    SubscriptionPlan.PROFESSIONAL,
+    SubscriptionPlan.MULTI_PROPERTY,
+    SubscriptionPlan.ENTERPRISE
+  ].includes(effectivePlan) || (planConfig.entitlements.features.includes('cloudSync'));
 
   const handleToggleStorage = async (val: boolean) => {
+    if (val && !isCloudStorageAllowed) {
+      Alert.alert(
+        'Professional Feature',
+        'Cloud storage & live multi-device sync is available exclusively on the Professional plan and higher.\n\nUpgrade to unlock automated cloud backup and staff device sync.',
+        [
+          { text: 'Not Now', style: 'cancel' },
+          {
+            text: 'View Plans',
+            onPress: () => router.push('/subscription/pricing'),
+          },
+        ]
+      );
+      return;
+    }
     setStorageMode(val ? 'cloud' : 'local');
   };
 
@@ -232,13 +251,24 @@ export default function SettingsScreen() {
             <Cloud size={18} color={AIRBNB.colors.ink} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>Cloud mode</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={styles.rowTitle}>Cloud mode</Text>
+              {!isCloudStorageAllowed && (
+                <View style={styles.proBadge}>
+                  <Text style={styles.proBadgeText}>PRO</Text>
+                </View>
+              )}
+            </View>
             <Text style={styles.rowSubtitle}>
-              {storageMode === 'cloud' ? 'Synced live across staff devices' : 'Local storage only'}
+              {!isCloudStorageAllowed
+                ? 'Requires Professional plan · Local storage only'
+                : storageMode === 'cloud'
+                ? 'Synced live across staff devices'
+                : 'Local storage only'}
             </Text>
           </View>
           <AirbnbSwitch
-            value={storageMode === 'cloud'}
+            value={storageMode === 'cloud' && isCloudStorageAllowed}
             onValueChange={handleToggleStorage}
           />
         </View>
