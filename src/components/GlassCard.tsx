@@ -1,27 +1,26 @@
 import React from 'react';
-import { View, ViewProps, StyleSheet } from 'react-native';
-import { AIRBNB } from '@/theme/airbnb';
+import { View, ViewProps } from 'react-native';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-// ─── Airbnb Card Primitive for StayMate ──────────────────────────────────────
-// Direct port of .card and .metric-card from staymate-airbnb-redesign/app.html
-// Pure white canvas with #ebebeb hairline border, 14px radius and soft shadow
-// ─────────────────────────────────────────────────────────────────────────────
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 export interface GlassCardProps extends ViewProps {
-  variant?: 'default' | 'elevated' | 'soft';
+  variant?: 'default' | 'elevated';
 }
 
 export const GlassCard = React.forwardRef<View, GlassCardProps>(
-  ({ style, variant = 'default', children, ...props }, ref) => {
+  ({ className, variant = 'default', children, ...props }, ref) => {
     return (
       <View
         ref={ref}
-        style={[
-          styles.base,
-          variant === 'soft' && styles.soft,
-          AIRBNB.shadow.card,
-          style,
-        ]}
+        className={cn(
+          "bg-white dark:bg-[#181A24] rounded-3xl border border-gray-200/60 dark:border-gray-800 shadow-sm",
+          variant === 'elevated' && "shadow-md shadow-black/5 dark:shadow-black/30",
+          className
+        )}
         {...props}
       >
         {children}
@@ -30,20 +29,4 @@ export const GlassCard = React.forwardRef<View, GlassCardProps>(
   }
 );
 
-const styles = StyleSheet.create({
-  base: {
-    backgroundColor: AIRBNB.colors.canvas,
-    borderRadius: AIRBNB.radius.md,
-    borderWidth: 1,
-    borderColor: AIRBNB.colors.hairlineSoft,
-    overflow: 'hidden',
-  },
-  soft: {
-    backgroundColor: AIRBNB.colors.surfaceSoft,
-    borderColor: AIRBNB.colors.hairline,
-  },
-});
-
 GlassCard.displayName = 'GlassCard';
-
-export default GlassCard;

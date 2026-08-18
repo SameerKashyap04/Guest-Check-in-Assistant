@@ -298,7 +298,7 @@ export function isInGracePeriod(): boolean {
  * Never downgrade the user just because the network is unavailable.
  * Use the cached plan and entitlements until the grace period expires.
  */
-export function getEffectivePlan(state: ReturnType<typeof getState>): SubscriptionPlan {
+function getEffectivePlan(state: ReturnType<typeof getState>): SubscriptionPlan {
   const { currentPlan, status, isTrialing } = state;
 
   // Expired or cancelled with no grace → FREE

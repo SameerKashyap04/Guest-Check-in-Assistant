@@ -1,789 +1,665 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import {
-  View, Text, TouchableOpacity, ScrollView,
-  StyleSheet, Alert, Modal, ActivityIndicator,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, Modal, TouchableOpacity, Platform, Alert, ActivityIndicator, ScrollView, Image, Share } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as ImagePicker from 'expo-image-picker';
-import {
-  Search, Shield, MapPin, Users, Edit3, Globe,
-  Zap, ZapOff, SwitchCamera, Image as ImageIcon, Check,
-  ChevronRight, Wifi, X,
-} from 'lucide-react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
 import { Button } from '@/components/Button';
-import { Input } from '@/components/Input';
-import { useSettingsStore } from '@/store/useSettingsStore';
-import { useSubscriptionStore } from '@/store/useSubscriptionStore';
-import { useRoomsStore } from '@/store/useRoomsStore';
-import { createMultipleGuestsAndStay } from '@/database/stays';
+import { Camera, FileText, X, ChevronRight, Upload, Image as ImageIcon, Globe, CheckCircle2, Trash2, User, Phone, IdCard, MapPin, Calendar, Users, Check, UserCheck, Share2, Link2, ExternalLink } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
-import { isAtLimit } from '@/services/entitlementService';
-import { AIRBNB } from '@/theme/airbnb';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { useRoomsStore } from '@/store/useRoomsStore';
+import { subscribeToPropertyCheckins, deleteCloudCheckinDoc, CloudGuestCheckin } from '@/services/firebaseSync';
+import { createMultipleGuestsAndStay } from '@/database/stays';
+import { GlassCard } from '@/components/GlassCard';
+import { useTranslation } from 'react-i18next';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { canUseFeature, isAtLimit } from '@/services/entitlementService';
 
-// ─── Airbnb Dynamic Check-in Screen for StayMate ─────────────────────────────
-// Real-time OCR scanner + dynamic room assignment + live database persistence
-// ─────────────────────────────────────────────────────────────────────────────
+const ID_TYPES = [
+  { id: 'UNKNOWN', label: 'Auto-Detect', description: 'Let the system identify the document' },
+  { id: 'AADHAAR', label: 'Aadhaar Card', description: 'Standard 12-digit UIDAI card' },
+  { id: 'PAN', label: 'PAN Card', description: 'Permanent Account Number card' },
+  { id: 'VOTER_ID', label: 'Voter ID', description: 'Election Commission of India card' },
+  { id: 'DRIVING_LICENCE', label: 'Driving Licence', description: 'Indian Driving Licence' },
+  { id: 'PASSPORT', label: 'Passport', description: 'Republic of India Passport' },
+];
 
-type DocType = 'AUTO' | 'AADHAAR' | 'PAN' | 'VOTER' | 'DRIVING' | 'PASSPORT';
-
-export default function CheckinScannerScreen() {
+export default function ScannerScreen() {
+  const { t } = useTranslation();
   const router = useRouter();
-  const { propertyId } = useSettingsStore();
+  const { businessName, propertyId, ownerId, getShareableLink } = useSettingsStore();
   const { rooms, fetchRooms } = useRoomsStore();
 
-  const [selectedDoc, setSelectedDoc] = useState<DocType>('AUTO');
-  const [permission, requestPermission] = useCameraPermissions();
-  const [flash, setFlash] = useState<'off' | 'on'>('off');
-  const [facing, setFacing] = useState<'back' | 'front'>('back');
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [capturedPhotoUri, setCapturedPhotoUri] = useState<string | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [isScanning, setIsScanning] = useState(false);
 
-  // Review Sheet State (defaults empty for real user/OCR input)
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
-  const [fullName, setFullName] = useState('');
-  const [idNumber, setIdNumber] = useState('');
-  const [gender, setGender] = useState('Male');
-  const [dob, setDob] = useState('');
-  const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
-  const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
-
-  const cameraRef = useRef<any>(null);
-
-  useFocusEffect(
-    useCallback(() => {
-      fetchRooms();
-    }, [])
-  );
+  // Online Self Check-ins Portal State
+  const [pendingCheckins, setPendingCheckins] = useState<CloudGuestCheckin[]>([]);
+  const [isPortalModalOpen, setIsPortalModalOpen] = useState(false);
+  const [selectedCheckinDetail, setSelectedCheckinDetail] = useState<CloudGuestCheckin | null>(null);
+  const [isApprovingId, setIsApprovingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (rooms.length > 0 && !selectedRoomId) {
-      const firstAvailable = rooms.find(r => r.status === 'available') || rooms[0];
-      setSelectedRoomId(firstAvailable.id);
-    }
-  }, [rooms, selectedRoomId]);
+    fetchRooms();
+  }, []);
 
-  const resetForm = () => {
-    setFullName('');
-    setIdNumber('');
-    setGender('Male');
-    setDob('');
-    setAddress('');
-    setPhone('');
-    setCapturedPhotoUri(null);
-  };
+  // Real-time listener for incoming Web Self Check-ins
+  useEffect(() => {
+    if (!propertyId) return;
+    const unsub = subscribeToPropertyCheckins(
+      propertyId,
+      (newCheckin) => {
+        setPendingCheckins(prev => {
+          if (prev.some(item => item.id === newCheckin.id)) return prev;
+          return [newCheckin, ...prev];
+        });
+      },
+      ownerId,
+      false
+    );
+    return () => unsub();
+  }, [propertyId, ownerId]);
 
-  const handleCapture = async () => {
-    if (!cameraRef.current || isProcessing) return;
-
-    if (isAtLimit('monthlyCheckIns')) {
-      Alert.alert(
-        'Check-in Limit Reached',
-        'You have reached your monthly check-in limit. Upgrade your plan to continue checking in guests.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'View Plans', onPress: () => router.push('/subscription/pricing') },
-        ]
-      );
-      return;
-    }
-
+  const handleApproveCheckin = async (checkin: CloudGuestCheckin) => {
     try {
-      setIsProcessing(true);
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.85 });
-      if (photo?.uri) {
-        setCapturedPhotoUri(photo.uri);
-        useSubscriptionStore.getState().incrementOcrScan();
+      setIsApprovingId(checkin.id || 'current');
 
-        const parsed = await OCRPipeline.processImage(photo.uri, selectedDoc);
-        if (parsed) {
-          if (parsed.fullName) setFullName(parsed.fullName);
-          if (parsed.idNumber) setIdNumber(parsed.idNumber);
-          if (parsed.dob) setDob(parsed.dob);
-          if (parsed.gender) setGender(parsed.gender);
-          if (parsed.address) setAddress(parsed.address);
-        }
-        setIsReviewOpen(true);
-      }
-    } catch (e) {
-      console.error('Capture error', e);
-      setIsReviewOpen(true);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+      let roomId = rooms.length > 0 ? rooms[0].id : 1;
+      const matchedRoom = rooms.find(r => r.room_number === checkin.room_number);
+      if (matchedRoom) roomId = matchedRoom.id;
 
-  const handlePickGallery = async () => {
-    if (isAtLimit('monthlyCheckIns')) {
-      Alert.alert(
-        'Check-in Limit Reached',
-        'You have reached your monthly check-in limit. Upgrade your plan to continue checking in guests.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'View Plans', onPress: () => router.push('/subscription/pricing') },
-        ]
-      );
-      return;
-    }
+      const allGuestsToImport = [
+        {
+          full_name: checkin.full_name,
+          id_number: checkin.id_number || 'N/A',
+          address: checkin.address || '',
+          phone: checkin.phone || '',
+          photo_uri: checkin.photo_uri || '',
+          back_photo_uri: checkin.back_photo_uri || '',
+          selfie_uri: checkin.selfie_uri || '',
+          property_id: checkin.property_id || propertyId || 'HS-DEFAULT',
+          id_type: checkin.id_type || 'Aadhaar',
+          dob: checkin.dob || '',
+          gender: checkin.gender || 'Other',
+          pin_code: checkin.pin_code || ''
+        },
+        ...(checkin.additional_guests || []).map((g: any) => ({
+          full_name: g.fullName || 'Additional Guest',
+          id_number: g.idNumber || 'N/A',
+          address: checkin.address || '',
+          phone: g.phone || checkin.phone || '',
+          photo_uri: g.frontPhotoUri || '',
+          back_photo_uri: g.backPhotoUri || '',
+          selfie_uri: g.selfiePhotoUri || '',
+          property_id: checkin.property_id || propertyId || 'HS-DEFAULT',
+          id_type: g.idType || 'Aadhaar',
+          dob: g.dob || '',
+          gender: g.gender || 'Other',
+          pin_code: checkin.pin_code || ''
+        }))
+      ];
 
-    try {
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        quality: 0.85,
-      });
-
-      if (!result.canceled && result.assets[0]?.uri) {
-        const uri = result.assets[0].uri;
-        setCapturedPhotoUri(uri);
-        useSubscriptionStore.getState().incrementOcrScan();
-
-        const parsed = await OCRPipeline.processImage(uri, selectedDoc);
-        if (parsed) {
-          if (parsed.fullName) setFullName(parsed.fullName);
-          if (parsed.idNumber) setIdNumber(parsed.idNumber);
-          if (parsed.dob) setDob(parsed.dob);
-          if (parsed.gender) setGender(parsed.gender);
-          if (parsed.address) setAddress(parsed.address);
-        }
-        setIsReviewOpen(true);
-      }
-    } catch (e) {
-      console.error('Gallery pick error', e);
-    }
-  };
-
-  const handleConfirmCheckin = async () => {
-    if (!fullName.trim()) {
-      Alert.alert('Missing Name', 'Please enter the guest full name.');
-      return;
-    }
-    if (!selectedRoomId) {
-      Alert.alert('Missing Room', 'Please select a room for check-in.');
-      return;
-    }
-
-    try {
-      setIsSaving(true);
       const todayStr = new Date().toISOString().split('T')[0];
-      const activePropertyId = propertyId || 'HS-DEFAULT';
 
       await createMultipleGuestsAndStay(
-        [{
-          full_name: fullName.trim(),
-          id_number: idNumber.trim() || 'N/A',
-          address: address.trim(),
-          phone: phone.trim(),
-          photo_uri: capturedPhotoUri || '',
-          back_photo_uri: '',
-          selfie_uri: '',
-          property_id: activePropertyId,
-          id_type: selectedDoc === 'AADHAAR' ? 'Aadhaar' : selectedDoc === 'PAN' ? 'PAN Card' : selectedDoc === 'PASSPORT' ? 'Passport' : selectedDoc === 'VOTER' ? 'Voter ID' : selectedDoc === 'DRIVING' ? 'Driving Licence' : 'Aadhaar',
-          dob: dob.trim(),
-          gender: gender || 'Male',
-          pin_code: '',
-        }],
+        allGuestsToImport,
         {
-          room_id: selectedRoomId,
-          check_in_date: todayStr,
-          check_out_date: todayStr,
+          room_id: roomId,
+          check_in_date: checkin.check_in_date || todayStr,
+          check_out_date: checkin.check_out_date || checkin.check_in_date || todayStr
         }
       );
 
-      useSubscriptionStore.getState().incrementCheckIn();
-      setIsReviewOpen(false);
-      resetForm();
+      // Delete from Cloud Firestore once approved
+      if (checkin.id) {
+        await deleteCloudCheckinDoc(checkin.id);
+      }
 
-      Alert.alert('Check-in Complete!', `${fullName} has been checked in successfully.`, [
-        { text: 'View Dashboard', onPress: () => router.replace('/(tabs)') },
-      ]);
+      // ── Subscription: increment check-in counter for approved self-check-in ──
+      useSubscriptionStore.getState().incrementCheckIn();
+
+      setPendingCheckins(prev => prev.filter(item => item.id !== checkin.id));
+      if (selectedCheckinDetail?.id === checkin.id) {
+        setSelectedCheckinDetail(null);
+      }
+
+      await fetchRooms();
+
+      Alert.alert(
+        'Self Check-in Approved! 🎉',
+        `Guest ${checkin.full_name} (${allGuestsToImport.length} guest${allGuestsToImport.length > 1 ? 's' : ''}) assigned to Room ${checkin.room_number} has been registered into your app.`
+      );
     } catch (e: any) {
-      Alert.alert('Check-in Error', e?.message || 'Failed to complete check-in.');
+      console.error('Approval failed', e);
+      Alert.alert('Approval Failed', e?.message || 'Could not approve self check-in.');
     } finally {
-      setIsSaving(false);
+      setIsApprovingId(null);
     }
   };
 
-  const docTypes = [
-    { id: 'AUTO' as DocType, label: 'Auto-\ndetect', icon: Search },
-    { id: 'AADHAAR' as DocType, label: 'Aadhaar', icon: Shield },
-    { id: 'PAN' as DocType, label: 'PAN Card', icon: MapPin },
-    { id: 'VOTER' as DocType, label: 'Voter ID', icon: Users },
-    { id: 'DRIVING' as DocType, label: 'Driving\nLicence', icon: Edit3 },
-    { id: 'PASSPORT' as DocType, label: 'Passport', icon: Globe },
-  ];
+  const handleRejectCheckin = (checkin: CloudGuestCheckin) => {
+    Alert.alert(
+      'Reject & Remove Check-in?',
+      `Are you sure you want to discard the online check-in request from ${checkin.full_name}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Reject & Remove',
+          style: 'destructive',
+          onPress: async () => {
+            if (checkin.id) {
+              await deleteCloudCheckinDoc(checkin.id);
+            }
+            setPendingCheckins(prev => prev.filter(item => item.id !== checkin.id));
+            if (selectedCheckinDetail?.id === checkin.id) {
+              setSelectedCheckinDetail(null);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const startScan = (idType: string) => {
+    // ── Subscription: check OCR feature access ──
+    if (!canUseFeature('ocrScanning')) {
+      Alert.alert(
+        'OCR Scanning — Professional Feature',
+        'Automatic ID scanning with OCR is available on the Professional plan. You can still use Manual Entry or Upload ID Image.',
+        [
+          { text: 'OK', style: 'cancel' },
+          { text: 'View Plans', onPress: () => router.push('/subscription/pricing') },
+        ]
+      );
+      return;
+    }
+    useSubscriptionStore.getState().incrementOcrScan();
+    setModalVisible(false);
+    router.push({
+      pathname: '/checkin/camera',
+      params: { idType }
+    });
+  };
+
+  const handleUploadID = async () => {
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Permission to access photo gallery is required to upload ID images.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 1,
+        allowsEditing: false,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const imageUri = result.assets[0].uri;
+      setIsScanning(true);
+
+      const blocks = await OCRPipeline.analyzeFrame(imageUri);
+      const initialProfile = {
+        fullName: { value: '', confidence: 0 },
+        idNumber: { value: '', confidence: 0 },
+        address: { value: '', confidence: 0 },
+        dob: { value: '', confidence: 0 },
+        gender: { value: '', confidence: 0 },
+        pinCode: { value: '', confidence: 0 },
+        idType: 'UNKNOWN' as const,
+        isBackScanned: false,
+        photoUri: imageUri
+      };
+
+      const profile = OCRPipeline.processBlocks(blocks, initialProfile, 'UNKNOWN');
+      setIsScanning(false);
+
+      router.push({
+        pathname: '/checkin/review',
+        params: {
+          guestProfile: JSON.stringify(profile),
+          photoUri: imageUri,
+          extractedName: profile.fullName?.value || '',
+          extractedDocType: profile.idType || 'UNKNOWN',
+          extractedIdNumber: profile.idNumber?.value || '',
+          extractedAddress: profile.address?.value || '',
+          extractedDob: profile.dob?.value || '',
+        }
+      });
+
+    } catch (error) {
+      console.error('Upload & Scan error:', error);
+      setIsScanning(false);
+      Alert.alert('Scan Failed', 'Could not extract text from the selected image. Please try another image or use manual entry.');
+    }
+  };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        showsVerticalScrollIndicator={false}
+    <SafeAreaView edges={['top', 'left', 'right']} className="flex-1 bg-background justify-center items-center px-6">
+      <View className="items-center mb-8 mt-4">
+        <View className="w-24 h-24 bg-primary/10 rounded-full items-center justify-center mb-6">
+          <Camera size={48} color="#000000" />
+        </View>
+        <Text className="text-2xl font-bold text-foreground mb-2 text-center">
+          New Guest Registration
+        </Text>
+        <Text className="text-base text-gray-500 text-center px-2">
+          Scan a government ID using your camera, upload an image from your gallery, or enter details manually.
+        </Text>
+      </View>
+
+      <Button 
+        label="Scan ID Card" 
+        size="lg" 
+        className="w-full mb-3"
+        icon={<Camera size={20} color="#FFF" className="mr-2" />}
+        onPress={() => setModalVisible(true)}
+      />
+
+      <Button 
+        label={isScanning ? "Scanning Uploaded ID..." : "Upload ID Image"} 
+        variant="secondary"
+        size="lg" 
+        className="w-full mb-3"
+        isLoading={isScanning}
+        icon={<Upload size={20} color="#FFF" className="mr-2" />}
+        onPress={handleUploadID}
+      />
+
+      {/* ONLINE SELF CHECK-INS APPROVAL BUTTON */}
+      <TouchableOpacity
+        onPress={() => setIsPortalModalOpen(true)}
+        activeOpacity={0.8}
+        className="w-full mb-3 bg-emerald-600 active:bg-emerald-700 px-8 py-4 rounded-2xl flex-row items-center justify-center shadow-sm"
       >
-        {/* ── Screen Header ── */}
-        <View style={styles.header}>
-          <Text style={styles.title}>Check-in</Text>
-          <Text style={styles.subtitle}>
-            Scan an ID to auto-fill guest details, or enter manually
-          </Text>
-        </View>
+        <Globe size={20} color="#FFFFFF" className="mr-2" />
+        <Text className="text-white font-bold text-lg">
+          Online Self Check-ins
+        </Text>
+        {pendingCheckins.length > 0 && (
+          <View className="ml-2.5 bg-white px-2.5 py-0.5 rounded-full flex-row items-center justify-center">
+            <Text className="text-emerald-700 font-extrabold text-xs">
+              {pendingCheckins.length}
+            </Text>
+          </View>
+        )}
+      </TouchableOpacity>
+      
+      <Button 
+        label="Manual Entry" 
+        variant="outline"
+        size="lg" 
+        className="w-full"
+        icon={<FileText size={20} color="#1F2937" className="mr-2" />}
+        onPress={() => router.push('/checkin/manual')}
+      />
 
-        {/* ── Document Type Grid (3x2) ── */}
-        <Text style={styles.sectionLabel}>DOCUMENT TYPE</Text>
-        <View style={styles.docTypeGrid}>
-          {docTypes.map(doc => {
-            const active = selectedDoc === doc.id;
-            const Icon = doc.icon;
-            return (
-              <TouchableOpacity
-                key={doc.id}
-                style={[
-                  styles.docTypeCard,
-                  active && styles.docTypeCardActive,
-                ]}
-                activeOpacity={0.8}
-                onPress={() => setSelectedDoc(doc.id)}
-              >
-                <Icon
-                  size={20}
-                  color={active ? AIRBNB.colors.ink : AIRBNB.colors.muted}
-                />
-                <Text
-                  style={[styles.docTypeLabel, active && styles.docTypeLabelActive]}
-                  numberOfLines={2}
-                >
-                  {doc.label}
-                </Text>
+      {/* CAMERA ID TYPE SELECTION MODAL */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View className="flex-1 justify-end bg-black/50">
+          <View className="bg-background rounded-t-3xl p-6 min-h-[60%]">
+            <View className="flex-row justify-between items-center mb-6">
+              <Text className="text-xl font-bold text-foreground">Select ID Type</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)} className="p-2 bg-primary/10 rounded-full">
+                <X size={20} color="#000000" />
               </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* ── Scan Document Viewfinder ── */}
-        <Text style={styles.sectionLabel}>SCAN DOCUMENT</Text>
-        <View style={styles.viewfinder}>
-          {permission?.granted ? (
-            <CameraView
-              ref={cameraRef}
-              style={StyleSheet.absoluteFill}
-              facing={facing}
-              enableTorch={flash === 'on'}
-            />
-          ) : (
-            <TouchableOpacity
-              style={styles.permissionReq}
-              onPress={requestPermission}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.permissionText}>Tap to grant Camera access</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Dashed Frame Guide */}
-          <View style={styles.frameGuide} />
-
-          {/* 4 White Corner Brackets */}
-          <View style={[styles.corner, styles.cornerTL]} />
-          <View style={[styles.corner, styles.cornerTR]} />
-          <View style={[styles.corner, styles.cornerBL]} />
-          <View style={[styles.corner, styles.cornerBR]} />
-
-          {/* Center Guide Label */}
-          <View style={styles.centerGuide}>
-            {isProcessing ? (
-              <ActivityIndicator size="small" color="#ffffff" />
-            ) : (
-              <Text style={styles.centerGuideText}>
-                Align the document within the frame
-              </Text>
-            )}
-          </View>
-
-          {/* Top Camera Controls */}
-          <View style={styles.camTop}>
-            <TouchableOpacity
-              style={styles.camIconBtn}
-              activeOpacity={0.7}
-              onPress={() => setFlash(flash === 'on' ? 'off' : 'on')}
-            >
-              {flash === 'on' ? <Zap size={18} color="#ffffff" /> : <ZapOff size={18} color="#ffffff" />}
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.camIconBtn}
-              activeOpacity={0.7}
-              onPress={() => setFacing(facing === 'back' ? 'front' : 'back')}
-            >
-              <SwitchCamera size={18} color="#ffffff" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Bottom Camera Controls */}
-          <View style={styles.camControls}>
-            <TouchableOpacity
-              style={styles.camIconBtn}
-              activeOpacity={0.7}
-              onPress={handlePickGallery}
-            >
-              <ImageIcon size={18} color="#ffffff" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.shutter}
-              activeOpacity={0.8}
-              onPress={handleCapture}
-            />
-            <View style={{ width: 42 }} />
+            </View>
+            
+            {ID_TYPES.map((type) => (
+              <TouchableOpacity
+                key={type.id}
+                className="flex-row items-center p-4 mb-3 rounded-2xl bg-white dark:bg-black/20 border border-transparent dark:border-transparent"
+                style={Platform.OS === 'web' ? ({ transition: 'all 0.2s ease' } as any) : undefined}
+                activeOpacity={0.7}
+                onPress={() => startScan(type.id)}
+              >
+                <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-4">
+                  <FileText size={20} color="#000000" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-base font-semibold text-foreground">{type.label}</Text>
+                  <Text className="text-xs text-gray-500 mt-1">{type.description}</Text>
+                </View>
+                <ChevronRight size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            ))}
           </View>
         </View>
+      </Modal>
 
-        {/* ── OR Divider ── */}
-        <View style={styles.orRow}>
-          <View style={styles.orLine} />
-          <Text style={styles.orText}>OR</Text>
-          <View style={styles.orLine} />
-        </View>
-
-        {/* ── Enter Details Manually Button ── */}
-        <Button
-          label="Enter details manually"
-          variant="secondary"
-          icon={<Edit3 size={17} color={AIRBNB.colors.ink} />}
-          onPress={() => {
-            resetForm();
-            setIsReviewOpen(true);
-          }}
-        />
-
-        {/* ── Web Self Check-ins Card ── */}
-        <TouchableOpacity
-          style={styles.webCheckinCard}
-          activeOpacity={0.8}
-          onPress={() => router.push('/registrations')}
-        >
-          <View style={styles.webIconWell}>
-            <Wifi size={17} color={AIRBNB.colors.ink} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.webTitle}>Web self check-ins</Text>
-            <Text style={styles.webSubtitle}>View pending online registrations</Text>
-          </View>
-          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
-        </TouchableOpacity>
-      </ScrollView>
-
-      {/* ══════════════════════════════════════════════════
-          CONFIRM & CHECK IN MODAL SHEET
-      ══════════════════════════════════════════════════ */}
-      <Modal visible={isReviewOpen} transparent animationType="slide">
-        <TouchableOpacity
-          style={styles.scrim}
-          activeOpacity={1}
-          onPress={() => setIsReviewOpen(false)}
-        >
-          <TouchableOpacity
-            style={styles.sheet}
-            activeOpacity={1}
-            onPress={e => e.stopPropagation?.()}
-          >
-            <View style={styles.sheetHandle} />
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-              {/* Header */}
-              <View style={styles.sheetHeader}>
+      {/* ONLINE SELF CHECK-INS APPROVAL PORTAL MODAL */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={isPortalModalOpen}
+        onRequestClose={() => setIsPortalModalOpen(false)}
+        statusBarTranslucent={true}
+      >
+        <View className="flex-1 bg-black/70 justify-end">
+          <View className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6 h-[90%] flex-col justify-between">
+            
+            {/* Header */}
+            <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+              <View className="flex-row items-center gap-2.5">
+                <View className="w-9 h-9 rounded-xl bg-emerald-500/15 items-center justify-center">
+                  <Globe size={20} color="#10B981" />
+                </View>
                 <View>
-                  <Text style={styles.sheetTitle}>Confirm guest details</Text>
-                  <Text style={styles.sheetSubtitle}>
-                    {capturedPhotoUri ? `Extracted from ${selectedDoc}` : 'Manual check-in entry'}
+                  <Text className="text-xl font-bold text-foreground">Online Self Check-ins</Text>
+                  <Text className="text-xs text-gray-500 font-medium">Review and approve guest web submissions</Text>
+                </View>
+              </View>
+              <TouchableOpacity onPress={() => setIsPortalModalOpen(false)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
+                <X size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Content List */}
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              
+              {/* SHARE ONLINE CHECK-IN LINK CARD */}
+              <GlassCard className="mb-5 p-4 rounded-2xl border border-emerald-500/30 bg-emerald-500/10">
+                <View className="flex-row items-center justify-between mb-2">
+                  <View className="flex-row items-center gap-2.5 flex-1">
+                    <View className="w-8 h-8 rounded-lg bg-emerald-600 justify-center items-center">
+                      <Link2 size={18} color="#FFFFFF" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-sm font-bold text-foreground">Guest Self Check-in Link</Text>
+                      <Text className="text-xs text-gray-500">Allow guests to submit their details before arrival</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View className="flex-row gap-2 mt-2">
+                  <TouchableOpacity
+                    onPress={async () => {
+                      try {
+                        await fetchRooms();
+                        const activeLink = getShareableLink(useRoomsStore.getState().rooms);
+                        const message = `Hello! Welcome to ${businessName || 'our property'}. Please complete your online guest self check-in prior to arrival using your unique link:\n${activeLink}`;
+                        await Share.share({ message, title: 'Homestay Self Check-in Link' });
+                      } catch (e) {
+                        console.error('Share error', e);
+                      }
+                    }}
+                    className="flex-1 bg-emerald-600 active:bg-emerald-700 py-2.5 rounded-xl items-center justify-center flex-row gap-1.5 shadow-sm"
+                  >
+                    <Share2 size={16} color="#FFFFFF" />
+                    <Text className="text-xs font-extrabold text-white">Share Link with Guest</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={() => {
+                      setIsPortalModalOpen(false);
+                      router.push('/self-checkin');
+                    }}
+                    className="bg-white dark:bg-black/30 border border-gray-200 dark:border-gray-800 px-3.5 py-2.5 rounded-xl items-center justify-center flex-row gap-1.5"
+                  >
+                    <ExternalLink size={16} color="#000000" className="dark:text-white" />
+                    <Text className="text-xs font-bold text-foreground">Open Portal</Text>
+                  </TouchableOpacity>
+                </View>
+              </GlassCard>
+              {pendingCheckins.length === 0 ? (
+                <View className="bg-gray-50 dark:bg-gray-800/20 p-8 rounded-2xl items-center justify-center border border-dashed border-gray-200 dark:border-gray-800 my-8">
+                  <Globe size={40} color="#9CA3AF" className="mb-3" />
+                  <Text className="text-base font-bold text-foreground text-center">No Pending Self Check-ins</Text>
+                  <Text className="text-xs text-gray-500 text-center mt-1">
+                    When guests complete check-in on your online link, their registrations will appear here for your approval.
                   </Text>
                 </View>
-                <TouchableOpacity
-                  style={styles.iconBtn}
-                  onPress={() => setIsReviewOpen(false)}
-                >
-                  <X size={16} color={AIRBNB.colors.ink} />
-                </TouchableOpacity>
-              </View>
+              ) : (
+                <View className="gap-4">
+                  {pendingCheckins.map((checkin) => {
+                    const addGuestsCount = (checkin.additional_guests || []).length;
+                    const totalGuests = 1 + addGuestsCount;
+                    const isApproving = isApprovingId === checkin.id;
 
-              {/* Form Fields */}
-              <View style={styles.formWrap}>
-                <Input
-                  label="Full Name"
-                  value={fullName}
-                  onChangeText={setFullName}
-                  placeholder="e.g. Rohan Sharma"
-                />
-                <Input
-                  label="ID Number"
-                  value={idNumber}
-                  onChangeText={setIdNumber}
-                  placeholder="e.g. 5481 9283 0192"
-                />
-                <View style={{ flexDirection: 'row', gap: 10 }}>
-                  <View style={{ flex: 1 }}>
-                    <Input
-                      label="Gender"
-                      value={gender}
-                      onChangeText={setGender}
-                      placeholder="Male / Female"
-                    />
+                    return (
+                      <GlassCard key={checkin.id} className="p-4 rounded-2xl border border-gray-200 dark:border-gray-800">
+                        {/* Checkin Card Top Bar */}
+                        <View className="flex-row justify-between items-start mb-3">
+                          <View className="flex-row items-center gap-3">
+                            <View className="w-10 h-10 rounded-full bg-emerald-500/10 items-center justify-center">
+                              <Text className="text-emerald-600 font-extrabold text-base">
+                                {checkin.full_name ? checkin.full_name.charAt(0).toUpperCase() : 'G'}
+                              </Text>
+                            </View>
+                            <View>
+                              <Text className="text-base font-bold text-foreground">{checkin.full_name}</Text>
+                              <Text className="text-xs text-gray-500">Phone: {checkin.phone || 'N/A'}</Text>
+                            </View>
+                          </View>
+
+                          <View className="bg-emerald-100 dark:bg-emerald-950/50 px-3 py-1 rounded-full border border-emerald-500/30">
+                            <Text className="text-xs font-extrabold text-emerald-700 dark:text-emerald-400">
+                              Room {checkin.room_number || 'N/A'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Stay Summary Pills */}
+                        <View className="flex-row flex-wrap gap-2 mb-4 bg-gray-50 dark:bg-gray-800/40 p-3 rounded-xl">
+                          <View className="flex-row items-center gap-1">
+                            <Users size={14} color="#6B7280" />
+                            <Text className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                              {totalGuests} Guest{totalGuests > 1 ? 's' : ''} ({1} Primary{addGuestsCount > 0 ? ` + ${addGuestsCount} Additional` : ''})
+                            </Text>
+                          </View>
+                          <Text className="text-gray-300 dark:text-gray-700">•</Text>
+                          <View className="flex-row items-center gap-1">
+                            <IdCard size={14} color="#6B7280" />
+                            <Text className="text-xs font-semibold text-gray-700 dark:text-gray-300">
+                              {checkin.id_type || 'Aadhaar'}: {checkin.id_number || 'N/A'}
+                            </Text>
+                          </View>
+                        </View>
+
+                        {/* Photo Thumbnail Row */}
+                        {(checkin.photo_uri || checkin.selfie_uri) && (
+                          <View className="flex-row gap-2 mb-4">
+                            {checkin.photo_uri ? (
+                              <View className="flex-1 h-20 rounded-xl overflow-hidden bg-black/10">
+                                <Image source={{ uri: checkin.photo_uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                              </View>
+                            ) : null}
+                            {checkin.selfie_uri ? (
+                              <View className="flex-1 h-20 rounded-xl overflow-hidden bg-black/10">
+                                <Image source={{ uri: checkin.selfie_uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                              </View>
+                            ) : null}
+                          </View>
+                        )}
+
+                        {/* Action Buttons */}
+                        <View className="flex-row gap-2.5">
+                          <TouchableOpacity
+                            onPress={() => setSelectedCheckinDetail(checkin)}
+                            className="bg-gray-100 dark:bg-gray-800 px-3.5 py-2.5 rounded-xl justify-center items-center"
+                          >
+                            <Text className="text-xs font-bold text-foreground">View Details</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => handleRejectCheckin(checkin)}
+                            className="bg-red-500/10 border border-red-500/30 px-3.5 py-2.5 rounded-xl justify-center items-center flex-row gap-1"
+                          >
+                            <Trash2 size={14} color="#EF4444" />
+                            <Text className="text-xs font-bold text-red-500">Remove</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() => handleApproveCheckin(checkin)}
+                            disabled={isApproving}
+                            className="flex-1 bg-emerald-600 active:bg-emerald-700 py-2.5 rounded-xl justify-center items-center flex-row gap-1.5"
+                          >
+                            {isApproving ? (
+                              <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                              <>
+                                <CheckCircle2 size={16} color="#FFFFFF" />
+                                <Text className="text-xs font-extrabold text-white">Approve & Save</Text>
+                              </>
+                            )}
+                          </TouchableOpacity>
+                        </View>
+                      </GlassCard>
+                    );
+                  })}
+                </View>
+              )}
+            </ScrollView>
+
+          </View>
+        </View>
+      </Modal>
+
+      {/* DETAILED CHECK-IN PREVIEW MODAL */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={selectedCheckinDetail !== null}
+        onRequestClose={() => setSelectedCheckinDetail(null)}
+      >
+        <View className="flex-1 bg-black/80 justify-end">
+          <View className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6 h-[92%] flex-col justify-between">
+            <View className="flex-row justify-between items-center mb-3 pb-3 border-b border-gray-100 dark:border-gray-800">
+              <View>
+                <Text className="text-xl font-bold text-foreground">{selectedCheckinDetail?.full_name}</Text>
+                <Text className="text-xs text-emerald-600 font-semibold">Web Self Check-in Preview</Text>
+              </View>
+              <TouchableOpacity onPress={() => setSelectedCheckinDetail(null)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
+                <X size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
+
+            {selectedCheckinDetail && (
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+                {/* Photos Display */}
+                <Text className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">
+                  ID & Selfie Photos
+                </Text>
+                <View className="gap-3 mb-5">
+                  {selectedCheckinDetail.photo_uri ? (
+                    <View className="bg-gray-50 dark:bg-gray-800/40 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                      <Text className="text-xs font-bold text-foreground mb-1.5 ml-1">Front ID Photo</Text>
+                      <Image source={{ uri: selectedCheckinDetail.photo_uri }} style={{ width: '100%', height: 180, borderRadius: 12 }} resizeMode="cover" />
+                    </View>
+                  ) : null}
+
+                  {selectedCheckinDetail.back_photo_uri ? (
+                    <View className="bg-gray-50 dark:bg-gray-800/40 p-2.5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                      <Text className="text-xs font-bold text-foreground mb-1.5 ml-1">Back ID Photo</Text>
+                      <Image source={{ uri: selectedCheckinDetail.back_photo_uri }} style={{ width: '100%', height: 180, borderRadius: 12 }} resizeMode="cover" />
+                    </View>
+                  ) : null}
+
+                  {selectedCheckinDetail.selfie_uri ? (
+                    <View className="bg-sky-50 dark:bg-sky-950/30 p-2.5 rounded-2xl border border-sky-100 dark:border-sky-800/40">
+                      <Text className="text-xs font-bold text-primary mb-1.5 ml-1">Guest Selfie Photo</Text>
+                      <Image source={{ uri: selectedCheckinDetail.selfie_uri }} style={{ width: '100%', height: 200, borderRadius: 12 }} resizeMode="cover" />
+                    </View>
+                  ) : null}
+                </View>
+
+                {/* Primary Info Details */}
+                <Text className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">
+                  Primary Guest Information
+                </Text>
+                <View className="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 gap-2.5 mb-5">
+                  <View className="flex-row justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
+                    <Text className="text-xs font-medium text-gray-500">Requested Room</Text>
+                    <Text className="text-xs font-bold text-foreground">Room {selectedCheckinDetail.room_number}</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Input
-                      label="Date of Birth"
-                      value={dob}
-                      onChangeText={setDob}
-                      placeholder="DD/MM/YYYY"
-                    />
+                  <View className="flex-row justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
+                    <Text className="text-xs font-medium text-gray-500">Document Type</Text>
+                    <Text className="text-xs font-bold text-foreground">{selectedCheckinDetail.id_type || 'N/A'}</Text>
+                  </View>
+                  <View className="flex-row justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
+                    <Text className="text-xs font-medium text-gray-500">ID Number</Text>
+                    <Text className="text-xs font-bold text-foreground">{selectedCheckinDetail.id_number || 'N/A'}</Text>
+                  </View>
+                  <View className="flex-row justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
+                    <Text className="text-xs font-medium text-gray-500">Phone</Text>
+                    <Text className="text-xs font-bold text-foreground">{selectedCheckinDetail.phone || 'N/A'}</Text>
+                  </View>
+                  <View className="flex-row justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
+                    <Text className="text-xs font-medium text-gray-500">Gender & DOB</Text>
+                    <Text className="text-xs font-bold text-foreground">{selectedCheckinDetail.gender || 'N/A'} • {selectedCheckinDetail.dob || 'N/A'}</Text>
+                  </View>
+                  <View className="flex-row justify-between">
+                    <Text className="text-xs font-medium text-gray-500">Address</Text>
+                    <Text className="text-xs font-bold text-foreground max-w-[60%] text-right">{selectedCheckinDetail.address || 'N/A'}</Text>
                   </View>
                 </View>
-                <Input
-                  label="Phone Number"
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholder="+91 98765 43210"
-                  keyboardType="phone-pad"
-                />
-                <Input
-                  label="Address"
-                  value={address}
-                  onChangeText={setAddress}
-                  placeholder="Street, City, State, PIN"
-                />
 
-                {/* Room Selector */}
-                <Text style={[styles.sectionLabel, { marginTop: 6, marginBottom: 8 }]}>
-                  ASSIGN ROOM
-                </Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    {rooms.map(r => {
-                      const active = selectedRoomId === r.id;
-                      return (
-                        <TouchableOpacity
-                          key={r.id}
-                          style={[styles.roomChip, active && styles.roomChipActive]}
-                          activeOpacity={0.8}
-                          onPress={() => setSelectedRoomId(r.id)}
-                        >
-                          <Text style={[styles.roomChipText, active && styles.roomChipTextActive]}>
-                            Room {r.room_number} ({r.room_type || 'Standard'}) · {r.status}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                {/* Additional Guests List */}
+                {(selectedCheckinDetail.additional_guests || []).length > 0 && (
+                  <View className="mb-5">
+                    <Text className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2 ml-1">
+                      Additional Group Guests ({(selectedCheckinDetail.additional_guests || []).length})
+                    </Text>
+                    <View className="gap-3">
+                      {(selectedCheckinDetail.additional_guests || []).map((g: any, idx: number) => (
+                        <View key={idx} className="bg-gray-50 dark:bg-gray-800/40 p-3.5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                          <Text className="text-xs font-bold text-foreground mb-1">Person {idx + 2}: {g.fullName}</Text>
+                          <Text className="text-[11px] text-gray-500 font-medium">Gender: {g.gender || 'N/A'} • DOB: {g.dob || 'N/A'}</Text>
+                          <Text className="text-[11px] text-gray-500 font-medium">{g.idType || 'ID'}: {g.idNumber || 'N/A'}</Text>
+
+                          {g.frontPhotoUri ? (
+                            <Image source={{ uri: g.frontPhotoUri }} style={{ width: '100%', height: 120, borderRadius: 10, marginTop: 8 }} resizeMode="cover" />
+                          ) : null}
+                          {g.selfiePhotoUri ? (
+                            <Image source={{ uri: g.selfiePhotoUri }} style={{ width: '100%', height: 120, borderRadius: 10, marginTop: 8 }} resizeMode="cover" />
+                          ) : null}
+                        </View>
+                      ))}
+                    </View>
                   </View>
-                </ScrollView>
-              </View>
+                )}
+              </ScrollView>
+            )}
 
-              {/* Action Buttons */}
-              <Button
-                label="Confirm &amp; Check In"
-                variant="primary"
-                isLoading={isSaving}
-                icon={<Check size={18} color="#ffffff" strokeWidth={2.5} />}
-                onPress={handleConfirmCheckin}
-              />
-            </ScrollView>
-          </TouchableOpacity>
-        </TouchableOpacity>
+            {/* Approval Action Footer */}
+            {selectedCheckinDetail && (
+              <View className="pt-3 border-t border-gray-100 dark:border-gray-800 flex-row gap-3">
+                <TouchableOpacity
+                  onPress={() => handleRejectCheckin(selectedCheckinDetail)}
+                  className="bg-red-500/10 border border-red-500/30 px-5 py-3.5 rounded-2xl justify-center items-center flex-row gap-1.5"
+                >
+                  <Trash2 size={18} color="#EF4444" />
+                  <Text className="text-xs font-bold text-red-500">Reject</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleApproveCheckin(selectedCheckinDetail)}
+                  disabled={isApprovingId === selectedCheckinDetail.id}
+                  className="flex-1 bg-emerald-600 active:bg-emerald-700 py-3.5 rounded-2xl justify-center items-center flex-row gap-2"
+                >
+                  {isApprovingId === selectedCheckinDetail.id ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <CheckCircle2 size={18} color="#FFFFFF" />
+                      <Text className="text-sm font-extrabold text-white">Approve & Save Check-in</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: AIRBNB.colors.canvas,
-  },
-  scroll: {
-    paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 110,
-  },
-  header: {
-    paddingTop: 18,
-  },
-  title: {
-    ...AIRBNB.typography.displayLg,
-    color: AIRBNB.colors.ink,
-  },
-  subtitle: {
-    ...AIRBNB.typography.bodySm,
-    color: AIRBNB.colors.muted,
-    marginTop: 4,
-  },
-  sectionLabel: {
-    ...AIRBNB.typography.caption,
-    color: AIRBNB.colors.muted,
-    marginTop: 20,
-    marginBottom: 8,
-  },
-
-  // Document Type Grid (3x2)
-  docTypeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  docTypeCard: {
-    width: '31.5%',
-    borderWidth: 1.5,
-    borderColor: AIRBNB.colors.hairline,
-    borderRadius: AIRBNB.radius.md,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: AIRBNB.colors.canvas,
-    minHeight: 74,
-  },
-  docTypeCardActive: {
-    borderColor: AIRBNB.colors.ink,
-    backgroundColor: AIRBNB.colors.surfaceSoft,
-  },
-  docTypeLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: AIRBNB.colors.ink,
-    textAlign: 'center',
-    lineHeight: 15,
-  },
-  docTypeLabelActive: {
-    fontWeight: '700',
-  },
-
-  // Viewfinder
-  viewfinder: {
-    aspectRatio: 3 / 4,
-    borderRadius: AIRBNB.radius.lg,
-    backgroundColor: '#20242b',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  permissionReq: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  permissionText: {
-    ...AIRBNB.typography.bodySm,
-    color: '#ffffff',
-    textAlign: 'center',
-  },
-  frameGuide: {
-    position: 'absolute',
-    top: '14%',
-    bottom: '14%',
-    left: '14%',
-    right: '14%',
-    borderWidth: 2.5,
-    borderColor: 'rgba(255, 255, 255, 0.55)',
-    borderStyle: 'dashed',
-    borderRadius: 16,
-  },
-  corner: {
-    position: 'absolute',
-    width: 26,
-    height: 26,
-    borderColor: '#ffffff',
-  },
-  cornerTL: {
-    top: '12%',
-    left: '12%',
-    borderTopWidth: 3,
-    borderLeftWidth: 3,
-    borderTopLeftRadius: 8,
-  },
-  cornerTR: {
-    top: '12%',
-    right: '12%',
-    borderTopWidth: 3,
-    borderRightWidth: 3,
-    borderTopRightRadius: 8,
-  },
-  cornerBL: {
-    bottom: '12%',
-    left: '12%',
-    borderBottomWidth: 3,
-    borderLeftWidth: 3,
-    borderBottomLeftRadius: 8,
-  },
-  cornerBR: {
-    bottom: '12%',
-    right: '12%',
-    borderBottomWidth: 3,
-    borderRightWidth: 3,
-    borderBottomRightRadius: 8,
-  },
-  centerGuide: {
-    position: 'absolute',
-    top: '50%',
-    left: 0,
-    right: 0,
-    transform: [{ translateY: -10 }],
-    alignItems: 'center',
-  },
-  centerGuideText: {
-    ...AIRBNB.typography.caption,
-    color: 'rgba(255, 255, 255, 0.75)',
-  },
-  camTop: {
-    position: 'absolute',
-    top: 14,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-  },
-  camControls: {
-    position: 'absolute',
-    bottom: 14,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingHorizontal: 20,
-  },
-  camIconBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255, 255, 255, 0.16)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shutter: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#ffffff',
-    borderWidth: 4,
-    borderColor: 'rgba(255, 255, 255, 0.4)',
-  },
-
-  // OR Divider
-  orRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginVertical: 18,
-  },
-  orLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: AIRBNB.colors.hairlineSoft,
-  },
-  orText: {
-    ...AIRBNB.typography.caption,
-    color: AIRBNB.colors.muted,
-  },
-
-  // Web Check-in Card
-  webCheckinCard: {
-    backgroundColor: AIRBNB.colors.canvas,
-    borderWidth: 1,
-    borderColor: AIRBNB.colors.hairlineSoft,
-    borderRadius: AIRBNB.radius.md,
-    padding: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 20,
-    ...AIRBNB.shadow.card,
-  },
-  webIconWell: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: AIRBNB.colors.surfaceSoft,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  webTitle: {
-    ...AIRBNB.typography.titleSm,
-    color: AIRBNB.colors.ink,
-  },
-  webSubtitle: {
-    ...AIRBNB.typography.bodySm,
-    color: AIRBNB.colors.muted,
-  },
-
-  // Sheet
-  scrim: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: AIRBNB.colors.canvas,
-    borderTopLeftRadius: AIRBNB.radius.sheet,
-    borderTopRightRadius: AIRBNB.radius.sheet,
-    paddingHorizontal: 20,
-    paddingTop: 6,
-    paddingBottom: 28,
-    maxHeight: '86%',
-    ...AIRBNB.shadow.sheet,
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: AIRBNB.radius.full,
-    backgroundColor: AIRBNB.colors.hairline,
-    alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  sheetTitle: {
-    ...AIRBNB.typography.titleMd,
-    color: AIRBNB.colors.ink,
-  },
-  sheetSubtitle: {
-    ...AIRBNB.typography.bodySm,
-    color: AIRBNB.colors.muted,
-    marginTop: 2,
-  },
-  iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: AIRBNB.colors.surfaceStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  formWrap: {
-    gap: 12,
-  },
-  roomChip: {
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: AIRBNB.radius.full,
-    borderWidth: 1,
-    borderColor: AIRBNB.colors.hairline,
-    backgroundColor: AIRBNB.colors.canvas,
-  },
-  roomChipActive: {
-    backgroundColor: AIRBNB.colors.ink,
-    borderColor: AIRBNB.colors.ink,
-  },
-  roomChipText: {
-    ...AIRBNB.typography.caption,
-    color: AIRBNB.colors.ink,
-  },
-  roomChipTextActive: {
-    color: '#ffffff',
-    fontWeight: '700',
-  },
-});

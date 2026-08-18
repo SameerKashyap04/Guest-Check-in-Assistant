@@ -1,34 +1,38 @@
 import React, { forwardRef, useState } from 'react';
-import { View, TextInput, Text, TextInputProps, StyleSheet, Platform } from 'react-native';
-import { AIRBNB } from '@/theme/airbnb';
+import { View, TextInput, Text, TextInputProps, Platform } from 'react-native';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-// ─── Airbnb Form Input for StayMate ───────────────────────────────────────────
-// Direct port of form fields from staymate-airbnb-redesign/app.html
-// ─────────────────────────────────────────────────────────────────────────────
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 export interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   icon?: React.ReactNode;
   type?: string;
-  hint?: string;
 }
 
 const Input = forwardRef<TextInput, InputProps>(
-  ({ label, error, icon, hint, style, type, ...props }, ref) => {
+  ({ label, error, icon, className, type, ...props }, ref) => {
     const [isFocused, setIsFocused] = useState(false);
 
     return (
-      <View style={styles.wrap}>
-        {label && <Text style={styles.label}>{label}</Text>}
+      <View className={cn("w-full mb-4", className)}>
+        {label && (
+          <Text className="text-sm font-medium text-foreground mb-1.5 ml-1">
+            {label}
+          </Text>
+        )}
         <View
-          style={[
-            styles.inputRow,
-            isFocused && styles.inputFocused,
-            error ? styles.inputError : null,
-          ]}
+          className={cn(
+            "flex-row items-center bg-white dark:bg-black/20 border rounded-2xl px-4 h-14",
+            isFocused ? "border-primary" : "border-transparent dark:border-transparent",
+            error ? "border-red-500" : ""
+          )}
         >
-          {icon && <View style={styles.icon}>{icon}</View>}
+          {icon && <View className="mr-3">{icon}</View>}
           {Platform.OS === 'web' && type === 'date' ? (
             <input
               type="date"
@@ -39,18 +43,19 @@ const Input = forwardRef<TextInput, InputProps>(
                 border: 'none',
                 outline: 'none',
                 background: 'transparent',
-                fontSize: '14.5px',
-                color: AIRBNB.colors.ink,
+                fontSize: '16px',
+                color: 'inherit',
                 fontFamily: 'inherit',
                 fontWeight: 500,
-                cursor: 'pointer',
+                cursor: 'pointer'
               }}
             />
           ) : (
             <TextInput
               ref={ref}
-              style={[styles.input, style as any]}
-              placeholderTextColor={AIRBNB.colors.mutedSoft}
+              className="flex-1 text-base text-foreground font-medium"
+              placeholderTextColor="#9CA3AF"
+              style={Platform.OS === 'web' ? { outlineStyle: 'none' } as any : undefined}
               onFocus={(e) => {
                 setIsFocused(true);
                 props.onFocus?.(e);
@@ -59,76 +64,19 @@ const Input = forwardRef<TextInput, InputProps>(
                 setIsFocused(false);
                 props.onBlur?.(e);
               }}
-              {...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as any) : {})}
               {...props}
             />
           )}
         </View>
-        {hint && !error && <Text style={styles.hintText}>{hint}</Text>}
-        {error && <Text style={styles.errorText}>{error}</Text>}
+        {error && (
+          <Text className="text-sm text-red-500 mt-1 ml-1">{error}</Text>
+        )}
       </View>
     );
   }
 );
 
-const styles = StyleSheet.create({
-  wrap: {
-    width: '100%',
-    marginBottom: 14,
-  },
-  label: {
-    fontSize: 12.5,
-    fontWeight: '500',
-    color: AIRBNB.colors.muted,
-    marginBottom: 6,
-    marginLeft: 1,
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: AIRBNB.colors.canvas,
-    borderWidth: 1,
-    borderColor: AIRBNB.colors.hairline,
-    borderRadius: AIRBNB.radius.sm,
-    paddingHorizontal: 14,
-    minHeight: 48,
-  },
-  inputFocused: {
-    borderColor: AIRBNB.colors.ink,
-    borderWidth: 1.5,
-  },
-  inputError: {
-    borderColor: AIRBNB.colors.rose,
-    borderWidth: 1.5,
-  },
-  icon: {
-    marginRight: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  input: {
-    flex: 1,
-    fontSize: 14.5,
-    fontWeight: '400',
-    color: AIRBNB.colors.ink,
-    paddingVertical: 10,
-  },
-  hintText: {
-    fontSize: 11.5,
-    color: AIRBNB.colors.muted,
-    marginTop: 4,
-    marginLeft: 1,
-  },
-  errorText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: AIRBNB.colors.rose,
-    marginTop: 4,
-    marginLeft: 1,
-  },
-});
-
 Input.displayName = 'Input';
 
 export { Input };
-export default Input;
+

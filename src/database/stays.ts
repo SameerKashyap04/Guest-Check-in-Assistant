@@ -98,12 +98,12 @@ export async function getGuestsForRoom(roomId: number, propertyId?: string): Pro
     const activePropertyId = propertyId || useSettingsStore.getState().propertyId || 'HS-DEFAULT';
     const db = await openDatabase();
     const result = await db.getAllAsync(
-      `SELECT g.*, s.id as stay_id, s.check_in_date, s.check_out_date, s.created_at as stay_created_at 
+      `SELECT g.*, s.check_in_date, s.check_out_date, s.created_at as stay_created_at 
        FROM guests g
        JOIN stays s ON s.guest_id = g.id
        WHERE s.room_id = ? 
          AND (s.status IS NULL OR s.status = 'active')
-         AND (g.property_id = ? OR g.property_id IS NULL OR g.property_id = '')
+         AND g.property_id = ?
        ORDER BY g.id DESC`,
       [roomId, activePropertyId]
     );
@@ -202,121 +202,3 @@ export async function autoCheckoutExpiredStays(): Promise<number> {
     return 0;
   }
 }
-
-/**
- * Get recent check-ins / stays for dashboard
- */
-export async function getRecentStays(limit: number = 6, propertyId?: string): Promise<any[]> {
-  try {
-    const activePropertyId = propertyId || useSettingsStore.getState().propertyId || 'HS-DEFAULT';
-    const db = await openDatabase();
-    const result = await db.getAllAsync(
-      `SELECT s.*, g.full_name, g.id_number, g.id_type, g.phone, g.address, g.dob, g.gender, r.room_number, r.room_type
-       FROM stays s
-       JOIN guests g ON g.id = s.guest_id
-       LEFT JOIN rooms r ON r.id = s.room_id
-       WHERE g.property_id = ? OR g.property_id IS NULL OR g.property_id = ''
-       ORDER BY s.id DESC
-       LIMIT ?`,
-      [activePropertyId, limit]
-    );
-    return result as any[];
-  } catch (e) {
-    console.error('Failed to get recent stays', e);
-    return [];
-  }
-}
-
-export async function getGuestById(id: number): Promise<any | null> {
-  try {
-    const db = await openDatabase();
-    const result = await db.getFirstAsync(
-      `SELECT * FROM guests WHERE id = ?`,
-      [id]
-    );
-    return result || null;
-  } catch (e) {
-    console.error('Failed to get guest by ID', e);
-    return null;
-  }
-}
-
-export async function updateStay(stayId: number, data: Partial<{ status: string; check_out_date: string }>): Promise<void> {
-  try {
-    const db = await openDatabase();
-    if (data.status && data.check_out_date) {
-      await db.runAsync(`UPDATE stays SET status = ?, check_out_date = ? WHERE id = ?`, [data.status, data.check_out_date, stayId]);
-    } else if (data.status) {
-      await db.runAsync(`UPDATE stays SET status = ? WHERE id = ?`, [data.status, stayId]);
-    }
-  } catch (e) {
-    console.error('Failed to update stay', e);
-  }
-}
-
-export interface DashboardStats {
-  todayCheckins: number;
-  todayCheckouts: number;
-  activeGuests: number;
-  pendingVerify: number;
-}
-
-export async function getDashboardStats(propertyId?: string): Promise<DashboardStats> {
-  try {
-    const activePropertyId = propertyId || useSettingsStore.getState().propertyId || 'HS-DEFAULT';
-    const db = await openDatabase();
-    const todayStr = new Date().toISOString().split('T')[0];
-
-    // 1. Today's check-ins
-    const checkinRes: any = await db.getFirstAsync(
-      `SELECT COUNT(*) as count FROM stays s
-       JOIN guests g ON g.id = s.guest_id
-       WHERE (g.property_id = ? OR g.property_id IS NULL OR g.property_id = '')
-         AND s.check_in_date LIKE ?`,
-      [activePropertyId, `${todayStr}%`]
-    );
-
-    // 2. Today's check-outs
-    const checkoutRes: any = await db.getFirstAsync(
-      `SELECT COUNT(*) as count FROM stays s
-       JOIN guests g ON g.id = s.guest_id
-       WHERE (g.property_id = ? OR g.property_id IS NULL OR g.property_id = '')
-         AND s.check_out_date LIKE ?`,
-      [activePropertyId, `${todayStr}%`]
-    );
-
-    // 3. Active guests (stays where status is 'active' or null)
-    const activeRes: any = await db.getFirstAsync(
-      `SELECT COUNT(*) as count FROM stays s
-       JOIN guests g ON g.id = s.guest_id
-       WHERE (g.property_id = ? OR g.property_id IS NULL OR g.property_id = '')
-         AND (s.status IS NULL OR s.status = 'active' OR s.status = 'CHECKED_IN')`,
-      [activePropertyId]
-    );
-
-    // 4. Pending verify (guests without ID photo or marked unverified)
-    const pendingRes: any = await db.getFirstAsync(
-      `SELECT COUNT(*) as count FROM guests g
-       WHERE (g.property_id = ? OR g.property_id IS NULL OR g.property_id = '')
-         AND (g.photo_uri IS NULL OR g.photo_uri = '' OR g.id_number IS NULL OR g.id_number = '')`,
-      [activePropertyId]
-    );
-
-    return {
-      todayCheckins: checkinRes?.count || 0,
-      todayCheckouts: checkoutRes?.count || 0,
-      activeGuests: activeRes?.count || 0,
-      pendingVerify: pendingRes?.count || 0,
-    };
-  } catch (e) {
-    console.error('Failed to get dashboard stats', e);
-    return {
-      todayCheckins: 0,
-      todayCheckouts: 0,
-      activeGuests: 0,
-      pendingVerify: 0,
-    };
-  }
-}
-
-

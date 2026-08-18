@@ -1,30 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView,
-  KeyboardAvoidingView, Platform, Alert,
-  ActivityIndicator, StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  ActivityIndicator,
+  StyleSheet,
+  useColorScheme,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Input } from '@/components/Input';
-import { Button } from '@/components/Button';
-import { Mail, Lock, Building2, UserPlus, LogIn, LockKeyhole } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, Zap, Sparkles, Code2, Globe, ExternalLink } from 'lucide-react-native';
+import { useRouter, Stack } from 'expo-router';
 import { signUpOwner, loginOwner, signInWithGoogleOwner, resetOwnerPassword } from '@/services/firebaseAuth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { PinScreen } from '@/features/auth/PinScreen';
 import { GoogleLogo } from '@/components/GoogleLogo';
 import { useTranslation } from 'react-i18next';
-import { assignLegacyUnassignedGuests } from '@/database';
-import { AIRBNB } from '@/theme/airbnb';
 
-// ─── Airbnb Auth Screen for StayMate ─────────────────────────────────────────
-// Modern, clean Rausch identity matching staymate-airbnb-redesign
-// ─────────────────────────────────────────────────────────────────────────────
+import { assignLegacyUnassignedGuests } from '@/database';
 
 export default function AuthScreen() {
   const { t } = useTranslation();
   const router = useRouter();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
 
   const [tab, setTab] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -93,158 +98,200 @@ export default function AuthScreen() {
         setBusinessSetup(businessName.trim());
       } else {
         profile = await loginOwner(email.trim(), password.trim());
-      }
-
-      if (profile) {
-        setOwner(profile);
-        setOwnerId(profile.uid);
-        if (profile.propertyId) {
-          setPropertyId(profile.propertyId);
-          assignLegacyUnassignedGuests(profile.propertyId).catch(() => {});
-        }
         if (profile.businessName) {
           setBusinessSetup(profile.businessName);
         }
+      }
 
-        useAuthStore.setState({ isUnlocked: true });
-        router.replace('/(tabs)');
+      setOwner(profile);
+      setOwnerId(profile.uid);
+      if (profile.propertyId) {
+        setPropertyId(profile.propertyId);
+        assignLegacyUnassignedGuests(profile.propertyId).catch(() => {});
+      }
+      useAuthStore.setState({ isUnlocked: true });
+
+      if (profile.isOffline) {
+        Alert.alert(
+          'Offline Mode Activated',
+          'Logged in using local owner account. You can manage guest check-ins offline, and cloud sync will resume when internet is connected.',
+          [{ text: 'Continue to App', onPress: () => router.replace('/(tabs)') }]
+        );
+      } else {
+        setTimeout(() => router.replace('/(tabs)'), 50);
       }
     } catch (err: any) {
-      console.error('Auth error:', err);
-      Alert.alert('Authentication Failed', err?.message || 'Unable to sign in.');
+      console.error('Auth error', err);
+      Alert.alert('Authentication Notice', err?.message || 'Please check your credentials and try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // Theme-aware colors using plain StyleSheet (no NativeWind dark: needed)
+  const bg = isDark ? '#0D0F17' : '#F8FAFC';
+  const cardBg = isDark ? '#181A24' : '#FFFFFF';
+  const cardBorder = isDark ? '#1F2937' : 'rgba(0,0,0,0.08)';
+  const textPrimary = isDark ? '#F9FAFB' : '#111827';
+  const textMuted = isDark ? '#9CA3AF' : '#6B7280';
+  const headerBorder = isDark ? '#1F2937' : 'rgba(0,0,0,0.08)';
+  const tabBg = isDark ? 'rgba(31,41,55,0.8)' : '#F3F4F6';
+  const activeTabBg = isDark ? '#181A24' : '#FFFFFF';
+  const submitBtnBg = isDark ? '#FFFFFF' : '#000000';
+  const submitBtnText = isDark ? '#000000' : '#FFFFFF';
+
   return (
-    <SafeAreaView style={styles.screen}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={[styles.root, { backgroundColor: bg }]}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Header */}
+      <View style={[styles.header, { borderBottomColor: headerBorder }]}>
+        <Text style={[styles.headerTitle, { color: textPrimary }]}>{t('ownerPortalTitle')}</Text>
+      </View>
+
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
         style={{ flex: 1 }}
       >
-        <ScrollView
-          contentContainerStyle={styles.scroll}
+        <ScrollView 
+          contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           showsVerticalScrollIndicator={false}
         >
-          {/* Hero Well */}
-          <View style={styles.iconWell}>
-            <LockKeyhole size={30} color="#ffffff" />
-          </View>
 
-          <Text style={styles.title}>
-            {tab === 'login' ? 'Welcome back' : 'Create an account'}
-          </Text>
-          <Text style={styles.subtitle}>
-            {tab === 'login'
-              ? 'Sign in to manage check-ins, rooms & compliance'
-              : 'Start your 14-day free trial of StayMate Pro'}
-          </Text>
+          {/* Card */}
+          <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
 
-          {/* Segmented Switcher */}
-          <View style={styles.segmentTrack}>
-            <TouchableOpacity
-              style={[styles.segmentBtn, tab === 'login' && styles.segmentBtnActive]}
-              activeOpacity={0.8}
-              onPress={() => setTab('login')}
-            >
-              <LogIn size={15} color={tab === 'login' ? AIRBNB.colors.ink : AIRBNB.colors.muted} />
-              <Text style={[styles.segmentText, tab === 'login' && styles.segmentTextActive]}>
-                Sign In
+            {/* Icon Header */}
+            <View style={styles.iconHeader}>
+              <View style={styles.shieldCircle}>
+                <ShieldCheck size={36} color="#38BDF8" />
+              </View>
+              <Text style={[styles.cardTitle, { color: textPrimary }]}>{t('ownerAccount')}</Text>
+              <Text style={[styles.cardSubtitle, { color: textMuted }]}>
+                {t('ownerAccountDesc')}
               </Text>
-            </TouchableOpacity>
+            </View>
 
-            <TouchableOpacity
-              style={[styles.segmentBtn, tab === 'signup' && styles.segmentBtnActive]}
-              activeOpacity={0.8}
-              onPress={() => setTab('signup')}
-            >
-              <UserPlus size={15} color={tab === 'signup' ? AIRBNB.colors.ink : AIRBNB.colors.muted} />
-              <Text style={[styles.segmentText, tab === 'signup' && styles.segmentTextActive]}>
-                New Property
-              </Text>
-            </TouchableOpacity>
-          </View>
+            {/* Tabs */}
+            <View style={[styles.tabBar, { backgroundColor: tabBg }]}>
+              <TouchableOpacity
+                onPress={() => setTab('login')}
+                style={[styles.tab, tab === 'login' && [styles.activeTab, { backgroundColor: activeTabBg }]]}
+              >
+                <LogIn size={15} color={tab === 'login' ? '#38BDF8' : textMuted} />
+                <Text style={[styles.tabText, { color: tab === 'login' ? textPrimary : textMuted }]}>{t('loginTab')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setTab('signup')}
+                style={[styles.tab, tab === 'signup' && [styles.activeTab, { backgroundColor: activeTabBg }]]}
+              >
+                <UserPlus size={15} color={tab === 'signup' ? '#38BDF8' : textMuted} />
+                <Text style={[styles.tabText, { color: tab === 'signup' ? textPrimary : textMuted }]}>{t('signupTab')}</Text>
+              </TouchableOpacity>
+            </View>
 
-          {/* Form Card */}
-          <View style={styles.formCard}>
+            {/* Form */}
             {tab === 'signup' && (
               <Input
-                label="Property / Business Name"
-                placeholder="e.g. Sunrise Homestay"
+                label={t('propertyName')}
+                placeholder="e.g. Sameer Homestay"
                 autoCapitalize="words"
+                autoCorrect={false}
+                returnKeyType="next"
                 value={businessName}
                 onChangeText={setBusinessName}
-                icon={<Building2 size={18} color={AIRBNB.colors.mutedSoft} />}
+                icon={<Building2 size={18} color="#9498AA" />}
               />
             )}
 
             <Input
-              label="Email Address"
+              label={t('emailAddress')}
               placeholder="owner@homestay.com"
               keyboardType="email-address"
               autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="next"
               value={email}
               onChangeText={setEmail}
-              icon={<Mail size={18} color={AIRBNB.colors.mutedSoft} />}
+              icon={<Mail size={18} color="#9498AA" />}
             />
 
             <Input
-              label="Password"
+              label={t('password')}
               placeholder="••••••••"
               secureTextEntry
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="password"
+              returnKeyType="done"
+              onSubmitEditing={handleAuthSubmit}
               value={password}
               onChangeText={setPassword}
-              icon={<Lock size={18} color={AIRBNB.colors.mutedSoft} />}
+              icon={<Lock size={18} color="#9498AA" />}
             />
 
             {tab === 'login' && (
               <TouchableOpacity
                 onPress={async () => {
                   if (!email.trim()) {
-                    Alert.alert('Email Required', 'Please enter your registered email address above.');
+                    Alert.alert('Email Required', 'Please enter your registered email address above to reset your password.');
                     return;
                   }
                   try {
                     await resetOwnerPassword(email.trim());
-                    Alert.alert('Reset Link Sent', `A password reset link has been sent to ${email.trim()}.`);
+                    Alert.alert('Reset Link Sent', `A password reset link has been sent to ${email.trim()}. Please check your email inbox.`);
                   } catch (err: any) {
                     Alert.alert('Reset Error', err?.message || 'Failed to send password reset email.');
                   }
                 }}
                 activeOpacity={0.7}
-                style={{ alignSelf: 'flex-end', marginTop: 2, marginBottom: 16 }}
+                style={{ alignSelf: 'flex-end', marginTop: -6, marginBottom: 16 }}
               >
-                <Text style={{ ...AIRBNB.typography.caption, color: AIRBNB.colors.primary, fontWeight: '600' }}>
-                  Forgot password?
+                <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#60A5FA' : '#2563EB' }}>
+                  Forgot Password?
                 </Text>
               </TouchableOpacity>
             )}
 
-            {/* Submit Button */}
-            <Button
-              label={tab === 'signup' ? 'Create Property Account' : 'Sign In to StayMate'}
-              variant="primary"
-              isLoading={isLoading}
+            {/* Submit */}
+            <TouchableOpacity
               onPress={handleAuthSubmit}
-            />
+              disabled={isLoading}
+              activeOpacity={0.8}
+              style={[styles.submitBtn, { backgroundColor: submitBtnBg, opacity: isLoading ? 0.7 : 1 }]}
+            >
+              {isLoading && <ActivityIndicator size="small" color={isDark ? '#000' : '#fff'} style={{ marginRight: 8 }} />}
+              <Text style={[styles.submitBtnText, { color: submitBtnText }]}>
+                {isLoading ? t('processing') : tab === 'signup' ? t('createOwnerAccount') : t('loginToDashboard')}
+              </Text>
+            </TouchableOpacity>
 
-            {/* Google Sign-in */}
+            {/* Google Sign-In */}
             <TouchableOpacity
               onPress={handleGoogleAuth}
               disabled={isLoading}
               activeOpacity={0.8}
-              style={styles.googleBtn}
+              style={[styles.googleBtn, { opacity: isLoading ? 0.7 : 1 }]}
             >
               <GoogleLogo size={20} />
-              <Text style={styles.googleBtnText}>Continue with Google</Text>
+              <Text style={styles.googleBtnText}>
+                {t('continueWithGoogle')}
+              </Text>
             </TouchableOpacity>
+
           </View>
 
-          {/* Footer Note */}
-          <Text style={styles.footerText}>
-            StayMate v1.2.0 · Designed for Indian Homestays &amp; Hotels
-          </Text>
+          {/* Clean App Version Footer */}
+          <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 16 }}>
+            <Text style={{ fontSize: 11, fontWeight: '700', color: textMuted }}>
+              StayMate v1.2.0 • Simplifying Every Guest Stay
+            </Text>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -252,99 +299,95 @@ export default function AuthScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: AIRBNB.colors.canvas,
-  },
-  scroll: {
-    paddingHorizontal: 24,
-    paddingTop: 30,
-    paddingBottom: 40,
+  root: { flex: 1 },
+  header: {
     alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
   },
-  iconWell: {
+  headerTitle: { fontSize: 16, fontWeight: '700' },
+  scrollContent: { padding: 20, flexGrow: 1, justifyContent: 'center' },
+  card: {
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  iconHeader: { alignItems: 'center', marginBottom: 24 },
+  shieldCircle: {
     width: 64,
     height: 64,
     borderRadius: 18,
-    backgroundColor: AIRBNB.colors.primary,
+    backgroundColor: 'rgba(56,189,248,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
-    ...AIRBNB.shadow.fab,
+    marginBottom: 12,
   },
-  title: {
-    ...AIRBNB.typography.displayLg,
-    color: AIRBNB.colors.ink,
-    textAlign: 'center',
-  },
-  subtitle: {
-    ...AIRBNB.typography.bodySm,
-    color: AIRBNB.colors.muted,
-    textAlign: 'center',
-    marginTop: 6,
-    marginBottom: 24,
-    maxWidth: 290,
-  },
-  segmentTrack: {
+  cardTitle: { fontSize: 22, fontWeight: '800', textAlign: 'center' },
+  cardSubtitle: { fontSize: 12, textAlign: 'center', marginTop: 4, paddingHorizontal: 16, lineHeight: 18 },
+  tabBar: {
     flexDirection: 'row',
-    backgroundColor: AIRBNB.colors.surfaceStrong,
-    borderRadius: AIRBNB.radius.full,
-    padding: 3,
-    width: '100%',
-    marginBottom: 20,
+    borderRadius: 16,
+    padding: 4,
+    marginBottom: 24,
   },
-  segmentBtn: {
+  tab: {
     flex: 1,
+    paddingVertical: 10,
+    borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 10,
-    borderRadius: AIRBNB.radius.full,
   },
-  segmentBtnActive: {
-    backgroundColor: AIRBNB.colors.canvas,
-    ...AIRBNB.shadow.card,
+  activeTab: {
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  segmentText: {
-    ...AIRBNB.typography.bodySm,
-    fontWeight: '500',
-    color: AIRBNB.colors.muted,
+  tabText: { fontSize: 12, fontWeight: '700' },
+  submitBtn: {
+    marginTop: 8,
+    paddingVertical: 14,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  segmentTextActive: {
-    fontWeight: '700',
-    color: AIRBNB.colors.ink,
-  },
-  formCard: {
-    width: '100%',
-    backgroundColor: AIRBNB.colors.canvas,
-    borderWidth: 1,
-    borderColor: AIRBNB.colors.hairlineSoft,
-    borderRadius: AIRBNB.radius.md,
-    padding: 20,
-    gap: 12,
-    ...AIRBNB.shadow.card,
-  },
+  submitBtnText: { fontSize: 14, fontWeight: '800' },
   googleBtn: {
-    height: 50,
-    borderRadius: AIRBNB.radius.sm,
+    marginTop: 10,
+    paddingVertical: 14,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
+    backgroundColor: 'rgba(66,133,244,0.12)',
     borderWidth: 1,
-    borderColor: AIRBNB.colors.hairline,
-    backgroundColor: AIRBNB.colors.canvas,
-    marginTop: 4,
+    borderColor: 'rgba(66,133,244,0.3)',
   },
-  googleBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: AIRBNB.colors.ink,
+  googleBtnText: { fontSize: 14, fontWeight: '700', color: '#4285F4' },
+  debugDivider: { marginTop: 16, paddingTop: 16, borderTopWidth: 1 },
+  debugBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    backgroundColor: 'rgba(245,158,11,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,158,11,0.3)',
   },
-  footerText: {
-    ...AIRBNB.typography.micro,
-    color: AIRBNB.colors.mutedSoft,
-    marginTop: 28,
-  },
+  debugBtnText: { fontSize: 13, fontWeight: '700', color: '#D97706' },
 });

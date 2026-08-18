@@ -6,94 +6,71 @@ import { BlurView } from 'expo-blur';
 import { Platform, View, StyleSheet } from 'react-native';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useTranslation } from 'react-i18next';
-import { AIRBNB } from '@/theme/airbnb';
-
-// ─── Airbnb Floating Tab Bar for StayMate ─────────────────────────────────────
-// Exact 1:1 port of .tabbar & .tab-fab from staymate-airbnb-redesign/app.html
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function TabLayout() {
   const { isUnlocked } = useAuthStore();
   const { colorScheme } = useColorScheme();
   const { t } = useTranslation();
   const isDark = colorScheme === 'dark';
-
+  
   if (!isUnlocked) {
     return <Redirect href="/auth" />;
   }
-
+  
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: AIRBNB.colors.ink,
-        tabBarInactiveTintColor: AIRBNB.colors.mutedSoft,
+        tabBarActiveTintColor: '#38BDF8',
+        tabBarInactiveTintColor: isDark ? '#9498AA' : '#64748B',
         tabBarShowLabel: true,
         tabBarItemStyle: {
           justifyContent: 'center',
           alignItems: 'center',
-          paddingVertical: 6,
-          flex: 1,
+          paddingVertical: 4,
         },
         tabBarLabelStyle: {
-          fontSize: 10.5,
-          fontWeight: '600',
-          marginTop: 2,
-          letterSpacing: 0,
+          fontSize: 10,
+          fontWeight: '700',
+          marginTop: 1,
+          paddingBottom: Platform.OS === 'ios' ? 0 : 2,
         },
         tabBarStyle: {
           position: 'absolute',
           bottom: Platform.OS === 'ios' ? 20 : 16,
-          left: 16,
-          right: 16,
-          height: 68,
-          borderRadius: AIRBNB.radius.full,
+          left: 20,
+          right: 20,
+          marginHorizontal: 20,
+          height: 56,
+          borderRadius: 28,
           borderTopWidth: 0,
-          borderWidth: 1,
-          borderColor: isDark ? 'rgba(255, 255, 255, 0.15)' : AIRBNB.colors.hairlineSoft,
+          borderWidth: 1.5,
+          borderColor: isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.75)',
           backgroundColor: 'transparent',
-          ...AIRBNB.shadow.tabBar,
+          elevation: 10,
+          shadowColor: isDark ? '#38BDF8' : '#0F172A',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: isDark ? 0.35 : 0.18,
+          shadowRadius: 16,
         },
         tabBarBackground: () => (
           <View style={StyleSheet.absoluteFill} className="overflow-hidden rounded-full">
             <BlurView
               tint={isDark ? 'dark' : 'light'}
-              intensity={Platform.OS === 'ios' ? 88 : 95}
+              intensity={Platform.OS === 'ios' ? 85 : 100}
               style={StyleSheet.absoluteFill}
-              className="bg-white/90 dark:bg-[#121214]/90"
+              className="bg-white/70 dark:bg-[#0D0F14]/75"
             />
           </View>
         ),
-      }}
-    >
+      }}>
       <Tabs.Screen
         name="index"
         options={{
           title: t('dashboard'),
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.tabItem}>
-              <Home
-                color={focused ? AIRBNB.colors.ink : AIRBNB.colors.mutedSoft}
-                size={22}
-                strokeWidth={2}
-              />
-              <View style={[styles.activeDot, { opacity: focused ? 1 : 0 }]} />
-            </View>
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="rooms"
-        options={{
-          title: t('rooms'),
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.tabItem}>
-              <BedDouble
-                color={focused ? AIRBNB.colors.ink : AIRBNB.colors.mutedSoft}
-                size={22}
-                strokeWidth={2}
-              />
-              <View style={[styles.activeDot, { opacity: focused ? 1 : 0 }]} />
+          tabBarIcon: ({ color }) => (
+            <View className="w-7 h-7 items-center justify-center">
+              <Home color={color} size={20} />
             </View>
           ),
         }}
@@ -102,33 +79,34 @@ export default function TabLayout() {
         name="scanner"
         options={{
           title: t('checkin'),
-          tabBarIcon: () => (
-            <View style={styles.fabWrapper}>
-              <View style={styles.fab}>
-                <ScanLine color="#FFFFFF" size={24} strokeWidth={2.2} />
+          tabBarIcon: ({ color }) => (
+            <View className="w-7 h-7 items-center justify-center">
+              <View className="bg-[#38BDF8] -mt-4 w-11 h-11 rounded-full items-center justify-center shadow-lg shadow-[#38BDF8]/40 border-2 border-white dark:border-[#12141C]">
+                <ScanLine color="#FFFFFF" size={20} />
               </View>
             </View>
           ),
-          tabBarLabelStyle: {
-            fontSize: 10.5,
-            fontWeight: '700',
-            color: AIRBNB.colors.primary,
-            marginTop: 2,
-          },
+          tabBarLabel: t('checkin'),
+        }}
+      />
+      <Tabs.Screen
+        name="rooms"
+        options={{
+          title: t('rooms'),
+          tabBarIcon: ({ color }) => (
+            <View className="w-7 h-7 items-center justify-center">
+              <BedDouble color={color} size={20} />
+            </View>
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: t('settings'),
-          tabBarIcon: ({ focused }) => (
-            <View style={styles.tabItem}>
-              <Settings
-                color={focused ? AIRBNB.colors.ink : AIRBNB.colors.mutedSoft}
-                size={22}
-                strokeWidth={2}
-              />
-              <View style={[styles.activeDot, { opacity: focused ? 1 : 0 }]} />
+          tabBarIcon: ({ color }) => (
+            <View className="w-7 h-7 items-center justify-center">
+              <Settings color={color} size={20} />
             </View>
           ),
         }}
@@ -136,34 +114,3 @@ export default function TabLayout() {
     </Tabs>
   );
 }
-
-const styles = StyleSheet.create({
-  tabItem: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 28,
-  },
-  activeDot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: AIRBNB.colors.primary,
-    marginTop: 2,
-  },
-  fabWrapper: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: -30,
-  },
-  fab: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: AIRBNB.colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 6,
-    borderColor: '#ffffff',
-    ...AIRBNB.shadow.fab,
-  },
-});

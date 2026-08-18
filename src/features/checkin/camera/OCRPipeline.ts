@@ -6,10 +6,10 @@ export class OCRPipeline {
   /**
    * Run raw ML Kit text recognition on an image to get text blocks
    */
-  static async analyzeFrame(imageUri: string): Promise<any[]> {
+  static async analyzeFrame(imageUri: string) {
     try {
       const result = await TextRecognition.recognize(imageUri);
-      return result.blocks || [];
+      return result.blocks;
     } catch (e) {
       console.error('Frame analysis error', e);
       return [];
@@ -41,8 +41,13 @@ export class OCRPipeline {
   static isFrontComplete(profile: GuestProfile): boolean {
     if (profile.idType === 'UNKNOWN') return false;
 
+    // We must at least have the ID number for most documents
+    // (If the document is a Passport and we miss the MRZ, or PAN and we miss the PAN number, we shouldn't advance)
     if (!profile.idNumber || profile.idNumber.confidence < 75) return false;
 
+    // We have the ID number, which is the most critical piece of information.
+    // We can advance. In a more advanced system, we might enforce full name and dob,
+    // but OCR block grouping can often merge name lines with gender/dob lines, causing strict checks to fail.
     return true;
   }
 
@@ -57,34 +62,10 @@ export class OCRPipeline {
       return true;
     }
     if (profile.idType === 'DRIVING_LICENCE' && !profile.address) {
+      // Sometimes address is on front, but often on back
       return true;
     }
+    // PAN and Passport usually don't explicitly require back for basic check-in
     return false;
-  }
-
-  /**
-   * Process a static image (e.g. from gallery) and return extracted fields
-   */
-  static async processImage(imageUri: string, targetType?: string): Promise<any> {
-    try {
-      const docType = (targetType || 'UNKNOWN') as IDDocumentType;
-      const blocks = await OCRPipeline.analyzeFrame(imageUri);
-      if (!blocks || blocks.length === 0) return null;
-
-      const profile: GuestProfile = { idType: docType };
-      const parsed = OCRPipeline.processBlocks(blocks, profile, docType);
-
-      return {
-        fullName: parsed.fullName?.value,
-        idNumber: parsed.idNumber?.value,
-        dob: parsed.dob?.value,
-        gender: parsed.gender?.value,
-        address: parsed.address?.value,
-        idType: parsed.idType,
-      };
-    } catch (e) {
-      console.error('Failed to process image OCR', e);
-      return null;
-    }
   }
 }

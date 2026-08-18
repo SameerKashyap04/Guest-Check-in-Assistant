@@ -1,26 +1,17 @@
-import React, { useState } from 'react';
-import {
-  View, Text, FlatList, TouchableOpacity, Modal,
-  Image, StyleSheet, TextInput,
-} from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, Modal, Image, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  Search, ChevronLeft, ChevronRight, X, Phone,
-  Edit, Check, Image as ImageIcon,
-} from 'lucide-react-native';
+import { Input } from '@/components/Input';
+import { Search, ChevronLeft, User, DoorOpen, X, Phone, IdCard, MapPin, Calendar, CheckCircle2 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { openDatabase } from '@/database';
+import { GlassCard } from '@/components/GlassCard';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { Button } from '@/components/Button';
-import { AIRBNB } from '@/theme/airbnb';
-
-// ─── Airbnb Search Screen for StayMate ────────────────────────────────────────
-// Direct port of openSearch() from staymate-airbnb-redesign/app.html
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function SearchScreen() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState<any | null>(null);
   const router = useRouter();
 
@@ -32,6 +23,7 @@ export default function SearchScreen() {
     }
 
     try {
+      setIsLoading(true);
       const { propertyId } = useSettingsStore.getState();
       const activePropertyId = propertyId || 'HS-DEFAULT';
       const db = await openDatabase();
@@ -50,334 +42,204 @@ export default function SearchScreen() {
 
       setResults(searchResults as any[]);
     } catch (e) {
-      console.error('Search error', e);
+      console.error('Search query error', e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const getInitials = (name?: string) => {
-    if (!name) return '?';
-    return name
-      .split(' ')
-      .filter(Boolean)
-      .slice(0, 2)
-      .map(n => n[0].toUpperCase())
-      .join('');
-  };
-
   return (
-    <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
-      {/* Header with Back button and Search Pill */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.iconBtn}
+    <SafeAreaView edges={['top', 'bottom']} className="flex-1 bg-background">
+      {/* Header Search Bar */}
+      <View className="flex-row items-center px-4 pt-3 pb-3 border-b border-gray-200/50 dark:border-gray-800 gap-2">
+        <TouchableOpacity 
           onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
+          className="p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
         >
-          <ChevronLeft size={18} color={AIRBNB.colors.ink} />
+          <ChevronLeft size={26} color="#38BDF8" />
         </TouchableOpacity>
-
-        <View style={styles.searchPill}>
-          <Search size={17} color={AIRBNB.colors.muted} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Name, phone, room, ID…"
-            placeholderTextColor={AIRBNB.colors.mutedSoft}
+        
+        <View className="flex-1">
+          <Input 
+            placeholder="Search by name, phone, ID, room..." 
             value={query}
             onChangeText={handleSearch}
             autoFocus
+            icon={<Search size={18} color="#38BDF8" />}
+            className="mb-0"
           />
-          {query.length > 0 && (
-            <TouchableOpacity onPress={() => handleSearch('')}>
-              <X size={16} color={AIRBNB.colors.mutedSoft} />
-            </TouchableOpacity>
-          )}
         </View>
+        {query.length > 0 && (
+          <TouchableOpacity onPress={() => handleSearch('')} className="p-2">
+            <X size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Results Header */}
       {query.trim().length > 0 && (
-        <View style={styles.resultsBar}>
-          <Text style={styles.captionText}>
-            {`FOUND ${results.length} RECORD${results.length !== 1 ? 'S' : ''}`}
+        <View className="px-5 py-2.5 bg-gray-50 dark:bg-gray-900/50 border-b border-gray-100 dark:border-gray-800">
+          <Text className="text-xs font-semibold text-gray-500">
+            {isLoading ? 'Searching...' : `Found ${results.length} matching guest records`}
           </Text>
         </View>
       )}
 
-      {/* Results List */}
+      {/* Search Results List */}
       <FlatList
         data={results}
-        keyExtractor={item => String(item.id)}
-        contentContainerStyle={styles.list}
+        keyExtractor={(item) => String(item.id)}
+        contentContainerStyle={{ padding: 16, paddingBottom: 60 }}
         ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
-              {query.length > 0
-                ? `No guests found for "${query}"`
-                : 'Type a guest name, phone, ID, or room number to search'}
+          <View className="flex-1 items-center justify-center mt-20 px-8">
+            <View className="w-16 h-16 rounded-full bg-sky-500/10 items-center justify-center mb-4">
+              <Search size={32} color="#38BDF8" />
+            </View>
+            <Text className="text-gray-500 font-semibold text-center text-base">
+              {query.length > 0 ? `No guests found for "${query}"` : 'Type a guest name, phone, Aadhaar/ID, or room number to search'}
+            </Text>
+            <Text className="text-gray-400 text-xs text-center mt-2">
+              Results update in real-time across all guest registrations.
             </Text>
           </View>
         }
-        ItemSeparatorComponent={() => <View style={styles.divider} />}
         renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.guestRow}
-            activeOpacity={0.7}
+          <TouchableOpacity 
             onPress={() => setSelectedGuest(item)}
+            activeOpacity={0.8}
+            className="mb-3"
           >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{getInitials(item.full_name)}</Text>
-            </View>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.guestName} numberOfLines={1}>{item.full_name}</Text>
-              <Text style={styles.guestSubtitle}>
-                Room {item.room_number || 'N/A'} · {item.phone || item.id_number || 'Verified'}
-              </Text>
-            </View>
-            <ChevronRight size={17} color={AIRBNB.colors.mutedSoft} />
+            <GlassCard variant="elevated" className="p-4 rounded-2xl">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center flex-1 mr-2">
+                  <View className="w-12 h-12 rounded-2xl bg-sky-500/10 items-center justify-center mr-3 border border-sky-500/20 overflow-hidden">
+                    {item.photo_uri || item.selfie_uri ? (
+                      <Image source={{ uri: item.photo_uri || item.selfie_uri }} className="w-full h-full" resizeMode="cover" />
+                    ) : (
+                      <User size={22} color="#38BDF8" />
+                    )}
+                  </View>
+
+                  <View className="flex-1">
+                    <Text className="text-base font-bold text-foreground" numberOfLines={1}>
+                      {item.full_name || 'Guest'}
+                    </Text>
+                    <Text className="text-xs text-gray-500 mt-0.5" numberOfLines={1}>
+                      📱 {item.phone || 'No Phone'}
+                    </Text>
+                  </View>
+                </View>
+
+                {item.room_number && (
+                  <View className="bg-sky-500/10 px-3 py-1.5 rounded-xl flex-row items-center gap-1 border border-sky-500/20">
+                    <DoorOpen size={14} color="#38BDF8" />
+                    <Text className="text-xs font-bold text-sky-500">Room {item.room_number}</Text>
+                  </View>
+                )}
+              </View>
+
+              <View className="mt-3 pt-2.5 border-t border-gray-100 dark:border-gray-800/80 flex-row items-center justify-between">
+                <Text className="text-xs text-gray-500">
+                  {item.id_type || 'ID'}: <Text className="font-semibold text-foreground">{item.id_number || 'N/A'}</Text>
+                </Text>
+                <Text className="text-xs font-bold text-sky-500">View ID Card →</Text>
+              </View>
+            </GlassCard>
           </TouchableOpacity>
         )}
       />
 
-      {/* Guest Detail Bottom Sheet */}
-      <Modal visible={!!selectedGuest} transparent animationType="slide">
-        <TouchableOpacity
-          style={styles.scrim}
-          activeOpacity={1}
-          onPress={() => setSelectedGuest(null)}
+      {/* Guest ID Card Modal */}
+      {selectedGuest && (
+        <Modal
+          visible={!!selectedGuest}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setSelectedGuest(null)}
         >
-          <TouchableOpacity
-            style={styles.sheet}
-            activeOpacity={1}
-            onPress={e => e.stopPropagation?.()}
-          >
-            <View style={styles.sheetHandle} />
-            {selectedGuest && (
-              <View>
-                <View style={styles.sheetHeader}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={[styles.avatar, { width: 52, height: 52, borderRadius: 26 }]}>
-                      <Text style={[styles.avatarText, { fontSize: 18 }]}>
-                        {getInitials(selectedGuest.full_name)}
-                      </Text>
+          <View className="flex-1 bg-black/60 justify-end">
+            <View className="bg-white dark:bg-[#181A24] rounded-t-3xl p-6 max-h-[90%] border-t border-gray-200 dark:border-gray-800">
+              <View className="flex-row justify-between items-center pb-4 border-b border-gray-200/50 dark:border-gray-800">
+                <View>
+                  <Text className="text-xl font-bold text-foreground">{selectedGuest.full_name}</Text>
+                  <Text className="text-xs text-gray-500 font-medium">Guest Registration Card</Text>
+                </View>
+                <TouchableOpacity onPress={() => setSelectedGuest(null)} className="p-2 rounded-full bg-gray-100 dark:bg-gray-800">
+                  <X size={20} color="#9498AA" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView className="mt-4">
+                <View className="flex-row gap-4 mb-6">
+                  {selectedGuest.photo_uri || selectedGuest.selfie_uri ? (
+                    <Image source={{ uri: selectedGuest.photo_uri || selectedGuest.selfie_uri }} className="w-28 h-28 rounded-2xl bg-gray-100 border border-gray-200 dark:border-gray-700" resizeMode="cover" />
+                  ) : (
+                    <View className="w-28 h-28 rounded-2xl bg-sky-500/10 items-center justify-center border border-sky-500/20">
+                      <User size={40} color="#38BDF8" />
                     </View>
+                  )}
+                  {selectedGuest.back_photo_uri ? (
+                    <Image source={{ uri: selectedGuest.back_photo_uri }} className="w-28 h-28 rounded-2xl bg-gray-100 border border-gray-200 dark:border-gray-700" resizeMode="cover" />
+                  ) : null}
+                </View>
+
+                <View className="gap-3">
+                  <View className="flex-row items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/60 rounded-xl">
+                    <DoorOpen size={18} color="#38BDF8" />
                     <View>
-                      <Text style={styles.sheetGuestName}>{selectedGuest.full_name}</Text>
-                      <Text style={styles.sheetStatusText}>Verified guest</Text>
+                      <Text className="text-xs text-gray-400 font-medium">Assigned Room</Text>
+                      <Text className="text-sm font-bold text-foreground">Room {selectedGuest.room_number || 'N/A'} ({selectedGuest.room_type || 'Standard'})</Text>
                     </View>
                   </View>
-                  <TouchableOpacity
-                    style={styles.iconBtn}
-                    onPress={() => setSelectedGuest(null)}
-                  >
-                    <X size={16} color={AIRBNB.colors.ink} />
-                  </TouchableOpacity>
-                </View>
 
-                <View style={styles.metaCard}>
-                  {[
-                    { label: 'Room', val: `Room ${selectedGuest.room_number || 'N/A'}` },
-                    { label: 'Document', val: `${selectedGuest.id_type || 'Aadhaar'} — ${selectedGuest.id_number || 'N/A'}` },
-                    { label: 'Phone', val: selectedGuest.phone || 'N/A' },
-                    { label: 'Address', val: selectedGuest.address || 'N/A', last: true },
-                  ].map((row, i, arr) => (
-                    <View key={i} style={[styles.metaRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}>
-                      <Text style={styles.metaLabel}>{row.label}</Text>
-                      <Text style={styles.metaVal}>{row.val}</Text>
+                  <View className="flex-row items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/60 rounded-xl">
+                    <Phone size={18} color="#38BDF8" />
+                    <View>
+                      <Text className="text-xs text-gray-400 font-medium">Phone Number</Text>
+                      <Text className="text-sm font-bold text-foreground">{selectedGuest.phone || 'N/A'}</Text>
                     </View>
-                  ))}
-                </View>
+                  </View>
 
-                <Button
-                  label="Close"
-                  variant="secondary"
-                  onPress={() => setSelectedGuest(null)}
-                />
-              </View>
-            )}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
+                  <View className="flex-row items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/60 rounded-xl">
+                    <IdCard size={18} color="#38BDF8" />
+                    <View>
+                      <Text className="text-xs text-gray-400 font-medium">{selectedGuest.id_type || 'ID'} Number</Text>
+                      <Text className="text-sm font-bold text-foreground">{selectedGuest.id_number || 'N/A'}</Text>
+                    </View>
+                  </View>
+
+                  {selectedGuest.address ? (
+                    <View className="flex-row items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/60 rounded-xl">
+                      <MapPin size={18} color="#38BDF8" />
+                      <View className="flex-1">
+                        <Text className="text-xs text-gray-400 font-medium">Address</Text>
+                        <Text className="text-sm font-bold text-foreground">{selectedGuest.address}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+
+                  {selectedGuest.check_in_date ? (
+                    <View className="flex-row items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900/60 rounded-xl">
+                      <Calendar size={18} color="#38BDF8" />
+                      <View>
+                        <Text className="text-xs text-gray-400 font-medium">Check-in Date</Text>
+                        <Text className="text-sm font-bold text-foreground">{selectedGuest.check_in_date}</Text>
+                      </View>
+                    </View>
+                  ) : null}
+                </View>
+              </ScrollView>
+
+              <TouchableOpacity
+                onPress={() => setSelectedGuest(null)}
+                className="mt-6 bg-black dark:bg-white py-3.5 rounded-2xl items-center"
+              >
+                <Text className="text-white dark:text-black font-bold text-base">Close Card</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
     </SafeAreaView>
   );
 }
-
-function InputRaw(props: any) {
-  return (
-    <TextInput
-      {...props}
-      style={{
-        flex: 1,
-        fontSize: 14.5,
-        color: AIRBNB.colors.ink,
-        paddingVertical: 8,
-      }}
-      placeholderTextColor={AIRBNB.colors.mutedSoft}
-    />
-  );
-}
-
-const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-    backgroundColor: AIRBNB.colors.canvas,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: AIRBNB.colors.hairlineSoft,
-  },
-  iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: AIRBNB.colors.surfaceStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  searchPill: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: AIRBNB.colors.canvas,
-    borderWidth: 1,
-    borderColor: AIRBNB.colors.hairline,
-    borderRadius: AIRBNB.radius.full,
-    paddingHorizontal: 16,
-    height: 44,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14.5,
-    color: AIRBNB.colors.ink,
-    paddingVertical: 0,
-  },
-  resultsBar: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: AIRBNB.colors.surfaceSoft,
-  },
-  captionText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: AIRBNB.colors.muted,
-    letterSpacing: 0.2,
-  },
-  list: {
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 40,
-  },
-  guestRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    gap: 12,
-  },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#ffd1da',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: AIRBNB.colors.avatarText,
-  },
-  guestName: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: AIRBNB.colors.ink,
-  },
-  guestSubtitle: {
-    fontSize: 13.5,
-    color: AIRBNB.colors.muted,
-    marginTop: 1,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: AIRBNB.colors.hairlineSoft,
-  },
-  emptyState: {
-    paddingTop: 60,
-    alignItems: 'center',
-    paddingHorizontal: 30,
-  },
-  emptyText: {
-    fontSize: 14,
-    color: AIRBNB.colors.muted,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-
-  // Sheet
-  scrim: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: AIRBNB.colors.canvas,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '80%',
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: AIRBNB.colors.hairline,
-    alignSelf: 'center',
-    marginBottom: 14,
-  },
-  sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  sheetGuestName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AIRBNB.colors.ink,
-  },
-  sheetStatusText: {
-    fontSize: 13.5,
-    color: AIRBNB.colors.muted,
-    marginTop: 1,
-  },
-  metaCard: {
-    backgroundColor: AIRBNB.colors.canvas,
-    borderWidth: 1,
-    borderColor: AIRBNB.colors.hairlineSoft,
-    borderRadius: AIRBNB.radius.md,
-    padding: 14,
-    marginBottom: 16,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 9,
-    borderBottomWidth: 1,
-    borderBottomColor: AIRBNB.colors.hairlineSoft,
-  },
-  metaLabel: {
-    fontSize: 13.5,
-    color: AIRBNB.colors.mutedSoft,
-  },
-  metaVal: {
-    fontSize: 13.5,
-    fontWeight: '500',
-    color: AIRBNB.colors.ink,
-    textAlign: 'right',
-    maxWidth: '65%',
-  },
-});
