@@ -119,15 +119,8 @@ export default function DashboardScreen() {
   else if (currentHour < 18) greetingKey = 'goodAfternoon';
   const greeting = t(greetingKey);
   const todayDate = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-  const userName = (customUserName && customUserName.trim()) || 'Sameer';
 
-  const getInitials = (name?: string | null) => {
-    if (!name || !name.trim()) return 'GS';
-    const parts = name.trim().split(/\s+/).filter(Boolean);
-    if (parts.length === 0) return 'GS';
-    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-  };
+  const userName = (customUserName && customUserName.trim()) || 'Sameer';
 
   const fetchGuests = async () => {
     try {
@@ -210,42 +203,71 @@ export default function DashboardScreen() {
           />
         }
       >
-        <View className="mb-5 mt-2">
-          <Text className="text-sm font-medium text-gray-500 mb-1">{todayDate}</Text>
-          <View className="flex-row items-center justify-between">
-            <Text className="text-3xl font-extrabold text-foreground tracking-tight flex-1 mr-2" numberOfLines={1}>
+        {/* ── Top Header ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4, marginBottom: 18 }}>
+          <View style={{ flex: 1, paddingRight: 10 }}>
+            <Text style={{ fontSize: 13.5, fontWeight: '500', color: '#6a6a6a', marginBottom: 2 }}>{todayDate}</Text>
+            <Text style={{ fontSize: 26, fontWeight: '700', color: '#222222', letterSpacing: -0.4 }} numberOfLines={1}>
               {greeting}, {userName}
             </Text>
-            <View className="flex-row items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800">
-              <View className="w-2 h-2 rounded-full bg-emerald-500" />
-              <Text className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Live</Text>
-            </View>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#e5f6e6', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 9999, gap: 5 }}>
+            <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#008a05' }} />
+            <Text style={{ fontSize: 12, fontWeight: '600', color: '#008a05' }}>Live</Text>
           </View>
         </View>
 
-        <TouchableOpacity 
-          className="mb-6"
-          onPress={() => router.push('/search')}
-          activeOpacity={0.8}
-        >
-          <View 
-            className="flex-row items-center bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 px-4"
+        {/* ── Search Bar & Reports SVG Button ── */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+          <TouchableOpacity 
             style={{
-              height: 52,
+              flex: 1,
+              height: 50,
+              backgroundColor: '#ffffff',
               borderRadius: 9999,
+              borderWidth: 1,
+              borderColor: '#ebebeb',
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingHorizontal: 16,
+              gap: 10,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.05,
-              shadowRadius: 8,
+              shadowOpacity: 0.04,
+              shadowRadius: 5,
               elevation: 2,
             }}
+            onPress={() => router.push('/search')}
+            activeOpacity={0.7}
           >
-            <Search size={20} color="#717171" strokeWidth={2.2} />
-            <Text className="text-[15px] text-gray-500 dark:text-gray-400 ml-3 font-normal">
+            <Search size={18} color="#6a6a6a" />
+            <Text style={{ fontSize: 14.5, color: '#717171', flex: 1, fontWeight: '400' }} numberOfLines={1}>
               Search guests, rooms, IDs...
             </Text>
-          </View>
-        </TouchableOpacity>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={{
+              width: 50,
+              height: 50,
+              backgroundColor: '#ffffff',
+              borderRadius: 16,
+              borderWidth: 1,
+              borderColor: '#ebebeb',
+              alignItems: 'center',
+              justifyContent: 'center',
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.04,
+              shadowRadius: 5,
+              elevation: 2,
+            }}
+            activeOpacity={0.7}
+            onPress={() => router.push('/reports')}
+          >
+            <FileBarChart size={22} color="#0096EB" />
+          </TouchableOpacity>
+        </View>
 
         <Text className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
           {t('todaysOverview')}
@@ -299,33 +321,16 @@ export default function DashboardScreen() {
                 key={guest.id}
                 activeOpacity={0.7}
                 onPress={() => setSelectedGuest(guest)}
-                className={`flex-row justify-between items-center py-1.5 ${index !== recentGuests.length - 1 ? 'border-b border-gray-100 dark:border-gray-800/80 pb-3.5 mb-3.5' : ''}`}
+                className={`flex-row justify-between items-center ${index !== recentGuests.length - 1 ? 'border-b border-gray-100 dark:border-gray-800 pb-3 mb-3' : ''}`}
               >
                 <View className="flex-row items-center flex-1 mr-2">
-                  <View 
-                    style={{
-                      width: 48,
-                      height: 48,
-                      borderRadius: 24,
-                      backgroundColor: '#ffb3c6',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      marginRight: 14,
-                    }}
-                  >
-                    <Text 
-                      style={{
-                        fontSize: 16.5,
-                        fontWeight: '800',
-                        color: '#7a0026',
-                        letterSpacing: 0.5,
-                      }}
-                    >
-                      {getInitials(guest.full_name)}
+                  <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-3">
+                    <Text className="text-foreground font-bold text-lg">
+                      {guest.full_name ? guest.full_name.charAt(0).toUpperCase() : '?'}
                     </Text>
                   </View>
                   <View className="flex-1">
-                    <Text className="text-base font-bold text-foreground" numberOfLines={1}>{guest.full_name}</Text>
+                    <Text className="text-base font-semibold text-foreground" numberOfLines={1}>{guest.full_name}</Text>
                     <View className="flex-row items-center gap-1.5 mt-0.5">
                       {guest.room_number ? (
                         <View className="bg-foreground/10 px-1.5 py-0.5 rounded">
