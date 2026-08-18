@@ -119,8 +119,15 @@ export default function DashboardScreen() {
   else if (currentHour < 18) greetingKey = 'goodAfternoon';
   const greeting = t(greetingKey);
   const todayDate = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-
   const userName = (customUserName && customUserName.trim()) || 'Sameer';
+
+  const getInitials = (name?: string | null) => {
+    if (!name || !name.trim()) return 'GS';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return 'GS';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  };
 
   const fetchGuests = async () => {
     try {
@@ -292,16 +299,33 @@ export default function DashboardScreen() {
                 key={guest.id}
                 activeOpacity={0.7}
                 onPress={() => setSelectedGuest(guest)}
-                className={`flex-row justify-between items-center ${index !== recentGuests.length - 1 ? 'border-b border-gray-100 dark:border-gray-800 pb-3 mb-3' : ''}`}
+                className={`flex-row justify-between items-center py-1.5 ${index !== recentGuests.length - 1 ? 'border-b border-gray-100 dark:border-gray-800/80 pb-3.5 mb-3.5' : ''}`}
               >
                 <View className="flex-row items-center flex-1 mr-2">
-                  <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-3">
-                    <Text className="text-foreground font-bold text-lg">
-                      {guest.full_name ? guest.full_name.charAt(0).toUpperCase() : '?'}
+                  <View 
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 24,
+                      backgroundColor: '#ffb3c6',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      marginRight: 14,
+                    }}
+                  >
+                    <Text 
+                      style={{
+                        fontSize: 16.5,
+                        fontWeight: '800',
+                        color: '#7a0026',
+                        letterSpacing: 0.5,
+                      }}
+                    >
+                      {getInitials(guest.full_name)}
                     </Text>
                   </View>
                   <View className="flex-1">
-                    <Text className="text-base font-semibold text-foreground" numberOfLines={1}>{guest.full_name}</Text>
+                    <Text className="text-base font-bold text-foreground" numberOfLines={1}>{guest.full_name}</Text>
                     <View className="flex-row items-center gap-1.5 mt-0.5">
                       {guest.room_number ? (
                         <View className="bg-foreground/10 px-1.5 py-0.5 rounded">

@@ -201,9 +201,30 @@ export default function RegistrationsScreen() {
               >
                 <View className="flex-row items-center justify-between mb-3">
                   <View className="flex-row items-center flex-1 mr-2">
-                    <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center mr-3">
-                      <Text className="text-foreground font-bold text-base">
-                        {guest.full_name ? guest.full_name.charAt(0).toUpperCase() : '?'}
+                    <View 
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 22,
+                        backgroundColor: '#ffb3c6',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: 12,
+                      }}
+                    >
+                      <Text 
+                        style={{
+                          fontSize: 16,
+                          fontWeight: '800',
+                          color: '#7a0026',
+                          letterSpacing: 0.5,
+                        }}
+                      >
+                        {guest.full_name ? (
+                          guest.full_name.trim().split(/\s+/).length === 1
+                            ? guest.full_name.trim().slice(0, 2).toUpperCase()
+                            : (guest.full_name.trim().split(/\s+/)[0][0] + guest.full_name.trim().split(/\s+/).slice(-1)[0][0]).toUpperCase()
+                        ) : 'GS'}
                       </Text>
                     </View>
                     <View className="flex-1">
