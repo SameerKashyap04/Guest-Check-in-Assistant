@@ -18,6 +18,7 @@ import {Icon} from '../components/Icon';
 import {Field, PrimaryButton, SecondaryButton} from '../components/Ui';
 import {RoomCard} from '../components/RoomCard';
 import {AddCoGuestModal, CoGuestItem} from '../components/AddCoGuestModal';
+import {CalendarPicker} from '../components/CalendarPicker';
 
 export function ManualEntryScreen({
   onDone,
@@ -298,17 +299,14 @@ export function ManualEntryScreen({
 
             {/* Date of birth + Gender */}
             <View style={{flexDirection: 'row', gap: 10, marginTop: 12}}>
-              <View style={{flex: 1}}>
-                <Text style={s.fieldLabel}>Date of birth</Text>
-                <View style={s.inputWrap}>
-                  <TextInput
-                    value={dob}
-                    onChangeText={setDob}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#9CA3AF"
-                    style={s.input}
-                  />
-                </View>
+              <View style={{flex: 1.2}}>
+                <CalendarPicker
+                  label="Date of birth"
+                  value={dob}
+                  onChange={setDob}
+                  mode="dob"
+                  placeholder="Select DOB"
+                />
               </View>
               <View style={{flex: 1}}>
                 <Text style={s.fieldLabel}>Gender</Text>
@@ -427,28 +425,24 @@ export function ManualEntryScreen({
               <Text style={s.cardSectionTitle}>DATES & RATE</Text>
               <View style={{flexDirection: 'row', gap: 10, marginTop: 12}}>
                 <View style={{flex: 1}}>
-                  <Text style={s.fieldLabel}>Check-in</Text>
-                  <View style={s.inputWrap}>
-                    <TextInput
-                      value={checkin}
-                      onChangeText={setCheckin}
-                      style={s.input}
-                    />
-                  </View>
+                  <CalendarPicker
+                    label="Check-in Date"
+                    value={checkin}
+                    onChange={setCheckin}
+                    mode="stay"
+                  />
                 </View>
                 <View style={{flex: 1}}>
-                  <Text style={s.fieldLabel}>Check-out</Text>
-                  <View style={s.inputWrap}>
-                    <TextInput
-                      value={checkout}
-                      onChangeText={setCheckout}
-                      style={s.input}
-                    />
-                  </View>
+                  <CalendarPicker
+                    label="Check-out Date"
+                    value={checkout}
+                    onChange={setCheckout}
+                    mode="stay"
+                  />
                 </View>
               </View>
 
-              <View style={{marginTop: 14}}>
+              <View style={{marginTop: 4}}>
                 <Text style={s.fieldLabel}>Nightly rate</Text>
                 <Text style={s.rateValue}>
                   ₹

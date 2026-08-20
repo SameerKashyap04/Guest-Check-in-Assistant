@@ -16,6 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {C, R} from '../theme/tokens';
 import {Icon} from './Icon';
 import {PrimaryButton, SecondaryButton} from './Ui';
+import {CalendarPicker} from './CalendarPicker';
 
 const DOC_TYPES = ['Aadhaar', 'PAN', 'Voter ID', 'Driving Licence', 'Passport'];
 const RELATIONS = ['Spouse', 'Child', 'Parent', 'Friend', 'Family', 'Colleague', 'Other'];
@@ -268,14 +269,13 @@ export function AddCoGuestModal({
                 </View>
               </View>
               <View style={{width: 12}} />
-              <View style={{flex: 1}}>
-                <Text style={s.label}>DATE OF BIRTH</Text>
-                <TextInput
+              <View style={{flex: 1.2}}>
+                <CalendarPicker
+                  label="DATE OF BIRTH"
                   value={dob}
-                  onChangeText={setDob}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor="#9CA3AF"
-                  style={s.input}
+                  onChange={setDob}
+                  mode="dob"
+                  placeholder="Select DOB"
                 />
               </View>
             </View>
