@@ -37,7 +37,7 @@ import {ManualEntryScreen} from './src/screens/ManualEntryScreen';
 import {AccountPortalScreen} from './src/screens/AccountPortalScreen';
 import {GUESTS, ROOMS, STATUS_META, RoomStatus, SELF_CHECKINS, SELF_CHECKIN_URL, PLANS, buildSelfCheckinLink} from './src/data';
 import * as Clipboard from 'expo-clipboard';
-import * as FileSystem from 'expo-file-system';
+import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 
@@ -669,40 +669,16 @@ function SelfCheckins({
   ]);
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(shareUrl)}`;
 
-  // Pre-download QR image to local disk cache so image sharing is instantaneous and reliable
-  React.useEffect(() => {
-    let isMounted = true;
-    (async () => {
-      try {
-        const dest = FileSystem.cacheDirectory + 'staymate-checkin-qr.png';
-        const res = await FileSystem.downloadAsync(qrImageUrl, dest);
-        if (isMounted && res.uri) {
-          setQrLocalUri(res.uri);
-        }
-      } catch (err) {
-        console.warn('QR pre-cache failed:', err);
-      }
-    })();
-    return () => {
-      isMounted = false;
-    };
-  }, [qrImageUrl]);
-
   // Share actual QR image file (to WhatsApp, Save to Photos, AirDrop, Messages)
   const handleShareQrImage = async () => {
     try {
-      let uri = qrLocalUri;
-      if (!uri) {
-        onToast('Generating QR image...');
-        const dest = FileSystem.cacheDirectory + 'staymate-checkin-qr.png';
-        const res = await FileSystem.downloadAsync(qrImageUrl, dest);
-        uri = res.uri;
-        setQrLocalUri(uri);
-      }
+      onToast('Preparing QR Code image...');
+      const file = new File(Paths.cache, 'staymate-checkin-qr.png');
+      await File.downloadFileAsync(qrImageUrl, file);
 
       const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable && uri) {
-        await Sharing.shareAsync(uri, {
+      if (isAvailable && file.uri) {
+        await Sharing.shareAsync(file.uri, {
           mimeType: 'image/png',
           dialogTitle: 'Share Guest Check-in QR Code',
           UTI: 'public.png',
@@ -712,6 +688,8 @@ function SelfCheckins({
       }
     } catch (err: any) {
       console.warn('Image share error:', err);
+      // Fallback: Generate printable standee with QR code
+      handlePrintStandee();
     }
   };
 
