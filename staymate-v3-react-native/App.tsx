@@ -36,6 +36,9 @@ import {SettingsScreen} from './src/screens/SettingsScreen';
 import {ManualEntryScreen} from './src/screens/ManualEntryScreen';
 import {AccountPortalScreen} from './src/screens/AccountPortalScreen';
 import {GUESTS, ROOMS, STATUS_META, RoomStatus, SELF_CHECKINS, SELF_CHECKIN_URL, PLANS, buildSelfCheckinLink} from './src/data';
+import * as Clipboard from 'expo-clipboard';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 // Inject authentic Inter web font and typography styles on web platform
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -665,21 +668,45 @@ function SelfCheckins({
 
   const handleShare = async () => {
     try {
+      onToast('Sharing QR Code...');
+      const localFileUri = FileSystem.cacheDirectory + 'staymate-checkin-qr.png';
+      const downloadRes = await FileSystem.downloadAsync(qrImageUrl, localFileUri);
+      
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable && downloadRes.uri) {
+        await Sharing.shareAsync(downloadRes.uri, {
+          mimeType: 'image/png',
+          dialogTitle: 'Share Guest Check-in QR Code',
+          UTI: 'public.png',
+        });
+        onToast('QR Code shared! ✓');
+        return;
+      }
+    } catch (err) {
+      console.warn('Image share fallback:', err);
+    }
+
+    try {
       await Share.share({
         title: 'Guest Self Check-in — StayMate',
         message: `Welcome to StayMate Homestay! Please complete your quick guest registration online before arrival:\n🔗 ${shareUrl}`,
         url: shareUrl,
       });
-      onToast('Sharing check-in link');
+      onToast('Check-in link shared! ✓');
     } catch (e) {
       onToast('Link ready to share');
     }
   };
 
-  const handleCopy = () => {
-    setCopied(true);
-    onToast('Self check-in link copied to clipboard! ✓');
-    setTimeout(() => setCopied(false), 2500);
+  const handleCopy = async () => {
+    try {
+      await Clipboard.setStringAsync(shareUrl);
+      setCopied(true);
+      onToast('Self check-in link copied to clipboard! ✓');
+      setTimeout(() => setCopied(false), 2500);
+    } catch (e) {
+      onToast('Link: ' + shareUrl);
+    }
   };
 
   const handleOpenBrowser = async () => {
