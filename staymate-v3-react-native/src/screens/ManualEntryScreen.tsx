@@ -424,7 +424,7 @@ export function ManualEntryScreen({
             </View>
 
             <View style={s.datesCard}>
-              <Text style={s.cardSectionTitle}>DATES & OCCUPANCY</Text>
+              <Text style={s.cardSectionTitle}>DATES & RATE</Text>
               <View style={{flexDirection: 'row', gap: 10, marginTop: 12}}>
                 <View style={{flex: 1}}>
                   <Text style={s.fieldLabel}>Check-in</Text>
@@ -446,19 +446,6 @@ export function ManualEntryScreen({
                     />
                   </View>
                 </View>
-              </View>
-
-              <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F1F5F9'}}>
-                <View>
-                  <Text style={s.fieldLabel}>Total Occupants</Text>
-                  <Text style={s.occupantsValue}>
-                    {1 + coGuests.length} Guest{1 + coGuests.length > 1 ? 's' : ''} (1 Primary{coGuests.length > 0 ? ` + ${coGuests.length} Co-guest${coGuests.length > 1 ? 's' : ''}` : ''})
-                  </Text>
-                </View>
-                <TouchableOpacity onPress={handleOpenAddCoGuest} style={s.addCoGuestPill} activeOpacity={0.75}>
-                  <Icon name="plus" size={12} color={C.primary} />
-                  <Text style={s.addCoGuestPillText}>Add Guest</Text>
-                </TouchableOpacity>
               </View>
 
               <View style={{marginTop: 14}}>
