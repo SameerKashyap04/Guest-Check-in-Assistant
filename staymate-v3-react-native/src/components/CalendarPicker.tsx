@@ -81,9 +81,10 @@ export function CalendarPicker({
   }
 
   function formatDisplay(val: string): string {
-    if (!val || !/^\d{4}-\d{2}-\d{2}$/.test(val)) return placeholder;
+    if (!val || !/^\d{4}-\d{2}-\d{2}$/.test(val)) return val || placeholder;
     const [y, m, d] = val.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
+    if (isNaN(dateObj.getTime())) return val || placeholder;
     return dateObj.toLocaleDateString('en-IN', {
       day: 'numeric',
       month: 'short',
@@ -173,9 +174,9 @@ export function CalendarPicker({
         onPress={handleOpenModal}
         style={s.fieldTrigger}
       >
-        <Icon name="calendar" size={16} color={C.primary} />
+        <Icon name="calendar" size={15} color={C.primary} />
         <Text style={[s.triggerText, !value && s.triggerPlaceholder]} numberOfLines={1}>
-          {value || placeholder}
+          {formatDisplay(value)}
         </Text>
       </TouchableOpacity>
 
@@ -453,8 +454,8 @@ const s = StyleSheet.create({
   triggerText: {
     fontFamily: 'Inter',
     fontSize: 14,
-    fontWeight: '500',
-    color: '#1E293B',
+    fontWeight: '600',
+    color: '#222222',
     flex: 1,
   },
   triggerPlaceholder: {
