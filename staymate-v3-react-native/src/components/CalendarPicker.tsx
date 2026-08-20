@@ -174,10 +174,10 @@ export function CalendarPicker({
         onPress={handleOpenModal}
         style={s.fieldTrigger}
       >
-        <Icon name="calendar" size={15} color={C.primary} />
         <Text style={[s.triggerText, !value && s.triggerPlaceholder]} numberOfLines={1}>
           {formatDisplay(value)}
         </Text>
+        <Icon name="calendar" size={15} color="#94A3B8" />
       </TouchableOpacity>
 
       {/* Calendar Modal */}
@@ -442,19 +442,18 @@ const s = StyleSheet.create({
   fieldTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
     backgroundColor: '#ffffff',
     borderWidth: 1.2,
     borderColor: '#ECEAF0',
     borderRadius: 14,
     paddingHorizontal: 12,
-    paddingVertical: 11,
-    minHeight: 44,
+    height: 44,
   },
   triggerText: {
     fontFamily: 'Inter',
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#222222',
     flex: 1,
   },
