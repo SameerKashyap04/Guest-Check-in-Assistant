@@ -33,6 +33,7 @@ import {
 } from '@/database/stays';
 import { parseCheckinImportText } from '@/utils/checkinImporter';
 import { useTranslation } from 'react-i18next';
+import { SelfCheckinQrModal } from '@/components/v3/SelfCheckinQrModal';
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -67,6 +68,7 @@ export default function DashboardScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [recentGuests, setRecentGuests] = useState<any[]>([]);
   const [selectedGuest, setSelectedGuest] = useState<any | null>(null);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
   const [importText, setImportText] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -189,17 +191,8 @@ export default function DashboardScreen() {
     }, [])
   );
 
-  const handleShareSelfCheckin = async () => {
-    try {
-      const shareUrl = getShareableLink();
-      await Share.share({
-        title: 'Guest Self Check-in',
-        message: `Welcome to ${businessName || 'our property'}! Please complete your check-in online before arrival:\n${shareUrl}`,
-        url: shareUrl,
-      });
-    } catch (e) {
-      router.push('/self-checkin');
-    }
+  const handleShareSelfCheckin = () => {
+    setIsQrModalOpen(true);
   };
 
   const handleExecuteImport = async () => {
@@ -605,6 +598,12 @@ export default function DashboardScreen() {
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* Self Check-in & QR Generator Modal */}
+      <SelfCheckinQrModal
+        visible={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+      />
     </View>
   );
 }

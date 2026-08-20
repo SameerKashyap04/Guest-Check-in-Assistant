@@ -28,6 +28,7 @@ import { createMultipleGuestsAndStay } from '@/database/stays';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { canUseFeature } from '@/services/entitlementService';
 import { useTranslation } from 'react-i18next';
+import { SelfCheckinQrModal } from '@/components/v3/SelfCheckinQrModal';
 
 type DocId = 'UNKNOWN' | 'AADHAAR' | 'PAN' | 'VOTER_ID' | 'DRIVING_LICENCE' | 'PASSPORT';
 
@@ -59,6 +60,7 @@ export default function ScannerScreen() {
   // Web Self Check-in Portal State
   const [pendingCheckins, setPendingCheckins] = useState<CloudGuestCheckin[]>([]);
   const [isPortalModalOpen, setIsPortalModalOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [selectedCheckinDetail, setSelectedCheckinDetail] = useState<CloudGuestCheckin | null>(null);
   const [isApprovingId, setIsApprovingId] = useState<string | null>(null);
 
@@ -520,10 +522,30 @@ export default function ScannerScreen() {
                   </View>
                 ))
               )}
+
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => {
+                  setIsPortalModalOpen(false);
+                  setTimeout(() => setIsQrModalOpen(true), 250);
+                }}
+                style={s.qrStandeeActionBtn}
+              >
+                <Icon name="qr" size={18} color={C.primary} />
+                <Text style={s.qrStandeeActionText}>
+                  Show Reception QR & Print Standee
+                </Text>
+              </TouchableOpacity>
             </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
+
+      {/* Self Check-in & QR Generator Modal */}
+      <SelfCheckinQrModal
+        visible={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+      />
     </View>
   );
 }
@@ -819,5 +841,23 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#fff',
+  },
+  qrStandeeActionBtn: {
+    marginTop: 14,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: '#EDE9FE',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  qrStandeeActionText: {
+    fontFamily: 'Inter',
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: C.primary,
   },
 });
