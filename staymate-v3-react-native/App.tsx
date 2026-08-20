@@ -1811,10 +1811,10 @@ function PricingOverlay({
                     <PrimaryButton
                       label={
                         isCheckingOut && selectedPlanDetails?.name === p.name
-                          ? 'Starting Devify Pay...'
+                          ? 'Starting checkout...'
                           : p.priceM === null
                           ? 'Contact sales'
-                          : 'Choose plan (Devify Pay)'
+                          : 'Choose plan'
                       }
                       style={{height: 44}}
                       onPress={() => handleChoosePlan(p)}
