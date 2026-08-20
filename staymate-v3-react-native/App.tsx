@@ -39,6 +39,7 @@ import {GUESTS, ROOMS, STATUS_META, RoomStatus, SELF_CHECKINS, SELF_CHECKIN_URL,
 import * as Clipboard from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
+import * as Print from 'expo-print';
 
 // Inject authentic Inter web font and typography styles on web platform
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -660,21 +661,48 @@ function SelfCheckins({
   const [pendingList, setPendingList] = useState<any[]>([...SELF_CHECKINS]);
   const [reviewGuest, setReviewGuest] = useState<any | null>(null);
   const [copied, setCopied] = useState(false);
+  const [qrLocalUri, setQrLocalUri] = useState<string | null>(null);
+
   const shareUrl = buildSelfCheckinLink('HS-4821', 'StayMate Homestay', [
     { num: '101', type: 'Standard', price: 1800 },
     { num: '303', type: 'Cottage', price: 3600 }
   ]);
-  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shareUrl)}`;
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(shareUrl)}`;
 
-  const handleShare = async () => {
+  // Pre-download QR image to local disk cache so image sharing is instantaneous and reliable
+  React.useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const dest = FileSystem.cacheDirectory + 'staymate-checkin-qr.png';
+        const res = await FileSystem.downloadAsync(qrImageUrl, dest);
+        if (isMounted && res.uri) {
+          setQrLocalUri(res.uri);
+        }
+      } catch (err) {
+        console.warn('QR pre-cache failed:', err);
+      }
+    })();
+    return () => {
+      isMounted = false;
+    };
+  }, [qrImageUrl]);
+
+  // Share actual QR image file (to WhatsApp, Save to Photos, AirDrop, Messages)
+  const handleShareQrImage = async () => {
     try {
-      onToast('Sharing QR Code...');
-      const localFileUri = FileSystem.cacheDirectory + 'staymate-checkin-qr.png';
-      const downloadRes = await FileSystem.downloadAsync(qrImageUrl, localFileUri);
-      
+      let uri = qrLocalUri;
+      if (!uri) {
+        onToast('Generating QR image...');
+        const dest = FileSystem.cacheDirectory + 'staymate-checkin-qr.png';
+        const res = await FileSystem.downloadAsync(qrImageUrl, dest);
+        uri = res.uri;
+        setQrLocalUri(uri);
+      }
+
       const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable && downloadRes.uri) {
-        await Sharing.shareAsync(downloadRes.uri, {
+      if (isAvailable && uri) {
+        await Sharing.shareAsync(uri, {
           mimeType: 'image/png',
           dialogTitle: 'Share Guest Check-in QR Code',
           UTI: 'public.png',
@@ -682,22 +710,34 @@ function SelfCheckins({
         onToast('QR Code shared! ✓');
         return;
       }
-    } catch (err) {
-      console.warn('Image share fallback:', err);
-    }
-
-    try {
-      await Share.share({
-        title: 'Guest Self Check-in — StayMate',
-        message: `Welcome to StayMate Homestay! Please complete your quick guest registration online before arrival:\n🔗 ${shareUrl}`,
-        url: shareUrl,
-      });
-      onToast('Check-in link shared! ✓');
-    } catch (e) {
-      onToast('Link ready to share');
+    } catch (err: any) {
+      console.warn('Image share error:', err);
     }
   };
 
+  // Direct WhatsApp text & link share
+  const handleShareWhatsApp = async () => {
+    const message = `🏡 *Welcome to StayMate Homestay!*\n\nPlease complete your quick guest registration online before arrival:\n🔗 ${shareUrl}\n\nWe look forward to hosting you!`;
+    const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
+    const webWhatsAppUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+
+    try {
+      const supported = await Linking.canOpenURL(whatsappUrl);
+      if (supported) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        await Linking.openURL(webWhatsAppUrl);
+      }
+    } catch (e) {
+      await Share.share({
+        title: 'Guest Self Check-in — StayMate',
+        message,
+        url: shareUrl,
+      });
+    }
+  };
+
+  // Copy link to device clipboard
   const handleCopy = async () => {
     try {
       await Clipboard.setStringAsync(shareUrl);
@@ -706,6 +746,61 @@ function SelfCheckins({
       setTimeout(() => setCopied(false), 2500);
     } catch (e) {
       onToast('Link: ' + shareUrl);
+    }
+  };
+
+  // Print reception standee poster
+  const handlePrintStandee = async () => {
+    try {
+      onToast('Generating Reception Standee...');
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Guest Check-in QR — StayMate Homestay</title>
+          <style>
+            @page { size: A4 portrait; margin: 20mm; }
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; padding: 20px; color: #222; }
+            .container { border: 3px solid #7C3AED; border-radius: 24px; padding: 40px 30px; max-width: 540px; margin: 0 auto; }
+            .badge { display: inline-block; background: #EDE9FE; color: #7C3AED; font-weight: 700; font-size: 14px; padding: 6px 16px; border-radius: 20px; margin-bottom: 12px; }
+            h1 { font-size: 30px; font-weight: 800; margin: 0 0 8px 0; }
+            .sub { font-size: 15px; color: #6A6A6A; margin-bottom: 24px; }
+            .qr-frame { display: inline-block; padding: 16px; background: #FAF8FD; border: 2px dashed #7C3AED; border-radius: 20px; margin-bottom: 20px; }
+            .qr-img { width: 220px; height: 220px; display: block; }
+            .prop-id { font-size: 13px; font-weight: 700; color: #7C3AED; margin-top: 8px; letter-spacing: 1px; }
+            .steps { display: flex; justify-content: space-around; margin-top: 24px; border-top: 1px solid #ECEAF0; padding-top: 20px; }
+            .step-item { flex: 1; padding: 0 8px; }
+            .step-num { width: 30px; height: 30px; line-height: 30px; border-radius: 50%; background: #7C3AED; color: #fff; font-weight: 700; font-size: 13px; margin: 0 auto 6px auto; }
+            .step-text { font-size: 12px; font-weight: 600; color: #6A6A6A; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="badge">Self Check-in Portal</div>
+            <h1>StayMate Homestay</h1>
+            <p class="sub">Scan with your smartphone camera to register & check in</p>
+            <div class="qr-frame">
+              <img class="qr-img" src="${qrImageUrl}" alt="Check-in QR" />
+              <div class="prop-id">PROPERTY ID: HS-4821</div>
+            </div>
+            <div class="steps">
+              <div class="step-item"><div class="step-num">1</div><div class="step-text">Scan QR with camera</div></div>
+              <div class="step-item"><div class="step-num">2</div><div class="step-text">Fill details & upload ID</div></div>
+              <div class="step-item"><div class="step-num">3</div><div class="step-text">Collect room key</div></div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      await Sharing.shareAsync(uri, {
+        UTI: 'com.adobe.pdf',
+        mimeType: 'application/pdf',
+        dialogTitle: 'Reception QR Standee',
+      });
+    } catch (e: any) {
+      console.warn('Print standee error:', e);
     }
   };
 
@@ -754,7 +849,7 @@ function SelfCheckins({
           <View style={[ms.qrBox, {backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#E9D5FF', padding: 8}]}>
             <Image
               source={{ uri: qrImageUrl }}
-              style={{ width: 140, height: 140, borderRadius: 8 }}
+              style={{ width: 150, height: 150, borderRadius: 8 }}
               resizeMode="contain"
             />
           </View>
@@ -762,12 +857,14 @@ function SelfCheckins({
           <Text style={[ms.bodySm, {marginTop: 4, textAlign: 'center', fontSize: 12, color: C.primary}]} numberOfLines={2}>
             {shareUrl}
           </Text>
+
+          {/* Primary Actions Grid */}
           <View style={{flexDirection: 'row', gap: 8, marginTop: 12, width: '100%'}}>
             <PrimaryButton
-              label="Share QR & Link"
-              icon="share"
+              label="Share QR Image"
+              icon="image"
               style={{flex: 1}}
-              onPress={handleShare}
+              onPress={handleShareQrImage}
             />
             <SecondaryButton
               label={copied ? "Copied! ✓" : "Copy link"}
@@ -777,6 +874,52 @@ function SelfCheckins({
             />
           </View>
 
+          {/* WhatsApp & Print Standee Actions */}
+          <View style={{flexDirection: 'row', gap: 8, marginTop: 8, width: '100%'}}>
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handleShareWhatsApp}
+              style={{
+                flex: 1,
+                height: 42,
+                borderRadius: 12,
+                backgroundColor: '#25D366',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <Icon name="share" size={15} color="#fff" />
+              <Text style={{fontFamily: 'Inter', fontSize: 13, fontWeight: '700', color: '#fff'}}>
+                Send on WhatsApp
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={handlePrintStandee}
+              style={{
+                flex: 1,
+                height: 42,
+                borderRadius: 12,
+                backgroundColor: '#EDE9FE',
+                borderWidth: 1,
+                borderColor: '#DDD6FE',
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+              }}
+            >
+              <Icon name="document" size={15} color={C.primary} />
+              <Text style={{fontFamily: 'Inter', fontSize: 13, fontWeight: '700', color: C.primary}}>
+                Print QR Standee
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Preview in Browser */}
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={handleOpenBrowser}
