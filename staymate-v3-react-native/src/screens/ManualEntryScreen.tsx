@@ -17,6 +17,7 @@ import {ROOMS, STATUS_META} from '../data';
 import {Icon} from '../components/Icon';
 import {Field, PrimaryButton, SecondaryButton} from '../components/Ui';
 import {RoomCard} from '../components/RoomCard';
+import {AddCoGuestModal, CoGuestItem} from '../components/AddCoGuestModal';
 
 export function ManualEntryScreen({
   onDone,
@@ -40,7 +41,9 @@ export function ManualEntryScreen({
   const [room, setRoom] = useState(initialData?.room || '101');
   const [checkin, setCheckin] = useState('2026-08-20');
   const [checkout, setCheckout] = useState('2026-08-22');
-  const [guestCount, setGuestCount] = useState(1);
+  const [coGuests, setCoGuests] = useState<CoGuestItem[]>([]);
+  const [coGuestModalVisible, setCoGuestModalVisible] = useState(false);
+  const [editingCoGuest, setEditingCoGuest] = useState<CoGuestItem | null>(null);
 
   useEffect(() => {
     if (initialData) {
@@ -68,7 +71,9 @@ export function ManualEntryScreen({
         setGender(gender || 'Female');
         setPhone(phone || '+91 98765 43210');
         setAddress(address || '742 Silver Oak, Bandra West, Mumbai');
-        setPhotoUri('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80');
+        setPhotoUri(
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'
+        );
         return;
       }
 
@@ -85,7 +90,7 @@ export function ManualEntryScreen({
         if (!dob) setDob('1994-06-12');
         if (!gender) setGender('Female');
         if (!phone) setPhone('+91 98765 43210');
-        if (!address) setAddress('742 Silver Oak, Bandra West, Mumbai');
+        setAddress(address || '742 Silver Oak, Bandra West, Mumbai');
       }
     } catch (e) {
       setName(name || 'Ananya Patel');
@@ -94,8 +99,34 @@ export function ManualEntryScreen({
       setGender(gender || 'Female');
       setPhone(phone || '+91 98765 43210');
       setAddress(address || '742 Silver Oak, Bandra West, Mumbai');
-      setPhotoUri('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80');
+      setPhotoUri(
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'
+      );
     }
+  };
+
+  const handleOpenAddCoGuest = () => {
+    setEditingCoGuest(null);
+    setCoGuestModalVisible(true);
+  };
+
+  const handleOpenEditCoGuest = (guest: CoGuestItem) => {
+    setEditingCoGuest(guest);
+    setCoGuestModalVisible(true);
+  };
+
+  const handleSaveCoGuest = (guest: CoGuestItem) => {
+    setCoGuests((prev) => {
+      const exists = prev.some((g) => g.id === guest.id);
+      if (exists) {
+        return prev.map((g) => (g.id === guest.id ? guest : g));
+      }
+      return [...prev, guest];
+    });
+  };
+
+  const handleDeleteCoGuest = (id: string) => {
+    setCoGuests((prev) => prev.filter((g) => g.id !== id));
   };
 
   const handleConfirm = () => {
@@ -114,7 +145,8 @@ export function ManualEntryScreen({
       verified: true,
       roomType: ROOMS.find((r) => r.num === room)?.type || 'Standard',
       photoUri: photoUri || undefined,
-      guestCount,
+      guestCount: 1 + coGuests.length,
+      coGuests,
       checkin,
       checkout,
     };
@@ -141,7 +173,7 @@ export function ManualEntryScreen({
           activeOpacity={0.8}
           style={s.backBtn}
         >
-          <Icon name="chevronLeft" size={19} color={C.ink}/>
+          <Icon name="chevronLeft" size={19} color={C.ink} />
         </TouchableOpacity>
         <Text style={s.headerTitle}>{stepTitles[step - 1]}</Text>
       </View>
@@ -159,7 +191,7 @@ export function ManualEntryScreen({
                 ]}
               >
                 {step > n ? (
-                  <Icon name="check" size={13} color={C.primary}/>
+                  <Icon name="check" size={13} color={C.primary} />
                 ) : (
                   <Text
                     style={[
@@ -183,7 +215,7 @@ export function ManualEntryScreen({
               </Text>
             </View>
             {i < 2 && (
-              <View style={[s.stepLine, step > n && s.stepLineActive]}/>
+              <View style={[s.stepLine, step > n && s.stepLineActive]} />
             )}
           </React.Fragment>
         ))}
@@ -197,7 +229,7 @@ export function ManualEntryScreen({
         {/* Step 1: Guest details */}
         {step === 1 && (
           <View>
-            <Text style={s.sectionHeader}>GUEST DETAILS</Text>
+            <Text style={s.sectionHeader}>PRIMARY GUEST DETAILS</Text>
 
             {/* Upload ID card */}
             <View style={s.uploadCard}>
@@ -221,7 +253,7 @@ export function ManualEntryScreen({
                 style={[s.uploadBtn, photoUri && {backgroundColor: '#EDE9FE'}]}
                 onPress={handleUploadPhoto}
               >
-                <Icon name={photoUri ? "check" : "upload"} size={15} color={photoUri ? C.primary : C.ink}/>
+                <Icon name={photoUri ? 'check' : 'upload'} size={15} color={photoUri ? C.primary : C.ink} />
                 <Text style={[s.uploadBtnText, photoUri && {color: C.primary}]}>
                   {photoUri ? 'Replace' : 'Upload'}
                 </Text>
@@ -229,7 +261,7 @@ export function ManualEntryScreen({
             </View>
 
             <Field
-              label="Full name"
+              label="Full name *"
               value={name}
               onChangeText={setName}
               placeholder="Enter full name"
@@ -258,7 +290,7 @@ export function ManualEntryScreen({
             </View>
 
             <Field
-              label="ID number"
+              label="ID number *"
               value={idNum}
               onChangeText={setIdNum}
               placeholder="Enter id number"
@@ -304,6 +336,71 @@ export function ManualEntryScreen({
               onChangeText={setAddress}
               placeholder="Enter address"
             />
+
+            {/* Co-Guests Section in Step 1 */}
+            <View style={{marginTop: 20}}>
+              <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8}}>
+                <Text style={s.sectionHeader}>ACCOMPANYING CO-GUESTS ({coGuests.length})</Text>
+                {coGuests.length > 0 && (
+                  <TouchableOpacity onPress={handleOpenAddCoGuest} activeOpacity={0.7}>
+                    <Text style={s.addMoreLink}>+ Add Another</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {coGuests.map((cg, idx) => (
+                <View key={cg.id} style={s.coGuestCard}>
+                  <View style={s.coGuestAvatar}>
+                    <Text style={s.coGuestAvatarText}>
+                      {cg.name.split(' ').map((n) => n[0]).join('') || `G${idx + 2}`}
+                    </Text>
+                  </View>
+                  <View style={{flex: 1, minWidth: 0}}>
+                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+                      <Text style={s.coGuestName}>{cg.name}</Text>
+                      <View style={s.relationBadge}>
+                        <Text style={s.relationBadgeText}>{cg.relation}</Text>
+                      </View>
+                    </View>
+                    <Text style={s.coGuestMeta}>
+                      {cg.docType}: {cg.idNum}
+                      {cg.gender ? ` · ${cg.gender}` : ''}
+                    </Text>
+                  </View>
+                  <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+                    <TouchableOpacity
+                      onPress={() => handleOpenEditCoGuest(cg)}
+                      style={s.actionIconBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Icon name="edit" size={14} color={C.ink} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      onPress={() => handleDeleteCoGuest(cg.id)}
+                      style={[s.actionIconBtn, {backgroundColor: '#FEE2E2'}]}
+                      activeOpacity={0.7}
+                    >
+                      <Icon name="trash" size={14} color="#DC2626" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={handleOpenAddCoGuest}
+                style={s.addGuestCard}
+              >
+                <View style={s.addGuestIcon}>
+                  <Icon name="users" size={19} color={C.primary} />
+                </View>
+                <View style={{flex: 1}}>
+                  <Text style={s.addGuestTitle}>Add more guest</Text>
+                  <Text style={s.addGuestSub}>Scan or enter co-guest details</Text>
+                </View>
+                <Icon name="plus" size={18} color={C.ink} />
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -313,7 +410,7 @@ export function ManualEntryScreen({
             <Text style={s.sectionHeader}>SELECT ROOM</Text>
             <View style={s.stayRoomGrid}>
               {ROOMS.filter((r) => r.status === 'available' || r.num === room)
-                .slice(0, 4)
+                .slice(0, 6)
                 .map((r) => (
                   <View key={r.num} style={{width: '48.2%'}}>
                     <RoomCard
@@ -327,7 +424,7 @@ export function ManualEntryScreen({
             </View>
 
             <View style={s.datesCard}>
-              <Text style={s.cardSectionTitle}>DATES & RATE</Text>
+              <Text style={s.cardSectionTitle}>DATES & OCCUPANCY</Text>
               <View style={{flexDirection: 'row', gap: 10, marginTop: 12}}>
                 <View style={{flex: 1}}>
                   <Text style={s.fieldLabel}>Check-in</Text>
@@ -350,6 +447,20 @@ export function ManualEntryScreen({
                   </View>
                 </View>
               </View>
+
+              <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#F1F5F9'}}>
+                <View>
+                  <Text style={s.fieldLabel}>Total Occupants</Text>
+                  <Text style={s.occupantsValue}>
+                    {1 + coGuests.length} Guest{1 + coGuests.length > 1 ? 's' : ''} (1 Primary{coGuests.length > 0 ? ` + ${coGuests.length} Co-guest${coGuests.length > 1 ? 's' : ''}` : ''})
+                  </Text>
+                </View>
+                <TouchableOpacity onPress={handleOpenAddCoGuest} style={s.addCoGuestPill} activeOpacity={0.75}>
+                  <Icon name="plus" size={12} color={C.primary} />
+                  <Text style={s.addCoGuestPillText}>Add Guest</Text>
+                </TouchableOpacity>
+              </View>
+
               <View style={{marginTop: 14}}>
                 <Text style={s.fieldLabel}>Nightly rate</Text>
                 <Text style={s.rateValue}>
@@ -367,20 +478,20 @@ export function ManualEntryScreen({
         {/* Step 3: Review & confirm */}
         {step === 3 && (
           <View>
-            <Text style={s.sectionHeader}>GUEST SUMMARY</Text>
+            <Text style={s.sectionHeader}>PRIMARY GUEST</Text>
             <View style={s.reviewCard}>
               <View style={s.reviewTop}>
-                <Text style={s.reviewTitle}>Primary Guest</Text>
+                <Text style={s.reviewTitle}>{name || 'Primary Guest'}</Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => setStep(1)}
                   style={{flexDirection: 'row', alignItems: 'center', gap: 4}}
                 >
-                  <Icon name="edit" size={14} color={C.ink}/>
+                  <Icon name="edit" size={14} color={C.ink} />
                   <Text style={s.editBtnText}>Edit</Text>
                 </TouchableOpacity>
               </View>
-              <View style={s.divider}/>
+              <View style={s.divider} />
               <View style={s.reviewGrid}>
                 <View style={s.kvCol}>
                   <Text style={s.kvLabel}>Full name</Text>
@@ -411,7 +522,47 @@ export function ManualEntryScreen({
               </View>
             </View>
 
-            <Text style={[s.sectionHeader, {marginTop: 18}]}>STAY SUMMARY</Text>
+            {/* Co-Guests Summary in Step 3 */}
+            {coGuests.length > 0 && (
+              <View style={{marginTop: 18}}>
+                <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8}}>
+                  <Text style={s.sectionHeader}>CO-GUESTS ({coGuests.length})</Text>
+                  <TouchableOpacity onPress={handleOpenAddCoGuest} activeOpacity={0.7}>
+                    <Text style={s.addMoreLink}>+ Add Another</Text>
+                  </TouchableOpacity>
+                </View>
+                {coGuests.map((cg) => (
+                  <View key={cg.id} style={s.coGuestSummaryCard}>
+                    <View style={s.coGuestAvatar}>
+                      <Text style={s.coGuestAvatarText}>
+                        {cg.name.split(' ').map((n) => n[0]).join('')}
+                      </Text>
+                    </View>
+                    <View style={{flex: 1}}>
+                      <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+                        <Text style={s.coGuestName}>{cg.name}</Text>
+                        <View style={s.relationBadge}>
+                          <Text style={s.relationBadgeText}>{cg.relation}</Text>
+                        </View>
+                      </View>
+                      <Text style={s.coGuestMeta}>
+                        {cg.docType} · {cg.idNum}
+                        {cg.gender ? ` · ${cg.gender}` : ''}
+                      </Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => handleOpenEditCoGuest(cg)}
+                      style={s.actionIconBtn}
+                      activeOpacity={0.7}
+                    >
+                      <Icon name="edit" size={14} color={C.ink} />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            <Text style={[s.sectionHeader, {marginTop: 18}]}>STAY DETAILS</Text>
             <View style={s.reviewCard}>
               <View style={s.reviewGrid}>
                 <View style={s.kvCol}>
@@ -436,33 +587,52 @@ export function ManualEntryScreen({
                   <Text style={s.kvLabel}>Check-out</Text>
                   <Text style={s.kvValue}>{checkout}</Text>
                 </View>
+                <View style={s.kvCol}>
+                  <Text style={s.kvLabel}>Total Occupants</Text>
+                  <Text style={s.kvValue}>{1 + coGuests.length} Guests</Text>
+                </View>
               </View>
             </View>
 
+            {/* Add More Guest Action Card */}
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => setGuestCount(guestCount + 1)}
+              onPress={handleOpenAddCoGuest}
               style={s.addGuestCard}
             >
               <View style={s.addGuestIcon}>
-                <Icon name="users" size={19} color={C.primary}/>
+                <Icon name="users" size={19} color={C.primary} />
               </View>
               <View style={{flex: 1}}>
                 <Text style={s.addGuestTitle}>Add more guest</Text>
                 <Text style={s.addGuestSub}>Scan or enter co-guest details</Text>
               </View>
-              <Icon name="plus" size={18} color={C.ink}/>
+              <Icon name="plus" size={18} color={C.ink} />
             </TouchableOpacity>
           </View>
         )}
       </ScrollView>
+
+      {/* Add / Edit Co-Guest Modal */}
+      <AddCoGuestModal
+        visible={coGuestModalVisible}
+        onClose={() => setCoGuestModalVisible(false)}
+        onSave={handleSaveCoGuest}
+        initialData={editingCoGuest}
+      />
 
       {/* Sticky Bottom Action Bar with Safe Area Inset */}
       <View style={[s.bottomBar, {paddingBottom: Math.max(16, insets.bottom + 8)}]}>
         {step === 1 && (
           <PrimaryButton
             label="Continue to Stay details →"
-            onPress={() => setStep(2)}
+            onPress={() => {
+              if (!name.trim()) {
+                Alert.alert('Required', 'Please enter guest full name');
+                return;
+              }
+              setStep(2);
+            }}
           />
         )}
         {step === 2 && (
@@ -473,26 +643,24 @@ export function ManualEntryScreen({
               onPress={() => setStep(1)}
             />
             <PrimaryButton
-              label="Continue to Review →"
-              style={{flex: 2}}
+              label="Review & Confirm →"
+              style={{flex: 1.5}}
               onPress={() => setStep(3)}
             />
           </View>
         )}
         {step === 3 && (
-          <View>
+          <View style={{flexDirection: 'row', gap: 10}}>
+            <SecondaryButton
+              label="Back"
+              style={{flex: 1}}
+              onPress={() => setStep(2)}
+            />
             <PrimaryButton
-              label={`Confirm Check-in (${guestCount} Guest${guestCount > 1 ? 's' : ''})`}
-              icon="check"
+              label="Confirm & Check-in 🎉"
+              style={{flex: 1.8}}
               onPress={handleConfirm}
             />
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={onClose}
-              style={s.cancelBtn}
-            >
-              <Text style={s.cancelBtnText}>Cancel & Retake</Text>
-            </TouchableOpacity>
           </View>
         )}
       </View>
@@ -506,14 +674,10 @@ const s = StyleSheet.create({
     backgroundColor: '#fff',
   },
   header: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#ebebeb',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
   },
   backBtn: {
     width: 36,
@@ -522,21 +686,22 @@ const s = StyleSheet.create({
     backgroundColor: '#f2f2f2',
     alignItems: 'center',
     justifyContent: 'center',
+    marginRight: 12,
   },
   headerTitle: {
     fontFamily: 'Inter',
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '700',
+    letterSpacing: -0.3,
     color: '#222222',
   },
   stepper: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 14,
-    backgroundColor: '#fff',
-    gap: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#ECEAF0',
   },
   stepItem: {
     flexDirection: 'row',
@@ -544,38 +709,40 @@ const s = StyleSheet.create({
     gap: 8,
   },
   stepDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: '#f2f2f2',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#ECEAF0',
+    backgroundColor: '#FAF8FD',
     alignItems: 'center',
     justifyContent: 'center',
   },
   stepDotActive: {
-    backgroundColor: C.primary,
-    borderWidth: 3,
-    borderColor: '#EDE9FE',
+    backgroundColor: '#222222',
+    borderColor: '#222222',
   },
   stepDotDone: {
     backgroundColor: '#EDE9FE',
+    borderColor: C.primary,
   },
   stepDotText: {
     fontFamily: 'Inter',
-    fontSize: 13,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '600',
     color: '#6a6a6a',
   },
   stepDotTextActive: {
-    color: '#fff',
+    color: '#ffffff',
   },
   stepDotTextDone: {
     color: C.primary,
   },
   stepLabel: {
     fontFamily: 'Inter',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '500',
-    color: '#929292',
+    color: '#6a6a6a',
   },
   stepLabelActive: {
     fontWeight: '700',
@@ -584,102 +751,111 @@ const s = StyleSheet.create({
   stepLine: {
     flex: 1,
     height: 2,
-    backgroundColor: '#ebebeb',
+    backgroundColor: '#ECEAF0',
+    marginHorizontal: 8,
   },
   stepLineActive: {
     backgroundColor: C.primary,
   },
   sectionHeader: {
     fontFamily: 'Inter',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.8,
     color: '#6a6a6a',
-    textTransform: 'uppercase',
-    marginTop: 10,
+    marginTop: 18,
     marginBottom: 10,
   },
+  addMoreLink: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: C.primary,
+  },
   uploadCard: {
-    backgroundColor: '#F5F9FF',
-    borderWidth: 1,
-    borderColor: '#DBEAFE',
-    borderRadius: 16,
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#111827',
+    borderRadius: 18,
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    backgroundColor: '#fff',
     marginBottom: 14,
   },
   uploadTitle: {
     fontFamily: 'Inter',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
     color: '#222222',
   },
   uploadSub: {
     fontFamily: 'Inter',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '400',
     color: '#6a6a6a',
     marginTop: 2,
   },
   uploadBtn: {
-    height: 36,
-    paddingHorizontal: 16,
-    borderRadius: R.full,
-    backgroundColor: '#f2f2f2',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: '#f2f2f2',
   },
   uploadBtnText: {
     fontFamily: 'Inter',
-    fontSize: 13.5,
+    fontSize: 12,
     fontWeight: '600',
     color: '#222222',
   },
   fieldLabel: {
     fontFamily: 'Inter',
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#222222',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: '#6a6a6a',
     marginBottom: 6,
+    textTransform: 'uppercase',
   },
   docsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 6,
+    marginTop: 4,
+    marginBottom: 14,
   },
   docChip: {
     paddingHorizontal: 13,
     paddingVertical: 7,
-    borderRadius: R.full,
+    borderRadius: 999,
+    backgroundColor: '#f2f2f2',
     borderWidth: 1,
-    borderColor: '#dddddd',
-    backgroundColor: '#fff',
+    borderColor: 'transparent',
   },
   docChipActive: {
     backgroundColor: '#222222',
-    borderColor: '#222222',
   },
   docChipText: {
     fontFamily: 'Inter',
     fontSize: 12.5,
-    fontWeight: '600',
-    color: '#222222',
+    fontWeight: '500',
+    color: '#6a6a6a',
   },
   docChipTextActive: {
-    color: '#fff',
+    color: '#ffffff',
+    fontWeight: '600',
   },
   inputWrap: {
-    minHeight: 48,
-    borderRadius: 12,
+    borderWidth: 1.2,
+    borderColor: '#ECEAF0',
+    borderRadius: 14,
     backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#dddddd',
-    justifyContent: 'center',
     paddingHorizontal: 12,
-    elevation: 1,
+    marginBottom: 14,
   },
   input: {
     fontFamily: 'Inter',
@@ -691,64 +867,77 @@ const s = StyleSheet.create({
   stayRoomGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 10,
+    gap: 10,
+    marginTop: 6,
   },
   datesCard: {
-    marginTop: 16,
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ebebeb',
+    marginTop: 18,
+    borderWidth: 1.2,
+    borderColor: '#ECEAF0',
     borderRadius: 20,
     padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: {width: 0, height: 4},
-    elevation: 2,
+    backgroundColor: '#fff',
   },
   cardSectionTitle: {
     fontFamily: 'Inter',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
-    letterSpacing: 1.1,
+    letterSpacing: 0.8,
     color: '#6a6a6a',
-    textTransform: 'uppercase',
   },
   rateValue: {
     fontFamily: 'Inter',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: '#222222',
-    marginTop: 4,
+    marginTop: 2,
+  },
+  occupantsValue: {
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#222222',
+    marginTop: 2,
+  },
+  addCoGuestPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#F5F3FF',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+  },
+  addCoGuestPillText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '700',
+    color: C.primary,
   },
   reviewCard: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ebebeb',
-    borderRadius: 18,
+    borderWidth: 1.2,
+    borderColor: '#ECEAF0',
+    borderRadius: 20,
     padding: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    shadowOffset: {width: 0, height: 4},
-    elevation: 2,
+    backgroundColor: '#fff',
   },
   reviewTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   reviewTitle: {
     fontFamily: 'Inter',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#222222',
   },
   editBtnText: {
     fontFamily: 'Inter',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#222222',
   },
@@ -780,13 +969,81 @@ const s = StyleSheet.create({
     color: '#222222',
     marginTop: 3,
   },
+  coGuestCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 8,
+  },
+  coGuestSummaryCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.2,
+    borderColor: '#ECEAF0',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 8,
+  },
+  coGuestAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#EDE9FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coGuestAvatarText: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    fontWeight: '700',
+    color: C.primary,
+  },
+  coGuestName: {
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  relationBadge: {
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  relationBadgeText: {
+    fontFamily: 'Inter',
+    fontSize: 10.5,
+    fontWeight: '700',
+    color: C.primary,
+  },
+  coGuestMeta: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  actionIconBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   addGuestCard: {
-    marginTop: 16,
+    marginTop: 10,
     borderWidth: 1.5,
     borderStyle: 'dashed',
     borderColor: '#111827',
     borderRadius: 18,
-    padding: 15,
+    padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
@@ -802,13 +1059,13 @@ const s = StyleSheet.create({
   },
   addGuestTitle: {
     fontFamily: 'Inter',
-    fontSize: 15,
+    fontSize: 14.5,
     fontWeight: '600',
     color: '#222222',
   },
   addGuestSub: {
     fontFamily: 'Inter',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '400',
     color: '#6a6a6a',
   },
@@ -818,17 +1075,5 @@ const s = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#ECEAF0',
-  },
-  cancelBtn: {
-    marginTop: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-  },
-  cancelBtnText: {
-    fontFamily: 'Inter',
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6a6a6a',
   },
 });
