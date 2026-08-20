@@ -17,11 +17,13 @@ function getTodayStr(): string {
 }
 
 export function DashboardScreen({
+  guests = GUESTS as any,
   onSearch,
   onReports,
   onGuest,
   onSelfCheckin,
 }: {
+  guests?: any[];
   onSearch: () => void;
   onReports: () => void;
   onGuest: (id: number) => void;
@@ -81,7 +83,7 @@ export function DashboardScreen({
       </View>
 
       <View>
-        {GUESTS.map((g) => (
+        {guests.map((g) => (
           <View key={g.id}>
             <TouchableOpacity
               onPress={() => onGuest(g.id)}
@@ -90,7 +92,7 @@ export function DashboardScreen({
             >
               <View style={s.avatar}>
                 <Text style={s.avatarText}>
-                  {g.name.split(' ').map((n) => n[0]).join('')}
+                  {g.name.split(' ').map((n: string) => n[0]).join('')}
                 </Text>
               </View>
               <View style={{flex: 1, minWidth: 0}}>

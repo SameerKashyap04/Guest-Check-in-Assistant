@@ -75,6 +75,7 @@ function MainApp() {
   const [unlocked, setUnlocked] = useState(false);
   const [tab, setTab] = useState<TabName>('dashboard');
   const [roomsList, setRoomsList] = useState<any[]>([...ROOMS]);
+  const [guestsList, setGuestsList] = useState<any[]>([...GUESTS]);
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [modal, setModal] = useState<{
     title: string;
@@ -128,14 +129,16 @@ function MainApp() {
     setRoomsList((prev) =>
       prev.map((r) => (r.num === roomNum ? {...r, status: 'cleaning'} : r))
     );
+    setGuestsList((prev) => prev.filter((g) => g.room !== roomNum));
     setSheet(null);
-    notify(`✓ ${guestName ? guestName : `Room ${roomNum}`} checked out. Set to Cleaning.`);
+    setSelectedRoom(null);
+    notify(`✓ ${guestName ? guestName : `Room ${roomNum}`} checked out! Room set to Cleaning.`);
   };
 
   // Handle successful check-in from either Scanner or Manual Entry
   const handleCheckinComplete = (newGuest: any) => {
-    // Add guest to active list
-    (GUESTS as any).unshift(newGuest);
+    // Add guest to active reactive list
+    setGuestsList((prev) => [newGuest, ...prev]);
 
     // Update room status to occupied reactively
     setRoomsList((prev) =>
@@ -151,6 +154,7 @@ function MainApp() {
   const content =
     tab === 'dashboard' ? (
       <DashboardScreen
+        guests={guestsList}
         onSearch={() => setOverlay('search')}
         onReports={() => setOverlay('reports')}
         onGuest={(id) => {
@@ -302,6 +306,7 @@ function MainApp() {
           <Sheet onClose={() => setSheet(null)}>
             <RoomSheet
               room={roomsList.find((r) => r.num === selectedRoom) || {num: selectedRoom, type: 'Standard', price: 1800, status: 'available'}}
+              guests={guestsList}
               onToast={notify}
               onClose={() => setSheet(null)}
               onUpdateStatus={(newStatus) => handleUpdateRoomStatus(selectedRoom, newStatus)}
@@ -317,7 +322,6 @@ function MainApp() {
                 setGuestId(gId);
                 setSheet('guest');
               }}
-              onModal={show}
             />
           </Sheet>
         </Modal>
@@ -445,6 +449,7 @@ function Sheet({onClose, children}: {onClose: () => void; children?: React.React
 
 function RoomSheet({
   room,
+  guests = GUESTS as any,
   onToast,
   onClose,
   onUpdateStatus,
@@ -452,9 +457,9 @@ function RoomSheet({
   onDeleteRoom,
   onCheckin,
   onViewGuest,
-  onModal,
 }: {
   room: any;
+  guests?: any[];
   onToast: (msg: string) => void;
   onClose: () => void;
   onUpdateStatus: (st: RoomStatus) => void;
@@ -462,9 +467,8 @@ function RoomSheet({
   onDeleteRoom: () => void;
   onCheckin: () => void;
   onViewGuest: (id: number) => void;
-  onModal: (t: string, m: string, p?: string, a?: () => void) => void;
 }) {
-  const activeGuest = GUESTS.find((g) => g.room === room.num);
+  const activeGuest = guests.find((g) => g.room === room.num);
   const m = STATUS_META[room.status as RoomStatus] || STATUS_META.available;
 
   return (
@@ -607,14 +611,20 @@ function RoomSheet({
               label="Check-out"
               icon="logout"
               style={{flex: 1}}
-              onPress={() =>
-                onModal(
+              onPress={() => {
+                Alert.alert(
                   `Check-out Room ${room.num}?`,
                   `Confirm check-out for ${activeGuest.name}. Room status will be set to Cleaning.`,
-                  'Check-out Guest',
-                  () => onCheckout(activeGuest.name)
-                )
-              }
+                  [
+                    {text: 'Cancel', style: 'cancel'},
+                    {
+                      text: 'Check-out Guest',
+                      style: 'destructive',
+                      onPress: () => onCheckout(activeGuest.name),
+                    },
+                  ]
+                );
+              }}
             />
             <PrimaryButton
               label="Guest Details"
@@ -659,14 +669,20 @@ function RoomSheet({
               label="Delete Room"
               icon="trash"
               style={{flex: 1}}
-              onPress={() =>
-                onModal(
+              onPress={() => {
+                Alert.alert(
                   `Delete Room ${room.num}?`,
                   `Are you sure you want to remove Room ${room.num} (${room.type}) from your property?`,
-                  'Delete',
-                  onDeleteRoom
-                )
-              }
+                  [
+                    {text: 'Cancel', style: 'cancel'},
+                    {
+                      text: 'Delete',
+                      style: 'destructive',
+                      onPress: onDeleteRoom,
+                    },
+                  ]
+                );
+              }}
             />
             <PrimaryButton
               label="Check-in Guest →"
@@ -680,6 +696,7 @@ function RoomSheet({
     </ScrollView>
   );
 }
+
 
 
 function GuestSheet({
