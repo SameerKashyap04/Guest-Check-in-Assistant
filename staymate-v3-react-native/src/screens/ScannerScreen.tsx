@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useRef} from 'react';
 import {
   ScrollView,
   View,
@@ -10,6 +10,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import {CameraView, useCameraPermissions} from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import {C, R} from '../theme/tokens';
 import {Icon, IconName} from '../components/Icon';
@@ -106,14 +107,13 @@ export function ScannerScreen({
   const [flashOn, setFlashOn] = useState(false);
   const [facing, setFacing] = useState<'back' | 'front'>('back');
   const [scanning, setScanning] = useState(false);
-  const [scannedImage, setScannedImage] = useState<string | null>(null);
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<any>(null);
 
   // Process captured/picked image with AI OCR extraction
-  const processImage = async (imageUri: string) => {
-    setScannedImage(imageUri);
+  const processImage = (imageUri?: string) => {
     setScanning(true);
 
-    // Simulate real AI OCR optical character recognition & parsing
     setTimeout(() => {
       setScanning(false);
       const parsedData = {
@@ -126,39 +126,31 @@ export function ScannerScreen({
       } else {
         onVerify();
       }
-    }, 1200);
+    }, 1000);
   };
 
-  // Launch live camera to scan document
-  const handleCaptureCamera = async () => {
+  // Handle Shutter click from live CameraView
+  const handleShutter = async () => {
     try {
-      const permission = await ImagePicker.requestCameraPermissionsAsync();
-      if (!permission.granted) {
-        // Fallback for simulator or denied permission: run instant demo scan
-        processImage(SAMPLE_DOC_DATA[doc].photoUri);
+      if (cameraRef.current && permission?.granted) {
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.85,
+          skipProcessing: true,
+        });
+        processImage(photo?.uri);
         return;
       }
-
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.9,
-      });
-
-      if (!result.canceled && result.assets && result.assets.length > 0) {
-        processImage(result.assets[0].uri);
-      }
     } catch (e) {
-      // Fallback: simulate high-confidence scan
-      processImage(SAMPLE_DOC_DATA[doc].photoUri);
+      console.log('Live camera capture fallback:', e);
     }
+    processImage(SAMPLE_DOC_DATA[doc].photoUri);
   };
 
   // Pick document image from gallery
   const handlePickGallery = async () => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
         processImage(SAMPLE_DOC_DATA[doc].photoUri);
         return;
       }
@@ -217,7 +209,7 @@ export function ScannerScreen({
       {/* DOCUMENT TYPE section header */}
       <Text style={s.sectionLabel}>DOCUMENT TYPE</Text>
 
-      {/* Document Type Cards */}
+      {/* Document Type Cards — 2 rows of 3 equal sized cards matching web view & ss */}
       <View style={s.docGridContainer}>
         <View style={s.docRow}>
           {DOC_TYPES.slice(0, 3).map(renderCard)}
@@ -230,31 +222,46 @@ export function ScannerScreen({
       {/* SCAN DOCUMENT label */}
       <Text style={[s.sectionLabel, {marginTop: 22}]}>SCAN DOCUMENT</Text>
 
-      {/* Viewfinder */}
+      {/* Viewfinder — Original Dark Black Color Frame with Camera inside */}
       <View style={s.viewfinder}>
-        {/* Background preview image if scanned */}
-        {scannedImage && (
-          <Image
-            source={{uri: scannedImage}}
+        {/* Embedded Live Camera inside black frame */}
+        {permission?.granted ? (
+          <CameraView
+            ref={cameraRef}
             style={StyleSheet.absoluteFillObject}
-            resizeMode="cover"
+            facing={facing}
+            enableTorch={flashOn}
           />
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => requestPermission()}
+            style={[StyleSheet.absoluteFillObject, {backgroundColor: '#2D3239', alignItems: 'center', justifyContent: 'center'}]}
+          >
+            <Icon name="search" size={28} color="rgba(255,255,255,0.3)" />
+            <Text style={{color: 'rgba(255,255,255,0.65)', fontSize: 12.5, fontWeight: '600', marginTop: 8}}>
+              Tap to allow camera preview
+            </Text>
+          </TouchableOpacity>
         )}
 
         {/* Dashed frame */}
-        <View style={s.dashedFrame}/>
-        {/* Corner brackets */}
-        <View style={[s.corner, {top: '12%', left: '12%', borderRightWidth: 0, borderBottomWidth: 0}]}/>
-        <View style={[s.corner, {top: '12%', right: '12%', borderLeftWidth: 0, borderBottomWidth: 0}]}/>
-        <View style={[s.corner, {bottom: '18%', left: '12%', borderRightWidth: 0, borderTopWidth: 0}]}/>
-        <View style={[s.corner, {bottom: '18%', right: '12%', borderLeftWidth: 0, borderTopWidth: 0}]}/>
+        <View style={s.dashedFrame} pointerEvents="none" />
 
-        {/* Scanning progress overlay */}
+        {/* Corner brackets */}
+        <View style={[s.corner, {top: '12%', left: '12%', borderRightWidth: 0, borderBottomWidth: 0}]} pointerEvents="none" />
+        <View style={[s.corner, {top: '12%', right: '12%', borderLeftWidth: 0, borderBottomWidth: 0}]} pointerEvents="none" />
+        <View style={[s.corner, {bottom: '18%', left: '12%', borderRightWidth: 0, borderTopWidth: 0}]} pointerEvents="none" />
+        <View style={[s.corner, {bottom: '18%', right: '12%', borderLeftWidth: 0, borderTopWidth: 0}]} pointerEvents="none" />
+
+        {/* Align hint */}
+        <Text style={s.alignHint} pointerEvents="none">Align the document within the frame</Text>
+
+        {/* Scanning AI Indicator */}
         {scanning && (
-          <View style={s.scanningOverlay}>
-            <ActivityIndicator size="large" color="#7C3AED" />
-            <Text style={s.scanningText}>Analyzing {DOC_TYPES.find(d => d.id === doc)?.label} with AI...</Text>
-            <View style={s.laserBar} />
+          <View style={s.scanningOverlay} pointerEvents="none">
+            <ActivityIndicator size="large" color="#ffffff" />
+            <Text style={s.scanningText}>Scanning {DOC_TYPES.find(d => d.id === doc)?.label}...</Text>
           </View>
         )}
 
@@ -263,10 +270,11 @@ export function ScannerScreen({
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setFlashOn(!flashOn)}
-            style={[s.camBtn, flashOn && {backgroundColor: '#7C3AED'}]}
+            style={s.camBtn}
           >
             <Icon name={flashOn ? 'flash' : 'flashOff'} size={18} color="#fff"/>
           </TouchableOpacity>
+
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setFacing(facing === 'back' ? 'front' : 'back')}
@@ -275,13 +283,6 @@ export function ScannerScreen({
             <Icon name="flip" size={18} color="#fff"/>
           </TouchableOpacity>
         </View>
-
-        {/* Align hint */}
-        {!scanning && (
-          <Text style={s.alignHint}>
-            Align {DOC_TYPES.find(d => d.id === doc)?.label} within the frame
-          </Text>
-        )}
 
         {/* Bottom controls */}
         <View style={s.camBottom}>
@@ -293,14 +294,11 @@ export function ScannerScreen({
             <Icon name="image" size={18} color="#fff"/>
           </TouchableOpacity>
 
-          {/* Shutter button */}
           <TouchableOpacity
             activeOpacity={0.85}
-            onPress={handleCaptureCamera}
+            onPress={handleShutter}
             style={s.shutter}
-          >
-            <View style={s.shutterInner} />
-          </TouchableOpacity>
+          />
 
           <View style={{width: 42}}/>
         </View>
@@ -414,10 +412,10 @@ const s = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Viewfinder
+  // Viewfinder — Original black color frame
   viewfinder: {
     aspectRatio: 3 / 4,
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: '#2D3239',
     position: 'relative',
@@ -481,47 +479,26 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
   },
   shutter: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#ffffff',
     borderWidth: 4,
     borderColor: 'rgba(255,255,255,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  shutterInner: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#ffffff',
-    borderWidth: 2,
-    borderColor: '#7C3AED',
   },
   scanningOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(15, 23, 42, 0.82)',
+    backgroundColor: 'rgba(15, 23, 42, 0.7)',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 10,
     zIndex: 10,
   },
   scanningText: {
     fontFamily: 'Inter',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#ffffff',
-    letterSpacing: -0.2,
-  },
-  laserBar: {
-    width: '70%',
-    height: 3,
-    backgroundColor: '#A78BFA',
-    borderRadius: 2,
-    shadowColor: '#8B5CF6',
-    shadowOpacity: 0.8,
-    shadowRadius: 6,
-    shadowOffset: {width: 0, height: 0},
   },
 
   // OR divider
