@@ -669,10 +669,29 @@ function SelfCheckins({
   ]);
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(shareUrl)}`;
 
-  // Unified "Share QR & Link" button: generates reception standee document + text & link, ready to share anywhere
+  const welcomeMessage = `🏡 *Welcome to StayMate Homestay!*\n\nPlease complete your quick guest registration & check-in online before arrival:\n🔗 ${shareUrl}\n\nWe look forward to hosting you!`;
+
+  // "Share QR & Link" button: shares the complete greeting message + live check-in link across WhatsApp, SMS, etc.
   const handleShareQrAndLink = async () => {
     try {
-      onToast('Generating QR Standee...');
+      // Auto-copy link to clipboard as a helpful convenience
+      await Clipboard.setStringAsync(shareUrl);
+
+      await Share.share({
+        title: 'Guest Self Check-in — StayMate',
+        message: welcomeMessage,
+        url: shareUrl,
+      });
+      onToast('Check-in link ready to send! ✓');
+    } catch (err) {
+      onToast('Link: ' + shareUrl);
+    }
+  };
+
+  // Generate & print reception desk standee poster (PDF)
+  const handlePrintStandee = async () => {
+    try {
+      onToast('Generating Reception Standee PDF...');
 
       const htmlContent = `
         <!DOCTYPE html>
@@ -829,26 +848,12 @@ function SelfCheckins({
         await Sharing.shareAsync(uri, {
           UTI: 'com.adobe.pdf',
           mimeType: 'application/pdf',
-          dialogTitle: 'Guest Self Check-in QR Standee — StayMate',
+          dialogTitle: 'Reception QR Standee PDF — StayMate',
         });
-        onToast('QR Standee shared! ✓');
-        return;
+        onToast('QR Standee PDF ready to print! ✓');
       }
     } catch (e: any) {
       console.warn('Share Standee error:', e);
-    }
-
-    // Fallback: Share formatted text & link if standee sharing is unavailable
-    try {
-      const message = `🏡 *Welcome to StayMate Homestay!*\n\nPlease complete your quick guest registration online before arrival:\n🔗 ${shareUrl}\n\nWe look forward to hosting you!`;
-      await Share.share({
-        title: 'Guest Self Check-in — StayMate',
-        message,
-        url: shareUrl,
-      });
-      onToast('Check-in link shared! ✓');
-    } catch (err) {
-      onToast('Link ready to share');
     }
   };
 
@@ -934,16 +939,28 @@ function SelfCheckins({
             />
           </View>
 
-          {/* Preview in Browser */}
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={handleOpenBrowser}
-            style={{marginTop: 10, paddingVertical: 6, alignItems: 'center'}}
-          >
-            <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '700', color: C.primary}}>
-              Open & Test Web Form in Browser →
-            </Text>
-          </TouchableOpacity>
+          {/* Additional Quick Actions */}
+          <View style={{flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 10}}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleOpenBrowser}
+              style={{paddingVertical: 6}}
+            >
+              <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: C.primary}}>
+                Open Web Form →
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handlePrintStandee}
+              style={{paddingVertical: 6}}
+            >
+              <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: '#6B7280'}}>
+                Print QR Standee (PDF) 📄
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Pending approvals */}
