@@ -299,7 +299,7 @@ export function ManualEntryScreen({
 
             {/* Date of birth + Gender */}
             <View style={{flexDirection: 'row', gap: 10, marginTop: 12}}>
-              <View style={{flex: 1.2}}>
+              <View style={{flex: 1}}>
                 <CalendarPicker
                   label="Date of birth"
                   value={dob}
@@ -308,16 +308,24 @@ export function ManualEntryScreen({
                   placeholder="Select DOB"
                 />
               </View>
-              <View style={{flex: 1}}>
+              <View style={{flex: 1.15}}>
                 <Text style={s.fieldLabel}>Gender</Text>
-                <View style={s.inputWrap}>
-                  <TextInput
-                    value={gender}
-                    onChangeText={setGender}
-                    placeholder="e.g. Female"
-                    placeholderTextColor="#9CA3AF"
-                    style={s.input}
-                  />
+                <View style={s.genderRow}>
+                  {['Male', 'Female', 'Other'].map((g) => {
+                    const active = gender.toLowerCase() === g.toLowerCase();
+                    return (
+                      <TouchableOpacity
+                        key={g}
+                        onPress={() => setGender(g)}
+                        activeOpacity={0.75}
+                        style={[s.genderBtn, active && s.genderBtnActive]}
+                      >
+                        <Text style={[s.genderText, active && s.genderTextActive]}>
+                          {g}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
             </View>
@@ -844,6 +852,36 @@ const s = StyleSheet.create({
     fontWeight: '500',
     color: '#222222',
     paddingVertical: 10,
+  },
+  genderRow: {
+    flexDirection: 'row',
+    gap: 4,
+    height: 44,
+    marginBottom: 14,
+  },
+  genderBtn: {
+    flex: 1,
+    height: 44,
+    backgroundColor: '#ffffff',
+    borderWidth: 1.2,
+    borderColor: '#ECEAF0',
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genderBtnActive: {
+    backgroundColor: '#222222',
+    borderColor: '#222222',
+  },
+  genderText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6a6a6a',
+  },
+  genderTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
   },
   stayRoomGrid: {
     flexDirection: 'row',
