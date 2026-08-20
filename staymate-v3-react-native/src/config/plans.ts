@@ -157,10 +157,10 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
     name: 'Starter',
     description: 'For small homestays with unlimited check-ins',
     pricing: {
-      monthlyPrice: 5,
-      yearlyPrice: 2999,
+      monthlyPrice: 349,
+      yearlyPrice: 3499,
       currency: 'INR',
-      yearlySavings: 299 * 12 - 2999,  // ₹589
+      yearlySavings: 349 * 12 - 3499,
     },
     entitlements: STARTER_ENTITLEMENTS,
     isRecommended: false,
@@ -174,7 +174,7 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
       monthlyPrice: 799,
       yearlyPrice: 7999,
       currency: 'INR',
-      yearlySavings: 799 * 12 - 7999,  // ₹1589
+      yearlySavings: 799 * 12 - 7999,
     },
     entitlements: PROFESSIONAL_ENTITLEMENTS,
     isRecommended: true,
@@ -185,10 +185,10 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
     name: 'Multi-Property',
     description: 'Manage up to 10 properties from a centralized dashboard',
     pricing: {
-      monthlyPrice: 1999,
-      yearlyPrice: 19999,
+      monthlyPrice: 1799,
+      yearlyPrice: 17999,
       currency: 'INR',
-      yearlySavings: 1999 * 12 - 19999,  // ₹3989
+      yearlySavings: 1799 * 12 - 17999,
     },
     entitlements: MULTI_PROPERTY_ENTITLEMENTS,
     isRecommended: false,

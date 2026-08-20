@@ -1927,6 +1927,28 @@ function PricingOverlay({
                   javaScriptEnabled
                   domStorageEnabled
                   scalesPageToFit
+                  originWhitelist={['*']}
+                  onShouldStartLoadWithRequest={(request) => {
+                    const url = request.url;
+                    // Detect UPI and external payment schemes
+                    if (
+                      url.startsWith('upi://') ||
+                      url.startsWith('gpay://') ||
+                      url.startsWith('phonepe://') ||
+                      url.startsWith('paytmmp://') ||
+                      url.startsWith('supermoney://') ||
+                      url.startsWith('cred://') ||
+                      url.startsWith('bhim://') ||
+                      url.startsWith('intent://') ||
+                      (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('about:'))
+                    ) {
+                      Linking.openURL(url).catch((err) => {
+                        console.warn('[WebView] Could not open external app scheme:', err);
+                      });
+                      return false;
+                    }
+                    return true;
+                  }}
                   onNavigationStateChange={(navState) => {
                     if (
                       navState.url.includes('status=PAID') ||

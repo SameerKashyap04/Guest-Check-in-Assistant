@@ -37,8 +37,8 @@ export const SERVER_PLANS: Record<SubscriptionPlan, ServerPlanPricing> = {
   },
   STARTER: {
     name: 'Starter',
-    monthlyPrice: 5,
-    yearlyPrice: 2999,
+    monthlyPrice: 349,
+    yearlyPrice: 3499,
   },
   PROFESSIONAL: {
     name: 'Professional',
@@ -47,8 +47,8 @@ export const SERVER_PLANS: Record<SubscriptionPlan, ServerPlanPricing> = {
   },
   MULTI_PROPERTY: {
     name: 'Multi-Property',
-    monthlyPrice: 1999,
-    yearlyPrice: 19999,
+    monthlyPrice: 1799,
+    yearlyPrice: 17999,
   },
   ENTERPRISE: {
     name: 'Enterprise',
