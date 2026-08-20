@@ -220,8 +220,15 @@ export function SelfCheckinQrModal({ visible, onClose }: SelfCheckinQrModalProps
             <p class="sub">Scan with your phone camera to register & check in</p>
             
             <div class="qr-frame">
-              <img class="qr-img" src="${qrImageUrl}" alt="Scan QR Code" />
+              <a href="${shareUrl}" target="_blank" style="text-decoration: none;">
+                <img class="qr-img" src="${qrImageUrl}" alt="Scan QR Code" />
+              </a>
               <div class="prop-id">PROPERTY ID: ${activePropertyId}</div>
+            </div>
+
+            <div style="background: #F1F5F9; padding: 10px 16px; border-radius: 12px; font-size: 12px; color: #475569; word-break: break-all; margin: 16px 0 24px 0;">
+              <strong>Check-in Link:</strong><br/>
+              <a href="${shareUrl}" target="_blank" style="color: #7C3AED; font-weight: 700; text-decoration: underline; word-break: break-all;">${shareUrl}</a>
             </div>
 
             <div class="steps">

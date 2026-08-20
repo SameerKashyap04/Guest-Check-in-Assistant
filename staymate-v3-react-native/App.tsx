@@ -749,30 +749,13 @@ function SelfCheckins({
               letter-spacing: 1px;
             }
             .link-box {
-              background: #F5F3FF;
-              border: 1.5px solid #DDD6FE;
-              padding: 14px 18px;
-              border-radius: 16px;
-              margin: 18px 0 24px 0;
-            }
-            .link-btn {
-              display: inline-block;
-              background-color: #7C3AED;
-              color: #FFFFFF !important;
-              font-weight: 700;
-              font-size: 14px;
-              text-decoration: none;
-              padding: 10px 20px;
+              background: #F1F5F9;
+              padding: 10px 16px;
               border-radius: 12px;
-              margin: 8px 0;
-            }
-            .url-text {
-              color: #7C3AED;
-              font-weight: 600;
-              text-decoration: underline;
               font-size: 12px;
+              color: #475569;
               word-break: break-all;
-              display: block;
+              margin: 16px 0 24px 0;
             }
             .steps {
               display: flex;
@@ -809,31 +792,24 @@ function SelfCheckins({
           <div class="container">
             <div class="badge">Self Check-in Portal</div>
             <h1>StayMate Homestay</h1>
-            <p class="sub">Scan or tap to register & check in online</p>
+            <p class="sub">Scan with your phone camera to register & check in online</p>
 
-            <a href="${shareUrl}" target="_blank" style="text-decoration: none; display: inline-block;">
-              <div class="qr-frame">
+            <div class="qr-frame">
+              <a href="${shareUrl}" target="_blank" style="text-decoration: none;">
                 <img class="qr-img" src="${qrImageUrl}" alt="Check-in QR Code" />
-                <div class="prop-id">PROPERTY ID: HS-4821</div>
-              </div>
-            </a>
+              </a>
+              <div class="prop-id">PROPERTY ID: HS-4821</div>
+            </div>
 
             <div class="link-box">
-              <div style="font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: #6D28D9; margin-bottom: 4px;">
-                Online Registration Link
-              </div>
-              <a href="${shareUrl}" target="_blank" class="link-btn">
-                👉 Click Here to Open Check-in Form
-              </a>
-              <a href="${shareUrl}" target="_blank" class="url-text">
-                ${shareUrl}
-              </a>
+              <strong>Check-in Link:</strong><br/>
+              <a href="${shareUrl}" target="_blank" style="color: #7C3AED; font-weight: 700; text-decoration: underline; word-break: break-all;">${shareUrl}</a>
             </div>
 
             <div class="steps">
               <div class="step-item">
                 <div class="step-num">1</div>
-                <div class="step-text">Scan QR / Click Link</div>
+                <div class="step-text">Scan QR with camera</div>
               </div>
               <div class="step-item">
                 <div class="step-num">2</div>
