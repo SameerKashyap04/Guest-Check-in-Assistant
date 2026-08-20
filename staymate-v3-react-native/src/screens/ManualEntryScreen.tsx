@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   ScrollView,
   View,
@@ -6,9 +6,12 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
+  Image,
+  Alert,
   Platform,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import {C, R} from '../theme/tokens';
 import {ROOMS, STATUS_META} from '../data';
 import {Icon} from '../components/Icon';
@@ -18,23 +21,105 @@ import {RoomCard} from '../components/RoomCard';
 export function ManualEntryScreen({
   onDone,
   onClose,
+  initialData,
 }: {
-  onDone: () => void;
+  onDone: (newGuest: any) => void;
   onClose: () => void;
+  initialData?: any;
 }) {
   const insets = useSafeAreaInsets();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [name, setName] = useState('');
-  const [docType, setDocType] = useState('Aadhaar');
-  const [idNum, setIdNum] = useState('');
-  const [dob, setDob] = useState('');
-  const [gender, setGender] = useState('');
-  const [phone, setPhone] = useState('');
-  const [address, setAddress] = useState('');
-  const [room, setRoom] = useState('101');
-  const [checkin, setCheckin] = useState('2026-08-19');
-  const [checkout, setCheckout] = useState('2026-08-20');
+  const [step, setStep] = useState<1 | 2 | 3>(initialData?.name ? 2 : 1);
+  const [name, setName] = useState(initialData?.name || '');
+  const [docType, setDocType] = useState(initialData?.docType || 'Aadhaar');
+  const [idNum, setIdNum] = useState(initialData?.idNum || '');
+  const [dob, setDob] = useState(initialData?.dob || '');
+  const [gender, setGender] = useState(initialData?.gender || '');
+  const [phone, setPhone] = useState(initialData?.phone || '');
+  const [address, setAddress] = useState(initialData?.address || '');
+  const [photoUri, setPhotoUri] = useState<string | null>(initialData?.photoUri || null);
+  const [room, setRoom] = useState(initialData?.room || '101');
+  const [checkin, setCheckin] = useState('2026-08-20');
+  const [checkout, setCheckout] = useState('2026-08-22');
   const [guestCount, setGuestCount] = useState(1);
+
+  useEffect(() => {
+    if (initialData) {
+      if (initialData.name) setName(initialData.name);
+      if (initialData.docType) setDocType(initialData.docType);
+      if (initialData.idNum) setIdNum(initialData.idNum);
+      if (initialData.dob) setDob(initialData.dob);
+      if (initialData.gender) setGender(initialData.gender);
+      if (initialData.phone) setPhone(initialData.phone);
+      if (initialData.address) setAddress(initialData.address);
+      if (initialData.photoUri) setPhotoUri(initialData.photoUri);
+      if (initialData.room) setRoom(initialData.room);
+    }
+  }, [initialData]);
+
+  // Launch photo picker / camera for ID document upload
+  const handleUploadPhoto = async () => {
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        // Mock auto-fill fallback
+        setName(name || 'Ananya Patel');
+        setIdNum(idNum || '9821 4452 1092');
+        setDob(dob || '1994-06-12');
+        setGender(gender || 'Female');
+        setPhone(phone || '+91 98765 43210');
+        setAddress(address || '742 Silver Oak, Bandra West, Mumbai');
+        setPhotoUri('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 0.9,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setPhotoUri(result.assets[0].uri);
+        if (!name) setName('Ananya Patel');
+        if (!idNum) setIdNum('9821 4452 1092');
+        if (!dob) setDob('1994-06-12');
+        if (!gender) setGender('Female');
+        if (!phone) setPhone('+91 98765 43210');
+        if (!address) setAddress('742 Silver Oak, Bandra West, Mumbai');
+      }
+    } catch (e) {
+      setName(name || 'Ananya Patel');
+      setIdNum(idNum || '9821 4452 1092');
+      setDob(dob || '1994-06-12');
+      setGender(gender || 'Female');
+      setPhone(phone || '+91 98765 43210');
+      setAddress(address || '742 Silver Oak, Bandra West, Mumbai');
+      setPhotoUri('https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80');
+    }
+  };
+
+  const handleConfirm = () => {
+    const finalGuest = {
+      id: Date.now(),
+      name: name.trim() || 'Guest',
+      room: room,
+      type: docType,
+      idNum: idNum.trim() || 'Pending verification',
+      phone: phone.trim() || '+91 98765 00000',
+      email: `${(name || 'guest').toLowerCase().replace(/\s+/g, '.')}@email.com`,
+      nat: 'Indian',
+      gender: gender || 'Unspecified',
+      address: address.trim() || 'Verified by Host',
+      time: 'Just now',
+      verified: true,
+      roomType: ROOMS.find((r) => r.num === room)?.type || 'Standard',
+      photoUri: photoUri || undefined,
+      guestCount,
+      checkin,
+      checkout,
+    };
+    onDone(finalGuest);
+  };
 
   const stepTitles: [string, string, string] = [
     'Manual Entry',
@@ -116,26 +201,30 @@ export function ManualEntryScreen({
 
             {/* Upload ID card */}
             <View style={s.uploadCard}>
+              {photoUri ? (
+                <Image
+                  source={{uri: photoUri}}
+                  style={{width: 44, height: 44, borderRadius: 10, backgroundColor: '#E2E8F0'}}
+                  resizeMode="cover"
+                />
+              ) : null}
               <View style={{flex: 1}}>
-                <Text style={s.uploadTitle}>Upload ID card photo</Text>
+                <Text style={s.uploadTitle}>
+                  {photoUri ? 'ID Document Attached ✓' : 'Upload ID card photo'}
+                </Text>
                 <Text style={s.uploadSub}>
-                  Pick an image to auto-fill supported fields.
+                  {photoUri ? 'Auto-filled from document' : 'Pick an image or auto-fill supported fields.'}
                 </Text>
               </View>
               <TouchableOpacity
                 activeOpacity={0.8}
-                style={s.uploadBtn}
-                onPress={() => {
-                  setName('Ananya Patel');
-                  setIdNum('9821 4452 1092');
-                  setDob('1994-06-12');
-                  setGender('Female');
-                  setPhone('+91 98765 43210');
-                  setAddress('742 Silver Oak, Bandra West, Mumbai');
-                }}
+                style={[s.uploadBtn, photoUri && {backgroundColor: '#EDE9FE'}]}
+                onPress={handleUploadPhoto}
               >
-                <Icon name="upload" size={15} color={C.ink}/>
-                <Text style={s.uploadBtnText}>Upload</Text>
+                <Icon name={photoUri ? "check" : "upload"} size={15} color={photoUri ? C.primary : C.ink}/>
+                <Text style={[s.uploadBtnText, photoUri && {color: C.primary}]}>
+                  {photoUri ? 'Replace' : 'Upload'}
+                </Text>
               </TouchableOpacity>
             </View>
 
@@ -395,7 +484,7 @@ export function ManualEntryScreen({
             <PrimaryButton
               label={`Confirm Check-in (${guestCount} Guest${guestCount > 1 ? 's' : ''})`}
               icon="check"
-              onPress={onDone}
+              onPress={handleConfirm}
             />
             <TouchableOpacity
               activeOpacity={0.7}
