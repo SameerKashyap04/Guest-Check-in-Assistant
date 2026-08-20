@@ -1981,6 +1981,7 @@ function PricingOverlay({
               </ScrollView>
             </View>
           </View>
+        </Modal>
       )}
     </View>
   );
