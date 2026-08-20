@@ -151,16 +151,7 @@ class DevifyPayService {
       console.warn('[DevifyPay] Direct gateway notice:', directErr);
     }
 
-    // 3. Fallback Hosted Checkout URL
-    const fallbackOrderId = `DEV_ORD_${Date.now().toString(36).toUpperCase()}`;
-    const hostedCheckoutUrl = `${DEVIFY_BASE_URL}/pay/${fallbackOrderId}?amount=${amountPaise}&plan=${encodeURIComponent(planName)}&cycle=${billingCycle}`;
-
-    return {
-      checkoutUrl: hostedCheckoutUrl,
-      orderId: fallbackOrderId,
-      paymentId: null,
-      isSandbox: false,
-    };
+    throw new Error('Unable to create payment session with Devify Pay. Please check your internet connection or try again.');
   }
 
   /**
