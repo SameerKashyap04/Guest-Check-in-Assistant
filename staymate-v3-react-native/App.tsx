@@ -203,6 +203,7 @@ function MainApp() {
         onAccount={() => setAccount(true)}
         onModal={show}
         onPricing={() => setOverlay('pricing')}
+        onToast={notify}
         onLogout={() =>
           show(
             'Log out of StayMate?',
