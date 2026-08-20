@@ -40,6 +40,7 @@ import * as Clipboard from 'expo-clipboard';
 import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
+import { captureRef } from 'react-native-view-shot';
 
 // Inject authentic Inter web font and typography styles on web platform
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -671,39 +672,216 @@ function SelfCheckins({
 
   const welcomeMessage = `🏡 *Welcome to StayMate Homestay!*\n\nPlease complete your quick guest registration & check-in online before arrival:\n🔗 ${shareUrl}\n\nWe look forward to hosting you!`;
 
-  // "Share QR & Link" button: downloads & shares the QR Code as a JPG image + auto-copies message with link
+  const standeeCardRef = React.useRef<View>(null);
+
+  // "Share QR & Link" button: generates high-res Standee JPG image + auto-copies greeting message & link
   const handleShareQrAndLink = async () => {
     try {
-      onToast('Preparing QR image & link...');
+      onToast('Generating Standee Image (JPG)...');
       
       // Auto-copy welcome text & link to clipboard
       await Clipboard.setStringAsync(welcomeMessage);
 
-      // Download high-resolution QR image as JPG to cache directory
-      const file = new File(Paths.cache, 'staymate-checkin-qr.jpg');
-      await File.downloadFileAsync(qrImageUrl, file);
+      // Snapshot the standee into a high-res JPG image file
+      const uri = await captureRef(standeeCardRef, {
+        format: 'jpg',
+        quality: 0.98,
+        result: 'tmpfile',
+      });
 
       const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable && file.uri) {
-        await Sharing.shareAsync(file.uri, {
-          UTI: 'public.jpeg',
+      if (isAvailable && uri) {
+        await Sharing.shareAsync(uri, {
           mimeType: 'image/jpeg',
-          dialogTitle: 'Guest Self Check-in QR Code — StayMate',
+          dialogTitle: 'Guest Self Check-in Standee — StayMate',
+          UTI: 'public.jpeg',
         });
-        onToast('QR image ready to send with message! ✓');
+        onToast('Standee JPG ready to send! ✓');
         return;
       }
     } catch (e: any) {
-      console.warn('Share JPG error:', e);
-      // Fallback: Share formatted text & link
-      try {
-        await Share.share({
-          title: 'Guest Self Check-in — StayMate',
-          message: welcomeMessage,
-          url: shareUrl,
+      console.warn('Capture JPG error:', e);
+    }
+
+    // Fallback: Share formatted text & link
+    try {
+      await Share.share({
+        title: 'Guest Self Check-in — StayMate',
+        message: welcomeMessage,
+        url: shareUrl,
+      });
+      onToast('Check-in link shared! ✓');
+    } catch (_) {}
+  };
+
+  // Generate & print reception desk standee poster (PDF)
+  const handlePrintStandee = async () => {
+    try {
+      onToast('Generating Reception Standee PDF...');
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Guest Check-in QR — StayMate Homestay</title>
+          <style>
+            @page { size: A4 portrait; margin: 15mm; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              text-align: center;
+              padding: 24px;
+              color: #1E293B;
+              background-color: #F8FAFC;
+              margin: 0;
+            }
+            .container {
+              border: 3px solid #7C3AED;
+              border-radius: 28px;
+              padding: 40px 30px;
+              max-width: 520px;
+              margin: 0 auto;
+              background: #FFFFFF;
+              box-shadow: 0 10px 25px rgba(124, 58, 237, 0.1);
+            }
+            .badge {
+              display: inline-block;
+              background: #EDE9FE;
+              color: #7C3AED;
+              font-weight: 800;
+              font-size: 13px;
+              padding: 6px 18px;
+              border-radius: 20px;
+              margin-bottom: 14px;
+              letter-spacing: 0.5px;
+              text-transform: uppercase;
+            }
+            h1 {
+              font-size: 32px;
+              font-weight: 800;
+              margin: 0 0 6px 0;
+              color: #0F172A;
+            }
+            .sub {
+              font-size: 15px;
+              color: #64748B;
+              margin-bottom: 24px;
+            }
+            .qr-frame {
+              display: inline-block;
+              padding: 16px;
+              background: #FAF5FF;
+              border: 2px dashed #7C3AED;
+              border-radius: 24px;
+              margin-bottom: 20px;
+            }
+            .qr-img {
+              width: 220px;
+              height: 220px;
+              display: block;
+              border-radius: 12px;
+            }
+            .prop-id {
+              font-size: 13px;
+              font-weight: 800;
+              color: #7C3AED;
+              margin-top: 10px;
+              letter-spacing: 1px;
+            }
+            .link-box {
+              background: #F1F5F9;
+              padding: 10px 16px;
+              border-radius: 12px;
+              font-size: 12px;
+              color: #475569;
+              word-break: break-all;
+              margin: 16px 0 24px 0;
+            }
+            .steps {
+              display: flex;
+              justify-content: space-around;
+              margin-top: 20px;
+              border-top: 1px solid #E2E8F0;
+              padding-top: 20px;
+            }
+            .step-item { flex: 1; padding: 0 6px; }
+            .step-num {
+              width: 32px;
+              height: 32px;
+              line-height: 32px;
+              border-radius: 50%;
+              background: #7C3AED;
+              color: #fff;
+              font-weight: 800;
+              font-size: 14px;
+              margin: 0 auto 6px auto;
+            }
+            .step-text {
+              font-size: 12px;
+              font-weight: 600;
+              color: #475569;
+            }
+            .footer {
+              margin-top: 24px;
+              font-size: 12px;
+              color: #94A3B8;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="badge">Self Check-in Portal</div>
+            <h1>StayMate Homestay</h1>
+            <p class="sub">Scan with your phone camera to register & check in online</p>
+
+            <div class="qr-frame">
+              <a href="${shareUrl}" target="_blank" style="text-decoration: none;">
+                <img class="qr-img" src="${qrImageUrl}" alt="Check-in QR Code" />
+              </a>
+              <div class="prop-id">PROPERTY ID: HS-4821</div>
+            </div>
+
+            <div class="link-box">
+              <strong>Check-in Link:</strong><br/>
+              <a href="${shareUrl}" target="_blank" style="color: #7C3AED; font-weight: 700; text-decoration: underline; word-break: break-all;">${shareUrl}</a>
+            </div>
+
+            <div class="steps">
+              <div class="step-item">
+                <div class="step-num">1</div>
+                <div class="step-text">Scan QR with camera</div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">2</div>
+                <div class="step-text">Fill details & upload ID</div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">3</div>
+                <div class="step-text">Collect room key</div>
+              </div>
+            </div>
+
+            <div class="footer">
+              Powered by StayMate · Fast & Secure Digital Check-in
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable && uri) {
+        await Sharing.shareAsync(uri, {
+          UTI: 'com.adobe.pdf',
+          mimeType: 'application/pdf',
+          dialogTitle: 'Reception QR Standee PDF — StayMate',
         });
-        onToast('Check-in link shared! ✓');
-      } catch (_) {}
+        onToast('QR Standee PDF ready to print! ✓');
+      }
+    } catch (e: any) {
+      console.warn('Share Standee error:', e);
     }
   };
 
@@ -919,6 +1097,206 @@ function SelfCheckins({
 
   return (
     <>
+      {/* Offscreen Standee Poster for Crisp High-Res JPG Snapshots */}
+      <View
+        collapsable={false}
+        ref={standeeCardRef}
+        style={{
+          position: 'absolute',
+          left: -9999,
+          width: 440,
+          backgroundColor: '#FFFFFF',
+          borderWidth: 3,
+          borderColor: '#7C3AED',
+          borderRadius: 26,
+          padding: 30,
+          alignItems: 'center',
+        }}
+      >
+        <View
+          style={{
+            backgroundColor: '#EDE9FE',
+            paddingHorizontal: 16,
+            paddingVertical: 5,
+            borderRadius: 20,
+            marginBottom: 12,
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: 'Inter',
+              fontSize: 12,
+              fontWeight: '800',
+              color: '#7C3AED',
+              letterSpacing: 0.5,
+            }}
+          >
+            SELF CHECK-IN PORTAL
+          </Text>
+        </View>
+
+        <Text
+          style={{
+            fontFamily: 'Inter',
+            fontSize: 26,
+            fontWeight: '800',
+            color: '#0F172A',
+            marginBottom: 4,
+          }}
+        >
+          StayMate Homestay
+        </Text>
+
+        <Text
+          style={{
+            fontFamily: 'Inter',
+            fontSize: 13,
+            color: '#64748B',
+            marginBottom: 18,
+            textAlign: 'center',
+          }}
+        >
+          Scan with your phone camera to register & check in online
+        </Text>
+
+        <View
+          style={{
+            padding: 14,
+            backgroundColor: '#FAF5FF',
+            borderWidth: 2,
+            borderStyle: 'dashed',
+            borderColor: '#7C3AED',
+            borderRadius: 20,
+            alignItems: 'center',
+            marginBottom: 16,
+          }}
+        >
+          <Image
+            source={{ uri: qrImageUrl }}
+            style={{ width: 200, height: 200, borderRadius: 10 }}
+            resizeMode="contain"
+          />
+          <Text
+            style={{
+              fontFamily: 'Inter',
+              fontSize: 12,
+              fontWeight: '800',
+              color: '#7C3AED',
+              marginTop: 8,
+              letterSpacing: 1,
+            }}
+          >
+            PROPERTY ID: HS-4821
+          </Text>
+        </View>
+
+        <View
+          style={{
+            backgroundColor: '#F1F5F9',
+            padding: 10,
+            borderRadius: 10,
+            width: '100%',
+            marginBottom: 18,
+            alignItems: 'center',
+          }}
+        >
+          <Text
+            style={{
+              fontFamily: 'Inter',
+              fontSize: 10,
+              fontWeight: '800',
+              color: '#475569',
+              marginBottom: 2,
+            }}
+          >
+            CHECK-IN LINK:
+          </Text>
+          <Text
+            style={{
+              fontFamily: 'Inter',
+              fontSize: 11,
+              fontWeight: '700',
+              color: '#7C3AED',
+              textAlign: 'center',
+            }}
+            numberOfLines={2}
+          >
+            {shareUrl}
+          </Text>
+        </View>
+
+        <View
+          style={{
+            flexDirection: 'row',
+            width: '100%',
+            borderTopWidth: 1,
+            borderTopColor: '#E2E8F0',
+            paddingTop: 16,
+          }}
+        >
+          <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 4 }}>
+            <View
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: '#7C3AED',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 4,
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>1</Text>
+            </View>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: '#475569', textAlign: 'center' }}>
+              Scan QR with camera
+            </Text>
+          </View>
+
+          <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 4 }}>
+            <View
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: '#7C3AED',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 4,
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>2</Text>
+            </View>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: '#475569', textAlign: 'center' }}>
+              Fill details & upload ID
+            </Text>
+          </View>
+
+          <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 4 }}>
+            <View
+              style={{
+                width: 28,
+                height: 28,
+                borderRadius: 14,
+                backgroundColor: '#7C3AED',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: 4,
+              }}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>3</Text>
+            </View>
+            <Text style={{ fontSize: 10, fontWeight: '600', color: '#475569', textAlign: 'center' }}>
+              Collect room key
+            </Text>
+          </View>
+        </View>
+
+        <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 16 }}>
+          Powered by StayMate · Fast & Secure Digital Check-in
+        </Text>
+      </View>
+
       <ScrollView
         contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 28}}
         showsVerticalScrollIndicator={false}
