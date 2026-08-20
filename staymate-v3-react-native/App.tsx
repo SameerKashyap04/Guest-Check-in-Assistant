@@ -35,7 +35,7 @@ import {ScannerScreen} from './src/screens/ScannerScreen';
 import {SettingsScreen} from './src/screens/SettingsScreen';
 import {ManualEntryScreen} from './src/screens/ManualEntryScreen';
 import {AccountPortalScreen} from './src/screens/AccountPortalScreen';
-import {GUESTS, ROOMS, STATUS_META, RoomStatus, SELF_CHECKINS, SELF_CHECKIN_URL, PLANS} from './src/data';
+import {GUESTS, ROOMS, STATUS_META, RoomStatus, SELF_CHECKINS, SELF_CHECKIN_URL, PLANS, buildSelfCheckinLink} from './src/data';
 
 // Inject authentic Inter web font and typography styles on web platform
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
