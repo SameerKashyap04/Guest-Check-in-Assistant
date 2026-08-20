@@ -39,8 +39,10 @@ class DevifyPayService {
    * Initiates a real Devify Pay checkout session
    */
   async createCheckout(params: DevifyCheckoutParams): Promise<DevifyCheckoutResult> {
+    const { planName, billingCycle, amount, userEmail = 'owner@sunrisehomestay.com', userId = 'HS-4821' } = params;
+
     const normalizePlanId = (name: string): string => {
-      const upper = name.toUpperCase().trim();
+      const upper = (name || '').toUpperCase().trim();
       if (upper.includes('MULTI')) return 'MULTI_PROPERTY';
       if (upper.includes('PROFESSIONAL') || upper.includes('PRO')) return 'PROFESSIONAL';
       if (upper.includes('STARTER') || upper.includes('START')) return 'STARTER';
@@ -48,7 +50,7 @@ class DevifyPayService {
     };
 
     const planIdKey = normalizePlanId(planName);
-    const amountPaise = amount * 100;
+    const amountPaise = (amount || 0) * 100;
     const idempotencyKey = `devify_${userId}_${planIdKey}_${billingCycle}_${Date.now()}`;
 
     // 1. Try Admin Backend Checkout API
