@@ -10,12 +10,14 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.sameer8822.staymatev3"
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#FFFFFF"
-      }
+      },
+      "package": "com.sameer8822.staymatev3"
     },
     "plugins": [
       "expo-sharing"

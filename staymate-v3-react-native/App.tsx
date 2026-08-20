@@ -41,6 +41,7 @@ import { File, Paths } from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import { captureRef } from 'react-native-view-shot';
+import { AddRoomModal } from './src/components/AddRoomModal';
 
 // Inject authentic Inter web font and typography styles on web platform
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -73,6 +74,8 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 function MainApp() {
   const [unlocked, setUnlocked] = useState(false);
   const [tab, setTab] = useState<TabName>('dashboard');
+  const [roomsList, setRoomsList] = useState<any[]>([...ROOMS]);
+  const [showAddRoom, setShowAddRoom] = useState(false);
   const [modal, setModal] = useState<{
     title: string;
     text: string;
@@ -97,16 +100,47 @@ function MainApp() {
   const show = (title: string, text: string, primary = 'Close', action?: () => void) =>
     setModal({title, text, primary, action});
 
+  // Update room status reactively across the entire application
+  const handleUpdateRoomStatus = (roomNum: string, newStatus: RoomStatus) => {
+    setRoomsList((prev) =>
+      prev.map((r) => (r.num === roomNum ? {...r, status: newStatus} : r))
+    );
+    const meta = STATUS_META[newStatus];
+    notify(`Room ${roomNum} marked as ${meta.label}`);
+  };
+
+  // Add new room to property inventory
+  const handleAddRoom = (newRoom: any) => {
+    setRoomsList((prev) => [newRoom, ...prev]);
+    notify(`✓ Room ${newRoom.num} (${newRoom.type}) added to property!`);
+  };
+
+  // Delete room from property inventory
+  const handleDeleteRoom = (roomNum: string) => {
+    setRoomsList((prev) => prev.filter((r) => r.num !== roomNum));
+    setSheet(null);
+    setSelectedRoom(null);
+    notify(`Room ${roomNum} deleted from property`);
+  };
+
+  // Checkout guest from room and set room to cleaning
+  const handleCheckoutGuest = (roomNum: string, guestName?: string) => {
+    setRoomsList((prev) =>
+      prev.map((r) => (r.num === roomNum ? {...r, status: 'cleaning'} : r))
+    );
+    setSheet(null);
+    notify(`✓ ${guestName ? guestName : `Room ${roomNum}`} checked out. Set to Cleaning.`);
+  };
+
   // Handle successful check-in from either Scanner or Manual Entry
   const handleCheckinComplete = (newGuest: any) => {
     // Add guest to active list
     (GUESTS as any).unshift(newGuest);
 
-    // Update room status to occupied
-    const targetRoom = (ROOMS as any).find((r: any) => r.num === newGuest.room);
-    if (targetRoom) {
-      targetRoom.status = 'occupied';
-    }
+    // Update room status to occupied reactively
+    setRoomsList((prev) =>
+      prev.map((r) => (r.num === newGuest.room ? {...r, status: 'occupied'} : r))
+    );
 
     setManual(false);
     setManualInitialData(null);
@@ -127,18 +161,12 @@ function MainApp() {
       />
     ) : tab === 'rooms' ? (
       <RoomsScreen
+        rooms={roomsList}
         onSelect={(num) => {
           setSelectedRoom(num);
           setSheet('room');
         }}
-        onAddRoom={() =>
-          show(
-            'Add new room',
-            'Configure room number, room category, and base nightly rate.',
-            'Add Room',
-            () => notify('Room added to property')
-          )
-        }
+        onAddRoom={() => setShowAddRoom(true)}
       />
     ) : tab === 'scanner' ? (
       <ScannerScreen
@@ -273,11 +301,15 @@ function MainApp() {
         <Modal visible transparent animationType="slide">
           <Sheet onClose={() => setSheet(null)}>
             <RoomSheet
-              roomNum={selectedRoom}
+              room={roomsList.find((r) => r.num === selectedRoom) || {num: selectedRoom, type: 'Standard', price: 1800, status: 'available'}}
               onToast={notify}
               onClose={() => setSheet(null)}
+              onUpdateStatus={(newStatus) => handleUpdateRoomStatus(selectedRoom, newStatus)}
+              onCheckout={(guestName) => handleCheckoutGuest(selectedRoom, guestName)}
+              onDeleteRoom={() => handleDeleteRoom(selectedRoom)}
               onCheckin={() => {
                 setSheet(null);
+                setManualInitialData({room: selectedRoom});
                 setManual(true);
               }}
               onViewGuest={(gId) => {
@@ -290,6 +322,14 @@ function MainApp() {
           </Sheet>
         </Modal>
       ) : null}
+
+      {/* Add Room Modal */}
+      <AddRoomModal
+        visible={showAddRoom}
+        onClose={() => setShowAddRoom(false)}
+        onAdd={handleAddRoom}
+        existingRoomNums={roomsList.map((r) => r.num)}
+      />
 
       {/* Guest details sheet */}
       {sheet === 'guest' && guestId ? (
@@ -404,24 +444,28 @@ function Sheet({onClose, children}: {onClose: () => void; children?: React.React
 }
 
 function RoomSheet({
-  roomNum,
+  room,
   onToast,
   onClose,
+  onUpdateStatus,
+  onCheckout,
+  onDeleteRoom,
   onCheckin,
   onViewGuest,
   onModal,
 }: {
-  roomNum: string;
+  room: any;
   onToast: (msg: string) => void;
   onClose: () => void;
+  onUpdateStatus: (st: RoomStatus) => void;
+  onCheckout: (guestName?: string) => void;
+  onDeleteRoom: () => void;
   onCheckin: () => void;
   onViewGuest: (id: number) => void;
   onModal: (t: string, m: string, p?: string, a?: () => void) => void;
 }) {
-  const room = ROOMS.find((r) => r.num === roomNum) || ROOMS[0];
-  const [status, setStatus] = useState<RoomStatus>(room.status);
   const activeGuest = GUESTS.find((g) => g.room === room.num);
-  const m = STATUS_META[status];
+  const m = STATUS_META[room.status as RoomStatus] || STATUS_META.available;
 
   return (
     <ScrollView
@@ -437,12 +481,12 @@ function RoomSheet({
           <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
             <Text style={ms.roomSheetTitle}>Room {room.num}</Text>
             <View style={[ms.statusPillBadge, {backgroundColor: m.bg, borderColor: m.color}]}>
-              <Icon name={status === 'available' ? 'check' : 'info'} size={10} color={m.color}/>
+              <Icon name={room.status === 'available' ? 'check' : 'info'} size={10} color={m.color}/>
               <Text style={[ms.statusPillBadgeText, {color: m.color}]}>{m.label}</Text>
             </View>
           </View>
           <Text style={ms.bodySm}>
-            {room.type} · ₹{room.price.toLocaleString('en-IN')}/night
+            {room.type} · ₹{room.price.toLocaleString('en-IN')}/night{room.floor ? ` · ${room.floor}` : ''}
           </Text>
         </View>
       </View>
@@ -452,15 +496,12 @@ function RoomSheet({
       <View style={{flexDirection: 'row', gap: 6, flexWrap: 'wrap'}}>
         {(['available', 'occupied', 'cleaning', 'maintenance'] as const).map((st) => {
           const meta = STATUS_META[st];
-          const isSelected = status === st;
+          const isSelected = room.status === st;
           return (
             <TouchableOpacity
               key={st}
               activeOpacity={0.8}
-              onPress={() => {
-                setStatus(st);
-                onToast(`Room ${room.num} marked as ${meta.label}`);
-              }}
+              onPress={() => onUpdateStatus(st)}
               style={[
                 ms.statusOptionBtn,
                 isSelected && {backgroundColor: meta.bg, borderColor: meta.color, borderWidth: 1.5},
@@ -475,14 +516,14 @@ function RoomSheet({
         })}
       </View>
 
-      {/* Active Guest Info if occupied */}
-      {activeGuest ? (
+      {/* Status-specific banners and Active Guest Info */}
+      {room.status === 'occupied' && activeGuest ? (
         <View style={{marginTop: 18}}>
           <Text style={ms.sectionCaption}>CURRENT OCCUPANT</Text>
           <View style={ms.occupantCard}>
             <View style={ms.avatar}>
               <Text style={ms.avatarText}>
-                {activeGuest.name.split(' ').map((n) => n[0]).join('')}
+                {activeGuest.name.split(' ').map((n: string) => n[0]).join('')}
               </Text>
             </View>
             <View style={{flex: 1, minWidth: 0}}>
@@ -499,6 +540,28 @@ function RoomSheet({
             >
               <Text style={ms.viewGuestPillText}>Profile</Text>
             </TouchableOpacity>
+          </View>
+        </View>
+      ) : room.status === 'cleaning' ? (
+        <View style={{marginTop: 18}}>
+          <Text style={ms.sectionCaption}>HOUSEKEEPING</Text>
+          <View style={[ms.readyCard, {backgroundColor: '#FFFBEB', borderColor: '#FDE68A'}]}>
+            <Icon name="info" size={18} color="#D97706"/>
+            <View style={{flex: 1}}>
+              <Text style={[ms.readyTitle, {color: '#92400E'}]}>Housekeeping in Progress</Text>
+              <Text style={[ms.readySub, {color: '#B45309'}]}>Room is being cleaned and sanitized for the next guest.</Text>
+            </View>
+          </View>
+        </View>
+      ) : room.status === 'maintenance' ? (
+        <View style={{marginTop: 18}}>
+          <Text style={ms.sectionCaption}>MAINTENANCE NOTICE</Text>
+          <View style={[ms.readyCard, {backgroundColor: '#FEF2F2', borderColor: '#FECACA'}]}>
+            <Icon name="info" size={18} color="#DC2626"/>
+            <View style={{flex: 1}}>
+              <Text style={[ms.readyTitle, {color: '#991B1B'}]}>Under Maintenance</Text>
+              <Text style={[ms.readySub, {color: '#B91C1C'}]}>Inspection or repair required before assigning to guests.</Text>
+            </View>
           </View>
         </View>
       ) : (
@@ -519,7 +582,8 @@ function RoomSheet({
         {([
           ['Room Category', room.type],
           ['Base Nightly Rate', `₹${room.price.toLocaleString('en-IN')} / night`],
-          ['Floor Level', `Floor ${room.num[0]}`],
+          ['Floor / Block', room.floor || `Floor ${room.num[0] || '1'}`],
+          ['Max Occupancy', `${room.capacity || 2} Guests`],
           ['Amenities', 'Air Conditioned · Queen Bed · Attached Bath · Wi-Fi'],
         ] as [string, string][]).map(([label, val], idx, arr) => (
           <View
@@ -537,7 +601,7 @@ function RoomSheet({
 
       {/* Action Buttons */}
       <View style={{flexDirection: 'row', gap: 10, marginTop: 18}}>
-        {activeGuest ? (
+        {room.status === 'occupied' && activeGuest ? (
           <>
             <SecondaryButton
               label="Check-out"
@@ -548,11 +612,7 @@ function RoomSheet({
                   `Check-out Room ${room.num}?`,
                   `Confirm check-out for ${activeGuest.name}. Room status will be set to Cleaning.`,
                   'Check-out Guest',
-                  () => {
-                    setStatus('cleaning');
-                    onClose();
-                    onToast(`Room ${room.num} checked out. Marked for cleaning.`);
-                  }
+                  () => onCheckout(activeGuest.name)
                 )
               }
             />
@@ -563,21 +623,50 @@ function RoomSheet({
               onPress={() => onViewGuest(activeGuest.id)}
             />
           </>
+        ) : room.status === 'cleaning' ? (
+          <>
+            <SecondaryButton
+              label="Put in Maint."
+              icon="info"
+              style={{flex: 1}}
+              onPress={() => onUpdateStatus('maintenance')}
+            />
+            <PrimaryButton
+              label="✓ Mark Clean & Ready"
+              icon="check"
+              style={{flex: 1.5}}
+              onPress={() => onUpdateStatus('available')}
+            />
+          </>
+        ) : room.status === 'maintenance' ? (
+          <>
+            <SecondaryButton
+              label="Mark Cleaning"
+              icon="info"
+              style={{flex: 1}}
+              onPress={() => onUpdateStatus('cleaning')}
+            />
+            <PrimaryButton
+              label="Complete Maint."
+              icon="check"
+              style={{flex: 1.5}}
+              onPress={() => onUpdateStatus('available')}
+            />
+          </>
         ) : (
           <>
             <SecondaryButton
-              label="Edit Details"
-              icon="edit"
+              label="Delete Room"
+              icon="trash"
               style={{flex: 1}}
-              onPress={() => {
-                onClose();
+              onPress={() =>
                 onModal(
-                  `Edit Room ${room.num}`,
-                  'Update category, rate, or amenity tags for this room.',
-                  'Save Changes',
-                  () => onToast(`Room ${room.num} updated`)
-                );
-              }}
+                  `Delete Room ${room.num}?`,
+                  `Are you sure you want to remove Room ${room.num} (${room.type}) from your property?`,
+                  'Delete',
+                  onDeleteRoom
+                )
+              }
             />
             <PrimaryButton
               label="Check-in Guest →"
@@ -591,6 +680,7 @@ function RoomSheet({
     </ScrollView>
   );
 }
+
 
 function GuestSheet({
   id,

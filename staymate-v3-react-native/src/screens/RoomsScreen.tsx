@@ -1,31 +1,56 @@
 import React, {useMemo, useState} from 'react';
-import {ScrollView, View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {
+  ScrollView,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  TextInput,
+} from 'react-native';
 import {C, R} from '../theme/tokens';
 import {ROOMS, STATUS_META, RoomStatus} from '../data';
 import {RoomCard} from '../components/RoomCard';
 import {Icon} from '../components/Icon';
 
+export interface RoomItem {
+  num: string;
+  type: string;
+  price: number;
+  status: RoomStatus;
+  capacity?: number;
+  floor?: string;
+}
+
 export function RoomsScreen({
+  rooms = ROOMS as any,
   onSelect,
   onAddRoom,
 }: {
+  rooms?: RoomItem[];
   onSelect?: (room: string) => void;
   onAddRoom?: () => void;
 }) {
   const [filter, setFilter] = useState<'all' | RoomStatus>('all');
   const [list, setList] = useState(false);
+  const [query, setQuery] = useState('');
 
-  const filtered = useMemo(
-    () => (filter === 'all' ? ROOMS : ROOMS.filter((r) => r.status === filter)),
-    [filter]
-  );
+  const filtered = useMemo(() => {
+    let result = filter === 'all' ? rooms : rooms.filter((r) => r.status === filter);
+    if (query.trim()) {
+      const q = query.trim().toLowerCase();
+      result = result.filter(
+        (r) => r.num.toLowerCase().includes(q) || r.type.toLowerCase().includes(q)
+      );
+    }
+    return result;
+  }, [rooms, filter, query]);
 
   const counts = {
-    all: ROOMS.length,
-    available: ROOMS.filter((r) => r.status === 'available').length,
-    occupied: ROOMS.filter((r) => r.status === 'occupied').length,
-    cleaning: ROOMS.filter((r) => r.status === 'cleaning').length,
-    maintenance: ROOMS.filter((r) => r.status === 'maintenance').length,
+    all: rooms.length,
+    available: rooms.filter((r) => r.status === 'available').length,
+    occupied: rooms.filter((r) => r.status === 'occupied').length,
+    cleaning: rooms.filter((r) => r.status === 'cleaning').length,
+    maintenance: rooms.filter((r) => r.status === 'maintenance').length,
   };
 
   return (
@@ -39,16 +64,21 @@ export function RoomsScreen({
         <View>
           <Text style={s.h1}>Rooms</Text>
           <Text style={s.sub}>
-            {ROOMS.length} rooms <Text style={{color: '#B5BAC3'}}>•</Text> {counts.available} available now
+            {rooms.length} rooms <Text style={{color: '#B5BAC3'}}>•</Text>{' '}
+            <Text style={{color: '#059669', fontWeight: '600'}}>
+              {counts.available} available now
+            </Text>
           </Text>
         </View>
-        <TouchableOpacity
-          onPress={() => setList(!list)}
-          activeOpacity={0.8}
-          style={s.iconBtn}
-        >
-          <Icon name={list ? 'grid' : 'list'} size={18} color={C.ink}/>
-        </TouchableOpacity>
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+          <TouchableOpacity
+            onPress={() => setList(!list)}
+            activeOpacity={0.8}
+            style={s.iconBtn}
+          >
+            <Icon name={list ? 'grid' : 'list'} size={18} color={C.ink} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* 5-Stat bar — all numbers colored solid black #222222 */}
@@ -56,15 +86,28 @@ export function RoomsScreen({
         {(['all', 'available', 'occupied', 'cleaning', 'maintenance'] as const).map((k) => {
           const label =
             k === 'all' ? 'Total' : k === 'maintenance' ? 'Maint.' : STATUS_META[k].label;
+          const isSelected = filter === k;
           return (
             <TouchableOpacity
               key={k}
               activeOpacity={0.7}
               onPress={() => setFilter(k)}
-              style={s.stat}
+              style={[s.stat, isSelected && s.statActive]}
             >
-              <Text style={s.statNum}>{counts[k]}</Text>
-              <Text style={s.statLabel}>{label}</Text>
+              <Text
+                style={[
+                  s.statNum,
+                  k === 'available' && {color: '#059669'},
+                  k === 'occupied' && {color: C.primary},
+                  k === 'cleaning' && {color: '#D97706'},
+                  k === 'maintenance' && {color: '#DC2626'},
+                ]}
+              >
+                {counts[k]}
+              </Text>
+              <Text style={[s.statLabel, isSelected && {fontWeight: '700', color: C.ink}]}>
+                {label}
+              </Text>
             </TouchableOpacity>
           );
         })}
@@ -84,15 +127,33 @@ export function RoomsScreen({
             style={[s.chip, filter === k && s.chipActive]}
           >
             <Text style={[s.chipText, filter === k && s.chipTextActive]}>
-              {k === 'all' ? 'All' : STATUS_META[k].label}{' '}
-              <Text style={{opacity: 0.7}}>{counts[k]}</Text>
+              {k === 'all' ? 'All Rooms' : STATUS_META[k].label}{' '}
+              <Text style={{opacity: 0.7}}>({counts[k]})</Text>
             </Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
       {/* Grid or List */}
-      {list ? (
+      {filtered.length === 0 ? (
+        <View style={s.emptyState}>
+          <Icon name="bed" size={32} color="#94A3B8" />
+          <Text style={s.emptyTitle}>No rooms found</Text>
+          <Text style={s.emptySub}>
+            {query ? `No rooms matching "${query}"` : `No rooms currently in ${filter} status.`}
+          </Text>
+          <TouchableOpacity
+            onPress={() => {
+              setFilter('all');
+              setQuery('');
+            }}
+            style={s.clearBtn}
+            activeOpacity={0.75}
+          >
+            <Text style={s.clearBtnText}>Show All Rooms</Text>
+          </TouchableOpacity>
+        </View>
+      ) : list ? (
         <View style={{gap: 10, marginTop: 16}}>
           {filtered.map((r) => (
             <TouchableOpacity
@@ -102,17 +163,19 @@ export function RoomsScreen({
               style={s.listCard}
             >
               <View style={s.listBed}>
-                <Icon name="bed" size={18} color={C.primary}/>
+                <Icon name="bed" size={18} color={C.primary} />
               </View>
               <View style={{flex: 1, minWidth: 0}}>
                 <View style={s.listCardTop}>
-                  <Text style={s.listNum}>{r.num}</Text>
-                  <StatusPill status={r.status}/>
+                  <Text style={s.listNum}>Room {r.num}</Text>
+                  <StatusPill status={r.status} />
                 </View>
                 <Text style={s.listMeta}>
                   {r.type} · ₹{r.price.toLocaleString('en-IN')}/night
+                  {r.floor ? ` · ${r.floor}` : ''}
                 </Text>
               </View>
+              <Icon name="chevronRight" size={16} color="#94A3B8" />
             </TouchableOpacity>
           ))}
         </View>
@@ -120,7 +183,7 @@ export function RoomsScreen({
         <View style={s.grid}>
           {filtered.map((r) => (
             <View key={r.num} style={s.gridItem}>
-              <RoomCard room={r} onPress={() => onSelect?.(r.num)}/>
+              <RoomCard room={r} onPress={() => onSelect?.(r.num)} />
             </View>
           ))}
         </View>
@@ -132,8 +195,8 @@ export function RoomsScreen({
         onPress={onAddRoom}
         style={s.addBtn}
       >
-        <Icon name="plus" size={19} color="#fff"/>
-        <Text style={s.addBtnText}>Add room</Text>
+        <Icon name="plus" size={19} color="#fff" />
+        <Text style={s.addBtnText}>Add Room</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -143,7 +206,7 @@ function StatusPill({status}: {status: RoomStatus}) {
   const m = STATUS_META[status];
   return (
     <View style={[s.statusPill, {backgroundColor: m.bg, borderColor: m.color}]}>
-      <Icon name={status === 'available' ? 'check' : 'info'} size={10} color={m.color}/>
+      <Icon name={status === 'available' ? 'check' : 'info'} size={10} color={m.color} />
       <Text style={[s.statusPillText, {color: m.color}]}>
         {status === 'maintenance' ? 'Maint.' : m.label}
       </Text>
@@ -194,105 +257,106 @@ const s = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     minWidth: 0,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statActive: {
+    backgroundColor: '#ffffff',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 2},
+    elevation: 1,
   },
   statNum: {
     fontFamily: 'Inter',
     fontSize: 20,
     fontWeight: '800',
-    lineHeight: 23,
     color: '#222222',
+    lineHeight: 24,
   },
   statLabel: {
     fontFamily: 'Inter',
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '500',
     color: '#6a6a6a',
-    marginTop: 4,
+    marginTop: 2,
   },
   chipsRow: {
-    gap: 8,
-    marginTop: 14,
+    paddingTop: 14,
     paddingBottom: 2,
+    gap: 8,
   },
   chip: {
-    paddingHorizontal: 13,
-    paddingVertical: 7,
-    borderRadius: R.full,
+    paddingHorizontal: 14,
+    paddingVertical: 7.5,
+    borderRadius: 999,
+    backgroundColor: '#f2f2f2',
     borderWidth: 1,
-    borderColor: '#dddddd',
-    backgroundColor: '#fff',
+    borderColor: 'transparent',
   },
   chipActive: {
     backgroundColor: '#222222',
-    borderColor: '#222222',
-    shadowColor: '#111827',
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    shadowOffset: {width: 0, height: 4},
-    elevation: 2,
   },
   chipText: {
     fontFamily: 'Inter',
     fontSize: 12.5,
-    fontWeight: '600',
-    color: '#222222',
+    fontWeight: '500',
+    color: '#6a6a6a',
   },
   chipTextActive: {
-    color: '#fff',
+    color: '#ffffff',
+    fontWeight: '600',
   },
   grid: {
-    marginTop: 16,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    rowGap: 12,
+    gap: 10,
+    marginTop: 16,
   },
   gridItem: {
-    width: '48.2%',
+    width: '48.3%',
   },
   listCard: {
-    minHeight: 70,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#ECEAF0',
-    backgroundColor: '#fff',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
+    padding: 14,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#ECEAF0',
+    borderRadius: 16,
     gap: 12,
-    shadowColor: '#241840',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
     shadowOffset: {width: 0, height: 2},
     elevation: 1,
   },
   listBed: {
-    width: 34,
-    height: 34,
-    borderRadius: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     backgroundColor: '#F7F3FF',
     alignItems: 'center',
     justifyContent: 'center',
-    flexShrink: 0,
   },
   listCardTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 4,
   },
   listNum: {
     fontFamily: 'Inter',
-    fontSize: 18,
-    fontWeight: '800',
+    fontSize: 15,
+    fontWeight: '700',
     color: '#222222',
   },
   listMeta: {
     fontFamily: 'Inter',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '400',
     color: '#6a6a6a',
-    marginTop: 2,
   },
   statusPill: {
     flexDirection: 'row',
@@ -300,33 +364,66 @@ const s = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: R.full,
-    borderWidth: 1.2,
+    borderRadius: 999,
+    borderWidth: 1,
   },
   statusPillText: {
     fontFamily: 'Inter',
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 11,
+    fontWeight: '600',
   },
-  addBtn: {
-    height: 52,
-    borderRadius: 16,
-    marginTop: 18,
-    backgroundColor: C.primary,
+  emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
-    flexDirection: 'row',
+    paddingVertical: 40,
     gap: 8,
-    shadowColor: C.primary,
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    shadowOffset: {width: 0, height: 8},
-    elevation: 4,
+  },
+  emptyTitle: {
+    fontFamily: 'Inter',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#334155',
+    marginTop: 4,
+  },
+  emptySub: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  clearBtn: {
+    marginTop: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 999,
+  },
+  clearBtnText: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: C.primary,
+  },
+  addBtn: {
+    marginTop: 24,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: '#222222',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    shadowOffset: {width: 0, height: 4},
+    elevation: 3,
   },
   addBtnText: {
     fontFamily: 'Inter',
     fontSize: 15,
-    fontWeight: '700',
-    color: '#fff',
+    fontWeight: '600',
+    color: '#ffffff',
   },
 });
