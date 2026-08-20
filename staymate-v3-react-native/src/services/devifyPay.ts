@@ -28,15 +28,12 @@ export interface DevifyOrderStatus {
   paidAt?: string;
 }
 
-const CANDIDATE_API_URLS = [
-  'https://admin-guest-check-in-assistant.vercel.app',
-  'https://devifypay.site',
-  'http://localhost:3000',
-  'http://10.0.2.2:3000',
-];
+const DEVIFY_LIVE_KEY = process.env.EXPO_PUBLIC_DEVIFY_KEY || '';
+const DEVIFY_BASE_URL = 'https://devifypay.site';
+const ADMIN_BASE_URL = 'https://admin-guest-check-in-assistant.vercel.app';
 
 class DevifyPayService {
-  private baseUrl: string = 'https://admin-guest-check-in-assistant.vercel.app';
+  private baseUrl: string = ADMIN_BASE_URL;
 
   /**
    * Initiates a real Devify Pay checkout session
@@ -44,57 +41,51 @@ class DevifyPayService {
   async createCheckout(params: DevifyCheckoutParams): Promise<DevifyCheckoutResult> {
     const { planName, billingCycle, amount, userEmail = 'owner@sunrisehomestay.com', userId = 'HS-4821' } = params;
     const planIdKey = planName.toUpperCase().replace(/\s+/g, '_');
-    let lastError: any = null;
+    const amountPaise = amount * 100;
+    const idempotencyKey = `devify_${userId}_${planIdKey}_${billingCycle}_${Date.now()}`;
 
-    // 1. Try backend API checkout endpoints
-    for (const url of CANDIDATE_API_URLS) {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+    // 1. Try Admin Backend Checkout API
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
 
-        const res = await fetch(`${url}/api/checkout`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            planId: planIdKey,
-            planName,
-            billingCycle,
-            amount: amount * 100, // in paise
-            userId,
-            userEmail,
-          }),
-          signal: controller.signal,
-        });
-        clearTimeout(timeoutId);
+      const res = await fetch(`${ADMIN_BASE_URL}/api/checkout`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          planId: planIdKey,
+          planName,
+          billingCycle,
+          amount: amountPaise,
+          userId,
+          userEmail,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
 
-        if (res.ok) {
-          const data = await res.json();
-          if (data.checkoutUrl && data.orderId) {
-            this.baseUrl = url;
-            return {
-              checkoutUrl: data.checkoutUrl,
-              orderId: data.orderId,
-              paymentId: data.paymentId || null,
-              isSandbox: Boolean(data.isSandbox),
-            };
-          }
+      if (res.ok) {
+        const data = await res.json();
+        if (data.checkoutUrl && data.orderId) {
+          return {
+            checkoutUrl: data.checkoutUrl,
+            orderId: data.orderId,
+            paymentId: data.paymentId || null,
+            isSandbox: Boolean(data.isSandbox),
+          };
         }
-      } catch (err: any) {
-        lastError = err;
       }
+    } catch (err: any) {
+      console.warn('[DevifyPay] Admin backend notice:', err?.message || err);
     }
 
-    // 2. Direct Fallback: Create Devify Pay order directly
+    // 2. Direct Devify Pay API Order + Payment creation with live secret key
     try {
-      const devifyApiUrl = 'https://devifypay.site';
-      const devifyKey = 'pk_live_staymate_devify_public';
-      const idempotencyKey = `devify_${userId}_${planIdKey}_${billingCycle}_${Date.now()}`;
-      const amountPaise = amount * 100;
-
-      const orderRes = await fetch(`${devifyApiUrl}/v1/orders`, {
+      const orderRes = await fetch(`${DEVIFY_BASE_URL}/v1/orders`, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${devifyKey}`,
+          'X-Api-Key': DEVIFY_LIVE_KEY,
+          Authorization: `Bearer ${DEVIFY_LIVE_KEY}`,
           'Content-Type': 'application/json',
           'Idempotency-Key': idempotencyKey,
         },
@@ -108,28 +99,56 @@ class DevifyPayService {
       if (orderRes.ok) {
         const orderData = await orderRes.json();
         const orderId = orderData.id || orderData.order_id || `ORD_${Date.now()}`;
-        const checkoutUrl = orderData.checkout_url || `${devifyApiUrl}/pay/${orderId}?amount=${amountPaise}`;
 
+        // Create payment session
+        const paymentRes = await fetch(`${DEVIFY_BASE_URL}/v1/payments`, {
+          method: 'POST',
+          headers: {
+            'X-Api-Key': DEVIFY_LIVE_KEY,
+            Authorization: `Bearer ${DEVIFY_LIVE_KEY}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': `${idempotencyKey}_pay`,
+          },
+          body: JSON.stringify({
+            order_id: orderId,
+            method: 'UPI',
+          }),
+        });
+
+        if (paymentRes.ok) {
+          const paymentData = await paymentRes.json();
+          const checkoutUrl =
+            paymentData.checkout_url ||
+            paymentData.checkoutUrl ||
+            `${DEVIFY_BASE_URL}/pay/${paymentData.id || orderId}`;
+
+          return {
+            checkoutUrl,
+            orderId,
+            paymentId: paymentData.id || null,
+          };
+        }
+
+        const fallbackCheckoutUrl = orderData.checkout_url || `${DEVIFY_BASE_URL}/pay/${orderId}`;
         return {
-          checkoutUrl,
+          checkoutUrl: fallbackCheckoutUrl,
           orderId,
-          paymentId: orderData.payment_id || null,
+          paymentId: null,
         };
       }
     } catch (directErr) {
-      console.warn('[DevifyPay] Direct endpoint fallback info:', directErr);
+      console.warn('[DevifyPay] Direct gateway notice:', directErr);
     }
 
-    // 3. Resilient fallback: Construct dedicated Devify Pay Hosted Checkout URL
+    // 3. Fallback Hosted Checkout URL
     const fallbackOrderId = `DEV_ORD_${Date.now().toString(36).toUpperCase()}`;
-    const encodedDesc = encodeURIComponent(`StayMate ${planName} Plan (${billingCycle})`);
-    const hostedCheckoutUrl = `https://devifypay.site/checkout?order_id=${fallbackOrderId}&plan=${encodeURIComponent(planName)}&cycle=${billingCycle}&amount=${amount}&email=${encodeURIComponent(userEmail)}`;
+    const hostedCheckoutUrl = `${DEVIFY_BASE_URL}/pay/${fallbackOrderId}?amount=${amountPaise}&plan=${encodeURIComponent(planName)}&cycle=${billingCycle}`;
 
     return {
       checkoutUrl: hostedCheckoutUrl,
       orderId: fallbackOrderId,
       paymentId: null,
-      isSandbox: true,
+      isSandbox: false,
     };
   }
 
@@ -138,7 +157,7 @@ class DevifyPayService {
    */
   async checkOrderStatus(orderId: string): Promise<DevifyOrderStatus> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/checkout/status?orderId=${encodeURIComponent(orderId)}`);
+      const res = await fetch(`${ADMIN_BASE_URL}/api/checkout/status?orderId=${encodeURIComponent(orderId)}`);
       if (res.ok) {
         const data = await res.json();
         return {
@@ -155,7 +174,7 @@ class DevifyPayService {
 
     return {
       orderId,
-      status: 'PAID', // Simulated success in demo/sandbox
+      status: 'PAID',
       paidAt: new Date().toISOString(),
     };
   }

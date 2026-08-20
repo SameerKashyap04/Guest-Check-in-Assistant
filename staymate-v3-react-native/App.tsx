@@ -43,6 +43,7 @@ import * as Print from 'expo-print';
 import { captureRef } from 'react-native-view-shot';
 import { AddRoomModal } from './src/components/AddRoomModal';
 import { devifyPay, DevifyCheckoutResult } from './src/services/devifyPay';
+import { WebView } from 'react-native-webview';
 
 // Inject authentic Inter web font and typography styles on web platform
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -1871,116 +1872,94 @@ function PricingOverlay({
         </View>
       </ScrollView>
 
-      {/* Devify Pay UPI Checkout Modal */}
+      {/* Devify Pay In-App WebView Checkout Modal */}
       {activeCheckout && selectedPlanDetails && (
-        <Modal visible transparent animationType="slide">
-          <View style={ms.sheetScrim}>
-            <View style={[ms.sheet, {maxHeight: '92%', paddingBottom: 28}]}>
-              <View style={ms.handle}/>
-              <View style={ms.sheetHeaderBar}>
-                <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
-                  <View style={{width: 28, height: 28, borderRadius: 14, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center'}}>
-                    <Icon name="shield" size={15} color={C.primary}/>
-                  </View>
-                  <Text style={ms.sheetHeaderTitle}>Devify Pay Checkout</Text>
+        <Modal visible animationType="slide" onRequestClose={() => setActiveCheckout(null)}>
+          <SafeAreaView style={{flex: 1, backgroundColor: '#FAF8FD'}}>
+            {/* Header Bar */}
+            <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#ECEAF0', backgroundColor: '#fff'}}>
+              <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
+                <View style={{width: 32, height: 32, borderRadius: 16, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center'}}>
+                  <Icon name="shield" size={18} color={C.primary}/>
                 </View>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setActiveCheckout(null)}
-                  style={ms.sheetCloseBtnRelative}
-                >
-                  <Icon name="x" size={16} color={C.ink}/>
-                </TouchableOpacity>
+                <View>
+                  <Text style={{fontFamily: 'Inter', fontSize: 15, fontWeight: '700', color: '#1E293B'}}>
+                    Devify Pay Checkout
+                  </Text>
+                  <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '500', color: '#64748B'}}>
+                    {selectedPlanDetails.name} Plan · ₹{selectedPlanDetails.amount.toLocaleString('en-IN')} ({selectedPlanDetails.cycle === 'yearly' ? 'Annual' : 'Monthly'})
+                  </Text>
+                </View>
               </View>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setActiveCheckout(null)}
+                style={{width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center'}}
+              >
+                <Icon name="x" size={16} color={C.ink}/>
+              </TouchableOpacity>
+            </View>
 
-              <ScrollView contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 20}} showsVerticalScrollIndicator={false}>
-                {/* Order Summary Card */}
-                <View style={{alignItems: 'center', marginVertical: 10, padding: 14, backgroundColor: '#FAF8FD', borderRadius: 16, borderWidth: 1, borderColor: '#ECEAF0'}}>
-                  <Text style={[ms.titleMd, {fontWeight: '700'}]}>
-                    StayMate {selectedPlanDetails.name} Plan
-                  </Text>
-                  <Text style={[ms.bodySm, {marginTop: 2}]}>
-                    {selectedPlanDetails.cycle === 'yearly' ? 'Annual Subscription (Save 15%)' : 'Monthly Subscription'}
-                  </Text>
-                  <Text style={{fontFamily: 'Inter', fontSize: 28, fontWeight: '800', color: C.primary, marginTop: 4}}>
-                    ₹{selectedPlanDetails.amount.toLocaleString('en-IN')}
-                  </Text>
-                  <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: '#64748B', marginTop: 2}}>
-                    Order: {activeCheckout.orderId} · 256-Bit SSL Encrypted
-                  </Text>
-                </View>
-
-                {/* Dynamic QR Code Card */}
-                <View style={{alignItems: 'center', marginBottom: 14}}>
-                  <View style={{padding: 14, backgroundColor: '#fff', borderWidth: 2, borderColor: '#7C3AED', borderRadius: 20, alignItems: 'center', shadowColor: '#7C3AED', shadowOpacity: 0.1, shadowRadius: 10, elevation: 2}}>
-                    <Image
-                      source={{ uri: upiQrUrl }}
-                      style={{ width: 160, height: 160, borderRadius: 10 }}
-                      resizeMode="contain"
-                    />
-                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8}}>
-                      <Icon name="shield" size={12} color="#7C3AED"/>
-                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '800', color: '#7C3AED', letterSpacing: 0.5}}>
-                        SCAN WITH ANY UPI APP
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* 1-Tap UPI Apps */}
-                  <View style={{flexDirection: 'row', gap: 8, marginTop: 14}}>
-                    {[
-                      { name: 'Google Pay', id: 'gpay' },
-                      { name: 'PhonePe', id: 'phonepe' },
-                      { name: 'Paytm', id: 'paytm' },
-                    ].map((app) => (
-                      <TouchableOpacity
-                        key={app.id}
-                        activeOpacity={0.8}
-                        onPress={() => handleOpenUpiApp(app.id)}
-                        style={{flex: 1, paddingVertical: 9, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1.2, borderColor: '#E2E8F0', alignItems: 'center'}}
-                      >
-                        <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '700', color: '#1E293B'}}>
-                          {app.name}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-
-                  {/* UPI ID with Copy Button */}
-                  <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={handleCopyUpi}
-                    style={{flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#F1F5F9', borderRadius: 10}}
-                  >
-                    <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '600', color: '#475569'}}>
-                      UPI ID: <Text style={{color: C.primary, fontWeight: '700'}}>{upiId}</Text>
-                    </Text>
-                    <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '800', color: C.primary}}>
-                      {copiedUpi ? '✓ Copied' : 'Copy'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Primary Payment Action */}
-                <PrimaryButton
-                  label={verifying ? "Processing with Devify Pay..." : `⚡ Pay ₹${selectedPlanDetails.amount.toLocaleString('en-IN')} & Activate`}
-                  icon="check"
-                  onPress={handleCompletePayment}
-                  style={{height: 48, marginBottom: 10}}
+            {/* In-App Browser / WebView Area */}
+            <View style={{flex: 1, backgroundColor: '#FFFFFF'}}>
+              {Platform.OS === 'web' ? (
+                // @ts-ignore
+                <iframe
+                  src={activeCheckout.checkoutUrl}
+                  style={{width: '100%', height: '100%', border: 'none'}}
+                  title="Devify Pay Checkout"
                 />
+              ) : (
+                <WebView
+                  source={{ uri: activeCheckout.checkoutUrl }}
+                  style={{flex: 1, backgroundColor: '#FFFFFF'}}
+                  startInLoadingState
+                  javaScriptEnabled
+                  domStorageEnabled
+                  scalesPageToFit
+                  onNavigationStateChange={(navState) => {
+                    if (
+                      navState.url.includes('status=PAID') ||
+                      navState.url.includes('/success') ||
+                      navState.url.includes('order_status=paid')
+                    ) {
+                      handleCompletePayment();
+                    }
+                  }}
+                />
+              )}
+            </View>
 
+            {/* Bottom Action Toolbar */}
+            <View style={{padding: 16, paddingBottom: Math.max(16, insets.bottom + 8), backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#ECEAF0', gap: 8}}>
+              <PrimaryButton
+                label={verifying ? "Verifying payment..." : "I have completed payment ✓"}
+                icon="check"
+                onPress={handleCompletePayment}
+                style={{height: 46}}
+              />
+              <View style={{flexDirection: 'row', gap: 10}}>
                 <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setActiveCheckout(null)}
-                  style={{alignItems: 'center', paddingVertical: 6}}
+                  activeOpacity={0.8}
+                  onPress={() => Linking.openURL(activeCheckout.checkoutUrl)}
+                  style={{flex: 1, height: 40, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center'}}
                 >
-                  <Text style={{fontFamily: 'Inter', fontSize: 13, fontWeight: '600', color: '#64748B'}}>
+                  <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '600', color: '#334155'}}>
+                    Open in Browser ↗
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setActiveCheckout(null)}
+                  style={{flex: 1, height: 40, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center'}}
+                >
+                  <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '600', color: '#64748B'}}>
                     Cancel
                   </Text>
                 </TouchableOpacity>
-              </ScrollView>
+              </View>
             </View>
-          </View>
+          </SafeAreaView>
         </Modal>
       )}
     </View>
