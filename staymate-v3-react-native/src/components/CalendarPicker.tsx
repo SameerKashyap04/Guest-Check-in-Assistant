@@ -57,7 +57,8 @@ export function CalendarPicker({
   const [selectedDay, setSelectedDay] = useState(parsed.getDate());
   
   // Single flow: 1 (Year) -> 2 (Month) -> 3 (Date/Calendar)
-  const [flowStep, setFlowStep] = useState<1 | 2 | 3>(mode === 'dob' ? 1 : 3);
+  // By default, ALWAYS show step 3 (Calendar Grid) when opened
+  const [flowStep, setFlowStep] = useState<1 | 2 | 3>(3);
 
   useEffect(() => {
     if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
@@ -69,9 +70,8 @@ export function CalendarPicker({
   }, [value]);
 
   const handleOpenModal = () => {
-    // For DOB, start right at Year selection flow
-    // For stay (checkin/checkout), start at Calendar (Step 3)
-    setFlowStep(mode === 'dob' ? 1 : 3);
+    // Default to the full calendar grid page when someone clicks on date picker
+    setFlowStep(3);
     setModalVisible(true);
   };
 
@@ -98,7 +98,7 @@ export function CalendarPicker({
     setFlowStep(2);
   };
 
-  // STEP 2: Month Selected -> Auto go to Step 3 (Date)
+  // STEP 2: Month Selected -> Auto go to Step 3 (Calendar Grid)
   const handleSelectMonth = (mIndex: number) => {
     setSelectedMonth(mIndex);
     // adjust day if exceeds new month max days
@@ -138,6 +138,7 @@ export function CalendarPicker({
     const iso = formatISO(selectedYear, selectedMonth, selectedDay);
     onChange(iso);
     setModalVisible(false);
+    setFlowStep(3);
   };
 
   const handlePreset = (daysOffset: number) => {
@@ -149,6 +150,7 @@ export function CalendarPicker({
     const iso = formatISO(target.getFullYear(), target.getMonth(), target.getDate());
     onChange(iso);
     setModalVisible(false);
+    setFlowStep(3);
   };
 
   // Calendar calculations
@@ -200,65 +202,14 @@ export function CalendarPicker({
                 </Text>
               </View>
               <TouchableOpacity
-                onPress={() => setModalVisible(false)}
+                onPress={() => {
+                  setModalVisible(false);
+                  setFlowStep(3);
+                }}
                 style={s.closeBtn}
                 activeOpacity={0.7}
               >
                 <Icon name="x" size={18} color={C.ink} />
-              </TouchableOpacity>
-            </View>
-
-            {/* 1-Flow Progress Breadcrumbs */}
-            <View style={s.stepperRow}>
-              {/* Step 1: Year */}
-              <TouchableOpacity
-                onPress={() => setFlowStep(1)}
-                activeOpacity={0.75}
-                style={[
-                  s.stepPill,
-                  flowStep === 1 && s.stepPillActive,
-                  flowStep > 1 && s.stepPillCompleted,
-                ]}
-              >
-                <Text style={[s.stepPillNum, flowStep === 1 && s.stepPillNumActive]}>1</Text>
-                <Text style={[s.stepPillText, flowStep === 1 && s.stepPillTextActive]}>
-                  {selectedYear}
-                </Text>
-              </TouchableOpacity>
-
-              <Icon name="chevronRight" size={13} color="#94A3B8" />
-
-              {/* Step 2: Month */}
-              <TouchableOpacity
-                onPress={() => setFlowStep(2)}
-                activeOpacity={0.75}
-                style={[
-                  s.stepPill,
-                  flowStep === 2 && s.stepPillActive,
-                  flowStep > 2 && s.stepPillCompleted,
-                ]}
-              >
-                <Text style={[s.stepPillNum, flowStep === 2 && s.stepPillNumActive]}>2</Text>
-                <Text style={[s.stepPillText, flowStep === 2 && s.stepPillTextActive]}>
-                  {SHORT_MONTHS[selectedMonth]}
-                </Text>
-              </TouchableOpacity>
-
-              <Icon name="chevronRight" size={13} color="#94A3B8" />
-
-              {/* Step 3: Date */}
-              <TouchableOpacity
-                onPress={() => setFlowStep(3)}
-                activeOpacity={0.75}
-                style={[
-                  s.stepPill,
-                  flowStep === 3 && s.stepPillActive,
-                ]}
-              >
-                <Text style={[s.stepPillNum, flowStep === 3 && s.stepPillNumActive]}>3</Text>
-                <Text style={[s.stepPillText, flowStep === 3 && s.stepPillTextActive]}>
-                  Day {selectedDay}
-                </Text>
               </TouchableOpacity>
             </View>
 
@@ -286,8 +237,8 @@ export function CalendarPicker({
             {flowStep === 1 && (
               <View style={s.stepContainer}>
                 <View style={s.stepBanner}>
-                  <Text style={s.stepBannerTitle}>STEP 1: SELECT YEAR</Text>
-                  <Text style={s.stepBannerSub}>Tap your birth year or target year</Text>
+                  <Text style={s.stepBannerTitle}>SELECT YEAR</Text>
+                  <Text style={s.stepBannerSub}>Tap a year to choose month next</Text>
                 </View>
                 <ScrollView
                   style={{maxHeight: 240}}
@@ -319,8 +270,8 @@ export function CalendarPicker({
             {flowStep === 2 && (
               <View style={s.stepContainer}>
                 <View style={s.stepBanner}>
-                  <Text style={s.stepBannerTitle}>STEP 2: SELECT MONTH IN {selectedYear}</Text>
-                  <Text style={s.stepBannerSub}>Choose birth month or check-in month</Text>
+                  <Text style={s.stepBannerTitle}>SELECT MONTH IN {selectedYear}</Text>
+                  <Text style={s.stepBannerSub}>Choose month to view calendar</Text>
                 </View>
                 <View style={s.monthsGrid}>
                   {MONTHS.map((mName, idx) => {
@@ -346,7 +297,7 @@ export function CalendarPicker({
             )}
 
             {/* ============================================================ */}
-            {/* FLOW STEP 3: SELECT DATE (CALENDAR GRID)                     */}
+            {/* FLOW STEP 3: SELECT DATE (CALENDAR GRID - DEFAULT)           */}
             {/* ============================================================ */}
             {flowStep === 3 && (
               <View style={s.stepContainer}>
@@ -430,21 +381,35 @@ export function CalendarPicker({
 
             {/* Bottom Actions */}
             <View style={s.actionRow}>
-              {flowStep > 1 ? (
+              {flowStep === 3 && (
                 <TouchableOpacity
-                  onPress={() => setFlowStep((flowStep - 1) as 1 | 2 | 3)}
-                  style={s.cancelBtn}
-                  activeOpacity={0.75}
-                >
-                  <Text style={s.cancelBtnText}>← Previous</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity
-                  onPress={() => setModalVisible(false)}
+                  onPress={() => {
+                    setModalVisible(false);
+                  }}
                   style={s.cancelBtn}
                   activeOpacity={0.75}
                 >
                   <Text style={s.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+
+              {flowStep === 2 && (
+                <TouchableOpacity
+                  onPress={() => setFlowStep(1)}
+                  style={s.cancelBtn}
+                  activeOpacity={0.75}
+                >
+                  <Text style={s.cancelBtnText}>← Back to Year</Text>
+                </TouchableOpacity>
+              )}
+
+              {flowStep === 1 && (
+                <TouchableOpacity
+                  onPress={() => setFlowStep(3)}
+                  style={s.cancelBtn}
+                  activeOpacity={0.75}
+                >
+                  <Text style={s.cancelBtnText}>← Back to Calendar</Text>
                 </TouchableOpacity>
               )}
 
@@ -563,50 +528,6 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepperRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 12,
-  },
-  stepPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-  },
-  stepPillActive: {
-    backgroundColor: '#111827',
-  },
-  stepPillCompleted: {
-    backgroundColor: '#EDE9FE',
-  },
-  stepPillNum: {
-    fontFamily: 'Inter',
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#64748B',
-  },
-  stepPillNumActive: {
-    color: '#ffffff',
-  },
-  stepPillText: {
-    fontFamily: 'Inter',
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#334155',
-  },
-  stepPillTextActive: {
-    color: '#ffffff',
-  },
   presetRow: {
     flexDirection: 'row',
     gap: 8,
@@ -628,7 +549,7 @@ const s = StyleSheet.create({
     color: '#334155',
   },
   stepContainer: {
-    paddingVertical: 6,
+    paddingVertical: 4,
   },
   stepBanner: {
     marginBottom: 10,
@@ -724,8 +645,8 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
