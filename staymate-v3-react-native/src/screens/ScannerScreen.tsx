@@ -222,7 +222,7 @@ export function ScannerScreen({
       {/* SCAN DOCUMENT label */}
       <Text style={[s.sectionLabel, {marginTop: 22}]}>SCAN DOCUMENT</Text>
 
-      {/* Viewfinder — Original Dark Black Color Frame with Camera inside */}
+      {/* Viewfinder — Exact match to screenshot */}
       <View style={s.viewfinder}>
         {/* Embedded Live Camera inside black frame */}
         {permission?.granted ? (
@@ -236,7 +236,7 @@ export function ScannerScreen({
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => requestPermission()}
-            style={[StyleSheet.absoluteFillObject, {backgroundColor: '#2D3239', alignItems: 'center', justifyContent: 'center'}]}
+            style={[StyleSheet.absoluteFillObject, {backgroundColor: '#2B2F38', alignItems: 'center', justifyContent: 'center'}]}
           >
             <Icon name="search" size={28} color="rgba(255,255,255,0.3)" />
             <Text style={{color: 'rgba(255,255,255,0.65)', fontSize: 12.5, fontWeight: '600', marginTop: 8}}>
@@ -245,17 +245,19 @@ export function ScannerScreen({
           </TouchableOpacity>
         )}
 
-        {/* Dashed frame */}
+        {/* Dashed outer border running around the frame */}
         <View style={s.dashedFrame} pointerEvents="none" />
 
-        {/* Corner brackets */}
-        <View style={[s.corner, {top: '12%', left: '12%', borderRightWidth: 0, borderBottomWidth: 0}]} pointerEvents="none" />
-        <View style={[s.corner, {top: '12%', right: '12%', borderLeftWidth: 0, borderBottomWidth: 0}]} pointerEvents="none" />
-        <View style={[s.corner, {bottom: '18%', left: '12%', borderRightWidth: 0, borderTopWidth: 0}]} pointerEvents="none" />
-        <View style={[s.corner, {bottom: '18%', right: '12%', borderLeftWidth: 0, borderTopWidth: 0}]} pointerEvents="none" />
+        {/* 4 Rounded corner brackets matching exact screenshot */}
+        <View style={s.cornerTopLeft} pointerEvents="none" />
+        <View style={s.cornerTopRight} pointerEvents="none" />
+        <View style={s.cornerBottomLeft} pointerEvents="none" />
+        <View style={s.cornerBottomRight} pointerEvents="none" />
 
-        {/* Align hint */}
-        <Text style={s.alignHint} pointerEvents="none">Align the document within the frame</Text>
+        {/* Centered Align hint */}
+        <View style={s.alignCenterContainer} pointerEvents="none">
+          <Text style={s.alignHint}>Align the document within the frame</Text>
+        </View>
 
         {/* Scanning AI Indicator */}
         {scanning && (
@@ -265,43 +267,39 @@ export function ScannerScreen({
           </View>
         )}
 
-        {/* Top controls */}
-        <View style={s.camTop}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setFlashOn(!flashOn)}
-            style={s.camBtn}
-          >
-            <Icon name={flashOn ? 'flash' : 'flashOff'} size={18} color="#fff"/>
-          </TouchableOpacity>
+        {/* Top-left Flash Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setFlashOn(!flashOn)}
+          style={s.topFlashBtn}
+        >
+          <Icon name={flashOn ? 'flash' : 'flashOff'} size={20} color="#fff"/>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setFacing(facing === 'back' ? 'front' : 'back')}
-            style={s.camBtn}
-          >
-            <Icon name="flip" size={18} color="#fff"/>
-          </TouchableOpacity>
-        </View>
+        {/* Top-right Flip Camera Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setFacing(facing === 'back' ? 'front' : 'back')}
+          style={s.topFlipBtn}
+        >
+          <Icon name="flip" size={20} color="#fff"/>
+        </TouchableOpacity>
 
-        {/* Bottom controls */}
-        <View style={s.camBottom}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={handlePickGallery}
-            style={s.camBtn}
-          >
-            <Icon name="image" size={18} color="#fff"/>
-          </TouchableOpacity>
+        {/* Bottom-left Gallery Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handlePickGallery}
+          style={s.bottomGalleryBtn}
+        >
+          <Icon name="image" size={20} color="#fff"/>
+        </TouchableOpacity>
 
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={handleShutter}
-            style={s.shutter}
-          />
-
-          <View style={{width: 42}}/>
-        </View>
+        {/* Bottom-center Shutter Button overlapping bottom border */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={handleShutter}
+          style={s.bottomShutterBtn}
+        />
       </View>
 
       {/* OR divider */}
@@ -412,79 +410,133 @@ const s = StyleSheet.create({
     fontWeight: '700',
   },
 
-  // Viewfinder — Original black color frame
+  // Viewfinder — Exactly matches screenshot
   viewfinder: {
     aspectRatio: 3 / 4,
     borderRadius: 24,
     overflow: 'hidden',
-    backgroundColor: '#2D3239',
+    backgroundColor: '#2E333D',
     position: 'relative',
   },
   dashedFrame: {
     position: 'absolute',
-    top: '12%',
-    left: '12%',
-    right: '12%',
-    bottom: '18%',
+    top: 12,
+    left: 12,
+    right: 12,
+    bottom: 18,
     borderWidth: 2,
     borderStyle: 'dashed',
-    borderColor: 'rgba(255,255,255,0.5)',
-    borderRadius: 14,
+    borderColor: 'rgba(255,255,255,0.45)',
+    borderRadius: 20,
   },
-  corner: {
+  cornerTopLeft: {
     position: 'absolute',
-    width: 24,
-    height: 24,
-    borderWidth: 3,
+    top: 46,
+    left: 42,
+    width: 34,
+    height: 34,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: 10,
     borderColor: '#ffffff',
   },
-  camTop: {
+  cornerTopRight: {
     position: 'absolute',
-    top: 14,
-    left: 0,
-    right: 0,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    top: 46,
+    right: 42,
+    width: 34,
+    height: 34,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderTopRightRadius: 10,
+    borderColor: '#ffffff',
   },
-  camBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+  cornerBottomLeft: {
+    position: 'absolute',
+    bottom: 68,
+    left: 42,
+    width: 34,
+    height: 34,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomLeftRadius: 10,
+    borderColor: '#ffffff',
+  },
+  cornerBottomRight: {
+    position: 'absolute',
+    bottom: 68,
+    right: 42,
+    width: 34,
+    height: 34,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: 10,
+    borderColor: '#ffffff',
+  },
+  alignCenterContainer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 24,
+    right: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  alignHint: {
+    textAlign: 'center',
+    fontFamily: 'Inter',
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)',
+    letterSpacing: -0.1,
+  },
+  topFlashBtn: {
+    position: 'absolute',
+    top: 22,
+    left: 22,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.16)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  alignHint: {
+  topFlipBtn: {
     position: 'absolute',
-    top: '40%',
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-    fontFamily: 'Inter',
-    fontSize: 12.5,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.75)',
-  },
-  camBottom: {
-    position: 'absolute',
-    bottom: 14,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
+    top: 22,
+    right: 22,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
+    justifyContent: 'center',
   },
-  shutter: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+  bottomGalleryBtn: {
+    position: 'absolute',
+    bottom: 22,
+    left: 22,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomShutterBtn: {
+    position: 'absolute',
+    bottom: -14,
+    alignSelf: 'center',
+    width: 74,
+    height: 74,
+    borderRadius: 37,
     backgroundColor: '#ffffff',
-    borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.4)',
   },
   scanningOverlay: {
     ...StyleSheet.absoluteFillObject,
