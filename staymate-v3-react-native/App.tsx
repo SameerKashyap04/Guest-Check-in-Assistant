@@ -1390,15 +1390,27 @@ function SelfCheckins({
           <View style={ms.sheetScrim}>
             <View style={[ms.sheet, {paddingBottom: 24}]}>
               <View style={ms.handle}/>
-              <TouchableOpacity
-                onPress={() => setReviewGuest(null)}
-                style={ms.closeBtn}
-              >
-                <Icon name="x" size={17} color={C.ink}/>
-              </TouchableOpacity>
+              
+              {/* Navigation Header with Back and Close buttons */}
+              <View style={ms.sheetHeaderBar}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setReviewGuest(null)}
+                  style={ms.sheetBackBtn}
+                >
+                  <Icon name="chevronLeft" size={18} color={C.ink}/>
+                </TouchableOpacity>
+                <Text style={ms.sheetHeaderTitle}>Review Submission</Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setReviewGuest(null)}
+                  style={ms.sheetCloseBtnRelative}
+                >
+                  <Icon name="x" size={16} color={C.ink}/>
+                </TouchableOpacity>
+              </View>
 
-              <ScrollView contentContainerStyle={{padding: 20}}>
-                <Text style={ms.displayMd}>Review Submission</Text>
+              <ScrollView contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 20}}>
                 <Text style={[ms.bodySm, {marginTop: 2}]}>
                   Online self check-in registration
                 </Text>
@@ -1842,6 +1854,38 @@ const ms = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10,
+  },
+  sheetHeaderBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    marginBottom: 10,
+  },
+  sheetBackBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sheetHeaderTitle: {
+    fontFamily: 'Inter',
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  sheetCloseBtnRelative: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   guestHeaderRow: {
     flexDirection: 'row',
