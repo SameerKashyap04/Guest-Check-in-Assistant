@@ -1727,11 +1727,43 @@ function PricingOverlay({
     }, 1200);
   };
 
+  const handleOpenUpiApp = async (app: string) => {
+    if (!selectedPlanDetails || !activeCheckout) return;
+    const upiUri = `upi://pay?pa=${upiId}&pn=StayMate%20Homestay&am=${selectedPlanDetails.amount}&cu=INR&tn=${activeCheckout.orderId}`;
+    
+    try {
+      if (app === 'gpay') {
+        const canGpay = await Linking.canOpenURL('gpay://');
+        if (canGpay) {
+          await Linking.openURL(`gpay://upi/pay?pa=${upiId}&pn=StayMate&am=${selectedPlanDetails.amount}&cu=INR&tn=${activeCheckout.orderId}`);
+          return;
+        }
+      } else if (app === 'phonepe') {
+        const canPhonePe = await Linking.canOpenURL('phonepe://');
+        if (canPhonePe) {
+          await Linking.openURL(`phonepe://pay?pa=${upiId}&pn=StayMate&am=${selectedPlanDetails.amount}&cu=INR&tn=${activeCheckout.orderId}`);
+          return;
+        }
+      } else if (app === 'paytm') {
+        const canPaytm = await Linking.canOpenURL('paytmmp://');
+        if (canPaytm) {
+          await Linking.openURL(`paytmmp://pay?pa=${upiId}&pn=StayMate&am=${selectedPlanDetails.amount}&cu=INR&tn=${activeCheckout.orderId}`);
+          return;
+        }
+      }
+      await Linking.openURL(upiUri);
+    } catch (_) {
+      // Fallback: Proceed with verification flow
+      handleCompletePayment();
+    }
+  };
+
   const upiId = 'staymate@devifypay';
-  const upiQrUrl = selectedPlanDetails
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
-        `upi://pay?pa=${upiId}&pn=StayMate%20Homestay&am=${selectedPlanDetails.amount}&cu=INR&tn=${activeCheckout?.orderId || 'SUB'}`
-      )}`
+  const upiString = selectedPlanDetails && activeCheckout
+    ? `upi://pay?pa=${upiId}&pn=StayMate%20Homestay&am=${selectedPlanDetails.amount}&cu=INR&tn=${activeCheckout.orderId}`
+    : '';
+  const upiQrUrl = upiString
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(upiString)}&color=1E1B4B&bgcolor=FFFFFF&margin=1`
     : '';
 
   const handleCopyUpi = async () => {
@@ -1823,7 +1855,7 @@ function PricingOverlay({
                     <SecondaryButton
                       label={
                         isCheckingOut && selectedPlanDetails?.name === p.name
-                          ? 'Starting Devify Pay...'
+                          ? 'Starting checkout...'
                           : p.priceM === null
                           ? 'Contact sales'
                           : 'Choose plan'
@@ -1839,7 +1871,7 @@ function PricingOverlay({
         </View>
       </ScrollView>
 
-      {/* Devify Pay Checkout Verification Sub-Sheet */}
+      {/* Devify Pay UPI Checkout Modal */}
       {activeCheckout && selectedPlanDetails && (
         <Modal visible transparent animationType="slide">
           <View style={ms.sheetScrim}>
@@ -1862,7 +1894,7 @@ function PricingOverlay({
               </View>
 
               <ScrollView contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 20}} showsVerticalScrollIndicator={false}>
-                {/* Order Summary Pill */}
+                {/* Order Summary Card */}
                 <View style={{alignItems: 'center', marginVertical: 10, padding: 14, backgroundColor: '#FAF8FD', borderRadius: 16, borderWidth: 1, borderColor: '#ECEAF0'}}>
                   <Text style={[ms.titleMd, {fontWeight: '700'}]}>
                     StayMate {selectedPlanDetails.name} Plan
@@ -1870,7 +1902,7 @@ function PricingOverlay({
                   <Text style={[ms.bodySm, {marginTop: 2}]}>
                     {selectedPlanDetails.cycle === 'yearly' ? 'Annual Subscription (Save 15%)' : 'Monthly Subscription'}
                   </Text>
-                  <Text style={{fontFamily: 'Inter', fontSize: 26, fontWeight: '800', color: C.primary, marginTop: 6}}>
+                  <Text style={{fontFamily: 'Inter', fontSize: 28, fontWeight: '800', color: C.primary, marginTop: 4}}>
                     ₹{selectedPlanDetails.amount.toLocaleString('en-IN')}
                   </Text>
                   <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: '#64748B', marginTop: 2}}>
@@ -1878,120 +1910,56 @@ function PricingOverlay({
                   </Text>
                 </View>
 
-                {/* Payment Methods Selector */}
-                <View style={{flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 12, padding: 3, marginBottom: 14}}>
-                  {(['upi', 'card', 'netbanking'] as const).map((m) => {
-                    const active = payMethod === m;
-                    const labels = { upi: '⚡ UPI / QR', card: '💳 Card', netbanking: '🏦 NetBanking' };
-                    return (
+                {/* Dynamic QR Code Card */}
+                <View style={{alignItems: 'center', marginBottom: 14}}>
+                  <View style={{padding: 14, backgroundColor: '#fff', borderWidth: 2, borderColor: '#7C3AED', borderRadius: 20, alignItems: 'center', shadowColor: '#7C3AED', shadowOpacity: 0.1, shadowRadius: 10, elevation: 2}}>
+                    <Image
+                      source={{ uri: upiQrUrl }}
+                      style={{ width: 160, height: 160, borderRadius: 10 }}
+                      resizeMode="contain"
+                    />
+                    <View style={{flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 8}}>
+                      <Icon name="shield" size={12} color="#7C3AED"/>
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '800', color: '#7C3AED', letterSpacing: 0.5}}>
+                        SCAN WITH ANY UPI APP
+                      </Text>
+                    </View>
+                  </View>
+
+                  {/* 1-Tap UPI Apps */}
+                  <View style={{flexDirection: 'row', gap: 8, marginTop: 14}}>
+                    {[
+                      { name: 'Google Pay', id: 'gpay' },
+                      { name: 'PhonePe', id: 'phonepe' },
+                      { name: 'Paytm', id: 'paytm' },
+                    ].map((app) => (
                       <TouchableOpacity
-                        key={m}
+                        key={app.id}
                         activeOpacity={0.8}
-                        onPress={() => setPayMethod(m)}
-                        style={[{flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10}, active && {backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, elevation: 1}]}
+                        onPress={() => handleOpenUpiApp(app.id)}
+                        style={{flex: 1, paddingVertical: 9, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1.2, borderColor: '#E2E8F0', alignItems: 'center'}}
                       >
-                        <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: active ? '700' : '500', color: active ? '#1E293B' : '#64748B'}}>
-                          {labels[m]}
+                        <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '700', color: '#1E293B'}}>
+                          {app.name}
                         </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-
-                {/* UPI View */}
-                {payMethod === 'upi' && (
-                  <View style={{alignItems: 'center', marginBottom: 14}}>
-                    <View style={{padding: 12, backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#7C3AED', borderRadius: 18, alignItems: 'center'}}>
-                      <Image
-                        source={{ uri: upiQrUrl }}
-                        style={{ width: 140, height: 140, borderRadius: 8 }}
-                        resizeMode="contain"
-                      />
-                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#7C3AED', marginTop: 6}}>
-                        SCAN TO PAY WITH ANY UPI APP
-                      </Text>
-                    </View>
-
-                    {/* Quick UPI Apps */}
-                    <View style={{flexDirection: 'row', gap: 8, marginTop: 12}}>
-                      {['Google Pay', 'PhonePe', 'Paytm'].map((app) => (
-                        <TouchableOpacity
-                          key={app}
-                          activeOpacity={0.8}
-                          onPress={handleCompletePayment}
-                          style={{paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10, backgroundColor: '#F1F5F9', borderWidth: 1, borderColor: '#E2E8F0'}}
-                        >
-                          <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '600', color: '#1E293B'}}>{app}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={handleCopyUpi}
-                      style={{flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10}}
-                    >
-                      <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '600', color: '#64748B'}}>
-                        UPI ID: <Text style={{color: C.primary}}>{upiId}</Text>
-                      </Text>
-                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: C.primary}}>
-                        {copiedUpi ? '✓ Copied' : 'Copy'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-
-                {/* Card View */}
-                {payMethod === 'card' && (
-                  <View style={{gap: 10, marginBottom: 14}}>
-                    <View>
-                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '800', color: '#64748B', marginBottom: 4}}>CARD NUMBER</Text>
-                      <TextInput
-                        placeholder="4111 2222 3333 4444"
-                        placeholderTextColor="#94A3B8"
-                        keyboardType="number-pad"
-                        style={{backgroundColor: '#fff', borderWidth: 1.2, borderColor: '#ECEAF0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14}}
-                      />
-                    </View>
-                    <View style={{flexDirection: 'row', gap: 10}}>
-                      <View style={{flex: 1}}>
-                        <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '800', color: '#64748B', marginBottom: 4}}>VALID THRU</Text>
-                        <TextInput
-                          placeholder="MM/YY"
-                          placeholderTextColor="#94A3B8"
-                          style={{backgroundColor: '#fff', borderWidth: 1.2, borderColor: '#ECEAF0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14}}
-                        />
-                      </View>
-                      <View style={{flex: 1}}>
-                        <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '800', color: '#64748B', marginBottom: 4}}>CVV</Text>
-                        <TextInput
-                          placeholder="•••"
-                          placeholderTextColor="#94A3B8"
-                          secureTextEntry
-                          keyboardType="number-pad"
-                          maxLength={3}
-                          style={{backgroundColor: '#fff', borderWidth: 1.2, borderColor: '#ECEAF0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14}}
-                        />
-                      </View>
-                    </View>
-                  </View>
-                )}
-
-                {/* Net Banking View */}
-                {payMethod === 'netbanking' && (
-                  <View style={{flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 14}}>
-                    {['HDFC Bank', 'ICICI Bank', 'SBI Bank', 'Axis Bank', 'Kotak Bank', 'Other Banks'].map((bank) => (
-                      <TouchableOpacity
-                        key={bank}
-                        activeOpacity={0.8}
-                        onPress={handleCompletePayment}
-                        style={{paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', width: '48%', alignItems: 'center'}}
-                      >
-                        <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '600', color: '#1E293B'}}>{bank}</Text>
                       </TouchableOpacity>
                     ))}
                   </View>
-                )}
+
+                  {/* UPI ID with Copy Button */}
+                  <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={handleCopyUpi}
+                    style={{flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#F1F5F9', borderRadius: 10}}
+                  >
+                    <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '600', color: '#475569'}}>
+                      UPI ID: <Text style={{color: C.primary, fontWeight: '700'}}>{upiId}</Text>
+                    </Text>
+                    <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '800', color: C.primary}}>
+                      {copiedUpi ? '✓ Copied' : 'Copy'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
 
                 {/* Primary Payment Action */}
                 <PrimaryButton
@@ -2013,7 +1981,6 @@ function PricingOverlay({
               </ScrollView>
             </View>
           </View>
-        </Modal>
       )}
     </View>
   );
