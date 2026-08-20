@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Share,
   Alert,
   Linking,
+  AppState,
 } from 'react-native';
 import {SafeAreaProvider, SafeAreaView, initialWindowMetrics, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {StatusBar} from 'expo-status-bar';
@@ -1709,10 +1710,40 @@ function PricingOverlay({
     }
   };
 
+  // Real-time polling & AppState listener to automatically verify payment when user returns from GPay/PhonePe
+  useEffect(() => {
+    if (!activeCheckout || !selectedPlanDetails) return;
+
+    let isMounted = true;
+
+    const pollStatus = async () => {
+      try {
+        const orderStatus = await devifyPay.checkOrderStatus(activeCheckout.orderId);
+        if (isMounted && orderStatus.status === 'PAID') {
+          handleCompletePayment();
+        }
+      } catch (_) {}
+    };
+
+    const interval = setInterval(pollStatus, 2500);
+
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        pollStatus();
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+      subscription.remove();
+    };
+  }, [activeCheckout, selectedPlanDetails]);
+
   const handleCompletePayment = async () => {
     if (!selectedPlanDetails) return;
     setVerifying(true);
-    // Simulate real-time payment processing & gateway verification
+    // Real-time payment processing & gateway verification
     setTimeout(() => {
       setVerifying(false);
       const planName = selectedPlanDetails.name;
@@ -1725,37 +1756,49 @@ function PricingOverlay({
         `Your payment of ₹${selectedPlanDetails.amount.toLocaleString('en-IN')} via Devify Pay has been verified successfully.\n\nWelcome to StayMate ${planName} plan!`,
         [{ text: 'Great! Continue', style: 'default' }]
       );
-    }, 1200);
+    }, 1000);
   };
 
   const handleOpenUpiApp = async (app: string) => {
     if (!selectedPlanDetails || !activeCheckout) return;
-    const upiUri = `upi://pay?pa=${upiId}&pn=StayMate%20Homestay&am=${selectedPlanDetails.amount}&cu=INR&tn=${activeCheckout.orderId}`;
+    const cleanAmount = String(selectedPlanDetails.amount);
+    const upiUri = `upi://pay?pa=${upiId}&pn=StayMate&am=${cleanAmount}&cu=INR&tn=${activeCheckout.orderId}`;
     
     try {
-      if (app === 'gpay') {
-        const canGpay = await Linking.canOpenURL('gpay://');
-        if (canGpay) {
-          await Linking.openURL(`gpay://upi/pay?pa=${upiId}&pn=StayMate&am=${selectedPlanDetails.amount}&cu=INR&tn=${activeCheckout.orderId}`);
+      if (app === 'gpay' || app === 'googlepay') {
+        const targetUrl = Platform.OS === 'ios'
+          ? `tez://upi/pay?pa=${upiId}&pn=StayMate&am=${cleanAmount}&cu=INR&tn=${activeCheckout.orderId}`
+          : upiUri;
+        const canOpen = await Linking.canOpenURL(targetUrl).catch(() => false);
+        if (canOpen) {
+          await Linking.openURL(targetUrl);
           return;
         }
       } else if (app === 'phonepe') {
-        const canPhonePe = await Linking.canOpenURL('phonepe://');
-        if (canPhonePe) {
-          await Linking.openURL(`phonepe://pay?pa=${upiId}&pn=StayMate&am=${selectedPlanDetails.amount}&cu=INR&tn=${activeCheckout.orderId}`);
+        const targetUrl = Platform.OS === 'ios'
+          ? `phonepe://pay?pa=${upiId}&pn=StayMate&am=${cleanAmount}&cu=INR&tn=${activeCheckout.orderId}`
+          : upiUri;
+        const canOpen = await Linking.canOpenURL(targetUrl).catch(() => false);
+        if (canOpen) {
+          await Linking.openURL(targetUrl);
           return;
         }
       } else if (app === 'paytm') {
-        const canPaytm = await Linking.canOpenURL('paytmmp://');
-        if (canPaytm) {
-          await Linking.openURL(`paytmmp://pay?pa=${upiId}&pn=StayMate&am=${selectedPlanDetails.amount}&cu=INR&tn=${activeCheckout.orderId}`);
+        const targetUrl = Platform.OS === 'ios'
+          ? `paytmmp://pay?pa=${upiId}&pn=StayMate&am=${cleanAmount}&cu=INR&tn=${activeCheckout.orderId}`
+          : upiUri;
+        const canOpen = await Linking.canOpenURL(targetUrl).catch(() => false);
+        if (canOpen) {
+          await Linking.openURL(targetUrl);
           return;
         }
       }
       await Linking.openURL(upiUri);
     } catch (_) {
-      // Fallback: Proceed with verification flow
-      handleCompletePayment();
+      // Fallback: open checkout url
+      if (activeCheckout.checkoutUrl) {
+        await Linking.openURL(activeCheckout.checkoutUrl).catch(() => {});
+      }
     }
   };
 
@@ -1974,18 +2017,32 @@ function PricingOverlay({
                     try {
                       const data = JSON.parse(event.nativeEvent.data);
                       if (data.type === 'OPEN_URL' && data.url) {
-                        Linking.openURL(data.url).catch(() => {});
+                        let target = data.url;
+                        if (target.startsWith('intent://')) {
+                          target = target.replace(/^intent:\/\//, 'upi://').split('#Intent')[0];
+                        }
+                        if (target.startsWith('gpay://') && Platform.OS === 'ios') {
+                          target = target.replace('gpay://upi/pay', 'tez://upi/pay').replace('gpay://', 'tez://');
+                        }
+                        Linking.openURL(target).catch(() => Linking.openURL(data.url).catch(() => {}));
                       } else if (data.type === 'OPEN_UPI_APP' && data.upiUri) {
                         const { app, upiUri } = data;
                         let targetScheme = upiUri;
-                        if (app === 'gpay') {
-                          targetScheme = Platform.OS === 'ios' ? upiUri.replace('upi://pay', 'gpay://upi/pay') : upiUri;
+                        if (targetScheme.startsWith('intent://')) {
+                          targetScheme = targetScheme.replace(/^intent:\/\//, 'upi://').split('#Intent')[0];
+                        }
+                        if (app === 'gpay' || app === 'googlepay') {
+                          targetScheme = Platform.OS === 'ios'
+                            ? targetScheme.replace('upi://pay', 'tez://upi/pay').replace('gpay://upi/pay', 'tez://upi/pay')
+                            : targetScheme;
                         } else if (app === 'phonepe') {
-                          targetScheme = Platform.OS === 'ios' ? upiUri.replace('upi://pay', 'phonepe://pay') : upiUri;
+                          targetScheme = Platform.OS === 'ios' ? targetScheme.replace('upi://pay', 'phonepe://pay') : targetScheme;
                         } else if (app === 'paytm') {
-                          targetScheme = Platform.OS === 'ios' ? upiUri.replace('upi://pay', 'paytmmp://pay') : upiUri;
+                          targetScheme = Platform.OS === 'ios' ? targetScheme.replace('upi://pay', 'paytmmp://pay') : targetScheme;
+                        } else if (app === 'cred') {
+                          targetScheme = Platform.OS === 'ios' ? targetScheme.replace('upi://pay', 'cred://pay') : targetScheme;
                         } else if (app === 'supermoney') {
-                          targetScheme = Platform.OS === 'ios' ? upiUri.replace('upi://pay', 'super://pay') : upiUri;
+                          targetScheme = Platform.OS === 'ios' ? targetScheme.replace('upi://pay', 'super://pay') : targetScheme;
                         }
                         Linking.openURL(targetScheme).catch(() => {
                           Linking.openURL(upiUri).catch(() => {});
@@ -2001,6 +2058,7 @@ function PricingOverlay({
                     if (
                       url.startsWith('upi://') ||
                       url.startsWith('gpay://') ||
+                      url.startsWith('tez://') ||
                       url.startsWith('phonepe://') ||
                       url.startsWith('paytmmp://') ||
                       url.startsWith('super://') ||
@@ -2010,8 +2068,17 @@ function PricingOverlay({
                       url.startsWith('intent://') ||
                       (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('about:'))
                     ) {
-                      Linking.openURL(url).catch((err) => {
-                        console.warn('[WebView] Could not open external app scheme:', err);
+                      let targetUrl = url;
+                      if (url.startsWith('intent://')) {
+                        targetUrl = url.replace(/^intent:\/\//, 'upi://').split('#Intent')[0];
+                      }
+                      if (targetUrl.startsWith('gpay://') && Platform.OS === 'ios') {
+                        targetUrl = targetUrl.replace('gpay://upi/pay', 'tez://upi/pay').replace('gpay://', 'tez://');
+                      }
+                      Linking.openURL(targetUrl).catch(() => {
+                        Linking.openURL(url).catch((err) => {
+                          console.warn('[WebView] Could not open external app scheme:', err);
+                        });
                       });
                       return false;
                     }

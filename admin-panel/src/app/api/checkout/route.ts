@@ -47,6 +47,7 @@ interface CheckoutRequestBody {
   billingCycle: string;
   userId: string;
   userEmail: string;
+  amount?: number;
 }
 
 export async function POST(request: NextRequest) {

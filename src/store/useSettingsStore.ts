@@ -52,7 +52,7 @@ export const useSettingsStore = create<SettingsState>()(
       userName: 'Sameer',
       propertyId: generatePropertyId(null),
       ownerId: 'OWNER_DEFAULT_101',
-      storageMode: 'cloud',
+      storageMode: 'local',
       language: 'en',
       theme: 'system',
       selfCheckinUrl: 'https://staymate.co.in/self-checkin',

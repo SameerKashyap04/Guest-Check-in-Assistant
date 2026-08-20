@@ -167,7 +167,7 @@ export default function DashboardScreen() {
         fetchGuests();
       },
       ownerId,
-      false
+      storageMode === 'local'
     );
     return () => unsubscribe();
   }, [propertyId, ownerId, storageMode]);

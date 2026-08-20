@@ -35,6 +35,7 @@ export interface FullPlanDefinition {
   maxProperties: string; // e.g., "1", "10", "Unlimited"
   maxStaff: number;
   ocrScanning: boolean;
+  cloudSync: boolean;
   backupRestore: boolean;
   prioritySupport: boolean;
   centralizedDashboard: boolean;
@@ -55,6 +56,7 @@ const DEFAULT_PLANS: FullPlanDefinition[] = [
     maxProperties: "1",
     maxStaff: 0,
     ocrScanning: false,
+    cloudSync: false,
     backupRestore: false,
     prioritySupport: false,
     centralizedDashboard: false,
@@ -73,6 +75,7 @@ const DEFAULT_PLANS: FullPlanDefinition[] = [
     maxProperties: "1",
     maxStaff: 0,
     ocrScanning: false,
+    cloudSync: false,
     backupRestore: false,
     prioritySupport: false,
     centralizedDashboard: false,
@@ -91,6 +94,7 @@ const DEFAULT_PLANS: FullPlanDefinition[] = [
     maxProperties: "1",
     maxStaff: 5,
     ocrScanning: true,
+    cloudSync: true,
     backupRestore: true,
     prioritySupport: true,
     centralizedDashboard: false,
@@ -109,6 +113,7 @@ const DEFAULT_PLANS: FullPlanDefinition[] = [
     maxProperties: "10",
     maxStaff: 20,
     ocrScanning: true,
+    cloudSync: true,
     backupRestore: true,
     prioritySupport: true,
     centralizedDashboard: true,
@@ -228,6 +233,7 @@ export default function PlansPage() {
       maxProperties: "Unlimited",
       maxStaff: 50,
       ocrScanning: true,
+      cloudSync: true,
       backupRestore: true,
       prioritySupport: true,
       centralizedDashboard: true,
@@ -374,6 +380,18 @@ export default function PlansPage() {
                   <span className="font-bold text-[11px]">OCR ID Scanning</span>
                   <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${p.ocrScanning ? "bg-violet-600 text-white" : "bg-slate-200 text-slate-600"}`}>
                     {p.ocrScanning ? "ON" : "OFF"}
+                  </span>
+                </button>
+
+                <button
+                  onClick={() => toggleFeatureFlag(p.id, "cloudSync")}
+                  className={`w-full flex items-center justify-between p-2 rounded-xl border text-left transition-all cursor-pointer ${
+                    p.cloudSync ? "bg-violet-50/80 border-violet-200 text-violet-900" : "bg-slate-50 border-slate-200 text-slate-400"
+                  }`}
+                >
+                  <span className="font-bold text-[11px]">Cloud Mode (Sync)</span>
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${p.cloudSync ? "bg-violet-600 text-white" : "bg-slate-200 text-slate-600"}`}>
+                    {p.cloudSync ? "ON" : "OFF"}
                   </span>
                 </button>
 
@@ -579,6 +597,16 @@ export default function PlansPage() {
                         className="rounded text-violet-600"
                       />
                       <span className="font-bold text-slate-700">OCR ID Scanning</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editingPlan.cloudSync}
+                        onChange={(e) => setEditingPlan({ ...editingPlan, cloudSync: e.target.checked })}
+                        className="rounded text-violet-600"
+                      />
+                      <span className="font-bold text-slate-700">Cloud Mode (Sync)</span>
                     </label>
 
                     <label className="flex items-center gap-2 p-2 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer">

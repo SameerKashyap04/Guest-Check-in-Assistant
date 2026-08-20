@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -83,6 +83,13 @@ export default function SettingsScreen() {
       SubscriptionPlan.ENTERPRISE,
     ].includes(effectivePlan) ||
     planConfig.entitlements.features.includes('cloudSync');
+
+  // Ensure un-entitled plans default/fallback strictly to local storage
+  useEffect(() => {
+    if (!isCloudStorageAllowed && storageMode === 'cloud') {
+      setStorageMode('local');
+    }
+  }, [isCloudStorageAllowed, storageMode]);
 
   const handleToggleStorage = async (val: boolean) => {
     if (val && !isCloudStorageAllowed) {
@@ -272,14 +279,20 @@ export default function SettingsScreen() {
         <SettingRow
           icon="cloud"
           label="Cloud mode"
-          subtitle="Synced live across staff devices"
+          subtitle={
+            isCloudStorageAllowed
+              ? storageMode === 'cloud'
+                ? 'Synced live across staff devices'
+                : 'Offline mode active (Local storage)'
+              : 'Requires Professional plan or higher'
+          }
           onPress={() => handleToggleStorage(storageMode !== 'cloud')}
           right={
             <TouchableOpacity
               activeOpacity={0.9}
               onPress={() => handleToggleStorage(storageMode !== 'cloud')}
             >
-              <Switch on={storageMode === 'cloud'} />
+              <Switch on={isCloudStorageAllowed && storageMode === 'cloud'} />
             </TouchableOpacity>
           }
         />

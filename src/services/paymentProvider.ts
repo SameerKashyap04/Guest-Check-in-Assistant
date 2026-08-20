@@ -158,11 +158,11 @@ export class DevifyPaymentProvider implements PaymentProvider {
       const devifyApiUrl = 'https://devifypay.site';
       const devifyKey = process.env.EXPO_PUBLIC_DEVIFY_CLIENT_KEY || '';
       if (!devifyKey) throw new Error('Client key not configured');
-      const amountPaise = plan === 'ENTERPRISE' 
-        ? (billingCycle === 'yearly' ? 1999000 : 199900) 
+      const amountPaise = plan === 'MULTI_PROPERTY' || plan === 'ENTERPRISE'
+        ? (billingCycle === 'yearly' ? 1799900 : 179900) 
         : plan === 'PROFESSIONAL' 
-        ? (billingCycle === 'yearly' ? 799000 : 79900) 
-        : (billingCycle === 'yearly' ? 299900 : 500);
+        ? (billingCycle === 'yearly' ? 799900 : 79900) 
+        : (billingCycle === 'yearly' ? 349900 : 34900);
       const planName = plan === 'ENTERPRISE' ? 'Enterprise' : plan === 'PROFESSIONAL' ? 'Professional' : 'Starter';
       const idempotencyKey = `direct_${userId}_${plan}_${billingCycle}_${Date.now()}`;
 

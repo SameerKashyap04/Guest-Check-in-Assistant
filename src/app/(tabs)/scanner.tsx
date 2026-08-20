@@ -51,7 +51,7 @@ export default function ScannerScreen() {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
-  const { propertyId, ownerId } = useSettingsStore();
+  const { propertyId, ownerId, storageMode } = useSettingsStore();
   const { rooms, fetchRooms } = useRoomsStore();
 
   const [selectedDoc, setSelectedDoc] = useState<DocId>('UNKNOWN');
@@ -80,10 +80,10 @@ export default function ScannerScreen() {
         });
       },
       ownerId,
-      false
+      storageMode === 'local'
     );
     return () => unsub();
-  }, [propertyId, ownerId]);
+  }, [propertyId, ownerId, storageMode]);
 
   const startCameraScan = () => {
     if (!canUseFeature('ocrScanning')) {
