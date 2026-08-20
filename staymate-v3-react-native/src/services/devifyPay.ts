@@ -156,29 +156,49 @@ class DevifyPayService {
   }
 
   /**
-   * Polls the status of an order
+   * Polls the status of an order from Backend and Devify Pay Gateway
    */
   async checkOrderStatus(orderId: string): Promise<DevifyOrderStatus> {
+    // 1. Check Admin Backend (queries Firestore & Devify Gateway)
     try {
       const res = await fetch(`${ADMIN_BASE_URL}/api/checkout/status?orderId=${encodeURIComponent(orderId)}`);
       if (res.ok) {
         const data = await res.json();
         return {
           orderId,
-          status: data.status || 'PAID',
-          amount: data.amount,
+          status: data.status || 'PENDING',
+          amount: data.amountPaise ? data.amountPaise / 100 : undefined,
           currency: data.currency || 'INR',
           paidAt: data.paidAt,
         };
       }
     } catch (e) {
-      // Fallback
+      console.warn('[DevifyPay] Status check notice:', e);
     }
+
+    // 2. Direct Devify Pay Gateway Status check
+    try {
+      const gwRes = await fetch(`${DEVIFY_BASE_URL}/v1/orders/${encodeURIComponent(orderId)}`, {
+        headers: {
+          'X-Api-Key': DEVIFY_LIVE_KEY,
+          Authorization: `Bearer ${DEVIFY_LIVE_KEY}`,
+        },
+      });
+      if (gwRes.ok) {
+        const gwData = await gwRes.json();
+        const gwStatus = (gwData.status || gwData.order_status || '').toUpperCase();
+        const isPaid = gwStatus === 'PAID' || gwStatus === 'COMPLETED' || gwStatus === 'SUCCESS' || gwData.paid === true;
+        return {
+          orderId,
+          status: isPaid ? 'PAID' : gwStatus === 'FAILED' ? 'FAILED' : 'PENDING',
+          paidAt: gwData.paid_at,
+        };
+      }
+    } catch (_) {}
 
     return {
       orderId,
-      status: 'PAID',
-      paidAt: new Date().toISOString(),
+      status: 'PENDING',
     };
   }
 

@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
 
 // ------------------------------------------------------------------
 // CORS headers for cross-origin requests from the Expo app
@@ -41,38 +41,106 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    let orderData: any = null;
+
     // 1. Look up the live order in Firestore
     try {
       const orderDocRef = doc(db, 'subscription_orders', orderId);
       const orderSnap = await getDoc(orderDocRef);
 
       if (orderSnap.exists()) {
-        const orderData = orderSnap.data();
-        return NextResponse.json(
-          {
-            orderId: orderData.orderId,
-            status: orderData.status, // 'PENDING' | 'PAID' | 'FAILED'
-            planId: orderData.planId,
-            billingCycle: orderData.billingCycle,
-            amountPaise: orderData.amountPaise,
-            paidAt: orderData.paidAt || null,
-          },
-          { status: 200, headers: corsHeaders }
-        );
+        orderData = orderSnap.data();
+        if (orderData.status === 'PAID') {
+          return NextResponse.json(
+            {
+              orderId: orderData.orderId,
+              status: 'PAID',
+              planId: orderData.planId,
+              billingCycle: orderData.billingCycle,
+              amountPaise: orderData.amountPaise,
+              paidAt: orderData.paidAt || null,
+            },
+            { status: 200, headers: corsHeaders }
+          );
+        }
       }
     } catch (err: any) {
       console.warn('[CheckoutStatus] Firestore lookup notice:', err?.message || err);
     }
 
-    // Fallback if not found yet
+    // 2. Direct Devify Pay Gateway Status Check (fallback if webhook hasn't arrived yet)
+    try {
+      let devifyApiUrl = process.env.DEVIFY_API_URL || 'https://devifypay.site';
+      let devifyApiKey = process.env.DEVIFY_API_KEY || '';
+
+      const devifyDocSnap = await getDoc(doc(db, 'system_config', 'devify_config'));
+      if (devifyDocSnap.exists()) {
+        const cfg = devifyDocSnap.data();
+        if (cfg?.apiKey && cfg.apiKey !== 'sk_test_xxx') devifyApiKey = cfg.apiKey;
+        if (cfg?.apiUrl) devifyApiUrl = cfg.apiUrl;
+      }
+
+      if (devifyApiKey) {
+        const gatewayRes = await fetch(`${devifyApiUrl}/v1/orders/${encodeURIComponent(orderId)}`, {
+          method: 'GET',
+          headers: {
+            'X-Api-Key': devifyApiKey,
+            Authorization: `Bearer ${devifyApiKey}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (gatewayRes.ok) {
+          const gatewayData = await gatewayRes.json();
+          const gwStatus = (gatewayData.status || gatewayData.order_status || '').toUpperCase();
+          const isPaid = gwStatus === 'PAID' || gwStatus === 'COMPLETED' || gwStatus === 'SUCCESS' || gatewayData.paid === true;
+
+          if (isPaid) {
+            const paidTimestamp = gatewayData.paid_at || new Date().toISOString();
+            // Update Firestore so subsequent checks are instant
+            try {
+              const orderDocRef = doc(db, 'subscription_orders', orderId);
+              await setDoc(
+                orderDocRef,
+                {
+                  orderId,
+                  status: 'PAID',
+                  paidAt: paidTimestamp,
+                  planId: orderData?.planId || searchParams.get('planId') || 'PROFESSIONAL',
+                  billingCycle: orderData?.billingCycle || searchParams.get('billingCycle') || 'monthly',
+                  updatedAt: new Date().toISOString(),
+                },
+                { merge: true }
+              );
+            } catch (_) {}
+
+            return NextResponse.json(
+              {
+                orderId,
+                status: 'PAID',
+                planId: orderData?.planId || searchParams.get('planId') || 'PROFESSIONAL',
+                billingCycle: orderData?.billingCycle || searchParams.get('billingCycle') || 'monthly',
+                amountPaise: orderData?.amountPaise || 0,
+                paidAt: paidTimestamp,
+              },
+              { status: 200, headers: corsHeaders }
+            );
+          }
+        }
+      }
+    } catch (gwErr) {
+      console.warn('[CheckoutStatus] Direct Devify API check notice:', gwErr);
+    }
+
+    // 3. Fallback to existing Firestore status or PENDING
     return NextResponse.json(
       {
         orderId,
-        status: 'PENDING',
-        planId: searchParams.get('planId') || '',
-        billingCycle: searchParams.get('billingCycle') || '',
-        amountPaise: 0,
-        paidAt: null,
+        status: orderData?.status || 'PENDING',
+        planId: orderData?.planId || searchParams.get('planId') || '',
+        billingCycle: orderData?.billingCycle || searchParams.get('billingCycle') || '',
+        amountPaise: orderData?.amountPaise || 0,
+        paidAt: orderData?.paidAt || null,
       },
       { status: 200, headers: corsHeaders }
     );

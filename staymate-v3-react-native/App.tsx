@@ -1720,12 +1720,12 @@ function PricingOverlay({
       try {
         const orderStatus = await devifyPay.checkOrderStatus(activeCheckout.orderId);
         if (isMounted && orderStatus.status === 'PAID') {
-          handleCompletePayment();
+          handleVerifyPayment(true);
         }
       } catch (_) {}
     };
 
-    const interval = setInterval(pollStatus, 2500);
+    const interval = setInterval(pollStatus, 2000);
 
     const subscription = AppState.addEventListener('change', (nextState) => {
       if (nextState === 'active') {
@@ -1740,23 +1740,56 @@ function PricingOverlay({
     };
   }, [activeCheckout, selectedPlanDetails]);
 
-  const handleCompletePayment = async () => {
-    if (!selectedPlanDetails) return;
+  const handleVerifyPayment = async (silent = false) => {
+    if (!selectedPlanDetails || !activeCheckout) return;
     setVerifying(true);
-    // Real-time payment processing & gateway verification
-    setTimeout(() => {
+
+    try {
+      // 1. Query Devify Pay backend status
+      let orderStatus = await devifyPay.checkOrderStatus(activeCheckout.orderId);
+
+      // If pending, retry up to 2 times with a 1.2s delay for instant bank settlements
+      if (orderStatus.status !== 'PAID') {
+        await new Promise((resolve) => setTimeout(resolve, 1200));
+        orderStatus = await devifyPay.checkOrderStatus(activeCheckout.orderId);
+      }
+
+      if (orderStatus.status === 'PAID') {
+        const planName = selectedPlanDetails.name;
+        setActiveCheckout(null);
+        setSelectedPlanDetails(null);
+        setVerifying(false);
+        onSelectPlan(planName);
+        onClose();
+        Alert.alert(
+          '🎉 Subscription Activated!',
+          `Your payment of ₹${selectedPlanDetails.amount.toLocaleString('en-IN')} via Devify Pay has been verified successfully.\n\nWelcome to StayMate ${planName} plan!`,
+          [{ text: 'Great! Continue', style: 'default' }]
+        );
+        return;
+      }
+
+      // Still pending after checks
       setVerifying(false);
-      const planName = selectedPlanDetails.name;
-      setActiveCheckout(null);
-      setSelectedPlanDetails(null);
-      onSelectPlan(planName);
-      onClose();
-      Alert.alert(
-        '🎉 Subscription Activated!',
-        `Your payment of ₹${selectedPlanDetails.amount.toLocaleString('en-IN')} via Devify Pay has been verified successfully.\n\nWelcome to StayMate ${planName} plan!`,
-        [{ text: 'Great! Continue', style: 'default' }]
-      );
-    }, 1000);
+      if (!silent) {
+        Alert.alert(
+          'Payment Processing',
+          'Your transaction is being confirmed by the bank. If you completed payment in UPI/GPay, your subscription will activate automatically in a few moments.\n\nYou can also tap "I have completed payment" to check again.',
+          [
+            { text: 'Wait & Auto-Verify', style: 'cancel' },
+            {
+              text: 'Check Again',
+              onPress: () => handleVerifyPayment(false),
+            },
+          ]
+        );
+      }
+    } catch (err: any) {
+      setVerifying(false);
+      if (!silent) {
+        Alert.alert('Verification Notice', err?.message || 'Connecting to payment gateway... Please tap "I have completed payment" again in a few moments.');
+      }
+    }
   };
 
   const handleOpenUpiApp = async (app: string) => {
@@ -1973,25 +2006,48 @@ function PricingOverlay({
                   originWhitelist={['*']}
                   injectedJavaScript={`
                     (function() {
-                      function interceptUrl(url) {
+                      function checkSuccessUrl(url) {
                         if (!url) return false;
                         if (
-                          url.startsWith('upi://') ||
-                          url.startsWith('gpay://') ||
-                          url.startsWith('phonepe://') ||
-                          url.startsWith('paytmmp://') ||
-                          url.startsWith('super://') ||
-                          url.startsWith('supermoney://') ||
-                          url.startsWith('bhim://') ||
-                          url.startsWith('intent://')
+                          url.startsWith('staymate://') ||
+                          url.includes('status=PAID') ||
+                          url.includes('status=SUCCESS') ||
+                          url.includes('payment_status=success') ||
+                          url.includes('/success') ||
+                          url.includes('/confirmation') ||
+                          url.includes('order_status=paid') ||
+                          url.includes('status=completed')
                         ) {
                           if (window.ReactNativeWebView) {
-                            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'OPEN_URL', url: url }));
+                            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'PAYMENT_SUCCESS', url: url }));
                           }
                           return true;
                         }
                         return false;
                       }
+
+                      // Check current URL immediately
+                      checkSuccessUrl(window.location.href);
+
+                      // Monitor DOM for Devify Pay confirmation / success screen
+                      var successNotified = false;
+                      setInterval(function() {
+                        if (successNotified) return;
+                        var bodyText = (document.body && document.body.innerText) || '';
+                        if (
+                          bodyText.includes('Payment Successful') ||
+                          bodyText.includes('Payment Successful!') ||
+                          bodyText.includes('Payment Completed') ||
+                          bodyText.includes('Order Paid') ||
+                          bodyText.includes('Transaction Successful') ||
+                          bodyText.includes('Thank you for your payment')
+                        ) {
+                          successNotified = true;
+                          if (window.ReactNativeWebView) {
+                            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'PAYMENT_SUCCESS' }));
+                          }
+                        }
+                      }, 800);
 
                       var checkInterval = setInterval(function() {
                         if (typeof window.openUpiApp === 'function' && !window.openUpiApp._hooked) {
@@ -2016,7 +2072,9 @@ function PricingOverlay({
                   onMessage={(event) => {
                     try {
                       const data = JSON.parse(event.nativeEvent.data);
-                      if (data.type === 'OPEN_URL' && data.url) {
+                      if (data.type === 'PAYMENT_SUCCESS') {
+                        handleVerifyPayment(true);
+                      } else if (data.type === 'OPEN_URL' && data.url) {
                         let target = data.url;
                         if (target.startsWith('intent://')) {
                           target = target.replace(/^intent:\/\//, 'upi://').split('#Intent')[0];
@@ -2054,6 +2112,18 @@ function PricingOverlay({
                   }}
                   onShouldStartLoadWithRequest={(request) => {
                     const url = request.url;
+                    // Detect deep link redirects back to StayMate
+                    if (
+                      url.startsWith('staymate://') ||
+                      url.includes('status=PAID') ||
+                      url.includes('status=SUCCESS') ||
+                      url.includes('/success') ||
+                      url.includes('/confirmation') ||
+                      url.includes('order_status=paid')
+                    ) {
+                      handleVerifyPayment(true);
+                      return false;
+                    }
                     // Detect UPI and external payment schemes
                     if (
                       url.startsWith('upi://') ||
@@ -2085,12 +2155,18 @@ function PricingOverlay({
                     return true;
                   }}
                   onNavigationStateChange={(navState) => {
+                    const url = navState.url || '';
                     if (
-                      navState.url.includes('status=PAID') ||
-                      navState.url.includes('/success') ||
-                      navState.url.includes('order_status=paid')
+                      url.includes('status=PAID') ||
+                      url.includes('status=SUCCESS') ||
+                      url.includes('payment_status=success') ||
+                      url.includes('/success') ||
+                      url.includes('/confirmation') ||
+                      url.includes('order_status=paid') ||
+                      url.includes('status=completed') ||
+                      url.startsWith('staymate://')
                     ) {
-                      handleCompletePayment();
+                      handleVerifyPayment(true);
                     }
                   }}
                 />
@@ -2102,7 +2178,7 @@ function PricingOverlay({
               <PrimaryButton
                 label={verifying ? "Verifying payment..." : "I have completed payment"}
                 icon="check"
-                onPress={handleCompletePayment}
+                onPress={() => handleVerifyPayment(false)}
                 style={{height: 48}}
               />
               <View style={{flexDirection: 'row', gap: 10}}>
