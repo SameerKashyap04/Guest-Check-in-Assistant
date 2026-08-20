@@ -673,16 +673,38 @@ function SelfCheckins({
   const welcomeMessage = `🏡 *Welcome to StayMate Homestay!*\n\nPlease complete your quick guest registration & check-in online before arrival:\n🔗 ${shareUrl}\n\nWe look forward to hosting you!`;
 
   const standeeCardRef = React.useRef<View>(null);
+  const [showShareOptions, setShowShareOptions] = useState(false);
 
-  // "Share QR & Link" button: generates high-res Standee JPG image + auto-copies greeting message & link
-  const handleShareQrAndLink = async () => {
+  // Direct WhatsApp text & link share (Pre-fills message into WhatsApp chat)
+  const handleShareWhatsAppText = async () => {
+    setShowShareOptions(false);
+    const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(welcomeMessage)}`;
+    const webWhatsAppUrl = `https://wa.me/?text=${encodeURIComponent(welcomeMessage)}`;
+
     try {
-      onToast('Generating Standee Image (JPG)...');
-      
-      // Auto-copy welcome text & link to clipboard
+      const supported = await Linking.canOpenURL(whatsappUrl);
+      if (supported) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        await Linking.openURL(webWhatsAppUrl);
+      }
+      onToast('WhatsApp message opened! ✓');
+    } catch (e) {
+      await Share.share({
+        title: 'Guest Self Check-in — StayMate',
+        message: welcomeMessage,
+        url: shareUrl,
+      });
+    }
+  };
+
+  // Share high-res JPG standee poster
+  const handleShareJpgImage = async () => {
+    setShowShareOptions(false);
+    try {
+      onToast('Generating Standee Image...');
       await Clipboard.setStringAsync(welcomeMessage);
 
-      // Snapshot the standee into a high-res JPG image file
       const uri = await captureRef(standeeCardRef, {
         format: 'jpg',
         quality: 0.98,
@@ -693,25 +715,20 @@ function SelfCheckins({
       if (isAvailable && uri) {
         await Sharing.shareAsync(uri, {
           mimeType: 'image/jpeg',
-          dialogTitle: 'Guest Self Check-in Standee — StayMate',
+          dialogTitle: 'Guest Check-in Standee — StayMate',
           UTI: 'public.jpeg',
         });
-        onToast('Standee JPG ready to send! ✓');
-        return;
+        onToast('Standee Image shared! (Message copied to clipboard) ✓');
       }
-    } catch (e: any) {
-      console.warn('Capture JPG error:', e);
+    } catch (e) {
+      console.warn('Share image error:', e);
+      handleShareWhatsAppText();
     }
+  };
 
-    // Fallback: Share formatted text & link
-    try {
-      await Share.share({
-        title: 'Guest Self Check-in — StayMate',
-        message: welcomeMessage,
-        url: shareUrl,
-      });
-      onToast('Check-in link shared! ✓');
-    } catch (_) {}
+  // Main "Share QR & Link" handler: opens share picker
+  const handleShareQrAndLink = () => {
+    setShowShareOptions(true);
   };
 
   // Generate & print reception desk standee poster (PDF)
@@ -1311,6 +1328,163 @@ function SelfCheckins({
           </View>
         </Modal>
       )}
+
+      {/* Share Options Bottom Sheet */}
+      <Modal
+        visible={showShareOptions}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowShareOptions(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setShowShareOptions(false)}
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0,0,0,0.45)',
+            justifyContent: 'flex-end',
+          }}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            style={{
+              backgroundColor: '#FFFFFF',
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              padding: 24,
+              paddingBottom: 36,
+            }}
+          >
+            <View style={{ width: 40, height: 4, borderRadius: 2, backgroundColor: '#E2E8F0', alignSelf: 'center', marginBottom: 16 }} />
+            
+            <Text style={{ fontFamily: 'Inter', fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 4 }}>
+              Share Self Check-in
+            </Text>
+            <Text style={{ fontFamily: 'Inter', fontSize: 13, color: '#64748B', marginBottom: 20 }}>
+              Choose how you want to send the guest registration to your guests:
+            </Text>
+
+            {/* Option 1: WhatsApp Message & Link */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleShareWhatsAppText}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#F0FDF4',
+                borderWidth: 1.5,
+                borderColor: '#BBF7D0',
+                borderRadius: 16,
+                padding: 16,
+                marginBottom: 12,
+                gap: 14,
+              }}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: '#25D366',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="share" size={20} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'Inter', fontSize: 15, fontWeight: '700', color: '#166534' }}>
+                  Send via WhatsApp
+                </Text>
+                <Text style={{ fontFamily: 'Inter', fontSize: 12, color: '#15803D', marginTop: 2 }}>
+                  Pre-fills welcome message & check-in link in chat
+                </Text>
+              </View>
+              <Icon name="chevronRight" size={16} color="#166534" />
+            </TouchableOpacity>
+
+            {/* Option 2: Share Standee Poster Image (JPG) */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleShareJpgImage}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#FAF5FF',
+                borderWidth: 1.5,
+                borderColor: '#E9D5FF',
+                borderRadius: 16,
+                padding: 16,
+                marginBottom: 12,
+                gap: 14,
+              }}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: C.primary,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="image" size={20} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'Inter', fontSize: 15, fontWeight: '700', color: '#581C87' }}>
+                  Share QR Standee (JPG)
+                </Text>
+                <Text style={{ fontFamily: 'Inter', fontSize: 12, color: '#7E22CE', marginTop: 2 }}>
+                  High-res image poster + link auto-copied
+                </Text>
+              </View>
+              <Icon name="chevronRight" size={16} color="#581C87" />
+            </TouchableOpacity>
+
+            {/* Option 3: Print Reception Standee (PDF) */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => {
+                setShowShareOptions(false);
+                handlePrintStandee();
+              }}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                backgroundColor: '#F8FAFC',
+                borderWidth: 1.5,
+                borderColor: '#E2E8F0',
+                borderRadius: 16,
+                padding: 16,
+                gap: 14,
+              }}
+            >
+              <View
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  backgroundColor: '#64748B',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="document" size={20} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: 'Inter', fontSize: 15, fontWeight: '700', color: '#1E293B' }}>
+                  Print QR Standee (PDF)
+                </Text>
+                <Text style={{ fontFamily: 'Inter', fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                  A4 counter poster with scannable QR code
+                </Text>
+              </View>
+              <Icon name="chevronRight" size={16} color="#64748B" />
+            </TouchableOpacity>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </>
   );
 }
