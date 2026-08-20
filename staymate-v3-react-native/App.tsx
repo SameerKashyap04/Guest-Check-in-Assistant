@@ -42,6 +42,7 @@ import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import { captureRef } from 'react-native-view-shot';
 import { AddRoomModal } from './src/components/AddRoomModal';
+import { devifyPay, DevifyCheckoutResult } from './src/services/devifyPay';
 
 // Inject authentic Inter web font and typography styles on web platform
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -1644,6 +1645,100 @@ function PricingOverlay({
   onSelectPlan: (plan: string) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [activeCheckout, setActiveCheckout] = useState<DevifyCheckoutResult | null>(null);
+  const [selectedPlanDetails, setSelectedPlanDetails] = useState<{
+    name: string;
+    amount: number;
+    cycle: string;
+  } | null>(null);
+  const [verifying, setVerifying] = useState(false);
+
+  const handleChoosePlan = async (p: any) => {
+    // 1. Enterprise Plan -> Contact Sales
+    if (p.priceM === null) {
+      Alert.alert(
+        'Enterprise Plan',
+        'Contact our sales team for custom room limits, dedicated PMS integration, and tailored support.',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Email Sales',
+            onPress: () =>
+              Linking.openURL(
+                'mailto:sales@staymate.co.in?subject=StayMate%20Enterprise%20Plan%20Inquiry&body=Hello%20StayMate%20Team%2C%0A%0AI%20am%20interested%20in%20the%20Enterprise%20Plan%20for%20my%20property%20(HS-4821).'
+              ),
+          },
+        ]
+      );
+      return;
+    }
+
+    // 2. Free Plan -> Instant Switch
+    if (p.priceM === 0) {
+      onSelectPlan('Free');
+      onClose();
+      return;
+    }
+
+    // 3. Paid Plans -> Devify Pay Checkout Flow
+    const amount = billing ? (p.priceY ?? p.priceM * 10) : p.priceM;
+    const cycle = billing ? 'yearly' : 'monthly';
+
+    setIsCheckingOut(true);
+    setSelectedPlanDetails({ name: p.name, amount, cycle });
+
+    try {
+      const checkout = await devifyPay.createCheckout({
+        planName: p.name,
+        billingCycle: cycle as any,
+        amount,
+        userEmail: 'owner@sunrisehomestay.com',
+        userId: 'HS-4821',
+      });
+
+      setActiveCheckout(checkout);
+      await devifyPay.openCheckoutUrl(checkout.checkoutUrl);
+    } catch (e: any) {
+      Alert.alert('Checkout Error', e?.message || 'Failed to start Devify Pay checkout');
+    } finally {
+      setIsCheckingOut(false);
+    }
+  };
+
+  const handleVerifyPayment = async () => {
+    if (!activeCheckout || !selectedPlanDetails) return;
+    setVerifying(true);
+    try {
+      const status = await devifyPay.checkOrderStatus(activeCheckout.orderId);
+      if (status.status === 'PAID') {
+        const planName = selectedPlanDetails.name;
+        setActiveCheckout(null);
+        setSelectedPlanDetails(null);
+        onSelectPlan(planName);
+        onClose();
+        Alert.alert(
+          '🎉 Subscription Activated!',
+          `Your payment via Devify Pay has been verified. Welcome to StayMate ${planName} plan!`,
+          [{ text: 'Continue', style: 'default' }]
+        );
+      } else {
+        Alert.alert(
+          'Payment Pending',
+          'We have not received payment confirmation yet. If you have completed payment, please wait a moment and verify again.',
+          [
+            { text: 'Re-open Checkout', onPress: () => devifyPay.openCheckoutUrl(activeCheckout.checkoutUrl) },
+            { text: 'OK' },
+          ]
+        );
+      }
+    } catch (e: any) {
+      Alert.alert('Verification', 'Could not check status right now. Please try again.');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   return (
     <View style={[ms.overlayContainer, {paddingTop: insets.top}]}>
       <View style={ms.overlayHeader}>
@@ -1713,15 +1808,27 @@ function PricingOverlay({
                 <View style={{marginTop: 14}}>
                   {isFeatured ? (
                     <PrimaryButton
-                      label={p.priceM === null ? 'Contact sales' : 'Choose plan'}
+                      label={
+                        isCheckingOut && selectedPlanDetails?.name === p.name
+                          ? 'Starting Devify Pay...'
+                          : p.priceM === null
+                          ? 'Contact sales'
+                          : 'Choose plan (Devify Pay)'
+                      }
                       style={{height: 44}}
-                      onPress={() => onSelectPlan(p.name)}
+                      onPress={() => handleChoosePlan(p)}
                     />
                   ) : (
                     <SecondaryButton
-                      label={p.priceM === null ? 'Contact sales' : 'Choose plan'}
+                      label={
+                        isCheckingOut && selectedPlanDetails?.name === p.name
+                          ? 'Starting Devify Pay...'
+                          : p.priceM === null
+                          ? 'Contact sales'
+                          : 'Choose plan'
+                      }
                       style={{height: 44}}
-                      onPress={() => onSelectPlan(p.name)}
+                      onPress={() => handleChoosePlan(p)}
                     />
                   )}
                 </View>
@@ -1730,6 +1837,83 @@ function PricingOverlay({
           })}
         </View>
       </ScrollView>
+
+      {/* Devify Pay Checkout Verification Sub-Sheet */}
+      {activeCheckout && selectedPlanDetails && (
+        <Modal visible transparent animationType="slide">
+          <View style={ms.sheetScrim}>
+            <View style={[ms.sheet, {paddingBottom: 28}]}>
+              <View style={ms.handle}/>
+              <View style={ms.sheetHeaderBar}>
+                <Text style={ms.sheetHeaderTitle}>Devify Pay Checkout</Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setActiveCheckout(null)}
+                  style={ms.sheetCloseBtnRelative}
+                >
+                  <Icon name="x" size={16} color={C.ink}/>
+                </TouchableOpacity>
+              </View>
+
+              <View style={{paddingHorizontal: 20}}>
+                <View style={{alignItems: 'center', marginVertical: 12}}>
+                  <View style={{width: 52, height: 52, borderRadius: 26, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center', marginBottom: 8}}>
+                    <Icon name="shield" size={26} color={C.primary}/>
+                  </View>
+                  <Text style={[ms.titleMd, {fontWeight: '700'}]}>
+                    {selectedPlanDetails.name} Plan
+                  </Text>
+                  <Text style={[ms.bodySm, {marginTop: 2}]}>
+                    {selectedPlanDetails.cycle === 'yearly' ? 'Annual Billing (15% Savings)' : 'Monthly Billing'}
+                  </Text>
+                  <Text style={{fontFamily: 'Inter', fontSize: 24, fontWeight: '800', color: '#1E293B', marginTop: 8}}>
+                    ₹{selectedPlanDetails.amount.toLocaleString('en-IN')}
+                  </Text>
+                </View>
+
+                <View style={[ms.card, {gap: 8, padding: 12, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', marginBottom: 16}]}>
+                  <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                    <Text style={ms.bodySm}>Order ID</Text>
+                    <Text style={[ms.titleSm, {fontSize: 13, fontFamily: 'monospace'}]}>{activeCheckout.orderId}</Text>
+                  </View>
+                  <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                    <Text style={ms.bodySm}>Payment Gateway</Text>
+                    <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>Devify Pay (UPI / Cards)</Text>
+                  </View>
+                  <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                    <Text style={ms.bodySm}>Status</Text>
+                    <Text style={[ms.titleSm, {color: '#D97706', fontWeight: '700'}]}>⏳ Awaiting Payment</Text>
+                  </View>
+                </View>
+
+                <PrimaryButton
+                  label={verifying ? "Verifying..." : "I have completed payment ✓"}
+                  icon="check"
+                  onPress={handleVerifyPayment}
+                  style={{height: 48, marginBottom: 10}}
+                />
+
+                <SecondaryButton
+                  label="Re-open Payment Page ↗"
+                  icon="globe"
+                  onPress={() => devifyPay.openCheckoutUrl(activeCheckout.checkoutUrl)}
+                  style={{height: 44, marginBottom: 10}}
+                />
+
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => setActiveCheckout(null)}
+                  style={{alignItems: 'center', paddingVertical: 8}}
+                >
+                  <Text style={{fontFamily: 'Inter', fontSize: 13, fontWeight: '600', color: '#64748B'}}>
+                    Cancel & choose different plan
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
