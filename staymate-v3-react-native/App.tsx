@@ -669,49 +669,186 @@ function SelfCheckins({
   ]);
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(shareUrl)}`;
 
-  // Share actual QR image file (to WhatsApp, Save to Photos, AirDrop, Messages)
-  const handleShareQrImage = async () => {
+  // Unified "Share QR & Link" button: generates reception standee document + text & link, ready to share anywhere
+  const handleShareQrAndLink = async () => {
     try {
-      onToast('Preparing QR Code image...');
-      const file = new File(Paths.cache, 'staymate-checkin-qr.png');
-      await File.downloadFileAsync(qrImageUrl, file);
+      onToast('Generating QR Standee...');
 
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Guest Check-in QR — StayMate Homestay</title>
+          <style>
+            @page { size: A4 portrait; margin: 15mm; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              text-align: center;
+              padding: 24px;
+              color: #1E293B;
+              background-color: #F8FAFC;
+              margin: 0;
+            }
+            .container {
+              border: 3px solid #7C3AED;
+              border-radius: 28px;
+              padding: 40px 30px;
+              max-width: 520px;
+              margin: 0 auto;
+              background: #FFFFFF;
+              box-shadow: 0 10px 25px rgba(124, 58, 237, 0.1);
+            }
+            .badge {
+              display: inline-block;
+              background: #EDE9FE;
+              color: #7C3AED;
+              font-weight: 800;
+              font-size: 13px;
+              padding: 6px 18px;
+              border-radius: 20px;
+              margin-bottom: 14px;
+              letter-spacing: 0.5px;
+              text-transform: uppercase;
+            }
+            h1 {
+              font-size: 32px;
+              font-weight: 800;
+              margin: 0 0 6px 0;
+              color: #0F172A;
+            }
+            .sub {
+              font-size: 15px;
+              color: #64748B;
+              margin-bottom: 24px;
+            }
+            .qr-frame {
+              display: inline-block;
+              padding: 16px;
+              background: #FAF5FF;
+              border: 2px dashed #7C3AED;
+              border-radius: 24px;
+              margin-bottom: 20px;
+            }
+            .qr-img {
+              width: 220px;
+              height: 220px;
+              display: block;
+              border-radius: 12px;
+            }
+            .prop-id {
+              font-size: 13px;
+              font-weight: 800;
+              color: #7C3AED;
+              margin-top: 10px;
+              letter-spacing: 1px;
+            }
+            .link-box {
+              background: #F1F5F9;
+              padding: 10px 16px;
+              border-radius: 12px;
+              font-size: 12px;
+              color: #475569;
+              word-break: break-all;
+              margin: 16px 0 24px 0;
+            }
+            .steps {
+              display: flex;
+              justify-content: space-around;
+              margin-top: 20px;
+              border-top: 1px solid #E2E8F0;
+              padding-top: 20px;
+            }
+            .step-item { flex: 1; padding: 0 6px; }
+            .step-num {
+              width: 32px;
+              height: 32px;
+              line-height: 32px;
+              border-radius: 50%;
+              background: #7C3AED;
+              color: #fff;
+              font-weight: 800;
+              font-size: 14px;
+              margin: 0 auto 6px auto;
+            }
+            .step-text {
+              font-size: 12px;
+              font-weight: 600;
+              color: #475569;
+            }
+            .footer {
+              margin-top: 24px;
+              font-size: 12px;
+              color: #94A3B8;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="badge">Self Check-in Portal</div>
+            <h1>StayMate Homestay</h1>
+            <p class="sub">Scan with your phone camera to register & check in online</p>
+
+            <div class="qr-frame">
+              <img class="qr-img" src="${qrImageUrl}" alt="Check-in QR Code" />
+              <div class="prop-id">PROPERTY ID: HS-4821</div>
+            </div>
+
+            <div class="link-box">
+              <strong>Check-in Link:</strong><br/>
+              ${shareUrl}
+            </div>
+
+            <div class="steps">
+              <div class="step-item">
+                <div class="step-num">1</div>
+                <div class="step-text">Scan QR with camera</div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">2</div>
+                <div class="step-text">Fill details & upload ID</div>
+              </div>
+              <div class="step-item">
+                <div class="step-num">3</div>
+                <div class="step-text">Collect room key</div>
+              </div>
+            </div>
+
+            <div class="footer">
+              Powered by StayMate · Fast & Secure Digital Check-in
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      
       const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable && file.uri) {
-        await Sharing.shareAsync(file.uri, {
-          mimeType: 'image/png',
-          dialogTitle: 'Share Guest Check-in QR Code',
-          UTI: 'public.png',
+      if (isAvailable && uri) {
+        await Sharing.shareAsync(uri, {
+          UTI: 'com.adobe.pdf',
+          mimeType: 'application/pdf',
+          dialogTitle: 'Guest Self Check-in QR Standee — StayMate',
         });
-        onToast('QR Code shared! ✓');
+        onToast('QR Standee shared! ✓');
         return;
       }
-    } catch (err: any) {
-      console.warn('Image share error:', err);
-      // Fallback: Generate printable standee with QR code
-      handlePrintStandee();
+    } catch (e: any) {
+      console.warn('Share Standee error:', e);
     }
-  };
 
-  // Direct WhatsApp text & link share
-  const handleShareWhatsApp = async () => {
-    const message = `🏡 *Welcome to StayMate Homestay!*\n\nPlease complete your quick guest registration online before arrival:\n🔗 ${shareUrl}\n\nWe look forward to hosting you!`;
-    const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(message)}`;
-    const webWhatsAppUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-
+    // Fallback: Share formatted text & link if standee sharing is unavailable
     try {
-      const supported = await Linking.canOpenURL(whatsappUrl);
-      if (supported) {
-        await Linking.openURL(whatsappUrl);
-      } else {
-        await Linking.openURL(webWhatsAppUrl);
-      }
-    } catch (e) {
+      const message = `🏡 *Welcome to StayMate Homestay!*\n\nPlease complete your quick guest registration online before arrival:\n🔗 ${shareUrl}\n\nWe look forward to hosting you!`;
       await Share.share({
         title: 'Guest Self Check-in — StayMate',
         message,
         url: shareUrl,
       });
+      onToast('Check-in link shared! ✓');
+    } catch (err) {
+      onToast('Link ready to share');
     }
   };
 
@@ -724,61 +861,6 @@ function SelfCheckins({
       setTimeout(() => setCopied(false), 2500);
     } catch (e) {
       onToast('Link: ' + shareUrl);
-    }
-  };
-
-  // Print reception standee poster
-  const handlePrintStandee = async () => {
-    try {
-      onToast('Generating Reception Standee...');
-      const htmlContent = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Guest Check-in QR — StayMate Homestay</title>
-          <style>
-            @page { size: A4 portrait; margin: 20mm; }
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; padding: 20px; color: #222; }
-            .container { border: 3px solid #7C3AED; border-radius: 24px; padding: 40px 30px; max-width: 540px; margin: 0 auto; }
-            .badge { display: inline-block; background: #EDE9FE; color: #7C3AED; font-weight: 700; font-size: 14px; padding: 6px 16px; border-radius: 20px; margin-bottom: 12px; }
-            h1 { font-size: 30px; font-weight: 800; margin: 0 0 8px 0; }
-            .sub { font-size: 15px; color: #6A6A6A; margin-bottom: 24px; }
-            .qr-frame { display: inline-block; padding: 16px; background: #FAF8FD; border: 2px dashed #7C3AED; border-radius: 20px; margin-bottom: 20px; }
-            .qr-img { width: 220px; height: 220px; display: block; }
-            .prop-id { font-size: 13px; font-weight: 700; color: #7C3AED; margin-top: 8px; letter-spacing: 1px; }
-            .steps { display: flex; justify-content: space-around; margin-top: 24px; border-top: 1px solid #ECEAF0; padding-top: 20px; }
-            .step-item { flex: 1; padding: 0 8px; }
-            .step-num { width: 30px; height: 30px; line-height: 30px; border-radius: 50%; background: #7C3AED; color: #fff; font-weight: 700; font-size: 13px; margin: 0 auto 6px auto; }
-            .step-text { font-size: 12px; font-weight: 600; color: #6A6A6A; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="badge">Self Check-in Portal</div>
-            <h1>StayMate Homestay</h1>
-            <p class="sub">Scan with your smartphone camera to register & check in</p>
-            <div class="qr-frame">
-              <img class="qr-img" src="${qrImageUrl}" alt="Check-in QR" />
-              <div class="prop-id">PROPERTY ID: HS-4821</div>
-            </div>
-            <div class="steps">
-              <div class="step-item"><div class="step-num">1</div><div class="step-text">Scan QR with camera</div></div>
-              <div class="step-item"><div class="step-num">2</div><div class="step-text">Fill details & upload ID</div></div>
-              <div class="step-item"><div class="step-num">3</div><div class="step-text">Collect room key</div></div>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
-      const { uri } = await Print.printToFileAsync({ html: htmlContent });
-      await Sharing.shareAsync(uri, {
-        UTI: 'com.adobe.pdf',
-        mimeType: 'application/pdf',
-        dialogTitle: 'Reception QR Standee',
-      });
-    } catch (e: any) {
-      console.warn('Print standee error:', e);
     }
   };
 
@@ -827,7 +909,7 @@ function SelfCheckins({
           <View style={[ms.qrBox, {backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#E9D5FF', padding: 8}]}>
             <Image
               source={{ uri: qrImageUrl }}
-              style={{ width: 150, height: 150, borderRadius: 8 }}
+              style={{ width: 140, height: 140, borderRadius: 8 }}
               resizeMode="contain"
             />
           </View>
@@ -836,13 +918,13 @@ function SelfCheckins({
             {shareUrl}
           </Text>
 
-          {/* Primary Actions Grid */}
+          {/* Action Buttons (Unified) */}
           <View style={{flexDirection: 'row', gap: 8, marginTop: 12, width: '100%'}}>
             <PrimaryButton
-              label="Share QR Image"
-              icon="image"
+              label="Share QR & Link"
+              icon="share"
               style={{flex: 1}}
-              onPress={handleShareQrImage}
+              onPress={handleShareQrAndLink}
             />
             <SecondaryButton
               label={copied ? "Copied! ✓" : "Copy link"}
@@ -850,51 +932,6 @@ function SelfCheckins({
               style={{flex: 1}}
               onPress={handleCopy}
             />
-          </View>
-
-          {/* WhatsApp & Print Standee Actions */}
-          <View style={{flexDirection: 'row', gap: 8, marginTop: 8, width: '100%'}}>
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={handleShareWhatsApp}
-              style={{
-                flex: 1,
-                height: 42,
-                borderRadius: 12,
-                backgroundColor: '#25D366',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-              }}
-            >
-              <Icon name="share" size={15} color="#fff" />
-              <Text style={{fontFamily: 'Inter', fontSize: 13, fontWeight: '700', color: '#fff'}}>
-                Send on WhatsApp
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={handlePrintStandee}
-              style={{
-                flex: 1,
-                height: 42,
-                borderRadius: 12,
-                backgroundColor: '#EDE9FE',
-                borderWidth: 1,
-                borderColor: '#DDD6FE',
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-              }}
-            >
-              <Icon name="document" size={15} color={C.primary} />
-              <Text style={{fontFamily: 'Inter', fontSize: 13, fontWeight: '700', color: C.primary}}>
-                Print QR Standee
-              </Text>
-            </TouchableOpacity>
           </View>
 
           {/* Preview in Browser */}
