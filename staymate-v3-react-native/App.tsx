@@ -8,6 +8,10 @@ import {
   StyleSheet,
   TextInput,
   Platform,
+  Image,
+  Share,
+  Alert,
+  Linking,
 } from 'react-native';
 import {SafeAreaProvider, SafeAreaView, initialWindowMetrics, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {StatusBar} from 'expo-status-bar';
@@ -276,7 +280,7 @@ function MainApp() {
                   () => notify('Guest approved for online check-in')
                 );
               }}
-              onShare={() => notify('Self check-in link copied')}
+              onToast={notify}
             />
           </Sheet>
         </Modal>
@@ -645,11 +649,40 @@ function GuestSheet({
 
 function SelfCheckins({
   onReview,
-  onShare,
+  onToast,
 }: {
   onReview: (id: number) => void;
-  onShare: () => void;
+  onToast: (msg: string) => void;
 }) {
+  const [pendingList, setPendingList] = useState([...SELF_CHECKINS]);
+  const [copied, setCopied] = useState(false);
+  const shareUrl = SELF_CHECKIN_URL || 'https://staymate.app/checkin/HS-4821';
+  const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(shareUrl)}`;
+
+  const handleShare = async () => {
+    try {
+      await Share.share({
+        title: 'Guest Self Check-in — StayMate',
+        message: `Welcome to our property! Please complete your quick guest registration online before arrival:\n🔗 ${shareUrl}`,
+        url: shareUrl,
+      });
+      onToast('Sharing check-in link');
+    } catch (e) {
+      onToast('Link ready to share');
+    }
+  };
+
+  const handleCopy = () => {
+    setCopied(true);
+    onToast('Self check-in link copied to clipboard! ✓');
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleApprove = (g: any) => {
+    setPendingList((prev) => prev.filter((item) => item.id !== g.id));
+    onToast(`✓ ${g.name} approved for Room ${g.room}!`);
+  };
+
   return (
     <ScrollView
       contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 28}}
@@ -662,25 +695,29 @@ function SelfCheckins({
 
       {/* QR Card */}
       <View style={ms.qrCard}>
-        <View style={ms.qrBox}>
-          <Icon name="qr" size={96} color="#111827"/>
+        <View style={[ms.qrBox, {backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#E9D5FF', padding: 8}]}>
+          <Image
+            source={{ uri: qrImageUrl }}
+            style={{ width: 140, height: 140, borderRadius: 8 }}
+            resizeMode="contain"
+          />
         </View>
         <Text style={ms.titleSm}>Guest self check-in link</Text>
         <Text style={[ms.bodySm, {marginTop: 4, textAlign: 'center'}]}>
-          {SELF_CHECKIN_URL}
+          {shareUrl}
         </Text>
         <View style={{flexDirection: 'row', gap: 8, marginTop: 12, width: '100%'}}>
           <PrimaryButton
             label="Share QR & Link"
             icon="share"
             style={{flex: 1}}
-            onPress={onShare}
+            onPress={handleShare}
           />
           <SecondaryButton
-            label="Copy link"
-            icon="copy"
+            label={copied ? "Copied! ✓" : "Copy link"}
+            icon={copied ? "check" : "copy"}
             style={{flex: 1}}
-            onPress={onShare}
+            onPress={handleCopy}
           />
         </View>
       </View>
@@ -692,41 +729,49 @@ function SelfCheckins({
           <Text style={ms.bodySm}>Review guest information before check-in.</Text>
         </View>
         <View style={ms.badgePurple}>
-          <Text style={ms.badgePurpleText}>2 pending</Text>
+          <Text style={ms.badgePurpleText}>{pendingList.length} pending</Text>
         </View>
       </View>
 
-      {SELF_CHECKINS.map((g) => (
-        <View key={g.id} style={ms.pendingCard}>
-          <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-            <View style={{minWidth: 0}}>
-              <Text style={ms.titleSm}>{g.name}</Text>
-              <Text style={ms.bodySm}>
-                Room {g.room} · {g.submitted}
-              </Text>
-            </View>
-            <View style={ms.badgeSoft}>
-              <Text style={ms.badgeSoftText}>Pending</Text>
-            </View>
-          </View>
-          <View style={ms.cardDivider}/>
-          <Text style={ms.bodySm}>{g.doc}</Text>
-          <Text style={[ms.bodySm, {marginTop: 3}]}>{g.phone}</Text>
-          <View style={{flexDirection: 'row', gap: 8, marginTop: 12}}>
-            <SecondaryButton
-              label="Review"
-              style={{flex: 1}}
-              onPress={() => onReview(g.id)}
-            />
-            <PrimaryButton
-              label="Approve"
-              icon="check"
-              style={{flex: 1}}
-              onPress={() => onReview(g.id)}
-            />
-          </View>
+      {pendingList.length === 0 ? (
+        <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+          <Icon name="check" size={28} color={C.emerald} />
+          <Text style={[ms.titleSm, { marginTop: 8 }]}>All check-ins processed!</Text>
+          <Text style={[ms.bodySm, { marginTop: 2 }]}>Share your QR code with new arriving guests.</Text>
         </View>
-      ))}
+      ) : (
+        pendingList.map((g) => (
+          <View key={g.id} style={ms.pendingCard}>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+              <View style={{minWidth: 0}}>
+                <Text style={ms.titleSm}>{g.name}</Text>
+                <Text style={ms.bodySm}>
+                  Room {g.room} · {g.submitted}
+                </Text>
+              </View>
+              <View style={ms.badgeSoft}>
+                <Text style={ms.badgeSoftText}>Pending</Text>
+              </View>
+            </View>
+            <View style={ms.cardDivider}/>
+            <Text style={ms.bodySm}>{g.doc}</Text>
+            <Text style={[ms.bodySm, {marginTop: 3}]}>{g.phone}</Text>
+            <View style={{flexDirection: 'row', gap: 8, marginTop: 12}}>
+              <SecondaryButton
+                label="Review"
+                style={{flex: 1}}
+                onPress={() => onReview(g.id)}
+              />
+              <PrimaryButton
+                label="Approve"
+                icon="check"
+                style={{flex: 1}}
+                onPress={() => handleApprove(g)}
+              />
+            </View>
+          </View>
+        ))
+      )}
     </ScrollView>
   );
 }
