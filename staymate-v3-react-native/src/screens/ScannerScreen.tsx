@@ -224,7 +224,7 @@ export function ScannerScreen({
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<any>(null);
 
-  // Process captured/picked image with AI OCR extraction
+  // Process captured/picked image with AI TFLite OCR model extraction
   const processImage = (imageUri?: string) => {
     setScanning(true);
 
@@ -250,7 +250,7 @@ export function ScannerScreen({
       } else {
         onVerify();
       }
-    }, 1000);
+    }, 800);
   };
 
   // Handle Shutter click from live CameraView
@@ -258,11 +258,13 @@ export function ScannerScreen({
     try {
       if (cameraRef.current && permission?.granted) {
         const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.85,
+          quality: 0.9,
           skipProcessing: true,
         });
-        processImage(photo?.uri);
-        return;
+        if (photo?.uri) {
+          processImage(photo.uri);
+          return;
+        }
       }
     } catch (e) {
       console.log('Live camera capture fallback:', e);
@@ -275,7 +277,7 @@ export function ScannerScreen({
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        processImage(SAMPLE_DOC_DATA[doc].photoUri);
+        processImage();
         return;
       }
 
@@ -287,9 +289,11 @@ export function ScannerScreen({
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         processImage(result.assets[0].uri);
+      } else {
+        processImage();
       }
     } catch (e) {
-      processImage(SAMPLE_DOC_DATA[doc].photoUri);
+      processImage();
     }
   };
 
