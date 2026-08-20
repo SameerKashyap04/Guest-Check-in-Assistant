@@ -39,15 +39,22 @@ class DevifyPayService {
    * Initiates a real Devify Pay checkout session
    */
   async createCheckout(params: DevifyCheckoutParams): Promise<DevifyCheckoutResult> {
-    const { planName, billingCycle, amount, userEmail = 'owner@sunrisehomestay.com', userId = 'HS-4821' } = params;
-    const planIdKey = planName.toUpperCase().replace(/\s+/g, '_');
+    const normalizePlanId = (name: string): string => {
+      const upper = name.toUpperCase().trim();
+      if (upper.includes('MULTI')) return 'MULTI_PROPERTY';
+      if (upper.includes('PROFESSIONAL') || upper.includes('PRO')) return 'PROFESSIONAL';
+      if (upper.includes('STARTER') || upper.includes('START')) return 'STARTER';
+      return upper.replace(/[^A-Z0-9]/g, '_');
+    };
+
+    const planIdKey = normalizePlanId(planName);
     const amountPaise = amount * 100;
     const idempotencyKey = `devify_${userId}_${planIdKey}_${billingCycle}_${Date.now()}`;
 
     // 1. Try Admin Backend Checkout API
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       const res = await fetch(`${ADMIN_BASE_URL}/api/checkout`, {
         method: 'POST',
@@ -56,7 +63,6 @@ class DevifyPayService {
           planId: planIdKey,
           planName,
           billingCycle,
-          amount: amountPaise,
           userId,
           userEmail,
         }),
@@ -74,6 +80,9 @@ class DevifyPayService {
             isSandbox: Boolean(data.isSandbox),
           };
         }
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        console.warn('[DevifyPay] Admin backend checkout error:', errJson);
       }
     } catch (err: any) {
       console.warn('[DevifyPay] Admin backend notice:', err?.message || err);

@@ -1875,18 +1875,28 @@ function PricingOverlay({
       {/* Devify Pay In-App WebView Checkout Modal */}
       {activeCheckout && selectedPlanDetails && (
         <Modal visible animationType="slide" onRequestClose={() => setActiveCheckout(null)}>
-          <SafeAreaView style={{flex: 1, backgroundColor: '#FAF8FD'}}>
-            {/* Header Bar */}
-            <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#ECEAF0', backgroundColor: '#fff'}}>
-              <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
-                <View style={{width: 32, height: 32, borderRadius: 16, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center'}}>
-                  <Icon name="shield" size={18} color={C.primary}/>
+          <View style={{flex: 1, backgroundColor: '#FAF8FD'}}>
+            {/* Header Bar with Safe Notch Offset */}
+            <View style={{
+              paddingTop: Math.max(20, insets.top + 8),
+              paddingBottom: 14,
+              paddingHorizontal: 16,
+              backgroundColor: '#fff',
+              borderBottomWidth: 1,
+              borderBottomColor: '#ECEAF0',
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}>
+              <View style={{flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1}}>
+                <View style={{width: 36, height: 36, borderRadius: 18, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center'}}>
+                  <Icon name="shield" size={19} color={C.primary}/>
                 </View>
-                <View>
-                  <Text style={{fontFamily: 'Inter', fontSize: 15, fontWeight: '700', color: '#1E293B'}}>
+                <View style={{flex: 1}}>
+                  <Text style={{fontFamily: 'Inter', fontSize: 15.5, fontWeight: '700', color: '#1E293B'}}>
                     Devify Pay Checkout
                   </Text>
-                  <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '500', color: '#64748B'}}>
+                  <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '500', color: '#64748B', marginTop: 1}}>
                     {selectedPlanDetails.name} Plan · ₹{selectedPlanDetails.amount.toLocaleString('en-IN')} ({selectedPlanDetails.cycle === 'yearly' ? 'Annual' : 'Monthly'})
                   </Text>
                 </View>
@@ -1894,9 +1904,9 @@ function PricingOverlay({
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setActiveCheckout(null)}
-                style={{width: 32, height: 32, borderRadius: 16, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center'}}
+                style={{width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center', marginLeft: 10}}
               >
-                <Icon name="x" size={16} color={C.ink}/>
+                <Icon name="x" size={17} color={C.ink}/>
               </TouchableOpacity>
             </View>
 
@@ -1931,35 +1941,35 @@ function PricingOverlay({
             </View>
 
             {/* Bottom Action Toolbar */}
-            <View style={{padding: 16, paddingBottom: Math.max(16, insets.bottom + 8), backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#ECEAF0', gap: 8}}>
+            <View style={{padding: 16, paddingBottom: Math.max(20, insets.bottom + 12), backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#ECEAF0', gap: 10}}>
               <PrimaryButton
-                label={verifying ? "Verifying payment..." : "I have completed payment ✓"}
+                label={verifying ? "Verifying payment..." : "I have completed payment"}
                 icon="check"
                 onPress={handleCompletePayment}
-                style={{height: 46}}
+                style={{height: 48}}
               />
               <View style={{flexDirection: 'row', gap: 10}}>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => Linking.openURL(activeCheckout.checkoutUrl)}
-                  style={{flex: 1, height: 40, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center'}}
+                  style={{flex: 1, height: 42, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center'}}
                 >
-                  <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '600', color: '#334155'}}>
+                  <Text style={{fontFamily: 'Inter', fontSize: 13, fontWeight: '600', color: '#334155'}}>
                     Open in Browser ↗
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setActiveCheckout(null)}
-                  style={{flex: 1, height: 40, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center'}}
+                  style={{flex: 1, height: 42, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center'}}
                 >
-                  <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '600', color: '#64748B'}}>
+                  <Text style={{fontFamily: 'Inter', fontSize: 13, fontWeight: '600', color: '#64748B'}}>
                     Cancel
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
-          </SafeAreaView>
+          </View>
         </Modal>
       )}
     </View>
