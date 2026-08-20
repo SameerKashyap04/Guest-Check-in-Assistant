@@ -12,6 +12,7 @@
   "dependencies": {
     "@expo-google-fonts/inter": "^0.4.2",
     "@expo/metro-runtime": "~6.1.2",
+    "@react-native-ml-kit/text-recognition": "^2.0.0",
     "expo": "~54.0.37",
     "expo-camera": "~17.0.10",
     "expo-clipboard": "~8.0.8",
