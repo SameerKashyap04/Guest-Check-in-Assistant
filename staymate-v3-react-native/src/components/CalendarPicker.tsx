@@ -16,6 +16,11 @@ const MONTHS = [
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
+const SHORT_MONTHS = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+];
+
 const SHORT_DAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
 interface CalendarPickerProps {
@@ -50,7 +55,7 @@ export function CalendarPicker({
   const [viewYear, setViewYear] = useState(parsed.getFullYear());
   const [viewMonth, setViewMonth] = useState(parsed.getMonth());
   const [selectedDate, setSelectedDate] = useState<string>(value || formatISO(new Date()));
-  const [yearPickerOpen, setYearPickerOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'calendar' | 'year' | 'month'>('calendar');
 
   useEffect(() => {
     if (value) {
@@ -104,9 +109,29 @@ export function CalendarPicker({
     setSelectedDate(iso);
   };
 
+  const handleSelectYear = (yr: number) => {
+    setViewYear(yr);
+    // After selecting year, smoothly prompt to select month
+    setViewMode('month');
+  };
+
+  const handleSelectMonth = (mIndex: number) => {
+    setViewMonth(mIndex);
+    // Update selected date with new month & year while preserving or adjusting day
+    const maxDays = new Date(viewYear, mIndex + 1, 0).getDate();
+    const currentDay = Number(selectedDate.split('-')[2]) || 1;
+    const adjustedDay = Math.min(currentDay, maxDays);
+    const mStr = String(mIndex + 1).padStart(2, '0');
+    const dStr = String(adjustedDay).padStart(2, '0');
+    setSelectedDate(`${viewYear}-${mStr}-${dStr}`);
+    // Transition back to calendar view
+    setViewMode('calendar');
+  };
+
   const handleConfirm = () => {
     onChange(selectedDate);
     setModalVisible(false);
+    setViewMode('calendar');
   };
 
   const handlePreset = (daysOffset: number) => {
@@ -118,6 +143,7 @@ export function CalendarPicker({
     setViewMonth(target.getMonth());
     onChange(iso);
     setModalVisible(false);
+    setViewMode('calendar');
   };
 
   // Calendar math
@@ -136,7 +162,10 @@ export function CalendarPicker({
       {label && <Text style={s.fieldLabel}>{label}</Text>}
       <TouchableOpacity
         activeOpacity={0.8}
-        onPress={() => setModalVisible(true)}
+        onPress={() => {
+          setViewMode('calendar');
+          setModalVisible(true);
+        }}
         style={s.fieldTrigger}
       >
         <View style={s.triggerLeft}>
@@ -166,7 +195,10 @@ export function CalendarPicker({
                 </Text>
               </View>
               <TouchableOpacity
-                onPress={() => setModalVisible(false)}
+                onPress={() => {
+                  setModalVisible(false);
+                  setViewMode('calendar');
+                }}
                 style={s.closeBtn}
                 activeOpacity={0.7}
               >
@@ -175,7 +207,7 @@ export function CalendarPicker({
             </View>
 
             {/* Quick Presets for Stay dates */}
-            {mode === 'stay' && (
+            {mode === 'stay' && viewMode === 'calendar' && (
               <View style={s.presetRow}>
                 <TouchableOpacity onPress={() => handlePreset(0)} style={s.presetBtn} activeOpacity={0.75}>
                   <Text style={s.presetText}>Today</Text>
@@ -192,56 +224,107 @@ export function CalendarPicker({
               </View>
             )}
 
-            {/* Month & Year Navigation */}
-            <View style={s.monthNavRow}>
-              <TouchableOpacity
-                onPress={() => setYearPickerOpen(!yearPickerOpen)}
-                style={s.monthYearBtn}
-                activeOpacity={0.75}
-              >
-                <Text style={s.monthYearText}>
-                  {MONTHS[viewMonth]} {viewYear}
-                </Text>
-                <Icon name="chevronDown" size={14} color={C.ink} />
-              </TouchableOpacity>
-
-              <View style={{flexDirection: 'row', gap: 6}}>
-                <TouchableOpacity onPress={handlePrevMonth} style={s.navArrow} activeOpacity={0.75}>
-                  <Icon name="chevronLeft" size={16} color={C.ink} />
+            {/* Quick Mode Switcher Tabs */}
+            <View style={s.navBar}>
+              <View style={s.tabsGroup}>
+                <TouchableOpacity
+                  onPress={() => setViewMode(viewMode === 'month' ? 'calendar' : 'month')}
+                  style={[s.tabPill, viewMode === 'month' && s.tabPillActive]}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[s.tabPillText, viewMode === 'month' && s.tabPillTextActive]}>
+                    {MONTHS[viewMonth]}
+                  </Text>
+                  <Icon name="chevronDown" size={12} color={viewMode === 'month' ? '#ffffff' : C.ink} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={handleNextMonth} style={s.navArrow} activeOpacity={0.75}>
-                  <Icon name="chevronRight" size={16} color={C.ink} />
+
+                <TouchableOpacity
+                  onPress={() => setViewMode(viewMode === 'year' ? 'calendar' : 'year')}
+                  style={[s.tabPill, viewMode === 'year' && s.tabPillActive]}
+                  activeOpacity={0.75}
+                >
+                  <Text style={[s.tabPillText, viewMode === 'year' && s.tabPillTextActive]}>
+                    {viewYear}
+                  </Text>
+                  <Icon name="chevronDown" size={12} color={viewMode === 'year' ? '#ffffff' : C.ink} />
                 </TouchableOpacity>
               </View>
+
+              {viewMode === 'calendar' && (
+                <View style={{flexDirection: 'row', gap: 6}}>
+                  <TouchableOpacity onPress={handlePrevMonth} style={s.navArrow} activeOpacity={0.75}>
+                    <Icon name="chevronLeft" size={16} color={C.ink} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleNextMonth} style={s.navArrow} activeOpacity={0.75}>
+                    <Icon name="chevronRight" size={16} color={C.ink} />
+                  </TouchableOpacity>
+                </View>
+              )}
             </View>
 
-            {/* Year Selector Dropdown if toggled */}
-            {yearPickerOpen ? (
-              <View style={s.yearPickerContainer}>
-                <Text style={s.yearPickerTitle}>Select Year</Text>
+            {/* VIEW 1: YEAR SELECTOR */}
+            {viewMode === 'year' && (
+              <View style={s.pickerContainer}>
+                <View style={s.pickerHeader}>
+                  <Text style={s.pickerHeaderTitle}>1. SELECT YEAR</Text>
+                  <Text style={s.pickerHeaderSub}>Tap a year to choose month next</Text>
+                </View>
                 <ScrollView
-                  style={{maxHeight: 180}}
+                  style={{maxHeight: 220}}
                   showsVerticalScrollIndicator={true}
                   contentContainerStyle={s.yearsGrid}
                 >
-                  {yearsList.map((yr) => (
-                    <TouchableOpacity
-                      key={yr}
-                      onPress={() => {
-                        setViewYear(yr);
-                        setYearPickerOpen(false);
-                      }}
-                      style={[s.yearChip, viewYear === yr && s.yearChipActive]}
-                      activeOpacity={0.75}
-                    >
-                      <Text style={[s.yearChipText, viewYear === yr && s.yearChipTextActive]}>
-                        {yr}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {yearsList.map((yr) => {
+                    const active = viewYear === yr;
+                    return (
+                      <TouchableOpacity
+                        key={yr}
+                        onPress={() => handleSelectYear(yr)}
+                        style={[s.yearChip, active && s.yearChipActive]}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[s.yearChipText, active && s.yearChipTextActive]}>
+                          {yr}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </ScrollView>
               </View>
-            ) : (
+            )}
+
+            {/* VIEW 2: MONTH SELECTOR */}
+            {viewMode === 'month' && (
+              <View style={s.pickerContainer}>
+                <View style={s.pickerHeader}>
+                  <Text style={s.pickerHeaderTitle}>2. SELECT MONTH ({viewYear})</Text>
+                  <Text style={s.pickerHeaderSub}>Choose month for {viewYear}</Text>
+                </View>
+                <View style={s.monthsGrid}>
+                  {MONTHS.map((mName, idx) => {
+                    const active = viewMonth === idx;
+                    return (
+                      <TouchableOpacity
+                        key={mName}
+                        onPress={() => handleSelectMonth(idx)}
+                        style={[s.monthCard, active && s.monthCardActive]}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[s.monthCardShort, active && s.monthCardShortActive]}>
+                          {SHORT_MONTHS[idx]}
+                        </Text>
+                        <Text style={[s.monthCardFull, active && s.monthCardFullActive]}>
+                          {mName}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+            )}
+
+            {/* VIEW 3: CALENDAR DAYS GRID */}
+            {viewMode === 'calendar' && (
               <View>
                 {/* Weekdays Header */}
                 <View style={s.weekDaysRow}>
@@ -304,7 +387,10 @@ export function CalendarPicker({
             {/* Bottom Actions */}
             <View style={s.actionRow}>
               <TouchableOpacity
-                onPress={() => setModalVisible(false)}
+                onPress={() => {
+                  setModalVisible(false);
+                  setViewMode('calendar');
+                }}
                 style={s.cancelBtn}
                 activeOpacity={0.75}
               >
@@ -445,29 +531,40 @@ const s = StyleSheet.create({
     fontWeight: '600',
     color: '#334155',
   },
-  monthNavRow: {
+  navBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingVertical: 8,
     marginBottom: 6,
   },
-  monthYearBtn: {
+  tabsGroup: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  tabPill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderRadius: 10,
   },
-  monthYearText: {
+  tabPillActive: {
+    backgroundColor: '#111827',
+    borderColor: '#111827',
+  },
+  tabPillText: {
     fontFamily: 'Inter',
-    fontSize: 14.5,
+    fontSize: 13.5,
     fontWeight: '700',
     color: '#0F172A',
+  },
+  tabPillTextActive: {
+    color: '#ffffff',
   },
   navArrow: {
     width: 32,
@@ -478,6 +575,96 @@ const s = StyleSheet.create({
     borderColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  pickerContainer: {
+    paddingVertical: 10,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 12,
+    marginVertical: 6,
+  },
+  pickerHeader: {
+    marginBottom: 10,
+  },
+  pickerHeaderTitle: {
+    fontFamily: 'Inter',
+    fontSize: 11.5,
+    fontWeight: '800',
+    letterSpacing: 0.7,
+    color: '#64748B',
+    textTransform: 'uppercase',
+  },
+  pickerHeaderSub: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  yearsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  yearChip: {
+    paddingHorizontal: 15,
+    paddingVertical: 9,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+  },
+  yearChipActive: {
+    backgroundColor: '#111827',
+    borderColor: '#111827',
+  },
+  yearChipText: {
+    fontFamily: 'Inter',
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#334155',
+  },
+  yearChipTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
+  },
+  monthsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'space-between',
+  },
+  monthCard: {
+    width: '31%',
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthCardActive: {
+    backgroundColor: '#111827',
+    borderColor: '#111827',
+  },
+  monthCardShort: {
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  monthCardShortActive: {
+    color: '#ffffff',
+  },
+  monthCardFull: {
+    fontFamily: 'Inter',
+    fontSize: 10.5,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  monthCardFullActive: {
+    color: '#94A3B8',
   },
   weekDaysRow: {
     flexDirection: 'row',
@@ -532,50 +719,6 @@ const s = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     backgroundColor: C.primary,
-  },
-  yearPickerContainer: {
-    paddingVertical: 10,
-    backgroundColor: '#F8FAFC',
-    borderRadius: 14,
-    padding: 10,
-    marginVertical: 6,
-  },
-  yearPickerTitle: {
-    fontFamily: 'Inter',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    color: '#64748B',
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  yearsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    justifyContent: 'center',
-  },
-  yearChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 10,
-  },
-  yearChipActive: {
-    backgroundColor: '#111827',
-    borderColor: '#111827',
-  },
-  yearChipText: {
-    fontFamily: 'Inter',
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#334155',
-  },
-  yearChipTextActive: {
-    color: '#ffffff',
-    fontWeight: '700',
   },
   actionRow: {
     flexDirection: 'row',
