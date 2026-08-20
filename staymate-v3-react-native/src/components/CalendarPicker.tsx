@@ -56,8 +56,8 @@ export function CalendarPicker({
   const [selectedMonth, setSelectedMonth] = useState(parsed.getMonth());
   const [selectedDay, setSelectedDay] = useState(parsed.getDate());
   
-  // Single flow: 1 (Year) -> 2 (Month) -> 3 (Date/Calendar)
-  // By default, ALWAYS show step 3 (Calendar Grid) when opened
+  // Single flow: 1 (Year) -> 2 (Month) -> 3 (Date/Calendar Grid)
+  // By default, always opens directly on the Calendar Grid (Step 3)
   const [flowStep, setFlowStep] = useState<1 | 2 | 3>(3);
 
   useEffect(() => {
@@ -70,7 +70,6 @@ export function CalendarPicker({
   }, [value]);
 
   const handleOpenModal = () => {
-    // Default to the full calendar grid page when someone clicks on date picker
     setFlowStep(3);
     setModalVisible(true);
   };
@@ -101,7 +100,6 @@ export function CalendarPicker({
   // STEP 2: Month Selected -> Auto go to Step 3 (Calendar Grid)
   const handleSelectMonth = (mIndex: number) => {
     setSelectedMonth(mIndex);
-    // adjust day if exceeds new month max days
     const maxDays = new Date(selectedYear, mIndex + 1, 0).getDate();
     if (selectedDay > maxDays) {
       setSelectedDay(maxDays);
@@ -159,7 +157,7 @@ export function CalendarPicker({
   const today = new Date();
   const isCurrentMonthToday = today.getFullYear() === selectedYear && today.getMonth() === selectedMonth;
 
-  // Years range
+  // Years range (1940 to 2035)
   const currentYear = new Date().getFullYear();
   const yearsList = mode === 'dob'
     ? Array.from({length: 85}, (_, i) => currentYear - i) // 2026 down to 1941
@@ -297,7 +295,7 @@ export function CalendarPicker({
             )}
 
             {/* ============================================================ */}
-            {/* FLOW STEP 3: SELECT DATE (CALENDAR GRID - DEFAULT)           */}
+            {/* FLOW STEP 3: SELECT DATE (7-COLUMN CALENDAR GRID - DEFAULT)  */}
             {/* ============================================================ */}
             {flowStep === 3 && (
               <View style={s.stepContainer}>
@@ -324,7 +322,7 @@ export function CalendarPicker({
                   </View>
                 </View>
 
-                {/* Weekdays Header */}
+                {/* 7-Column Weekdays Header */}
                 <View style={s.weekDaysRow}>
                   {SHORT_DAYS.map((d, i) => (
                     <Text
@@ -339,14 +337,14 @@ export function CalendarPicker({
                   ))}
                 </View>
 
-                {/* Days Grid */}
+                {/* 7-Column Days Grid (Strictly 7 items per week row) */}
                 <View style={s.daysGrid}>
-                  {/* Empty slots */}
+                  {/* Empty slots for month start offset */}
                   {Array.from({length: firstDayIndex}).map((_, i) => (
                     <View key={`empty-${i}`} style={s.dayCell} />
                   ))}
 
-                  {/* Days */}
+                  {/* Month Days */}
                   {Array.from({length: daysInMonth}).map((_, i) => {
                     const day = i + 1;
                     const isSelected = selectedDay === day;
@@ -357,21 +355,25 @@ export function CalendarPicker({
                         key={day}
                         onPress={() => handleSelectDay(day)}
                         activeOpacity={0.7}
-                        style={[
-                          s.dayCell,
-                          isSelected && s.dayCellSelected,
-                        ]}
+                        style={s.dayCell}
                       >
-                        <Text
+                        <View
                           style={[
-                            s.dayText,
-                            isSelected && s.dayTextSelected,
-                            isToday && !isSelected && s.dayTextToday,
+                            s.dayCircle,
+                            isSelected && s.dayCircleSelected,
                           ]}
                         >
-                          {day}
-                        </Text>
-                        {isToday && !isSelected && <View style={s.todayDot} />}
+                          <Text
+                            style={[
+                              s.dayText,
+                              isSelected && s.dayTextSelected,
+                              isToday && !isSelected && s.dayTextToday,
+                            ]}
+                          >
+                            {day}
+                          </Text>
+                          {isToday && !isSelected && <View style={s.todayDot} />}
+                        </View>
                       </TouchableOpacity>
                     );
                   })}
@@ -484,7 +486,7 @@ const s = StyleSheet.create({
     backgroundColor: '#ffffff',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
   },
@@ -506,6 +508,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
     marginBottom: 10,
+    paddingHorizontal: 4,
   },
   sheetTitle: {
     fontFamily: 'Inter',
@@ -640,6 +643,7 @@ const s = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 6,
     marginBottom: 4,
+    paddingHorizontal: 4,
   },
   monthYearBtn: {
     flexDirection: 'row',
@@ -670,13 +674,12 @@ const s = StyleSheet.create({
   },
   weekDaysRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
+    borderBottomColor: '#F1F5F9',
   },
   weekDayText: {
-    width: 40,
+    width: '14.285%',
     textAlign: 'center',
     fontFamily: 'Inter',
     fontSize: 12,
@@ -686,18 +689,23 @@ const s = StyleSheet.create({
   daysGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
     paddingVertical: 6,
   },
   dayCell: {
-    width: 40,
-    height: 40,
+    width: '14.285%',
+    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    marginVertical: 2,
-    borderRadius: 20,
+    marginVertical: 1,
   },
-  dayCellSelected: {
+  dayCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dayCircleSelected: {
     backgroundColor: '#111827',
   },
   dayText: {
@@ -716,7 +724,7 @@ const s = StyleSheet.create({
   },
   todayDot: {
     position: 'absolute',
-    bottom: 4,
+    bottom: 3,
     width: 4,
     height: 4,
     borderRadius: 2,
