@@ -354,16 +354,6 @@ export function SettingsScreen({
                   />
                 </View>
 
-                <View style={ms.inputGroup}>
-                  <Text style={ms.inputLabel}>PROPERTY CODE / ID</Text>
-                  <TextInput
-                    value={editProfile.code}
-                    onChangeText={(t) => setEditProfile({...editProfile, code: t})}
-                    placeholder="e.g. HS-4821"
-                    placeholderTextColor="#94A3B8"
-                    style={ms.inputField}
-                  />
-                </View>
 
                 <View style={ms.inputGroup}>
                   <Text style={ms.inputLabel}>OWNER / MANAGER NAME</Text>
