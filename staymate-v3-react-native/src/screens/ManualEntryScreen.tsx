@@ -28,7 +28,7 @@ export function ManualEntryScreen({
   initialData?: any;
 }) {
   const insets = useSafeAreaInsets();
-  const [step, setStep] = useState<1 | 2 | 3>(initialData?.name ? 2 : 1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState(initialData?.name || '');
   const [docType, setDocType] = useState(initialData?.docType || 'Aadhaar');
   const [idNum, setIdNum] = useState(initialData?.idNum || '');
