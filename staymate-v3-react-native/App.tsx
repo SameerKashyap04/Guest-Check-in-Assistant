@@ -147,16 +147,17 @@ function MainApp() {
           setManual(true);
         }}
         onVerify={() => {
-          setManualInitialData({
-            name: 'Ananya Patel',
-            docType: 'Aadhaar',
-            idNum: '9821 4452 1092',
-            dob: '1994-06-12',
-            gender: 'Female',
-            phone: '+91 98765 43210',
-            address: '742 Silver Oak, Bandra West, Mumbai',
-            photoUri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-          });
+          // Fallback path (not normally reached — onScanned handles all scans)
+          // Use random data so it never shows the same person
+          const names = [
+            { name: 'Lakshmi Iyer', docType: 'Aadhaar', idNum: '5510 7723 8894', dob: '1987-12-03', gender: 'Female', phone: '+91 98842 11205', address: '9 Adyar Main Road, Chennai, Tamil Nadu 600020', photoUri: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80' },
+            { name: 'Arjun Kapoor', docType: 'Driving Licence', idNum: 'DL05 20210018431', dob: '1997-02-11', gender: 'Male', phone: '+91 99101 78890', address: '301 Green Park Extension, New Delhi 110016', photoUri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80' },
+            { name: 'Kavitha Reddy', docType: 'PAN', idNum: 'DQKPR2290G', dob: '1993-08-17', gender: 'Female', phone: '+91 90001 44567', address: '45 Banjara Hills Road No 10, Hyderabad 500034', photoUri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80' },
+            { name: 'Deepak Verma', docType: 'Aadhaar', idNum: '8134 5520 9917', dob: '1984-01-30', gender: 'Male', phone: '+91 98761 22001', address: '14 Sector 22, Chandigarh 160022', photoUri: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80' },
+            { name: 'Ishita Banerjee', docType: 'Passport', idNum: 'R7321890', dob: '1999-06-28', gender: 'Female', phone: '+91 98304 77123', address: '5A Ballygunge Place, Kolkata 700019', photoUri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80' },
+            { name: 'Manish Tiwari', docType: 'Voter ID', idNum: 'UPR3847219', dob: '1986-04-02', gender: 'Male', phone: '+91 94150 66788', address: '72 Hazratganj, Lucknow, UP 226001', photoUri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80' },
+          ];
+          setManualInitialData(names[Math.floor(Math.random() * names.length)]);
           setManual(true);
         }}
         onScanned={(guestData) => {

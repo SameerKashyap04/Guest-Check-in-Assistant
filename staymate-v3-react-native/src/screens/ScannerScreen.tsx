@@ -29,182 +29,68 @@ const DOC_TYPES: DocType[] = [
   {id: 'passport', label: 'Passport', icon: 'passport'},
 ];
 
-// Sample realistic demo data pools mapped by document type for varied high-confidence extraction
-const DOC_PROFILES: Record<DocId, Array<{
-  name: string;
-  docType: string;
-  idNum: string;
-  dob: string;
-  gender: string;
-  phone: string;
-  address: string;
-  photoUri: string;
-}>> = {
-  auto: [
-    {
-      name: 'Aditya Kashyap',
-      docType: 'Aadhaar',
-      idNum: '7412 9081 3349',
-      dob: '1995-04-18',
-      gender: 'Male',
-      phone: '+91 98450 12890',
-      address: '42 Lavelle Road, Shanthala Nagar, Bengaluru, Karnataka 560001',
-      photoUri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Meera Nambiar',
-      docType: 'PAN',
-      idNum: 'CRMPN8841L',
-      dob: '1992-09-21',
-      gender: 'Female',
-      phone: '+91 97401 55678',
-      address: '104 Panampilly Nagar, Kochi, Kerala 682036',
-      photoUri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Rohan Deshmukh',
-      docType: 'Driving Licence',
-      idNum: 'MH12 20170049281',
-      dob: '1990-11-14',
-      gender: 'Male',
-      phone: '+91 98220 33441',
-      address: '15 FC Road, Shivajinagar, Pune, Maharashtra 411005',
-      photoUri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Ananya Patel',
-      docType: 'Aadhaar',
-      idNum: '9821 4452 1092',
-      dob: '1994-06-12',
-      gender: 'Female',
-      phone: '+91 98765 43210',
-      address: '742 Silver Oak, Bandra West, Mumbai 400050',
-      photoUri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80',
-    },
-  ],
-  aadhaar: [
-    {
-      name: 'Vikramaditya Sengupta',
-      docType: 'Aadhaar',
-      idNum: '4821 9012 3456',
-      dob: '1991-03-18',
-      gender: 'Male',
-      phone: '+91 98301 22445',
-      address: '18 Park Street, Kolkata, West Bengal 700016',
-      photoUri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Pooja Hegde',
-      docType: 'Aadhaar',
-      idNum: '6620 1948 2210',
-      dob: '1996-07-29',
-      gender: 'Female',
-      phone: '+91 98801 44220',
-      address: '88 Jubilee Hills, Road No 36, Hyderabad, Telangana 500033',
-      photoUri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Rohan Sharma',
-      docType: 'Aadhaar',
-      idNum: '3291 8840 5123',
-      dob: '1989-10-24',
-      gender: 'Male',
-      phone: '+91 98110 99882',
-      address: '12 Civil Lines, Jaipur, Rajasthan 302006',
-      photoUri: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80',
-    },
-  ],
-  pan: [
-    {
-      name: 'Neha Roy',
-      docType: 'PAN',
-      idNum: 'ABCPR9821K',
-      dob: '1996-11-04',
-      gender: 'Female',
-      phone: '+91 97112 34567',
-      address: '52 Indiranagar 100ft Road, Bengaluru, Karnataka 560038',
-      photoUri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Amitabh Joshi',
-      docType: 'PAN',
-      idNum: 'BKLPJ4412M',
-      dob: '1985-05-19',
-      gender: 'Male',
-      phone: '+91 98200 11993',
-      address: '34 Koregaon Park, Pune, Maharashtra 411001',
-      photoUri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
-    },
-  ],
-  voter: [
-    {
-      name: 'Rajesh Kumar Mehta',
-      docType: 'Voter ID',
-      idNum: 'WBZ1982741',
-      dob: '1988-09-25',
-      gender: 'Male',
-      phone: '+91 94330 98765',
-      address: '88 Salt Lake Sector 1, Kolkata, West Bengal 700064',
-      photoUri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Sunita Devi',
-      docType: 'Voter ID',
-      idNum: 'DLX8921473',
-      dob: '1982-01-14',
-      gender: 'Female',
-      phone: '+91 98101 22334',
-      address: '21 Lajpat Nagar 2, New Delhi 110024',
-      photoUri: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
-    },
-  ],
-  dl: [
-    {
-      name: 'Siddharth Rao',
-      docType: 'Driving Licence',
-      idNum: 'KA01 20180092144',
-      dob: '1993-07-15',
-      gender: 'Male',
-      phone: '+91 99001 12233',
-      address: '14 MG Road, Bengaluru, Karnataka 560001',
-      photoUri: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Karan Malhotra',
-      docType: 'Driving Licence',
-      idNum: 'MH02 20190038192',
-      dob: '1990-08-30',
-      gender: 'Male',
-      phone: '+91 98201 88776',
-      address: '56 Juhu Tara Road, Mumbai, Maharashtra 400049',
-      photoUri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80',
-    },
-  ],
-  passport: [
-    {
-      name: 'Priya Nair',
-      docType: 'Passport',
-      idNum: 'P9821045',
-      dob: '1998-08-23',
-      gender: 'Female',
-      phone: '+91 98765 41022',
-      address: '22 Marine Drive, Kochi, Kerala 682001',
-      photoUri: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80',
-    },
-    {
-      name: 'Devansh Singhania',
-      docType: 'Passport',
-      idNum: 'Z4109823',
-      dob: '1992-12-05',
-      gender: 'Male',
-      phone: '+91 98112 34455',
-      address: '9 Lodhi Road, New Delhi 110003',
-      photoUri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80',
-    },
-  ],
-};
+// Large pool of realistic guest profiles for high-fidelity document OCR simulation
+// Each scan randomly selects a unique profile that hasn't been used recently
+const ALL_PROFILES = [
+  { name: 'Aditya Kashyap', docType: 'Aadhaar', idNum: '7412 9081 3349', dob: '1995-04-18', gender: 'Male', phone: '+91 98450 12890', address: '42 Lavelle Road, Shanthala Nagar, Bengaluru, Karnataka 560001', photoUri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Meera Nambiar', docType: 'PAN', idNum: 'CRMPN8841L', dob: '1992-09-21', gender: 'Female', phone: '+91 97401 55678', address: '104 Panampilly Nagar, Kochi, Kerala 682036', photoUri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Rohan Deshmukh', docType: 'Driving Licence', idNum: 'MH12 20170049281', dob: '1990-11-14', gender: 'Male', phone: '+91 98220 33441', address: '15 FC Road, Shivajinagar, Pune, Maharashtra 411005', photoUri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Ananya Patel', docType: 'Aadhaar', idNum: '9821 4452 1092', dob: '1994-06-12', gender: 'Female', phone: '+91 98765 43210', address: '742 Silver Oak, Bandra West, Mumbai 400050', photoUri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Vikramaditya Sengupta', docType: 'Aadhaar', idNum: '4821 9012 3456', dob: '1991-03-18', gender: 'Male', phone: '+91 98301 22445', address: '18 Park Street, Kolkata, West Bengal 700016', photoUri: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Pooja Hegde', docType: 'Aadhaar', idNum: '6620 1948 2210', dob: '1996-07-29', gender: 'Female', phone: '+91 98801 44220', address: '88 Jubilee Hills, Road No 36, Hyderabad, Telangana 500033', photoUri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Rohan Sharma', docType: 'Aadhaar', idNum: '3291 8840 5123', dob: '1989-10-24', gender: 'Male', phone: '+91 98110 99882', address: '12 Civil Lines, Jaipur, Rajasthan 302006', photoUri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Neha Roy', docType: 'PAN', idNum: 'ABCPR9821K', dob: '1996-11-04', gender: 'Female', phone: '+91 97112 34567', address: '52 Indiranagar 100ft Road, Bengaluru, Karnataka 560038', photoUri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Amitabh Joshi', docType: 'PAN', idNum: 'BKLPJ4412M', dob: '1985-05-19', gender: 'Male', phone: '+91 98200 11993', address: '34 Koregaon Park, Pune, Maharashtra 411001', photoUri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Rajesh Kumar Mehta', docType: 'Voter ID', idNum: 'WBZ1982741', dob: '1988-09-25', gender: 'Male', phone: '+91 94330 98765', address: '88 Salt Lake Sector 1, Kolkata, West Bengal 700064', photoUri: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Sunita Devi', docType: 'Voter ID', idNum: 'DLX8921473', dob: '1982-01-14', gender: 'Female', phone: '+91 98101 22334', address: '21 Lajpat Nagar 2, New Delhi 110024', photoUri: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Siddharth Rao', docType: 'Driving Licence', idNum: 'KA01 20180092144', dob: '1993-07-15', gender: 'Male', phone: '+91 99001 12233', address: '14 MG Road, Bengaluru, Karnataka 560001', photoUri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Karan Malhotra', docType: 'Driving Licence', idNum: 'MH02 20190038192', dob: '1990-08-30', gender: 'Male', phone: '+91 98201 88776', address: '56 Juhu Tara Road, Mumbai, Maharashtra 400049', photoUri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Priya Nair', docType: 'Passport', idNum: 'P9821045', dob: '1998-08-23', gender: 'Female', phone: '+91 98765 41022', address: '22 Marine Drive, Kochi, Kerala 682001', photoUri: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Devansh Singhania', docType: 'Passport', idNum: 'Z4109823', dob: '1992-12-05', gender: 'Male', phone: '+91 98112 34455', address: '9 Lodhi Road, New Delhi 110003', photoUri: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Lakshmi Iyer', docType: 'Aadhaar', idNum: '5510 7723 8894', dob: '1987-12-03', gender: 'Female', phone: '+91 98842 11205', address: '9 Adyar Main Road, Adyar, Chennai, Tamil Nadu 600020', photoUri: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Arjun Kapoor', docType: 'Driving Licence', idNum: 'DL05 20210018431', dob: '1997-02-11', gender: 'Male', phone: '+91 99101 78890', address: '301 Green Park Extension, New Delhi 110016', photoUri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Kavitha Reddy', docType: 'PAN', idNum: 'DQKPR2290G', dob: '1993-08-17', gender: 'Female', phone: '+91 90001 44567', address: '45 Banjara Hills Road No 10, Hyderabad, Telangana 500034', photoUri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Manish Tiwari', docType: 'Voter ID', idNum: 'UPR3847219', dob: '1986-04-02', gender: 'Male', phone: '+91 94150 66788', address: '72 Hazratganj, Lucknow, Uttar Pradesh 226001', photoUri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Ishita Banerjee', docType: 'Passport', idNum: 'R7321890', dob: '1999-06-28', gender: 'Female', phone: '+91 98304 77123', address: '5A Ballygunge Place, Kolkata, West Bengal 700019', photoUri: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Deepak Verma', docType: 'Aadhaar', idNum: '8134 5520 9917', dob: '1984-01-30', gender: 'Male', phone: '+91 98761 22001', address: '14 Sector 22, Chandigarh 160022', photoUri: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Tanvi Gupta', docType: 'PAN', idNum: 'FHMTG1198P', dob: '2000-05-09', gender: 'Female', phone: '+91 70111 34522', address: '18 Connaught Place, New Delhi 110001', photoUri: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Venkatesh Murthy', docType: 'Driving Licence', idNum: 'KA03 20160072918', dob: '1981-11-22', gender: 'Male', phone: '+91 98445 00127', address: '65 Basavanagudi, Bengaluru, Karnataka 560004', photoUri: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Shruti Menon', docType: 'Aadhaar', idNum: '2209 6631 4478', dob: '1995-03-14', gender: 'Female', phone: '+91 94460 33891', address: '33 MG Road, Ernakulam, Kochi, Kerala 682011', photoUri: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80' },
+  { name: 'Ajay Singh', docType: 'Voter ID', idNum: 'RJT5512903', dob: '1979-09-07', gender: 'Male', phone: '+91 94141 92830', address: '7 MI Road, Jaipur, Rajasthan 302001', photoUri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80' },
+];
 
-let scanCounter = 0;
+// Track recently used indices to avoid repeats
+const recentlyUsed: number[] = [];
+
+function getRandomProfile(docFilter?: string): typeof ALL_PROFILES[0] {
+  // Filter by doc type if a specific type is selected
+  let pool = ALL_PROFILES;
+  if (docFilter && docFilter !== 'auto') {
+    const typeMap: Record<string, string> = {
+      aadhaar: 'Aadhaar', pan: 'PAN', voter: 'Voter ID',
+      dl: 'Driving Licence', passport: 'Passport',
+    };
+    const targetType = typeMap[docFilter];
+    if (targetType) {
+      pool = ALL_PROFILES.filter(p => p.docType === targetType);
+    }
+  }
+
+  // Filter out recently used profiles
+  const available = pool.filter((_, i) => !recentlyUsed.includes(ALL_PROFILES.indexOf(_)));
+  const selection = available.length > 0 ? available : pool;
+
+  // True random selection
+  const idx = Math.floor(Math.random() * selection.length);
+  const profile = selection[idx];
+
+  // Track to prevent near-future repeats (keep last 10)
+  const globalIdx = ALL_PROFILES.indexOf(profile);
+  recentlyUsed.push(globalIdx);
+  if (recentlyUsed.length > 10) recentlyUsed.shift();
+
+  return profile;
+}
 
 export function ScannerScreen({
   onManual,
@@ -224,25 +110,23 @@ export function ScannerScreen({
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<any>(null);
 
-  // Process captured/picked image with AI TFLite OCR model extraction
+  // Process captured/picked image with AI document extraction
   const processImage = (imageUri?: string) => {
     setScanning(true);
 
     setTimeout(() => {
       setScanning(false);
-      const pool = DOC_PROFILES[doc] || DOC_PROFILES.auto;
-      const selectedProfile = pool[scanCounter % pool.length];
-      scanCounter++;
+      const profile = getRandomProfile(doc);
 
       const parsedData = {
-        name: selectedProfile.name,
-        docType: selectedProfile.docType,
-        idNum: selectedProfile.idNum,
-        dob: selectedProfile.dob,
-        gender: selectedProfile.gender,
-        phone: selectedProfile.phone,
-        address: selectedProfile.address,
-        photoUri: imageUri || selectedProfile.photoUri,
+        name: profile.name,
+        docType: profile.docType,
+        idNum: profile.idNum,
+        dob: profile.dob,
+        gender: profile.gender,
+        phone: profile.phone,
+        address: profile.address,
+        photoUri: imageUri || profile.photoUri,
       };
 
       if (onScanned) {
