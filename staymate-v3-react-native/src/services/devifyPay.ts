@@ -65,6 +65,7 @@ class DevifyPayService {
           planId: planIdKey,
           planName,
           billingCycle,
+          amount: amountPaise,
           userId,
           userEmail,
         }),

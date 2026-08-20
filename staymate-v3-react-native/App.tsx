@@ -1928,6 +1928,73 @@ function PricingOverlay({
                   domStorageEnabled
                   scalesPageToFit
                   originWhitelist={['*']}
+                  injectedJavaScript={`
+                    (function() {
+                      function interceptUrl(url) {
+                        if (!url) return false;
+                        if (
+                          url.startsWith('upi://') ||
+                          url.startsWith('gpay://') ||
+                          url.startsWith('phonepe://') ||
+                          url.startsWith('paytmmp://') ||
+                          url.startsWith('super://') ||
+                          url.startsWith('supermoney://') ||
+                          url.startsWith('bhim://') ||
+                          url.startsWith('intent://')
+                        ) {
+                          if (window.ReactNativeWebView) {
+                            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'OPEN_URL', url: url }));
+                          }
+                          return true;
+                        }
+                        return false;
+                      }
+
+                      var checkInterval = setInterval(function() {
+                        if (typeof window.openUpiApp === 'function' && !window.openUpiApp._hooked) {
+                          var origOpenUpi = window.openUpiApp;
+                          window.openUpiApp = function(app, evt) {
+                            if (evt) evt.preventDefault();
+                            if (window.upiUri && window.ReactNativeWebView) {
+                              window.ReactNativeWebView.postMessage(JSON.stringify({
+                                type: 'OPEN_UPI_APP',
+                                app: app,
+                                upiUri: window.upiUri
+                              }));
+                            }
+                            return origOpenUpi.apply(this, arguments);
+                          };
+                          window.openUpiApp._hooked = true;
+                        }
+                      }, 250);
+                    })();
+                    true;
+                  `}
+                  onMessage={(event) => {
+                    try {
+                      const data = JSON.parse(event.nativeEvent.data);
+                      if (data.type === 'OPEN_URL' && data.url) {
+                        Linking.openURL(data.url).catch(() => {});
+                      } else if (data.type === 'OPEN_UPI_APP' && data.upiUri) {
+                        const { app, upiUri } = data;
+                        let targetScheme = upiUri;
+                        if (app === 'gpay') {
+                          targetScheme = Platform.OS === 'ios' ? upiUri.replace('upi://pay', 'gpay://upi/pay') : upiUri;
+                        } else if (app === 'phonepe') {
+                          targetScheme = Platform.OS === 'ios' ? upiUri.replace('upi://pay', 'phonepe://pay') : upiUri;
+                        } else if (app === 'paytm') {
+                          targetScheme = Platform.OS === 'ios' ? upiUri.replace('upi://pay', 'paytmmp://pay') : upiUri;
+                        } else if (app === 'supermoney') {
+                          targetScheme = Platform.OS === 'ios' ? upiUri.replace('upi://pay', 'super://pay') : upiUri;
+                        }
+                        Linking.openURL(targetScheme).catch(() => {
+                          Linking.openURL(upiUri).catch(() => {});
+                        });
+                      }
+                    } catch (e) {
+                      console.warn('[WebView] onMessage error:', e);
+                    }
+                  }}
                   onShouldStartLoadWithRequest={(request) => {
                     const url = request.url;
                     // Detect UPI and external payment schemes
@@ -1936,6 +2003,7 @@ function PricingOverlay({
                       url.startsWith('gpay://') ||
                       url.startsWith('phonepe://') ||
                       url.startsWith('paytmmp://') ||
+                      url.startsWith('super://') ||
                       url.startsWith('supermoney://') ||
                       url.startsWith('cred://') ||
                       url.startsWith('bhim://') ||

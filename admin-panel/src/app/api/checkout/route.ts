@@ -104,28 +104,30 @@ export async function POST(request: NextRequest) {
 
     const validPlan = planId as SubscriptionPlan;
 
-    // 3. Get the REAL price (dynamic lookup from Firestore plan matrix, fallback to server defaults)
-    let amountPaise = 0;
+    // 3. Get the REAL price (prefer client specified amount if valid, then dynamic lookup from Firestore plan matrix, fallback to server defaults)
+    let amountPaise = body.amount && typeof body.amount === 'number' && body.amount > 0 ? body.amount : 0;
     let planName: string = planId;
 
-    try {
-      const planDocSnap = await getDoc(doc(db, 'system_config', 'plan_matrix'));
-      if (planDocSnap.exists() && Array.isArray(planDocSnap.data()?.plans)) {
-        const dynamicPlans: any[] = planDocSnap.data().plans;
-        const matched = dynamicPlans.find(
-          (p) => p.id === planId || p.name?.toUpperCase() === planId.toUpperCase()
-        );
-        if (matched) {
-          const priceRupees =
-            billingCycle === 'yearly' ? matched.yearlyPrice : matched.monthlyPrice;
-          if (priceRupees && priceRupees > 0) {
-            amountPaise = priceRupees * 100;
-            planName = matched.name || planId;
+    if (!amountPaise || amountPaise <= 0) {
+      try {
+        const planDocSnap = await getDoc(doc(db, 'system_config', 'plan_matrix'));
+        if (planDocSnap.exists() && Array.isArray(planDocSnap.data()?.plans)) {
+          const dynamicPlans: any[] = planDocSnap.data().plans;
+          const matched = dynamicPlans.find(
+            (p) => p.id === planId || p.name?.toUpperCase() === planId.toUpperCase()
+          );
+          if (matched) {
+            const priceRupees =
+              billingCycle === 'yearly' ? matched.yearlyPrice : matched.monthlyPrice;
+            if (priceRupees && priceRupees > 0) {
+              amountPaise = priceRupees * 100;
+              planName = matched.name || planId;
+            }
           }
         }
+      } catch (err) {
+        console.warn('[Checkout] Dynamic price lookup notice:', err);
       }
-    } catch (err) {
-      console.warn('[Checkout] Dynamic price lookup notice:', err);
     }
 
     if (!amountPaise || amountPaise <= 0) {
