@@ -646,7 +646,7 @@ export function ManualEntryScreen({
               onPress={() => setStep(2)}
             />
             <PrimaryButton
-              label="Confirm & Check-in 🎉"
+              label="Confirm & Check-in"
               style={{flex: 1.8}}
               onPress={handleConfirm}
             />
