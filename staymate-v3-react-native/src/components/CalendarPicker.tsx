@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   Modal,
   View,
@@ -41,7 +41,6 @@ export function CalendarPicker({
   minDate,
 }: CalendarPickerProps) {
   const [modalVisible, setModalVisible] = useState(false);
-  const yearScrollRef = useRef<ScrollView>(null);
 
   // Parse current value or fallback to today
   const parseDate = (val: string) => {
@@ -56,15 +55,25 @@ export function CalendarPicker({
   const [selectedYear, setSelectedYear] = useState(parsed.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(parsed.getMonth());
   const [selectedDay, setSelectedDay] = useState(parsed.getDate());
+  
+  // Single flow: 1 (Year) -> 2 (Month) -> 3 (Date/Calendar)
+  const [flowStep, setFlowStep] = useState<1 | 2 | 3>(mode === 'dob' ? 1 : 3);
 
   useEffect(() => {
     if (value && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      const d = parseDate(value);
-      setSelectedYear(d.getFullYear());
-      setSelectedMonth(d.getMonth());
-      setSelectedDay(d.getDate());
+      const [y, m, d] = value.split('-').map(Number);
+      setSelectedYear(y);
+      setSelectedMonth(m - 1);
+      setSelectedDay(d);
     }
   }, [value]);
+
+  const handleOpenModal = () => {
+    // For DOB, start right at Year selection flow
+    // For stay (checkin/checkout), start at Calendar (Step 3)
+    setFlowStep(mode === 'dob' ? 1 : 3);
+    setModalVisible(true);
+  };
 
   function formatISO(y: number, m: number, d: number): string {
     const mStr = String(m + 1).padStart(2, '0');
@@ -83,54 +92,51 @@ export function CalendarPicker({
     });
   }
 
-  const currentISO = formatISO(selectedYear, selectedMonth, selectedDay);
-
-  // Generate years list
-  const currentYear = new Date().getFullYear();
-  const yearsList = mode === 'dob'
-    ? Array.from({length: 85}, (_, i) => currentYear - i) // 2026 down to 1942
-    : Array.from({length: 12}, (_, i) => currentYear - 1 + i); // 2025 to 2036
-
-  // Scroll to active year when modal opens
-  useEffect(() => {
-    if (modalVisible) {
-      const idx = yearsList.indexOf(selectedYear);
-      if (idx >= 0 && yearScrollRef.current) {
-        setTimeout(() => {
-          yearScrollRef.current?.scrollTo({x: Math.max(0, idx * 68 - 120), animated: true});
-        }, 150);
-      }
-    }
-  }, [modalVisible, selectedYear]);
-
-  // Calendar math
-  const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
-  const firstDayIndex = new Date(selectedYear, selectedMonth, 1).getDay(); // 0 is Sunday
-  const todayISO = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`;
-
-  const handleSelectDay = (day: number) => {
-    setSelectedDay(day);
-  };
-
-  const handleSelectMonth = (mIdx: number) => {
-    setSelectedMonth(mIdx);
-    const maxDays = new Date(selectedYear, mIdx + 1, 0).getDate();
-    if (selectedDay > maxDays) {
-      setSelectedDay(maxDays);
-    }
-  };
-
+  // STEP 1: Year Selected -> Auto go to Step 2 (Month)
   const handleSelectYear = (yr: number) => {
     setSelectedYear(yr);
-    const maxDays = new Date(yr, selectedMonth + 1, 0).getDate();
+    setFlowStep(2);
+  };
+
+  // STEP 2: Month Selected -> Auto go to Step 3 (Date)
+  const handleSelectMonth = (mIndex: number) => {
+    setSelectedMonth(mIndex);
+    // adjust day if exceeds new month max days
+    const maxDays = new Date(selectedYear, mIndex + 1, 0).getDate();
     if (selectedDay > maxDays) {
       setSelectedDay(maxDays);
+    }
+    setFlowStep(3);
+  };
+
+  // STEP 3: Day Selected
+  const handleSelectDay = (day: number) => {
+    setSelectedDay(day);
+    const iso = formatISO(selectedYear, selectedMonth, day);
+    onChange(iso);
+  };
+
+  const handlePrevMonth = () => {
+    if (selectedMonth === 0) {
+      setSelectedMonth(11);
+      setSelectedYear(selectedYear - 1);
+    } else {
+      setSelectedMonth(selectedMonth - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedMonth === 11) {
+      setSelectedMonth(0);
+      setSelectedYear(selectedYear + 1);
+    } else {
+      setSelectedMonth(selectedMonth + 1);
     }
   };
 
   const handleConfirm = () => {
-    const finalISO = formatISO(selectedYear, selectedMonth, selectedDay);
-    onChange(finalISO);
+    const iso = formatISO(selectedYear, selectedMonth, selectedDay);
+    onChange(iso);
     setModalVisible(false);
   };
 
@@ -140,17 +146,31 @@ export function CalendarPicker({
     setSelectedYear(target.getFullYear());
     setSelectedMonth(target.getMonth());
     setSelectedDay(target.getDate());
-    const iso = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}-${String(target.getDate()).padStart(2, '0')}`;
+    const iso = formatISO(target.getFullYear(), target.getMonth(), target.getDate());
     onChange(iso);
     setModalVisible(false);
   };
+
+  // Calendar calculations
+  const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+  const firstDayIndex = new Date(selectedYear, selectedMonth, 1).getDay(); // 0 is Sunday
+  const today = new Date();
+  const isCurrentMonthToday = today.getFullYear() === selectedYear && today.getMonth() === selectedMonth;
+
+  // Years range
+  const currentYear = new Date().getFullYear();
+  const yearsList = mode === 'dob'
+    ? Array.from({length: 85}, (_, i) => currentYear - i) // 2026 down to 1941
+    : Array.from({length: 15}, (_, i) => currentYear - 1 + i); // 2025 to 2039
+
+  const currentFormattedDate = formatISO(selectedYear, selectedMonth, selectedDay);
 
   return (
     <View style={{marginBottom: 14}}>
       {label && <Text style={s.fieldLabel}>{label}</Text>}
       <TouchableOpacity
         activeOpacity={0.8}
-        onPress={() => setModalVisible(true)}
+        onPress={handleOpenModal}
         style={s.fieldTrigger}
       >
         <View style={s.triggerLeft}>
@@ -162,7 +182,7 @@ export function CalendarPicker({
         <Text style={s.isoBadge}>{value || 'Select'}</Text>
       </TouchableOpacity>
 
-      {/* Single-Flow Unified Calendar Modal */}
+      {/* Calendar Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={s.scrim}>
           <View style={s.sheet}>
@@ -171,12 +191,12 @@ export function CalendarPicker({
               <View style={s.handle} />
             </View>
 
-            {/* Header with Live Date Preview */}
+            {/* Header with Title & Formatted Preview */}
             <View style={s.sheetHeader}>
               <View>
                 <Text style={s.sheetTitle}>{label || 'Select Date'}</Text>
                 <Text style={s.sheetSubtitle}>
-                  {formatDisplay(currentISO)}
+                  {formatDisplay(currentFormattedDate)}
                 </Text>
               </View>
               <TouchableOpacity
@@ -188,36 +208,91 @@ export function CalendarPicker({
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} style={{maxHeight: 520}}>
-              {/* Quick Presets for Stays */}
-              {mode === 'stay' && (
-                <View style={s.presetRow}>
-                  <TouchableOpacity onPress={() => handlePreset(0)} style={s.presetBtn} activeOpacity={0.75}>
-                    <Text style={s.presetText}>Today</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handlePreset(1)} style={s.presetBtn} activeOpacity={0.75}>
-                    <Text style={s.presetText}>Tomorrow</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handlePreset(2)} style={s.presetBtn} activeOpacity={0.75}>
-                    <Text style={s.presetText}>+2 Nights</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => handlePreset(7)} style={s.presetBtn} activeOpacity={0.75}>
-                    <Text style={s.presetText}>+1 Week</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
+            {/* 1-Flow Progress Breadcrumbs */}
+            <View style={s.stepperRow}>
+              {/* Step 1: Year */}
+              <TouchableOpacity
+                onPress={() => setFlowStep(1)}
+                activeOpacity={0.75}
+                style={[
+                  s.stepPill,
+                  flowStep === 1 && s.stepPillActive,
+                  flowStep > 1 && s.stepPillCompleted,
+                ]}
+              >
+                <Text style={[s.stepPillNum, flowStep === 1 && s.stepPillNumActive]}>1</Text>
+                <Text style={[s.stepPillText, flowStep === 1 && s.stepPillTextActive]}>
+                  {selectedYear}
+                </Text>
+              </TouchableOpacity>
 
-              {/* 1. YEAR SELECTOR (Horizontal Scroll Bar) */}
-              <View style={s.sectionBlock}>
-                <View style={s.sectionHeaderRow}>
-                  <Text style={s.sectionSubLabel}>YEAR</Text>
-                  <Text style={s.sectionValueBadge}>{selectedYear}</Text>
+              <Icon name="chevronRight" size={13} color="#94A3B8" />
+
+              {/* Step 2: Month */}
+              <TouchableOpacity
+                onPress={() => setFlowStep(2)}
+                activeOpacity={0.75}
+                style={[
+                  s.stepPill,
+                  flowStep === 2 && s.stepPillActive,
+                  flowStep > 2 && s.stepPillCompleted,
+                ]}
+              >
+                <Text style={[s.stepPillNum, flowStep === 2 && s.stepPillNumActive]}>2</Text>
+                <Text style={[s.stepPillText, flowStep === 2 && s.stepPillTextActive]}>
+                  {SHORT_MONTHS[selectedMonth]}
+                </Text>
+              </TouchableOpacity>
+
+              <Icon name="chevronRight" size={13} color="#94A3B8" />
+
+              {/* Step 3: Date */}
+              <TouchableOpacity
+                onPress={() => setFlowStep(3)}
+                activeOpacity={0.75}
+                style={[
+                  s.stepPill,
+                  flowStep === 3 && s.stepPillActive,
+                ]}
+              >
+                <Text style={[s.stepPillNum, flowStep === 3 && s.stepPillNumActive]}>3</Text>
+                <Text style={[s.stepPillText, flowStep === 3 && s.stepPillTextActive]}>
+                  Day {selectedDay}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* QUICK PRESETS for Stay mode when on Step 3 */}
+            {mode === 'stay' && flowStep === 3 && (
+              <View style={s.presetRow}>
+                <TouchableOpacity onPress={() => handlePreset(0)} style={s.presetBtn} activeOpacity={0.75}>
+                  <Text style={s.presetText}>Today</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handlePreset(1)} style={s.presetBtn} activeOpacity={0.75}>
+                  <Text style={s.presetText}>Tomorrow</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handlePreset(2)} style={s.presetBtn} activeOpacity={0.75}>
+                  <Text style={s.presetText}>+2 Nights</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => handlePreset(7)} style={s.presetBtn} activeOpacity={0.75}>
+                  <Text style={s.presetText}>+1 Week</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* ============================================================ */}
+            {/* FLOW STEP 1: SELECT YEAR                                     */}
+            {/* ============================================================ */}
+            {flowStep === 1 && (
+              <View style={s.stepContainer}>
+                <View style={s.stepBanner}>
+                  <Text style={s.stepBannerTitle}>STEP 1: SELECT YEAR</Text>
+                  <Text style={s.stepBannerSub}>Tap your birth year or target year</Text>
                 </View>
                 <ScrollView
-                  ref={yearScrollRef}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={s.yearsScroll}
+                  style={{maxHeight: 240}}
+                  showsVerticalScrollIndicator={true}
+                  contentContainerStyle={s.yearsGrid}
                 >
                   {yearsList.map((yr) => {
                     const active = selectedYear === yr;
@@ -225,8 +300,8 @@ export function CalendarPicker({
                       <TouchableOpacity
                         key={yr}
                         onPress={() => handleSelectYear(yr)}
-                        activeOpacity={0.75}
                         style={[s.yearChip, active && s.yearChipActive]}
+                        activeOpacity={0.75}
                       >
                         <Text style={[s.yearChipText, active && s.yearChipTextActive]}>
                           {yr}
@@ -236,39 +311,66 @@ export function CalendarPicker({
                   })}
                 </ScrollView>
               </View>
+            )}
 
-              {/* 2. MONTH SELECTOR (2 Rows of 6 Chips) */}
-              <View style={s.sectionBlock}>
-                <View style={s.sectionHeaderRow}>
-                  <Text style={s.sectionSubLabel}>MONTH</Text>
-                  <Text style={s.sectionValueBadge}>{MONTHS[selectedMonth]}</Text>
+            {/* ============================================================ */}
+            {/* FLOW STEP 2: SELECT MONTH                                    */}
+            {/* ============================================================ */}
+            {flowStep === 2 && (
+              <View style={s.stepContainer}>
+                <View style={s.stepBanner}>
+                  <Text style={s.stepBannerTitle}>STEP 2: SELECT MONTH IN {selectedYear}</Text>
+                  <Text style={s.stepBannerSub}>Choose birth month or check-in month</Text>
                 </View>
                 <View style={s.monthsGrid}>
-                  {SHORT_MONTHS.map((mShort, idx) => {
+                  {MONTHS.map((mName, idx) => {
                     const active = selectedMonth === idx;
                     return (
                       <TouchableOpacity
-                        key={mShort}
+                        key={mName}
                         onPress={() => handleSelectMonth(idx)}
+                        style={[s.monthCard, active && s.monthCardActive]}
                         activeOpacity={0.75}
-                        style={[s.monthChip, active && s.monthChipActive]}
                       >
-                        <Text style={[s.monthChipText, active && s.monthChipTextActive]}>
-                          {mShort}
+                        <Text style={[s.monthCardShort, active && s.monthCardShortActive]}>
+                          {SHORT_MONTHS[idx]}
+                        </Text>
+                        <Text style={[s.monthCardFull, active && s.monthCardFullActive]}>
+                          {mName}
                         </Text>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
               </View>
+            )}
 
-              {/* 3. DAY GRID (Live Calendar Days for Selected Year & Month) */}
-              <View style={s.sectionBlock}>
-                <View style={s.sectionHeaderRow}>
-                  <Text style={s.sectionSubLabel}>DAY</Text>
-                  <Text style={s.sectionValueBadge}>
-                    Day {selectedDay} of {daysInMonth}
-                  </Text>
+            {/* ============================================================ */}
+            {/* FLOW STEP 3: SELECT DATE (CALENDAR GRID)                     */}
+            {/* ============================================================ */}
+            {flowStep === 3 && (
+              <View style={s.stepContainer}>
+                {/* Month/Year Navigation Bar */}
+                <View style={s.monthNavRow}>
+                  <TouchableOpacity
+                    onPress={() => setFlowStep(1)}
+                    style={s.monthYearBtn}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={s.monthYearText}>
+                      {MONTHS[selectedMonth]} {selectedYear}
+                    </Text>
+                    <Icon name="edit" size={13} color={C.primary} />
+                  </TouchableOpacity>
+
+                  <View style={{flexDirection: 'row', gap: 6}}>
+                    <TouchableOpacity onPress={handlePrevMonth} style={s.navArrow} activeOpacity={0.75}>
+                      <Icon name="chevronLeft" size={16} color={C.ink} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleNextMonth} style={s.navArrow} activeOpacity={0.75}>
+                      <Icon name="chevronRight" size={16} color={C.ink} />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 {/* Weekdays Header */}
@@ -288,17 +390,16 @@ export function CalendarPicker({
 
                 {/* Days Grid */}
                 <View style={s.daysGrid}>
-                  {/* Empty slots for month start offset */}
+                  {/* Empty slots */}
                   {Array.from({length: firstDayIndex}).map((_, i) => (
                     <View key={`empty-${i}`} style={s.dayCell} />
                   ))}
 
-                  {/* Month days */}
+                  {/* Days */}
                   {Array.from({length: daysInMonth}).map((_, i) => {
                     const day = i + 1;
                     const isSelected = selectedDay === day;
-                    const thisISO = formatISO(selectedYear, selectedMonth, day);
-                    const isToday = todayISO === thisISO;
+                    const isToday = isCurrentMonthToday && today.getDate() === day;
 
                     return (
                       <TouchableOpacity
@@ -325,17 +426,28 @@ export function CalendarPicker({
                   })}
                 </View>
               </View>
-            </ScrollView>
+            )}
 
             {/* Bottom Actions */}
             <View style={s.actionRow}>
-              <TouchableOpacity
-                onPress={() => setModalVisible(false)}
-                style={s.cancelBtn}
-                activeOpacity={0.75}
-              >
-                <Text style={s.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
+              {flowStep > 1 ? (
+                <TouchableOpacity
+                  onPress={() => setFlowStep((flowStep - 1) as 1 | 2 | 3)}
+                  style={s.cancelBtn}
+                  activeOpacity={0.75}
+                >
+                  <Text style={s.cancelBtnText}>← Previous</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  onPress={() => setModalVisible(false)}
+                  style={s.cancelBtn}
+                  activeOpacity={0.75}
+                >
+                  <Text style={s.cancelBtnText}>Cancel</Text>
+                </TouchableOpacity>
+              )}
+
               <TouchableOpacity
                 onPress={handleConfirm}
                 style={s.confirmBtn}
@@ -410,7 +522,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
-    maxHeight: '92%',
   },
   handleRow: {
     alignItems: 'center',
@@ -452,10 +563,54 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  stepPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  stepPillActive: {
+    backgroundColor: '#111827',
+  },
+  stepPillCompleted: {
+    backgroundColor: '#EDE9FE',
+  },
+  stepPillNum: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  stepPillNumActive: {
+    color: '#ffffff',
+  },
+  stepPillText: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  stepPillTextActive: {
+    color: '#ffffff',
+  },
   presetRow: {
     flexDirection: 'row',
     gap: 8,
-    marginBottom: 14,
+    marginBottom: 12,
   },
   presetBtn: {
     flex: 1,
@@ -472,49 +627,39 @@ const s = StyleSheet.create({
     fontWeight: '600',
     color: '#334155',
   },
-  sectionBlock: {
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
-    padding: 12,
+  stepContainer: {
+    paddingVertical: 6,
+  },
+  stepBanner: {
     marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
   },
-  sectionHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  sectionSubLabel: {
+  stepBannerTitle: {
     fontFamily: 'Inter',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '800',
     letterSpacing: 0.7,
     color: '#64748B',
     textTransform: 'uppercase',
   },
-  sectionValueBadge: {
+  stepBannerSub: {
     fontFamily: 'Inter',
-    fontSize: 11.5,
-    fontWeight: '700',
-    color: C.primary,
-    backgroundColor: '#EDE9FE',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 1,
   },
-  yearsScroll: {
-    gap: 6,
-    paddingVertical: 2,
+  yearsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
   },
   yearChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: '#ffffff',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    borderRadius: 10,
   },
   yearChipActive: {
     backgroundColor: '#111827',
@@ -522,7 +667,7 @@ const s = StyleSheet.create({
   },
   yearChipText: {
     fontFamily: 'Inter',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: '#334155',
   },
@@ -533,45 +678,87 @@ const s = StyleSheet.create({
   monthsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
     justifyContent: 'space-between',
   },
-  monthChip: {
-    width: '15.2%',
-    paddingVertical: 7,
-    borderRadius: 8,
-    backgroundColor: '#ffffff',
+  monthCard: {
+    width: '31%',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  monthCardActive: {
+    backgroundColor: '#111827',
+    borderColor: '#111827',
+  },
+  monthCardShort: {
+    fontFamily: 'Inter',
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  monthCardShortActive: {
+    color: '#ffffff',
+  },
+  monthCardFull: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  monthCardFullActive: {
+    color: '#CBD5E1',
+  },
+  monthNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    marginBottom: 4,
+  },
+  monthYearBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+  },
+  monthYearText: {
+    fontFamily: 'Inter',
+    fontSize: 14.5,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  navArrow: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#E2E8F0',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  monthChipActive: {
-    backgroundColor: '#111827',
-    borderColor: '#111827',
-  },
-  monthChipText: {
-    fontFamily: 'Inter',
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#334155',
-  },
-  monthChipTextActive: {
-    color: '#ffffff',
-    fontWeight: '700',
-  },
   weekDaysRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 6,
+    paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    borderBottomColor: '#F8FAFC',
   },
   weekDayText: {
-    width: 38,
+    width: 40,
     textAlign: 'center',
     fontFamily: 'Inter',
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '700',
     color: '#64748B',
   },
@@ -579,22 +766,22 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    paddingTop: 6,
+    paddingVertical: 6,
   },
   dayCell: {
-    width: 38,
-    height: 38,
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
     marginVertical: 2,
-    borderRadius: 19,
+    borderRadius: 20,
   },
   dayCellSelected: {
     backgroundColor: '#111827',
   },
   dayText: {
     fontFamily: 'Inter',
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '600',
     color: '#1E293B',
   },
@@ -608,7 +795,7 @@ const s = StyleSheet.create({
   },
   todayDot: {
     position: 'absolute',
-    bottom: 3,
+    bottom: 4,
     width: 4,
     height: 4,
     borderRadius: 2,
@@ -617,7 +804,7 @@ const s = StyleSheet.create({
   actionRow: {
     flexDirection: 'row',
     gap: 12,
-    marginTop: 14,
+    marginTop: 16,
   },
   cancelBtn: {
     flex: 1,
