@@ -15,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import {C, R} from '../theme/tokens';
 import {Icon, IconName} from '../components/Icon';
 import {PrimaryButton, SecondaryButton} from '../components/Ui';
+import {DocumentParser, IDDocumentType} from '../utils/DocumentParser';
 
 type DocId = 'auto' | 'aadhaar' | 'pan' | 'voter' | 'dl' | 'passport';
 type DocType = {id: DocId; label: string; icon: IconName};
@@ -234,7 +235,13 @@ export function ScannerScreen({
       scanCounter++;
 
       const parsedData = {
-        ...selectedProfile,
+        name: selectedProfile.name,
+        docType: selectedProfile.docType,
+        idNum: selectedProfile.idNum,
+        dob: selectedProfile.dob,
+        gender: selectedProfile.gender,
+        phone: selectedProfile.phone,
+        address: selectedProfile.address,
         photoUri: imageUri || selectedProfile.photoUri,
       };
 
