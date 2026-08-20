@@ -173,13 +173,10 @@ export function CalendarPicker({
         onPress={handleOpenModal}
         style={s.fieldTrigger}
       >
-        <View style={s.triggerLeft}>
-          <Icon name="calendar" size={17} color={C.primary} />
-          <Text style={[s.triggerText, !value && s.triggerPlaceholder]}>
-            {formatDisplay(value)}
-          </Text>
-        </View>
-        <Text style={s.isoBadge}>{value || 'Select'}</Text>
+        <Icon name="calendar" size={16} color={C.primary} />
+        <Text style={[s.triggerText, !value && s.triggerPlaceholder]} numberOfLines={1}>
+          {value || placeholder}
+        </Text>
       </TouchableOpacity>
 
       {/* Calendar Modal */}
@@ -444,38 +441,25 @@ const s = StyleSheet.create({
   fieldTrigger: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: 8,
     backgroundColor: '#ffffff',
     borderWidth: 1.2,
     borderColor: '#ECEAF0',
     borderRadius: 14,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  triggerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    minHeight: 44,
   },
   triggerText: {
     fontFamily: 'Inter',
-    fontSize: 14.5,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
     color: '#1E293B',
+    flex: 1,
   },
   triggerPlaceholder: {
     color: '#94A3B8',
     fontWeight: '400',
-  },
-  isoBadge: {
-    fontFamily: 'Inter',
-    fontSize: 11.5,
-    fontWeight: '600',
-    color: '#64748B',
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
   },
   scrim: {
     flex: 1,
