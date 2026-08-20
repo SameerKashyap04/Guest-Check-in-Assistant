@@ -42,6 +42,7 @@ export default function SettingsScreen() {
     userName,
     propertyId,
     storageMode,
+    language,
     setStorageMode,
     setBusinessSetup,
     setUserName,
@@ -306,10 +307,20 @@ export default function SettingsScreen() {
         />
         <SettingRow
           icon="globe"
-          label="Language — English"
-          onPress={() =>
-            Alert.alert('Language', 'StayMate is currently configured in English.')
-          }
+          label={`Language — ${language === 'hi' ? 'हिंदी' : language === 'as' ? 'অসমীয়া' : 'English'}`}
+          subtitle="Tap to switch language"
+          onPress={() => {
+            Alert.alert(
+              'Select Language',
+              'Choose your preferred display language:',
+              [
+                { text: 'English', onPress: () => setLanguage('en') },
+                { text: 'हिंदी (Hindi)', onPress: () => setLanguage('hi') },
+                { text: 'অসমীয়া (Assamese)', onPress: () => setLanguage('as') },
+                { text: 'Cancel', style: 'cancel' },
+              ]
+            );
+          }}
         />
         <SettingRow
           icon="moon"

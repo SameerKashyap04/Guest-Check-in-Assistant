@@ -26,7 +26,11 @@ import {
   subscribeToPropertyCheckins,
   subscribeToPendingCheckinCount,
 } from '@/services/firebaseSync';
-import { createMultipleGuestsAndStay, autoCheckoutExpiredStays } from '@/database/stays';
+import {
+  createMultipleGuestsAndStay,
+  autoCheckoutExpiredStays,
+  checkoutGuestOrRemoveFromRoom,
+} from '@/database/stays';
 import { parseCheckinImportText } from '@/utils/checkinImporter';
 import { useTranslation } from 'react-i18next';
 
@@ -554,6 +558,47 @@ export default function DashboardScreen() {
                       </View>
                     </View>
                   </View>
+
+                  {selectedGuest.room_number && (
+                    <TouchableOpacity
+                      activeOpacity={0.85}
+                      onPress={() => {
+                        const gName = selectedGuest.full_name || 'Guest';
+                        const rNum = selectedGuest.room_number;
+                        Alert.alert(
+                          'Check-out Guest?',
+                          `Are you sure you want to check out ${gName} from Room ${rNum}?`,
+                          [
+                            { text: 'Cancel', style: 'cancel' },
+                            {
+                              text: 'Check-out Guest',
+                              style: 'destructive',
+                              onPress: async () => {
+                                try {
+                                  await checkoutGuestOrRemoveFromRoom(
+                                    selectedGuest.id,
+                                    selectedGuest.room_id || selectedGuest.stay_room_id || 1
+                                  );
+                                  await fetchGuests();
+                                  setSelectedGuest(null);
+                                  Alert.alert(
+                                    'Checked Out',
+                                    `${gName} has been checked out successfully.`
+                                  );
+                                } catch (e) {
+                                  console.error('Checkout error', e);
+                                }
+                              },
+                            },
+                          ]
+                        );
+                      }}
+                      style={s.checkoutBtn}
+                    >
+                      <Icon name="logout" size={16} color={C.rose} />
+                      <Text style={s.checkoutBtnText}>Check-out Guest</Text>
+                    </TouchableOpacity>
+                  )}
                 </ScrollView>
               </View>
             )}
@@ -923,5 +968,23 @@ const s = StyleSheet.create({
     fontWeight: '600',
     color: '#222222',
     marginTop: 1,
+  },
+  checkoutBtn: {
+    marginTop: 16,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: '#FFF1F2',
+    borderWidth: 1,
+    borderColor: '#FFE4E6',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  checkoutBtnText: {
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '700',
+    color: C.rose,
   },
 });
