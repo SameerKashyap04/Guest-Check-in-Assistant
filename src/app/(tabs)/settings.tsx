@@ -1,61 +1,66 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  Alert, Modal, StyleSheet,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Alert,
+  Modal,
+  StyleSheet,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  ChevronRight, Cloud, MapPin, Globe, Moon,
-  Lock, Clock, Fingerprint, LogOut, Check,
-  X, User,
-} from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from 'nativewind';
-import { Button } from '@/components/Button';
-import { Input } from '@/components/Input';
-import { AirbnbSwitch } from '@/components/AirbnbSwitch';
+import { C, R, shadow } from '@/theme/tokens';
+import { Icon } from '@/components/v3/Icon';
+import {
+  PrimaryButton,
+  SecondaryButton,
+  SettingRow,
+  Field,
+  Switch,
+} from '@/components/v3/Ui';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { useAuthStore } from '@/store/useAuthStore';
-import { getEffectivePlan, getTrialDaysRemaining } from '@/services/entitlementService';
+import {
+  getEffectivePlan,
+  getTrialDaysRemaining,
+} from '@/services/entitlementService';
 import { PLANS } from '@/config/plans';
 import { SubscriptionPlan } from '@/types/subscription';
-import { AIRBNB } from '@/theme/airbnb';
-
-// ─── Airbnb Settings for StayMate ─────────────────────────────────────────────
-// Exact 1:1 port of renderSettings() from staymate-airbnb-redesign/app.html
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const { colorScheme, setColorScheme } = useColorScheme();
   const router = useRouter();
 
   const {
-    businessName, userName, propertyId, storageMode,
-    setStorageMode, setBusinessSetup, setUserName, setLanguage, setTheme,
+    businessName,
+    userName,
+    propertyId,
+    storageMode,
+    setStorageMode,
+    setBusinessSetup,
+    setUserName,
+    setLanguage,
+    setTheme,
   } = useSettingsStore();
 
   const { currentPlan, usage, isTrialing } = useSubscriptionStore();
   const { logout, verifyPin, setupPin } = useAuthStore();
 
-  // Dialog State
+  // Modal States
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [tempPropName, setTempPropName] = useState(businessName || '');
-  const [userNameModalOpen, setUserNameModalOpen] = useState(false);
   const [tempUserName, setTempUserName] = useState(userName || 'Sameer');
-  const [langModalOpen, setLangModalOpen] = useState(false);
-  const [themeModalOpen, setThemeModalOpen] = useState(false);
   const [pinModalOpen, setPinModalOpen] = useState(false);
-  const [autoLockModalOpen, setAutoLockModalOpen] = useState(false);
-  const [autoLockTimeout, setAutoLockTimeout] = useState(5);
-  const [biometricEnabled, setBiometricEnabled] = useState(true);
-
-  // PIN Form State
   const [currentPinInput, setCurrentPinInput] = useState('');
   const [newPinInput, setNewPinInput] = useState('');
   const [confirmPinInput, setConfirmPinInput] = useState('');
+  const [biometricEnabled, setBiometricEnabled] = useState(true);
 
   const trialDays = getTrialDaysRemaining();
   const effectivePlan: SubscriptionPlan = getEffectivePlan({
@@ -70,11 +75,13 @@ export default function SettingsScreen() {
   const planConfig = PLANS[effectivePlan];
   const checkInLimit = planConfig.entitlements.limits.monthlyCheckInLimit;
   const exportLimit = planConfig.entitlements.limits.monthlyExportLimit;
-  const isCloudStorageAllowed = [
-    SubscriptionPlan.PROFESSIONAL,
-    SubscriptionPlan.MULTI_PROPERTY,
-    SubscriptionPlan.ENTERPRISE
-  ].includes(effectivePlan) || (planConfig.entitlements.features.includes('cloudSync'));
+  const isCloudStorageAllowed =
+    [
+      SubscriptionPlan.PROFESSIONAL,
+      SubscriptionPlan.MULTI_PROPERTY,
+      SubscriptionPlan.ENTERPRISE,
+    ].includes(effectivePlan) ||
+    planConfig.entitlements.features.includes('cloudSync');
 
   const handleToggleStorage = async (val: boolean) => {
     if (val && !isCloudStorageAllowed) {
@@ -104,6 +111,7 @@ export default function SettingsScreen() {
       setUserName(tempUserName.trim());
     }
     setProfileModalOpen(false);
+    Alert.alert('Saved', 'Property profile updated successfully.');
   };
 
   const handleUpdatePin = async () => {
@@ -132,853 +140,624 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleLogout = () => {
+    Alert.alert('Log Out?', 'Are you sure you want to log out of StayMate?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Log Out',
+        style: 'destructive',
+        onPress: () => {
+          logout();
+          router.replace('/auth');
+        },
+      },
+    ]);
+  };
+
+  const handleLock = () => {
+    useAuthStore.setState({ isUnlocked: false });
+    router.replace('/auth');
+  };
+
   const getInitials = (name?: string | null) => {
     if (!name) return 'SM';
     return name
       .split(' ')
       .filter(Boolean)
       .slice(0, 2)
-      .map(n => n[0].toUpperCase())
+      .map((n) => n[0].toUpperCase())
       .join('');
   };
 
-  const checkinPct = checkInLimit > 0
-    ? Math.min(100, Math.round((usage.checkInCount / checkInLimit) * 100))
-    : 0;
+  const checkinPct =
+    checkInLimit > 0
+      ? Math.min(100, Math.round((usage.checkInCount / checkInLimit) * 100))
+      : 100;
 
-  const exportPct = exportLimit > 0
-    ? Math.min(100, Math.round((usage.exportCount / exportLimit) * 100))
-    : 0;
+  const exportPct =
+    exportLimit > 0
+      ? Math.min(100, Math.round((usage.exportCount / exportLimit) * 100))
+      : 100;
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
+    <View style={[s.screen, { paddingTop: insets.top }]}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        style={{ flex: 1 }}
+        contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Header ── */}
-        <Text style={styles.title}>Settings</Text>
+        <Text style={s.h1}>Settings</Text>
 
-        {/* ── Property Hero Card ── */}
+        {/* Property Profile Card */}
         <TouchableOpacity
-          style={styles.propertyCard}
           activeOpacity={0.8}
+          style={s.profileCard}
           onPress={() => {
             setTempPropName(businessName || '');
             setTempUserName(userName || 'Sameer');
             setProfileModalOpen(true);
           }}
         >
-          <View style={styles.propertyAvatar}>
-            <Text style={styles.propertyAvatarText}>
-              {getInitials(businessName)}
-            </Text>
+          <View style={s.profileMark}>
+            <Text style={s.profileMarkText}>{getInitials(businessName)}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.propertyName} numberOfLines={1}>
+            <Text style={s.profileTitle} numberOfLines={1}>
               {businessName || 'Sunrise Homestay'}
             </Text>
-            <Text style={styles.propertyMeta}>
-              {propertyId || 'HS-4821'} · {userName || 'Sameer'} (Owner)
+            <Text style={s.profileSub}>
+              {propertyId || 'HS-4821'} · {userName || 'Owner'}
             </Text>
           </View>
-          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
+          <Icon name="chevronRight" size={18} color={C.mutedSoft} />
         </TouchableOpacity>
 
-        {/* ── Subscription Card ── */}
-        <View style={styles.subCard}>
-          <View style={styles.subHeaderRow}>
+        {/* Plan & Usage Card */}
+        <View style={s.planCard}>
+          <View style={s.planTop}>
             <View>
-              <Text style={styles.subPlanTitle}>
-                {planConfig.name} plan
-              </Text>
-              <Text style={styles.subTrialSubtitle}>
-                {isTrialing ? `${trialDays} days left on trial` : 'Active subscription'}
+              <Text style={s.planTitle}>{planConfig.name} plan</Text>
+              <Text style={s.planSub}>
+                {isTrialing
+                  ? `${trialDays} days left on trial`
+                  : 'Active subscription'}
               </Text>
             </View>
-            <View style={styles.proBadge}>
-              <Text style={styles.proBadgeText}>PRO</Text>
+            <View style={s.proBadge}>
+              <Text style={s.proBadgeText}>PRO</Text>
             </View>
           </View>
 
-          {/* Check-ins Progress Bar */}
-          <View style={styles.progressWrap}>
-            <View style={styles.progressLabelRow}>
-              <Text style={styles.progressLabel}>Check-ins this month</Text>
-              <Text style={styles.progressVal}>
-                {checkInLimit === -1 ? `${usage.checkInCount} / Unlimited` : `${usage.checkInCount} / ${checkInLimit}`}
-              </Text>
-            </View>
-            <View style={styles.track}>
-              <View style={[styles.fill, { width: checkInLimit === -1 ? '100%' : `${checkinPct}%`, backgroundColor: AIRBNB.colors.primary }]} />
+          {/* Check-ins usage bar */}
+          <UsageBar
+            label="Check-ins this month"
+            value={
+              checkInLimit === -1
+                ? `${usage.checkInCount} / Unlimited`
+                : `${usage.checkInCount} / ${checkInLimit}`
+            }
+            pct={checkinPct}
+          />
+
+          {/* Reports & exports usage bar */}
+          <UsageBar
+            label="Reports & exports"
+            value={
+              exportLimit === -1
+                ? `${usage.exportCount} / Unlimited`
+                : `${usage.exportCount} / ${exportLimit}`
+            }
+            pct={exportPct}
+            dark
+          />
+
+          {/* AI Document OCR Status */}
+          <View style={s.ocrRow}>
+            <Text style={s.ocrText}>AI Document OCR</Text>
+            <View style={s.activeBadge}>
+              <Text style={s.activeBadgeText}>Active</Text>
             </View>
           </View>
 
-          {/* Reports Progress Bar */}
-          <View style={styles.progressWrap}>
-            <View style={styles.progressLabelRow}>
-              <Text style={styles.progressLabel}>Reports &amp; exports</Text>
-              <Text style={styles.progressVal}>
-                {exportLimit === -1 ? `${usage.exportCount} / Unlimited` : `${usage.exportCount} / ${exportLimit}`}
-              </Text>
-            </View>
-            <View style={styles.track}>
-              <View style={[styles.fill, { width: exportLimit === -1 ? '100%' : `${exportPct}%`, backgroundColor: AIRBNB.colors.ink }]} />
-            </View>
-          </View>
-
-          {/* AI Document OCR Row */}
-          <View style={styles.ocrRow}>
-            <Text style={styles.ocrLabel}>AI Document OCR</Text>
-            <View style={styles.activePill}>
-              <Text style={styles.activePillText}>Active</Text>
-            </View>
-          </View>
-
-          {/* View Plans Button */}
-          <Button
-            label="View plans &amp; upgrade"
-            variant="primary"
-            style={{ marginTop: 14 }}
+          <PrimaryButton
+            label="View plans & upgrade"
             onPress={() => router.push('/subscription/pricing')}
+            style={{ marginTop: 14 }}
           />
         </View>
 
-        {/* ── DATA STORAGE Section ── */}
-        <Text style={styles.sectionLabel}>DATA STORAGE</Text>
-        <View style={styles.settingsRow}>
-          <View style={styles.iconWell}>
-            <Cloud size={18} color={AIRBNB.colors.ink} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={styles.rowTitle}>Cloud mode</Text>
-              {!isCloudStorageAllowed && (
-                <View style={styles.proBadge}>
-                  <Text style={styles.proBadgeText}>PRO</Text>
-                </View>
-              )}
-            </View>
-            <Text style={styles.rowSubtitle}>
-              {!isCloudStorageAllowed
-                ? 'Requires Professional plan · Local storage only'
-                : storageMode === 'cloud'
-                ? 'Synced live across staff devices'
-                : 'Local storage only'}
-            </Text>
-          </View>
-          <AirbnbSwitch
-            value={storageMode === 'cloud' && isCloudStorageAllowed}
-            onValueChange={handleToggleStorage}
-          />
-        </View>
+        {/* DATA STORAGE */}
+        <Text style={s.sectionHeader}>DATA STORAGE</Text>
+        <SettingRow
+          icon="cloud"
+          label="Cloud mode"
+          subtitle="Synced live across staff devices"
+          onPress={() => handleToggleStorage(storageMode !== 'cloud')}
+          right={
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => handleToggleStorage(storageMode !== 'cloud')}
+            >
+              <Switch on={storageMode === 'cloud'} />
+            </TouchableOpacity>
+          }
+        />
 
-        {/* ── GENERAL Section ── */}
-        <Text style={styles.sectionLabel}>GENERAL</Text>
-
-        <TouchableOpacity
-          style={styles.settingsRow}
-          activeOpacity={0.7}
-          onPress={() => {
-            setTempUserName(userName || 'Sameer');
-            setUserNameModalOpen(true);
-          }}
-        >
-          <View style={styles.iconWell}>
-            <User size={18} color={AIRBNB.colors.ink} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>User name — {userName || 'Sameer'}</Text>
-          </View>
-          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.settingsRow}
-          activeOpacity={0.7}
+        {/* GENERAL */}
+        <Text style={[s.sectionHeader, { marginTop: 16 }]}>GENERAL</Text>
+        <SettingRow
+          icon="users"
+          label="Property & owner name"
+          subtitle={userName || 'Owner details'}
           onPress={() => {
             setTempPropName(businessName || '');
             setTempUserName(userName || 'Sameer');
             setProfileModalOpen(true);
           }}
-        >
-          <View style={styles.iconWell}>
-            <MapPin size={18} color={AIRBNB.colors.ink} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>Property name &amp; address</Text>
-          </View>
-          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
-        </TouchableOpacity>
+        />
+        <SettingRow
+          icon="mapPin"
+          label="Property address"
+          onPress={() => {
+            setTempPropName(businessName || '');
+            setTempUserName(userName || 'Sameer');
+            setProfileModalOpen(true);
+          }}
+        />
+        <SettingRow
+          icon="globe"
+          label="Language — English"
+          onPress={() =>
+            Alert.alert('Language', 'StayMate is currently configured in English.')
+          }
+        />
+        <SettingRow
+          icon="moon"
+          label="Theme — Light (Restrained)"
+          onPress={() =>
+            Alert.alert(
+              'Theme',
+              'StayMate V3 uses the unified light product aesthetic.'
+            )
+          }
+        />
 
-        <TouchableOpacity
-          style={styles.settingsRow}
-          activeOpacity={0.7}
-          onPress={() => setLangModalOpen(true)}
-        >
-          <View style={styles.iconWell}>
-            <Globe size={18} color={AIRBNB.colors.ink} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>
-              Language — {i18n.language === 'hi' ? 'Hindi' : 'English'}
-            </Text>
-          </View>
-          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.settingsRow}
-          activeOpacity={0.7}
-          onPress={() => setThemeModalOpen(true)}
-        >
-          <View style={styles.iconWell}>
-            <Moon size={18} color={AIRBNB.colors.ink} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>
-              Theme — {colorScheme === 'dark' ? 'Dark' : 'System default'}
-            </Text>
-          </View>
-          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
-        </TouchableOpacity>
-
-        {/* ── SECURITY Section ── */}
-        <Text style={styles.sectionLabel}>SECURITY</Text>
-
-        <TouchableOpacity
-          style={styles.settingsRow}
-          activeOpacity={0.7}
+        {/* SECURITY */}
+        <Text style={[s.sectionHeader, { marginTop: 16 }]}>SECURITY</Text>
+        <SettingRow
+          icon="lock"
+          label="Change security PIN"
           onPress={() => setPinModalOpen(true)}
-        >
-          <View style={styles.iconWell}>
-            <Lock size={18} color={AIRBNB.colors.ink} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>Change security PIN</Text>
-          </View>
-          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
-        </TouchableOpacity>
+        />
+        <SettingRow
+          icon="fingerprint"
+          label="Biometric unlock"
+          subtitle="Face ID / Fingerprint"
+          right={
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={() => setBiometricEnabled(!biometricEnabled)}
+            >
+              <Switch on={biometricEnabled} />
+            </TouchableOpacity>
+          }
+        />
+        <SettingRow
+          icon="clock"
+          label="Auto-lock — After 5 minutes"
+          onPress={() =>
+            Alert.alert(
+              'Auto-lock',
+              'App auto-locks after 5 minutes of inactivity.'
+            )
+          }
+        />
 
-        <View style={styles.settingsRow}>
-          <View style={styles.iconWell}>
-            <Fingerprint size={18} color={AIRBNB.colors.ink} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>Biometric unlock</Text>
-            <Text style={styles.rowSubtitle}>Face ID / Fingerprint</Text>
-          </View>
-          <AirbnbSwitch
-            value={biometricEnabled}
-            onValueChange={setBiometricEnabled}
-          />
-        </View>
+        {/* Bottom Actions: Lock app & Log out */}
+        <View style={s.bottomActions}>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleLock}
+            style={s.lockBtn}
+          >
+            <Icon name="lock" size={16} color={C.ink} />
+            <Text style={s.lockBtnText}>Lock app</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.settingsRow}
-          activeOpacity={0.7}
-          onPress={() => setAutoLockModalOpen(true)}
-        >
-          <View style={styles.iconWell}>
-            <Clock size={18} color={AIRBNB.colors.ink} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>
-              Auto-lock — {autoLockTimeout === 0 ? 'Immediately' : `After ${autoLockTimeout} minutes`}
-            </Text>
-          </View>
-          <ChevronRight size={18} color={AIRBNB.colors.mutedSoft} />
-        </TouchableOpacity>
-
-        {/* ── Bottom Action Buttons ── */}
-        <View style={styles.bottomBtnsRow}>
-          <Button
-            label="Lock app"
-            variant="soft"
-            icon={<Lock size={16} color={AIRBNB.colors.ink} />}
-            style={{ flex: 1 }}
-            onPress={() => useAuthStore.setState({ isUnlocked: false })}
-          />
-          <Button
-            label="Log out"
-            variant="danger"
-            icon={<LogOut size={16} color={AIRBNB.colors.rose} />}
-            style={{ flex: 1 }}
-            onPress={() => {
-              Alert.alert('Log out?', 'You will need to sign in again with your email and password.', [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Log Out',
-                  style: 'destructive',
-                  onPress: () => {
-                    logout();
-                    router.replace('/auth');
-                  },
-                },
-              ]);
-            }}
-          />
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={handleLogout}
+            style={s.logoutBtn}
+          >
+            <Icon name="logout" size={16} color={C.primary} />
+            <Text style={s.logoutBtnText}>Log out</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
 
-      {/* ══════════════════════════════════════════════════
-          PROPERTY PROFILE MODAL
-      ══════════════════════════════════════════════════ */}
-      <Modal visible={profileModalOpen} transparent animationType="slide">
+      {/* Property Profile Modal */}
+      <Modal
+        visible={profileModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setProfileModalOpen(false)}
+      >
         <TouchableOpacity
-          style={styles.scrim}
           activeOpacity={1}
           onPress={() => setProfileModalOpen(false)}
+          style={s.modalOverlay}
         >
           <TouchableOpacity
-            style={styles.sheet}
             activeOpacity={1}
-            onPress={e => e.stopPropagation?.()}
+            onPress={(e) => e.stopPropagation?.()}
+            style={s.sheetContent}
           >
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Property Details</Text>
+            <View style={s.sheetHeader}>
+              <Text style={s.sheetTitle}>Property Profile</Text>
               <TouchableOpacity
-                style={styles.iconBtn}
                 onPress={() => setProfileModalOpen(false)}
+                style={s.sheetClose}
               >
-                <X size={16} color={AIRBNB.colors.ink} />
+                <Icon name="x" size={18} color={C.ink} />
               </TouchableOpacity>
             </View>
 
-            <Input
-              label="Your Name / Host Name"
-              value={tempUserName}
-              onChangeText={setTempUserName}
-              placeholder="e.g. Sameer"
-            />
-
-            <Input
-              label="Property / Business Name"
+            <Field
+              label="Property / Homestay Name"
               value={tempPropName}
               onChangeText={setTempPropName}
               placeholder="e.g. Sunrise Homestay"
             />
-
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-              <Button
-                label="Cancel"
-                variant="outline"
-                style={{ flex: 1 }}
-                onPress={() => setProfileModalOpen(false)}
-              />
-              <Button
-                label="Save"
-                variant="primary"
-                style={{ flex: 1 }}
-                onPress={handleSavePropertyProfile}
-              />
-            </View>
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* ══════════════════════════════════════════════════
-          USER NAME MODAL
-      ══════════════════════════════════════════════════ */}
-      <Modal visible={userNameModalOpen} transparent animationType="slide">
-        <TouchableOpacity
-          style={styles.scrim}
-          activeOpacity={1}
-          onPress={() => setUserNameModalOpen(false)}
-        >
-          <TouchableOpacity
-            style={styles.sheet}
-            activeOpacity={1}
-            onPress={e => e.stopPropagation?.()}
-          >
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Change User Name</Text>
-              <TouchableOpacity
-                style={styles.iconBtn}
-                onPress={() => setUserNameModalOpen(false)}
-              >
-                <X size={16} color={AIRBNB.colors.ink} />
-              </TouchableOpacity>
-            </View>
-
-            <Input
-              label="Your Name / Greeting Name"
+            <Field
+              label="Owner Display Name"
               value={tempUserName}
               onChangeText={setTempUserName}
               placeholder="e.g. Sameer"
-              autoFocus
             />
 
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-              <Button
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+              <SecondaryButton
                 label="Cancel"
-                variant="outline"
+                onPress={() => setProfileModalOpen(false)}
                 style={{ flex: 1 }}
-                onPress={() => setUserNameModalOpen(false)}
               />
-              <Button
-                label="Save"
-                variant="primary"
+              <PrimaryButton
+                label="Save Changes"
+                onPress={handleSavePropertyProfile}
                 style={{ flex: 1 }}
-                onPress={() => {
-                  if (!tempUserName.trim()) {
-                    Alert.alert('Required', 'User name cannot be empty');
-                    return;
-                  }
-                  setUserName(tempUserName.trim());
-                  setUserNameModalOpen(false);
-                  Alert.alert('Updated', 'User name updated successfully!');
-                }}
               />
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
 
-      {/* ══════════════════════════════════════════════════
-          SECURITY PIN MODAL
-      ══════════════════════════════════════════════════ */}
-      <Modal visible={pinModalOpen} transparent animationType="slide">
+      {/* PIN Change Modal */}
+      <Modal
+        visible={pinModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPinModalOpen(false)}
+      >
         <TouchableOpacity
-          style={styles.scrim}
           activeOpacity={1}
           onPress={() => setPinModalOpen(false)}
+          style={s.modalOverlay}
         >
           <TouchableOpacity
-            style={styles.sheet}
             activeOpacity={1}
-            onPress={e => e.stopPropagation?.()}
+            onPress={(e) => e.stopPropagation?.()}
+            style={s.sheetContent}
           >
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Change Security PIN</Text>
+            <View style={s.sheetHeader}>
+              <Text style={s.sheetTitle}>Change Security PIN</Text>
               <TouchableOpacity
-                style={styles.iconBtn}
                 onPress={() => setPinModalOpen(false)}
+                style={s.sheetClose}
               >
-                <X size={16} color={AIRBNB.colors.ink} />
+                <Icon name="x" size={18} color={C.ink} />
               </TouchableOpacity>
             </View>
 
-            <Input
-              label="Current PIN"
+            <Field
+              label="Current 4-digit PIN"
               value={currentPinInput}
               onChangeText={setCurrentPinInput}
-              placeholder="4-digit PIN"
-              secureTextEntry
+              placeholder="••••"
+              secure
               keyboardType="numeric"
-              maxLength={4}
             />
-            <Input
-              label="New PIN"
+            <Field
+              label="New 4-digit PIN"
               value={newPinInput}
               onChangeText={setNewPinInput}
-              placeholder="New 4-digit PIN"
-              secureTextEntry
+              placeholder="••••"
+              secure
               keyboardType="numeric"
-              maxLength={4}
             />
-            <Input
+            <Field
               label="Confirm New PIN"
               value={confirmPinInput}
               onChangeText={setConfirmPinInput}
-              placeholder="Confirm 4-digit PIN"
-              secureTextEntry
+              placeholder="••••"
+              secure
               keyboardType="numeric"
-              maxLength={4}
             />
 
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
-              <Button
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
+              <SecondaryButton
                 label="Cancel"
-                variant="outline"
-                style={{ flex: 1 }}
                 onPress={() => setPinModalOpen(false)}
-              />
-              <Button
-                label="Update PIN"
-                variant="primary"
                 style={{ flex: 1 }}
+              />
+              <PrimaryButton
+                label="Update PIN"
                 onPress={handleUpdatePin}
+                style={{ flex: 1 }}
               />
             </View>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-
-      {/* ══════════════════════════════════════════════════
-          LANGUAGE MODAL
-      ══════════════════════════════════════════════════ */}
-      <Modal visible={langModalOpen} transparent animationType="slide">
-        <TouchableOpacity
-          style={styles.scrim}
-          activeOpacity={1}
-          onPress={() => setLangModalOpen(false)}
-        >
-          <TouchableOpacity
-            style={styles.sheet}
-            activeOpacity={1}
-            onPress={e => e.stopPropagation?.()}
-          >
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Select Language</Text>
-              <TouchableOpacity
-                style={styles.iconBtn}
-                onPress={() => setLangModalOpen(false)}
-              >
-                <X size={16} color={AIRBNB.colors.ink} />
-              </TouchableOpacity>
-            </View>
-
-            {[
-              { code: 'en', label: 'English (India)' },
-              { code: 'hi', label: 'Hindi (हिंदी)' },
-            ].map(l => (
-              <TouchableOpacity
-                key={l.code}
-                style={styles.dialogOptionRow}
-                onPress={() => {
-                  i18n.changeLanguage(l.code);
-                  setLangModalOpen(false);
-                }}
-              >
-                <Text style={styles.dialogOptionText}>{l.label}</Text>
-                {i18n.language === l.code && <Check size={18} color={AIRBNB.colors.primary} />}
-              </TouchableOpacity>
-            ))}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* ══════════════════════════════════════════════════
-          THEME MODAL
-      ══════════════════════════════════════════════════ */}
-      <Modal visible={themeModalOpen} transparent animationType="slide">
-        <TouchableOpacity
-          style={styles.scrim}
-          activeOpacity={1}
-          onPress={() => setThemeModalOpen(false)}
-        >
-          <TouchableOpacity
-            style={styles.sheet}
-            activeOpacity={1}
-            onPress={e => e.stopPropagation?.()}
-          >
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Appearance</Text>
-              <TouchableOpacity
-                style={styles.iconBtn}
-                onPress={() => setThemeModalOpen(false)}
-              >
-                <X size={16} color={AIRBNB.colors.ink} />
-              </TouchableOpacity>
-            </View>
-
-            {[
-              { id: 'light', label: 'Light' },
-              { id: 'dark', label: 'Dark' },
-              { id: 'system', label: 'System Default' },
-            ].map(thm => (
-              <TouchableOpacity
-                key={thm.id}
-                style={styles.dialogOptionRow}
-                onPress={() => {
-                  setColorScheme(thm.id as any);
-                  setThemeModalOpen(false);
-                }}
-              >
-                <Text style={styles.dialogOptionText}>{thm.label}</Text>
-                {colorScheme === thm.id && <Check size={18} color={AIRBNB.colors.primary} />}
-              </TouchableOpacity>
-            ))}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-
-      {/* ══════════════════════════════════════════════════
-          AUTO-LOCK MODAL
-      ══════════════════════════════════════════════════ */}
-      <Modal visible={autoLockModalOpen} transparent animationType="slide">
-        <TouchableOpacity
-          style={styles.scrim}
-          activeOpacity={1}
-          onPress={() => setAutoLockModalOpen(false)}
-        >
-          <TouchableOpacity
-            style={styles.sheet}
-            activeOpacity={1}
-            onPress={e => e.stopPropagation?.()}
-          >
-            <View style={styles.sheetHandle} />
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>Auto-lock Timer</Text>
-              <TouchableOpacity
-                style={styles.iconBtn}
-                onPress={() => setAutoLockModalOpen(false)}
-              >
-                <X size={16} color={AIRBNB.colors.ink} />
-              </TouchableOpacity>
-            </View>
-
-            {[
-              { val: 0, label: 'Immediately' },
-              { val: 1, label: '1 Minute' },
-              { val: 5, label: '5 Minutes' },
-              { val: 15, label: '15 Minutes' },
-            ].map(opt => (
-              <TouchableOpacity
-                key={opt.val}
-                style={styles.dialogOptionRow}
-                onPress={() => {
-                  setAutoLockTimeout(opt.val);
-                  setAutoLockModalOpen(false);
-                }}
-              >
-                <Text style={styles.dialogOptionText}>{opt.label}</Text>
-                {autoLockTimeout === opt.val && <Check size={18} color={AIRBNB.colors.primary} />}
-              </TouchableOpacity>
-            ))}
-          </TouchableOpacity>
-        </TouchableOpacity>
-      </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: AIRBNB.colors.canvas,
+    backgroundColor: '#fff',
   },
-  scroll: {
+  scrollContent: {
     paddingHorizontal: 20,
-    paddingTop: 4,
-    paddingBottom: 110,
+    paddingBottom: 130,
   },
-  title: {
-    ...AIRBNB.typography.displayLg,
-    color: AIRBNB.colors.ink,
-    paddingTop: 18,
+  h1: {
+    fontFamily: 'Inter',
+    fontSize: 22,
+    fontWeight: '600',
+    letterSpacing: -0.4,
+    color: '#222222',
+    paddingTop: 12,
   },
-
-  // Property Hero Card
-  propertyCard: {
-    backgroundColor: AIRBNB.colors.canvas,
-    borderWidth: 1,
-    borderColor: AIRBNB.colors.hairlineSoft,
-    borderRadius: AIRBNB.radius.md,
+  profileCard: {
+    marginTop: 16,
     padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#ebebeb',
+    backgroundColor: '#fff',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    marginTop: 16,
-    ...AIRBNB.shadow.card,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  propertyAvatar: {
+  profileMark: {
     width: 52,
     height: 52,
     borderRadius: 14,
-    backgroundColor: AIRBNB.colors.primary,
+    backgroundColor: C.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  propertyAvatarText: {
-    fontSize: 18,
+  profileMarkText: {
+    fontFamily: 'Inter',
+    fontSize: 16,
     fontWeight: '700',
-    color: '#ffffff',
+    color: '#fff',
   },
-  propertyName: {
-    ...AIRBNB.typography.titleMd,
-    color: AIRBNB.colors.ink,
+  profileTitle: {
+    fontFamily: 'Inter',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#222222',
   },
-  propertyMeta: {
-    ...AIRBNB.typography.bodySm,
-    color: AIRBNB.colors.muted,
+  profileSub: {
+    fontFamily: 'Inter',
+    fontSize: 13.5,
+    fontWeight: '400',
+    color: '#6a6a6a',
     marginTop: 2,
   },
-
-  // Subscription Card
-  subCard: {
-    backgroundColor: AIRBNB.colors.canvas,
-    borderWidth: 1,
-    borderColor: AIRBNB.colors.hairlineSoft,
-    borderRadius: AIRBNB.radius.md,
-    padding: 16,
+  planCard: {
     marginTop: 14,
-    ...AIRBNB.shadow.card,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#ebebeb',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
-  subHeaderRow: {
+  planTop: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 14,
+    alignItems: 'flex-start',
   },
-  subPlanTitle: {
-    ...AIRBNB.typography.titleSm,
-    color: AIRBNB.colors.ink,
+  planTitle: {
+    fontFamily: 'Inter',
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#222222',
   },
-  subTrialSubtitle: {
-    ...AIRBNB.typography.bodySm,
-    color: AIRBNB.colors.muted,
+  planSub: {
+    fontFamily: 'Inter',
+    fontSize: 13.5,
+    fontWeight: '400',
+    color: '#6a6a6a',
     marginTop: 2,
   },
   proBadge: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: AIRBNB.radius.full,
-    backgroundColor: AIRBNB.colors.surfaceStrong,
+    borderRadius: R.full,
+    backgroundColor: '#f2f2f2',
   },
   proBadgeText: {
-    ...AIRBNB.typography.micro,
-    color: AIRBNB.colors.ink,
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#222222',
   },
-  progressWrap: {
-    marginBottom: 12,
-  },
-  progressLabelRow: {
+  usageLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 6,
+    marginBottom: 5,
   },
-  progressLabel: {
-    ...AIRBNB.typography.caption,
-    color: AIRBNB.colors.muted,
+  usageText: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    fontWeight: '500',
+    color: '#6a6a6a',
   },
-  progressVal: {
-    ...AIRBNB.typography.caption,
-    fontWeight: '600',
-    color: AIRBNB.colors.ink,
-  },
-  track: {
+  usageTrack: {
     height: 8,
-    borderRadius: AIRBNB.radius.full,
-    backgroundColor: AIRBNB.colors.surfaceStrong,
+    borderRadius: R.full,
+    backgroundColor: '#f2f2f2',
     overflow: 'hidden',
   },
-  fill: {
+  usageFill: {
     height: '100%',
-    borderRadius: AIRBNB.radius.full,
+    borderRadius: R.full,
   },
   ocrRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: AIRBNB.colors.hairlineSoft,
+    alignItems: 'center',
+    marginTop: 14,
   },
-  ocrLabel: {
-    ...AIRBNB.typography.bodySm,
-    color: AIRBNB.colors.ink,
+  ocrText: {
+    fontFamily: 'Inter',
+    fontSize: 13.5,
+    fontWeight: '400',
+    color: '#6a6a6a',
   },
-  activePill: {
-    paddingHorizontal: 8,
+  activeBadge: {
+    paddingHorizontal: 9,
     paddingVertical: 3,
-    borderRadius: AIRBNB.radius.full,
-    backgroundColor: AIRBNB.colors.emeraldBg,
+    borderRadius: R.full,
+    backgroundColor: '#ECFDF3',
   },
-  activePillText: {
-    ...AIRBNB.typography.micro,
-    color: AIRBNB.colors.emerald,
+  activeBadgeText: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#059669',
   },
-
-  // Section Headers
-  sectionLabel: {
-    ...AIRBNB.typography.caption,
-    color: AIRBNB.colors.muted,
+  sectionHeader: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: '#6a6a6a',
+    textTransform: 'uppercase',
     marginTop: 20,
     marginBottom: 4,
   },
-  settingsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: AIRBNB.colors.hairlineSoft,
-  },
-  iconWell: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: AIRBNB.colors.surfaceStrong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  rowTitle: {
-    ...AIRBNB.typography.titleSm,
-    color: AIRBNB.colors.ink,
-  },
-  rowSubtitle: {
-    ...AIRBNB.typography.bodySm,
-    color: AIRBNB.colors.muted,
-    marginTop: 2,
-  },
-  bottomBtnsRow: {
+  bottomActions: {
     flexDirection: 'row',
     gap: 10,
     marginTop: 24,
-    marginBottom: 20,
   },
-
-  // Sheet
-  scrim: {
+  lockBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: R.sm,
+    backgroundColor: '#f2f2f2',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  lockBtnText: {
+    fontFamily: 'Inter',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#222222',
+  },
+  logoutBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: R.sm,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: C.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+  },
+  logoutBtnText: {
+    fontFamily: 'Inter',
+    fontSize: 15,
+    fontWeight: '600',
+    color: C.primary,
+  },
+  modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
-  sheet: {
-    backgroundColor: AIRBNB.colors.canvas,
-    borderTopLeftRadius: AIRBNB.radius.sheet,
-    borderTopRightRadius: AIRBNB.radius.sheet,
-    paddingHorizontal: 20,
-    paddingTop: 6,
-    paddingBottom: 28,
-    maxHeight: '82%',
-    ...AIRBNB.shadow.sheet,
-  },
-  sheetHandle: {
-    width: 36,
-    height: 4,
-    borderRadius: AIRBNB.radius.full,
-    backgroundColor: AIRBNB.colors.hairline,
-    alignSelf: 'center',
-    marginTop: 10,
-    marginBottom: 6,
+  sheetContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '85%',
   },
   sheetHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 16,
   },
   sheetTitle: {
-    ...AIRBNB.typography.titleMd,
-    color: AIRBNB.colors.ink,
+    fontFamily: 'Inter',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#222222',
   },
-  iconBtn: {
+  sheetClose: {
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: AIRBNB.colors.surfaceStrong,
+    backgroundColor: '#f2f2f2',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dialogOptionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: AIRBNB.colors.hairlineSoft,
-  },
-  dialogOptionText: {
-    ...AIRBNB.typography.titleSm,
-    color: AIRBNB.colors.ink,
-  },
 });
+
+function UsageBar({
+  label,
+  value,
+  pct,
+  dark,
+}: {
+  label: string;
+  value: string;
+  pct: number;
+  dark?: boolean;
+}) {
+  return (
+    <View style={{ marginTop: 14 }}>
+      <View style={s.usageLabels}>
+        <Text style={s.usageText}>{label}</Text>
+        <Text style={s.usageText}>{value}</Text>
+      </View>
+      <View style={s.usageTrack}>
+        <View
+          style={[
+            s.usageFill,
+            { width: `${pct}%`, backgroundColor: dark ? '#222222' : C.primary },
+          ]}
+        />
+      </View>
+    </View>
+  );
+}

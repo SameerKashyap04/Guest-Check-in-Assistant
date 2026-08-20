@@ -1,98 +1,77 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Alert, TextInput, Modal, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { GlassCard } from '@/components/GlassCard';
+import React, { useEffect, useState, useMemo } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Modal,
+  StyleSheet,
+  Alert,
+  TextInput,
+  ActivityIndicator,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
+import { C, R, shadow } from '@/theme/tokens';
+import { Icon } from '@/components/v3/Icon';
+import { RoomCard, STATUS_META } from '@/components/v3/RoomCard';
+import { PrimaryButton, SecondaryButton, Field } from '@/components/v3/Ui';
 import { useRoomsStore } from '@/store/useRoomsStore';
-import { Plus, X, Trash, Search, LayoutGrid, List, BedDouble, CheckCircle2, UserCheck, Sparkles, Wrench, Users, Calendar, Phone, IdCard, Edit, LogOut, UserX } from 'lucide-react-native';
-import { Input } from '@/components/Input';
-import { Button } from '@/components/Button';
 import { Room } from '@/database/rooms';
 import { getGuestsForRoom, checkoutGuestOrRemoveFromRoom } from '@/database/stays';
-import { useTranslation } from 'react-i18next';
 import { isRoomLimitReached, getLimit } from '@/services/entitlementService';
 import { formatLimit } from '@/config/plans';
+import { useTranslation } from 'react-i18next';
 
 export default function RoomsScreen() {
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { rooms, fetchRooms, createRoom, editRoom, removeRoom, isLoading } = useRoomsStore();
-  
+  const router = useRouter();
+  const { rooms, fetchRooms, createRoom, editRoom, removeRoom, isLoading } =
+    useRoomsStore();
+
+  const [filter, setFilter] = useState<
+    'all' | 'available' | 'occupied' | 'cleaning' | 'maintenance'
+  >('all');
+  const [isListView, setIsListView] = useState(false);
+
+  // Modal / Sheet State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
+  const [isEditingMode, setIsEditingMode] = useState(false);
   const [roomGuests, setRoomGuests] = useState<any[]>([]);
   const [isLoadingGuests, setIsLoadingGuests] = useState(false);
-  const [isEditingMode, setIsEditingMode] = useState(false);
-  const [selectedGuestDetail, setSelectedGuestDetail] = useState<any | null>(null);
 
+  // Form Fields
   const [roomNumber, setRoomNumber] = useState('');
   const [roomType, setRoomType] = useState('');
   const [roomPrice, setRoomPrice] = useState('');
-  const [roomStatus, setRoomStatus] = useState<'available' | 'occupied' | 'cleaning' | 'maintenance'>('available');
-  
-  const [filter, setFilter] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isGridView, setIsGridView] = useState(true);
+  const [roomStatus, setRoomStatus] = useState<
+    'available' | 'occupied' | 'cleaning' | 'maintenance'
+  >('available');
 
   useEffect(() => {
     fetchRooms();
   }, []);
 
-  const total = rooms.length;
-  const available = rooms.filter(r => r.status === 'available').length;
-  const occupied = rooms.filter(r => r.status === 'occupied').length;
-  const cleaning = rooms.filter(r => r.status === 'cleaning').length;
-  const maintenance = rooms.filter(r => r.status === 'maintenance').length;
+  const counts = useMemo(
+    () => ({
+      all: rooms.length,
+      available: rooms.filter((r) => r.status === 'available').length,
+      occupied: rooms.filter((r) => r.status === 'occupied').length,
+      cleaning: rooms.filter((r) => r.status === 'cleaning').length,
+      maintenance: rooms.filter((r) => r.status === 'maintenance').length,
+    }),
+    [rooms]
+  );
 
-  const filteredRooms = rooms.filter(r => {
-    const matchesFilter = filter === 'All' ? true : r.status === filter.toLowerCase();
-    const matchesSearch = r.room_number.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (r.room_type && r.room_type.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesFilter && matchesSearch;
-  });
-
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case 'available':
-        return {
-          label: 'Available',
-          badgeBg: 'bg-emerald-500/15',
-          textColor: 'text-emerald-700 dark:text-emerald-400',
-          borderColor: 'border-emerald-500/30',
-          icon: <CheckCircle2 size={12} color="#10B981" />
-        };
-      case 'occupied':
-        return {
-          label: 'Occupied',
-          badgeBg: 'bg-sky-500/15',
-          textColor: 'text-sky-700 dark:text-sky-400',
-          borderColor: 'border-sky-500/30',
-          icon: <UserCheck size={12} color="#0EA5E9" />
-        };
-      case 'cleaning':
-        return {
-          label: 'Cleaning',
-          badgeBg: 'bg-amber-500/15',
-          textColor: 'text-amber-700 dark:text-amber-400',
-          borderColor: 'border-amber-500/30',
-          icon: <Sparkles size={12} color="#F59E0B" />
-        };
-      case 'maintenance':
-        return {
-          label: 'Maintenance',
-          badgeBg: 'bg-rose-500/15',
-          textColor: 'text-rose-700 dark:text-rose-400',
-          borderColor: 'border-rose-500/30',
-          icon: <Wrench size={12} color="#F43F5E" />
-        };
-      default:
-        return {
-          label: status,
-          badgeBg: 'bg-gray-500/15',
-          textColor: 'text-gray-700 dark:text-gray-400',
-          borderColor: 'border-gray-500/30',
-          icon: null
-        };
-    }
-  };
+  const filtered = useMemo(
+    () =>
+      filter === 'all'
+        ? rooms
+        : rooms.filter((r) => (r.status || 'available').toLowerCase() === filter),
+    [rooms, filter]
+  );
 
   const openAddSheet = () => {
     setEditingRoom(null);
@@ -105,22 +84,21 @@ export default function RoomsScreen() {
     setIsModalOpen(true);
   };
 
-  const openEditSheet = async (room: Room) => {
+  const openRoomSheet = async (room: Room) => {
     setEditingRoom(room);
     setIsEditingMode(false);
     setRoomNumber(room.room_number);
     setRoomType(room.room_type || '');
     setRoomPrice(room.price ? String(room.price) : '');
-    setRoomStatus(room.status);
+    setRoomStatus(room.status as any);
     setIsModalOpen(true);
 
-    // Fetch guests checked into this room
     setIsLoadingGuests(true);
     const guests = await getGuestsForRoom(room.id);
     setRoomGuests(guests);
     setIsLoadingGuests(false);
   };
-  
+
   const closeSheet = () => {
     setIsModalOpen(false);
   };
@@ -130,12 +108,17 @@ export default function RoomsScreen() {
       Alert.alert('Validation Error', 'Room Number is required');
       return;
     }
-    
+
     const parsedPrice = parseFloat(roomPrice) || 0;
     if (editingRoom) {
-      await editRoom(editingRoom.id, roomNumber, roomType, roomStatus, parsedPrice);
+      await editRoom(
+        editingRoom.id,
+        roomNumber.trim(),
+        roomType.trim(),
+        roomStatus,
+        parsedPrice
+      );
     } else {
-      // ── Subscription: check room limit before creating ──
       if (isRoomLimitReached(rooms.length)) {
         const limit = getLimit('maxRoomsPerProperty');
         Alert.alert(
@@ -143,50 +126,59 @@ export default function RoomsScreen() {
           `Your current plan allows up to ${formatLimit(limit)} rooms. Upgrade to add more rooms.`,
           [
             { text: 'OK', style: 'cancel' },
-            { text: 'View Plans', onPress: () => require('expo-router').router.push('/subscription/pricing') },
+            {
+              text: 'View Plans',
+              onPress: () => router.push('/subscription/pricing'),
+            },
           ]
         );
         return;
       }
-      await createRoom(roomNumber, roomType, roomStatus, parsedPrice);
+      await createRoom(
+        roomNumber.trim(),
+        roomType.trim(),
+        roomStatus,
+        parsedPrice
+      );
     }
     closeSheet();
   };
 
   const handleDelete = () => {
-    if (editingRoom) {
-      Alert.alert(
-        "Delete Room",
-        `Are you sure you want to delete Room ${editingRoom.room_number}?`,
-        [
-          { text: "Cancel", style: "cancel" },
-          { 
-            text: "Delete", 
-            style: "destructive",
-            onPress: async () => {
-              await removeRoom(editingRoom.id);
-              closeSheet();
-            }
-          }
-        ]
-      );
-    }
+    if (!editingRoom) return;
+    Alert.alert(
+      'Delete Room',
+      `Are you sure you want to delete Room ${editingRoom.room_number}?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await removeRoom(editingRoom.id);
+            closeSheet();
+          },
+        },
+      ]
+    );
   };
 
   const handleCheckoutGuest = (guest: any) => {
     if (!editingRoom && !guest?.room_id) return;
     const rId = editingRoom ? editingRoom.id : guest.room_id;
     const gName = guest.full_name || 'Guest';
-    const rNum = editingRoom ? editingRoom.room_number : (guest.room_number || '');
+    const rNum = editingRoom
+      ? editingRoom.room_number
+      : guest.room_number || '';
 
     Alert.alert(
-      "Check-out Guest?",
+      'Check-out Guest?',
       `Are you sure you want to check out ${gName}${rNum ? ` from Room ${rNum}` : ''}?`,
       [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Check-out Guest", 
-          style: "destructive",
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Check-out Guest',
+          style: 'destructive',
           onPress: async () => {
             await checkoutGuestOrRemoveFromRoom(guest.id, rId);
             if (editingRoom) {
@@ -194,552 +186,731 @@ export default function RoomsScreen() {
               setRoomGuests(updated);
             }
             await fetchRooms();
-            if (selectedGuestDetail?.id === guest.id) {
-              setSelectedGuestDetail(null);
-            }
-            Alert.alert('Checked Out', `${gName} has been removed from the room.`);
-          }
-        }
+            Alert.alert(
+              'Checked Out',
+              `${gName} has been checked out successfully.`
+            );
+          },
+        },
       ]
     );
   };
 
-  const renderGridItem = ({ item }: { item: Room }) => {
-    const config = getStatusConfig(item.status);
-
-    return (
-      <TouchableOpacity 
-        activeOpacity={0.7} 
-        onPress={() => openEditSheet(item)}
-        className="w-[48%] mb-4"
+  return (
+    <View style={[s.screen, { paddingTop: insets.top }]}>
+      <ScrollView
+        style={{ flex: 1 }}
+        contentContainerStyle={s.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <GlassCard variant="elevated" className={`p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-col justify-between min-h-[130px]`}>
-          <View className="flex-row justify-between items-start mb-3">
-            <View className="w-10 h-10 rounded-xl bg-primary/10 items-center justify-center">
-              <BedDouble size={20} color="#000000" />
-            </View>
-            <View className={`flex-row items-center gap-1.5 px-2.5 py-1 rounded-full ${config.badgeBg} ${config.borderColor} border`}>
-              {config.icon}
-              <Text className={`text-[11px] font-bold capitalize ${config.textColor}`}>
-                {config.label}
-              </Text>
-            </View>
-          </View>
-          
+        {/* Header */}
+        <View style={s.head}>
           <View>
-            <Text className="text-xl font-bold text-foreground tracking-tight">{item.room_number}</Text>
-            <Text className="text-xs text-gray-400 font-medium mt-0.5" numberOfLines={1}>{item.room_type || 'Standard'}</Text>
-            <Text className="text-xs font-bold text-primary mt-1">₹{item.price || 0} / night</Text>
-          </View>
-        </GlassCard>
-      </TouchableOpacity>
-    );
-  };
-
-  const renderListItem = ({ item }: { item: Room }) => {
-    const config = getStatusConfig(item.status);
-
-    return (
-      <TouchableOpacity 
-        activeOpacity={0.7} 
-        onPress={() => openEditSheet(item)}
-        className="mb-3"
-      >
-        <GlassCard variant="elevated" className="p-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row justify-between items-center">
-          <View className="flex-row items-center space-x-3 gap-3">
-            <View className="w-11 h-11 rounded-xl bg-primary/10 items-center justify-center">
-              <BedDouble size={22} color="#000000" />
-            </View>
-            <View>
-              <Text className="text-lg font-bold text-foreground tracking-tight">{item.room_number}</Text>
-              <Text className="text-xs text-gray-400 font-medium mt-0.5">{item.room_type || 'Standard'} {item.price ? `• ₹${item.price}/night` : ''}</Text>
-            </View>
-          </View>
-
-          <View className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full ${config.badgeBg} ${config.borderColor} border`}>
-            {config.icon}
-            <Text className={`text-xs font-bold capitalize ${config.textColor}`}>
-              {config.label}
+            <Text style={s.h1}>Rooms</Text>
+            <Text style={s.sub}>
+              {rooms.length} rooms <Text style={{ color: '#B5BAC3' }}>•</Text>{' '}
+              {counts.available} available now
             </Text>
           </View>
-        </GlassCard>
-      </TouchableOpacity>
-    );
-  };
-
-  const filterOptions = [
-    { label: 'All', count: total },
-    { label: 'Available', count: available },
-    { label: 'Occupied', count: occupied },
-    { label: 'Cleaning', count: cleaning },
-    { label: 'Maintenance', count: maintenance },
-  ];
-
-  return (
-    <SafeAreaView edges={['left', 'right', 'top']} className="flex-1 bg-background">
-      {/* Top Header */}
-      <View className="px-5 pt-6 mt-2 pb-2 flex-row justify-between items-center">
-        <View>
-          <Text className="text-3xl font-bold text-foreground">Rooms</Text>
-          <Text className="text-xs text-gray-400 font-medium mt-0.5">{total} Total Properties & Rooms</Text>
-        </View>
-        <TouchableOpacity 
-          onPress={openAddSheet}
-          activeOpacity={0.8}
-          className="bg-primary h-11 px-4 rounded-xl flex-row items-center gap-2 shadow-md shadow-primary/20"
-        >
-          <Plus size={20} color="#ffffff" />
-          <Text className="text-white font-semibold text-sm">{t('addRoom')}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Quick Summary Cards Horizontal Row */}
-      <View className="my-3">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 10 }}>
-          <GlassCard className="p-3 px-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row items-center gap-3">
-            <View className="w-8 h-8 rounded-lg bg-emerald-500/15 items-center justify-center">
-              <CheckCircle2 size={18} color="#10B981" />
-            </View>
-            <View>
-              <Text className="text-xs font-medium text-gray-400">{t('available')}</Text>
-              <Text className="text-base font-bold text-foreground">{available}</Text>
-            </View>
-          </GlassCard>
-
-          <GlassCard className="p-3 px-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row items-center gap-3">
-            <View className="w-8 h-8 rounded-lg bg-sky-500/15 items-center justify-center">
-              <UserCheck size={18} color="#0EA5E9" />
-            </View>
-            <View>
-              <Text className="text-xs font-medium text-gray-400">{t('occupied')}</Text>
-              <Text className="text-base font-bold text-foreground">{occupied}</Text>
-            </View>
-          </GlassCard>
-
-          <GlassCard className="p-3 px-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row items-center gap-3">
-            <View className="w-8 h-8 rounded-lg bg-amber-500/15 items-center justify-center">
-              <Sparkles size={18} color="#F59E0B" />
-            </View>
-            <View>
-              <Text className="text-xs font-medium text-gray-400">{t('cleaning')}</Text>
-              <Text className="text-base font-bold text-foreground">{cleaning}</Text>
-            </View>
-          </GlassCard>
-
-          <GlassCard className="p-3 px-4 rounded-2xl border border-gray-100 dark:border-white/10 flex-row items-center gap-3">
-            <View className="w-8 h-8 rounded-lg bg-rose-500/15 items-center justify-center">
-              <Wrench size={18} color="#F43F5E" />
-            </View>
-            <View>
-              <Text className="text-xs font-medium text-gray-400">{t('maintenance')}</Text>
-              <Text className="text-base font-bold text-foreground">{maintenance}</Text>
-            </View>
-          </GlassCard>
-        </ScrollView>
-      </View>
-
-      {/* Search & Layout View Toggle */}
-      <View className="px-5 mb-3 flex-row gap-3 items-center">
-        <View className="flex-1 flex-row items-center bg-white dark:bg-black/30 border border-gray-100 dark:border-white/10 rounded-xl px-3.5 py-2.5">
-          <Search size={18} color="#9498AA" className="mr-2" />
-          <TextInput 
-            placeholder="Search room number or type..."
-            placeholderTextColor="#9498AA"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            className="flex-1 text-sm text-foreground p-0 font-medium"
-          />
-          {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <X size={16} color="#9498AA" />
-            </TouchableOpacity>
-          ) : null}
-        </View>
-
-        <View className="flex-row bg-white dark:bg-black/30 border border-gray-100 dark:border-white/10 rounded-xl p-1">
-          <TouchableOpacity 
-            onPress={() => setIsGridView(true)}
-            className={`p-1.5 rounded-lg ${isGridView ? 'bg-primary' : 'bg-transparent'}`}
+          <TouchableOpacity
+            onPress={() => setIsListView(!isListView)}
+            activeOpacity={0.8}
+            style={s.iconBtn}
           >
-            <LayoutGrid size={18} color={isGridView ? '#FFFFFF' : '#9498AA'} />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            onPress={() => setIsGridView(false)}
-            className={`p-1.5 rounded-lg ${!isGridView ? 'bg-primary' : 'bg-transparent'}`}
-          >
-            <List size={18} color={!isGridView ? '#FFFFFF' : '#9498AA'} />
+            <Icon name={isListView ? 'grid' : 'list'} size={18} color={C.ink} />
           </TouchableOpacity>
         </View>
-      </View>
 
-      {/* Filter Tabs */}
-      <View className="mb-3">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}>
-          {filterOptions.map(f => (
-            <TouchableOpacity 
-              key={f.label}
-              onPress={() => setFilter(f.label)}
-              activeOpacity={0.7}
-              className={`flex-row items-center gap-1.5 px-3.5 py-1.5 rounded-full border ${
-                filter === f.label 
-                  ? 'bg-primary border-primary' 
-                  : 'bg-white/80 border-gray-100 dark:bg-black/30 dark:border-white/10'
-              }`}
-            >
-              <Text className={`font-semibold text-xs ${filter === f.label ? 'text-white' : 'text-gray-600 dark:text-gray-300'}`}>
-                {f.label}
-              </Text>
-              <View className={`px-1.5 py-0.5 rounded-full ${filter === f.label ? 'bg-white/20' : 'bg-gray-100 dark:bg-gray-800'}`}>
-                <Text className={`text-[10px] font-bold ${filter === f.label ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
-                  {f.count}
-                </Text>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Room Cards List / Grid */}
-      <FlatList
-        key={isGridView ? 'grid' : 'list'}
-        data={filteredRooms}
-        keyExtractor={(item) => item.id.toString()}
-        numColumns={isGridView ? 2 : 1}
-        columnWrapperStyle={isGridView ? { justifyContent: 'space-between', paddingHorizontal: 20 } : undefined}
-        contentContainerStyle={{ paddingHorizontal: isGridView ? 0 : 20, paddingBottom: 100 }}
-        refreshing={isLoading}
-        onRefresh={fetchRooms}
-        renderItem={isGridView ? renderGridItem : renderListItem}
-        ListEmptyComponent={
-          !isLoading ? (
-            <View className="py-12 items-center justify-center">
-              <View className="w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-800 items-center justify-center mb-3">
-                <BedDouble size={28} color="#9498AA" />
-              </View>
-              <Text className="text-gray-600 dark:text-gray-300 font-semibold text-base">No rooms found</Text>
-              <Text className="text-gray-400 text-xs mt-1 text-center">Try adjusting your filter or search query</Text>
-            </View>
-          ) : null
-        }
-      />
-
-      {/* Add / Edit / Room Details Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={isModalOpen}
-        onRequestClose={closeSheet}
-        statusBarTranslucent={true}
-      >
-        <KeyboardAvoidingView 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={{ flex: 1 }}
-        >
-          <TouchableOpacity 
-            activeOpacity={1} 
-            onPress={closeSheet}
-            className="flex-1 bg-black/60 justify-end"
-          >
-            <TouchableOpacity 
-              activeOpacity={1}
-              onPress={(e) => e.stopPropagation?.()}
-              className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6"
-            >
-              <View className="flex-row justify-between items-center mb-6">
-                <View className="flex-row items-center gap-2.5">
-                  <Text className="text-2xl font-bold text-foreground">
-                    {editingRoom ? `${editingRoom.room_number}` : 'Add New Room'}
-                  </Text>
-                  {editingRoom && (
-                    <TouchableOpacity 
-                      onPress={() => setIsEditingMode(!isEditingMode)}
-                      className="px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 flex-row items-center gap-1"
-                    >
-                      <Edit size={12} color="#6B7280" />
-                      <Text className="text-xs font-semibold text-gray-600 dark:text-gray-300">
-                        {isEditingMode ? 'View Guests' : 'Edit'}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                <TouchableOpacity onPress={closeSheet} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
-                  <X size={20} color="#9CA3AF" />
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView 
-                showsVerticalScrollIndicator={false} 
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ paddingBottom: 10 }}
+        {/* 5-Stat bar */}
+        <View style={s.stats}>
+          {(
+            ['all', 'available', 'occupied', 'cleaning', 'maintenance'] as const
+          ).map((k) => {
+            const label =
+              k === 'all'
+                ? 'Total'
+                : k === 'maintenance'
+                ? 'Maint.'
+                : STATUS_META[k]?.label || k;
+            return (
+              <TouchableOpacity
+                key={k}
+                activeOpacity={0.7}
+                onPress={() => setFilter(k)}
+                style={s.stat}
               >
-                {editingRoom && !isEditingMode ? (
-                  /* ROOM DETAILS & CHECKED-IN GUESTS VIEW */
-                  <View>
-                    <View className="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl mb-6 border border-gray-100 dark:border-gray-800 flex-row justify-between items-center">
-                      <View>
-                        <Text className="text-xs text-gray-400 font-medium">Room Type</Text>
-                        <Text className="text-base font-bold text-foreground">{editingRoom.room_type || 'Standard Room'}</Text>
-                      </View>
-                      <View className={`px-3 py-1 rounded-full ${getStatusConfig(editingRoom.status).badgeBg} ${getStatusConfig(editingRoom.status).borderColor} border`}>
-                        <Text className={`text-xs font-bold capitalize ${getStatusConfig(editingRoom.status).textColor}`}>
-                          {editingRoom.status}
+                <Text style={s.statNum}>{counts[k]}</Text>
+                <Text style={s.statLabel}>{label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* Filter chips */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={s.chipsRow}
+        >
+          {(
+            ['all', 'available', 'occupied', 'cleaning', 'maintenance'] as const
+          ).map((k) => {
+            const label =
+              k === 'all' ? 'All' : STATUS_META[k]?.label || k;
+            const active = filter === k;
+            return (
+              <TouchableOpacity
+                key={k}
+                activeOpacity={0.75}
+                onPress={() => setFilter(k)}
+                style={[s.chip, active && s.chipActive]}
+              >
+                <Text style={[s.chipText, active && s.chipTextActive]}>
+                  {label} <Text style={{ opacity: 0.7 }}>{counts[k]}</Text>
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* Room Grid or List */}
+        {filtered.length === 0 ? (
+          <View style={s.emptyBox}>
+            <Icon name="bed" size={32} color={C.mutedSoft} />
+            <Text style={s.emptyTitle}>No rooms match this filter</Text>
+            <Text style={s.emptySub}>
+              Try selecting "All" or add a new room below
+            </Text>
+          </View>
+        ) : isListView ? (
+          <View style={{ gap: 10, marginTop: 16 }}>
+            {filtered.map((r) => {
+              const statusKey = (r.status || 'available').toLowerCase();
+              const m = STATUS_META[statusKey] || STATUS_META.available;
+              return (
+                <TouchableOpacity
+                  key={r.id}
+                  onPress={() => openRoomSheet(r)}
+                  activeOpacity={0.85}
+                  style={s.listCard}
+                >
+                  <View style={s.listBed}>
+                    <Icon name="bed" size={18} color={C.primary} />
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <View style={s.listCardTop}>
+                      <Text style={s.listNum}>{r.room_number}</Text>
+                      <View
+                        style={[
+                          s.statusPill,
+                          { backgroundColor: m.bg, borderColor: m.color },
+                        ]}
+                      >
+                        <Icon
+                          name={statusKey === 'available' ? 'check' : 'info'}
+                          size={10}
+                          color={m.color}
+                        />
+                        <Text style={[s.statusPillText, { color: m.color }]}>
+                          {statusKey === 'maintenance' ? 'Maint.' : m.label}
                         </Text>
                       </View>
                     </View>
-
-                    <Text className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1">
-                      Today's / Active Guests ({roomGuests.length})
+                    <Text style={s.listMeta}>
+                      {r.room_type || 'Standard'} · ₹
+                      {(r.price || 0).toLocaleString('en-IN')}/night
                     </Text>
-
-                    {isLoadingGuests ? (
-                      <Text className="text-gray-400 text-center py-6 text-sm">Loading guest records...</Text>
-                    ) : roomGuests.length === 0 ? (
-                      <View className="bg-gray-50 dark:bg-gray-800/20 p-6 rounded-2xl items-center justify-center border border-dashed border-gray-200 dark:border-gray-800 mb-6">
-                        <Users size={24} color="#9CA3AF" className="mb-2" />
-                        <Text className="text-gray-500 text-sm font-semibold">No guests checked in</Text>
-                        <Text className="text-xs text-gray-400 mt-1">This room is currently empty.</Text>
-                      </View>
-                    ) : (
-                      <View className="space-y-3 mb-6">
-                        {roomGuests.map((guest) => (
-                          <View 
-                            key={guest.id} 
-                            className="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 mb-3 flex-row items-center justify-between"
-                          >
-                            <TouchableOpacity 
-                              onPress={() => setSelectedGuestDetail(guest)}
-                              className="flex-row items-center gap-3 flex-1 mr-2"
-                            >
-                              <View className="w-10 h-10 rounded-full bg-primary/10 items-center justify-center">
-                                <Text className="text-foreground font-bold text-base">
-                                  {guest.full_name ? guest.full_name.charAt(0).toUpperCase() : '?'}
-                                </Text>
-                              </View>
-                              <View className="flex-1">
-                                <Text className="text-sm font-bold text-foreground" numberOfLines={1}>{guest.full_name}</Text>
-                                <Text className="text-[11px] text-gray-500 font-medium">{guest.id_type || 'ID'}: {guest.id_number || 'N/A'}</Text>
-                              </View>
-                            </TouchableOpacity>
-
-                            <View className="flex-row items-center gap-2">
-                              <TouchableOpacity 
-                                onPress={() => setSelectedGuestDetail(guest)}
-                                className="bg-primary/10 px-2.5 py-1.5 rounded-xl"
-                              >
-                                <Text className="text-[10px] font-bold text-primary">View ID</Text>
-                              </TouchableOpacity>
-
-                              <TouchableOpacity 
-                                onPress={() => handleCheckoutGuest(guest)}
-                                className="bg-red-500/10 active:bg-red-500/20 px-2.5 py-1.5 rounded-xl flex-row items-center gap-1"
-                              >
-                                <UserX size={12} color="#EF4444" />
-                                <Text className="text-[10px] font-bold text-red-500">Check-out</Text>
-                              </TouchableOpacity>
-                            </View>
-                          </View>
-                        ))}
-                      </View>
-                    )}
-
-                    <TouchableOpacity 
-                      onPress={() => setIsEditingMode(true)}
-                      className="bg-gray-100 dark:bg-gray-800 p-3.5 rounded-2xl items-center mb-2"
-                    >
-                      <Text className="text-xs font-bold text-foreground">Edit Room Details & Status</Text>
-                    </TouchableOpacity>
                   </View>
-                ) : (
-                  /* EDIT / CREATE FORM VIEW */
-                  <View>
-                    <Input
-                      label="Room Number *"
-                      placeholder="e.g. 101, 102"
-                      value={roomNumber}
-                      onChangeText={setRoomNumber}
-                      returnKeyType="next"
-                    />
-                    
-                    <Input
-                      label="Room Type"
-                      placeholder="e.g. Standard, Deluxe, Suite"
-                      value={roomType}
-                      onChangeText={setRoomType}
-                      returnKeyType="next"
-                    />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        ) : (
+          <View style={s.grid}>
+            {filtered.map((r) => (
+              <View key={r.id} style={s.gridItem}>
+                <RoomCard
+                  room={{
+                    id: r.id,
+                    room_number: r.room_number,
+                    room_type: r.room_type || undefined,
+                    price_per_night: r.price ?? undefined,
+                    status: r.status,
+                  }}
+                  onPress={() => openRoomSheet(r)}
+                />
+              </View>
+            ))}
+          </View>
+        )}
 
-                    <Input
-                      label="Price per Night (₹)"
-                      placeholder="e.g. 1500"
-                      keyboardType="numeric"
-                      value={roomPrice}
-                      onChangeText={setRoomPrice}
-                      returnKeyType="done"
-                      blurOnSubmit={true}
-                    />
-
-                    <Text className="text-sm font-semibold text-foreground mb-2 ml-1 mt-2">Status</Text>
-                    <View className="flex-row flex-wrap gap-2.5 mb-6">
-                      {(['available', 'occupied', 'cleaning', 'maintenance'] as const).map((status) => {
-                        const cfg = getStatusConfig(status);
-                        const isSelected = roomStatus === status;
-                        return (
-                          <TouchableOpacity
-                            key={status}
-                            activeOpacity={0.7}
-                            onPress={() => setRoomStatus(status)}
-                            className={`flex-row items-center gap-1.5 px-4 py-2.5 rounded-xl border ${
-                              isSelected 
-                                ? `${cfg.badgeBg} ${cfg.borderColor}` 
-                                : 'border-gray-200 bg-white dark:border-gray-800'
-                            }`}
-                          >
-                            {cfg.icon}
-                            <Text className={`font-semibold capitalize text-xs ${
-                              isSelected ? cfg.textColor : 'text-gray-600 dark:text-gray-400'
-                            }`}>
-                              {status}
-                            </Text>
-                          </TouchableOpacity>
-                        );
-                      })}
-                    </View>
-
-                    <View className="pt-4 border-t border-gray-100 dark:border-gray-800 flex-row gap-3">
-                      {editingRoom && (
-                        <TouchableOpacity 
-                          onPress={handleDelete}
-                          activeOpacity={0.7}
-                          className="bg-red-50 dark:bg-red-950/40 h-14 w-14 rounded-2xl items-center justify-center border border-red-200 dark:border-red-900/40"
-                        >
-                          <Trash size={24} color="#EF4444" />
-                        </TouchableOpacity>
-                      )}
-                      <Button 
-                        label={editingRoom ? "Save Changes" : "Create Room"} 
-                        onPress={handleSave}
-                        className="flex-1 h-14"
-                        isLoading={isLoading}
-                      />
-                    </View>
-                  </View>
-                )}
-              </ScrollView>
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </KeyboardAvoidingView>
-      </Modal>
-
-      {/* GUEST ID & DETAILS MODAL POPUP */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={selectedGuestDetail !== null}
-        onRequestClose={() => setSelectedGuestDetail(null)}
-        statusBarTranslucent={true}
-      >
-        <TouchableOpacity 
-          activeOpacity={1}
-          onPress={() => setSelectedGuestDetail(null)}
-          className="flex-1 bg-black/70 justify-end"
+        {/* Add room button */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={openAddSheet}
+          style={s.addBtn}
         >
-          <TouchableOpacity 
+          <Icon name="plus" size={19} color="#fff" />
+          <Text style={s.addBtnText}>Add room</Text>
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* Room Details & Edit Modal */}
+      <Modal
+        visible={isModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={closeSheet}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={closeSheet}
+          style={s.modalOverlay}
+        >
+          <TouchableOpacity
             activeOpacity={1}
             onPress={(e) => e.stopPropagation?.()}
-            className="bg-white dark:bg-[#12141C] rounded-t-3xl p-6 max-h-[90%]"
+            style={s.sheetContent}
           >
-            <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+            <View style={s.sheetHeader}>
               <View>
-                <Text className="text-xl font-bold text-foreground">{selectedGuestDetail?.full_name}</Text>
-                <Text className="text-xs text-gray-500 font-medium">Guest Registration & ID Documents</Text>
+                <Text style={s.sheetTitle}>
+                  {editingRoom
+                    ? isEditingMode
+                      ? `Edit Room ${editingRoom.room_number}`
+                      : `Room ${editingRoom.room_number}`
+                    : 'Add New Room'}
+                </Text>
+                <Text style={s.sheetSub}>
+                  {editingRoom
+                    ? isEditingMode
+                      ? 'Update pricing, room type or status'
+                      : `${editingRoom.room_type || 'Standard'} · ₹${editingRoom.price || 0}/night`
+                    : 'Create a room in your property inventory'}
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => setSelectedGuestDetail(null)} className="p-2 bg-gray-100 dark:bg-gray-800 rounded-full">
-                <X size={20} color="#9CA3AF" />
+              <TouchableOpacity onPress={closeSheet} style={s.sheetClose}>
+                <Icon name="x" size={18} color={C.ink} />
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-              {/* ID CARD PHOTOS (FRONT & BACK) */}
-              {(selectedGuestDetail?.photo_uri || selectedGuestDetail?.back_photo_uri) ? (
-                <View className="mb-6">
-                  <Text className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3 ml-1">
-                    ID Card Photos ({selectedGuestDetail?.photo_uri && selectedGuestDetail?.back_photo_uri ? 'Front & Back' : 'Scanned ID'})
-                  </Text>
-                  <View className="gap-4">
-                    {selectedGuestDetail?.photo_uri ? (
-                      <View className="bg-gray-50 dark:bg-gray-800/40 p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
-                        <View className="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded-md self-start mb-2">
-                          <Text className="text-xs font-bold text-foreground">Front Side ID</Text>
-                        </View>
-                        <Image 
-                          source={{ uri: selectedGuestDetail.photo_uri }} 
-                          style={{ width: '100%', height: 180, borderRadius: 14 }}
-                          resizeMode="cover"
-                        />
-                      </View>
-                    ) : null}
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 20 }}
+            >
+              {/* If viewing details and not editing */}
+              {editingRoom && !isEditingMode ? (
+                <View style={{ gap: 14 }}>
+                  {/* Status selector directly on view mode */}
+                  <Text style={s.formLabel}>ROOM STATUS</Text>
+                  <View style={s.statusSelectRow}>
+                    {(
+                      [
+                        'available',
+                        'occupied',
+                        'cleaning',
+                        'maintenance',
+                      ] as const
+                    ).map((st) => {
+                      const m = STATUS_META[st];
+                      const active = roomStatus === st;
+                      return (
+                        <TouchableOpacity
+                          key={st}
+                          activeOpacity={0.75}
+                          onPress={async () => {
+                            setRoomStatus(st);
+                            await editRoom(
+                              editingRoom.id,
+                              editingRoom.room_number,
+                              editingRoom.room_type,
+                              st,
+                              editingRoom.price ?? undefined
+                            );
+                          }}
+                          style={[
+                            s.statusSelectBtn,
+                            active && {
+                              borderColor: m.color,
+                              backgroundColor: m.bg,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              s.statusSelectText,
+                              active && { color: m.color, fontWeight: '700' },
+                            ]}
+                          >
+                            {m.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
 
-                    {selectedGuestDetail?.back_photo_uri ? (
-                      <View className="bg-gray-50 dark:bg-gray-800/40 p-3 rounded-2xl border border-gray-100 dark:border-gray-800">
-                        <View className="bg-gray-200 dark:bg-gray-700 px-3 py-1 rounded-md self-start mb-2">
-                          <Text className="text-xs font-bold text-foreground">Back Side ID</Text>
-                        </View>
-                        <Image 
-                          source={{ uri: selectedGuestDetail.back_photo_uri }} 
-                          style={{ width: '100%', height: 180, borderRadius: 14 }}
-                          resizeMode="cover"
-                        />
+                  {/* Checked-in Guests section */}
+                  <View style={{ marginTop: 8 }}>
+                    <Text style={s.formLabel}>CURRENT OCCUPANTS</Text>
+                    {isLoadingGuests ? (
+                      <ActivityIndicator
+                        size="small"
+                        color={C.primary}
+                        style={{ marginVertical: 12 }}
+                      />
+                    ) : roomGuests.length === 0 ? (
+                      <View style={s.noGuestsBox}>
+                        <Text style={s.noGuestsText}>
+                          No active guests in this room
+                        </Text>
                       </View>
-                    ) : null}
+                    ) : (
+                      roomGuests.map((g) => (
+                        <View key={g.id} style={s.roomGuestCard}>
+                          <View style={{ flex: 1 }}>
+                            <Text style={s.roomGuestName}>{g.full_name}</Text>
+                            <Text style={s.roomGuestMeta}>
+                              {g.phone || 'No phone'} · {g.id_number || 'N/A'}
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            onPress={() => handleCheckoutGuest(g)}
+                            style={s.checkoutBtn}
+                          >
+                            <Text style={s.checkoutBtnText}>Check out</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))
+                    )}
+                  </View>
+
+                  {/* Action buttons */}
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                    <SecondaryButton
+                      label="Edit Room"
+                      icon="edit"
+                      onPress={() => setIsEditingMode(true)}
+                      style={{ flex: 1 }}
+                    />
+                    <TouchableOpacity
+                      onPress={handleDelete}
+                      style={s.deleteBtn}
+                    >
+                      <Icon name="trash" size={17} color={C.rose} />
+                    </TouchableOpacity>
                   </View>
                 </View>
               ) : (
-                <View className="bg-gray-50 dark:bg-gray-800/20 p-6 rounded-2xl items-center justify-center border border-dashed border-gray-200 dark:border-gray-800 mb-6">
-                  <IdCard size={28} color="#9CA3AF" className="mb-2" />
-                  <Text className="text-gray-500 text-sm font-semibold">No ID Card Photo Saved</Text>
+                /* Edit or Add Room Form */
+                <View style={{ gap: 12 }}>
+                  <Field
+                    label="Room Number *"
+                    value={roomNumber}
+                    onChangeText={setRoomNumber}
+                    placeholder="e.g. 101, 204, Suite A"
+                  />
+                  <Field
+                    label="Room Type"
+                    value={roomType}
+                    onChangeText={setRoomType}
+                    placeholder="e.g. Deluxe, Suite, Cottage, Standard"
+                  />
+                  <Field
+                    label="Price per Night (₹)"
+                    value={roomPrice}
+                    onChangeText={setRoomPrice}
+                    placeholder="e.g. 2400"
+                    keyboardType="numeric"
+                  />
+
+                  <Text style={s.formLabel}>ROOM STATUS</Text>
+                  <View style={s.statusSelectRow}>
+                    {(
+                      [
+                        'available',
+                        'occupied',
+                        'cleaning',
+                        'maintenance',
+                      ] as const
+                    ).map((st) => {
+                      const m = STATUS_META[st];
+                      const active = roomStatus === st;
+                      return (
+                        <TouchableOpacity
+                          key={st}
+                          activeOpacity={0.75}
+                          onPress={() => setRoomStatus(st)}
+                          style={[
+                            s.statusSelectBtn,
+                            active && {
+                              borderColor: m.color,
+                              backgroundColor: m.bg,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              s.statusSelectText,
+                              active && { color: m.color, fontWeight: '700' },
+                            ]}
+                          >
+                            {m.label}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 16 }}>
+                    {editingRoom && (
+                      <SecondaryButton
+                        label="Cancel"
+                        onPress={() => setIsEditingMode(false)}
+                        style={{ flex: 1 }}
+                      />
+                    )}
+                    <PrimaryButton
+                      label={editingRoom ? 'Save Changes' : 'Create Room'}
+                      icon="check"
+                      onPress={handleSave}
+                      style={{ flex: 1 }}
+                    />
+                  </View>
                 </View>
               )}
-
-              {/* GUEST INFO DETAILS */}
-              <View className="bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl border border-gray-100 dark:border-gray-800 gap-3 mb-6">
-                <View className="flex-row items-center justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
-                  <Text className="text-xs font-medium text-gray-500">Document Type</Text>
-                  <Text className="text-xs font-bold text-foreground">{selectedGuestDetail?.id_type || 'N/A'}</Text>
-                </View>
-
-                <View className="flex-row items-center justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
-                  <Text className="text-xs font-medium text-gray-500">ID Number</Text>
-                  <Text className="text-xs font-bold text-foreground">{selectedGuestDetail?.id_number || 'N/A'}</Text>
-                </View>
-
-                <View className="flex-row items-center justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
-                  <Text className="text-xs font-medium text-gray-500">Phone</Text>
-                  <Text className="text-xs font-bold text-foreground">{selectedGuestDetail?.phone || 'N/A'}</Text>
-                </View>
-
-                <View className="flex-row items-center justify-between pb-2 border-b border-gray-200/50 dark:border-gray-700/40">
-                  <Text className="text-xs font-medium text-gray-500">Date of Birth</Text>
-                  <Text className="text-xs font-bold text-foreground">{selectedGuestDetail?.dob || 'N/A'}</Text>
-                </View>
-
-                <View className="flex-row items-center justify-between">
-                  <Text className="text-xs font-medium text-gray-500">Address</Text>
-                  <Text className="text-xs font-bold text-foreground max-w-[60%] text-right">{selectedGuestDetail?.address || 'N/A'}</Text>
-                </View>
-              </View>
-
-              {/* CHECK-OUT GUEST ACTION BUTTON */}
-              <TouchableOpacity
-                onPress={() => handleCheckoutGuest(selectedGuestDetail)}
-                className="bg-red-500/10 border border-red-500/30 p-4 rounded-2xl flex-row items-center justify-center gap-2 active:bg-red-500/20"
-              >
-                <UserX size={18} color="#EF4444" />
-                <Text className="font-bold text-red-500 text-sm">Check-out & Remove Guest from Room</Text>
-              </TouchableOpacity>
             </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
+
+const s = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
+  scrollContent: {
+    paddingHorizontal: 20,
+    paddingTop: 6,
+    paddingBottom: 130,
+  },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: 12,
+  },
+  h1: {
+    fontFamily: 'Inter',
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+    color: '#222222',
+  },
+  sub: {
+    fontFamily: 'Inter',
+    fontSize: 13.5,
+    fontWeight: '400',
+    color: '#6a6a6a',
+    marginTop: 4,
+  },
+  iconBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#f2f2f2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stats: {
+    marginTop: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ECEAF0',
+    backgroundColor: '#FAF8FD',
+    flexDirection: 'row',
+  },
+  stat: {
+    flex: 1,
+    alignItems: 'center',
+    minWidth: 0,
+  },
+  statNum: {
+    fontFamily: 'Inter',
+    fontSize: 20,
+    fontWeight: '800',
+    lineHeight: 23,
+    color: '#222222',
+  },
+  statLabel: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6a6a6a',
+    marginTop: 4,
+  },
+  chipsRow: {
+    gap: 8,
+    marginTop: 14,
+    paddingBottom: 2,
+  },
+  chip: {
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: R.full,
+    borderWidth: 1,
+    borderColor: '#dddddd',
+    backgroundColor: '#fff',
+  },
+  chipActive: {
+    backgroundColor: '#222222',
+    borderColor: '#222222',
+    shadowColor: '#111827',
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+  },
+  chipText: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#222222',
+  },
+  chipTextActive: {
+    color: '#fff',
+  },
+  grid: {
+    marginTop: 16,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
+  },
+  gridItem: {
+    width: '48.2%',
+  },
+  listCard: {
+    minHeight: 70,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#ECEAF0',
+    backgroundColor: '#fff',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#241840',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  listBed: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: '#F7F3FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  listCardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  listNum: {
+    fontFamily: 'Inter',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#222222',
+  },
+  listMeta: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    fontWeight: '400',
+    color: '#6a6a6a',
+    marginTop: 2,
+  },
+  statusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: R.full,
+    borderWidth: 1.2,
+  },
+  statusPillText: {
+    fontFamily: 'Inter',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  addBtn: {
+    height: 52,
+    borderRadius: 16,
+    marginTop: 20,
+    backgroundColor: C.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    shadowColor: C.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+  },
+  addBtnText: {
+    fontFamily: 'Inter',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  emptyBox: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 8,
+  },
+  emptyTitle: {
+    fontFamily: 'Inter',
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#222222',
+  },
+  emptySub: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    color: '#6a6a6a',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  sheetContent: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    maxHeight: '85%',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
+  sheetTitle: {
+    fontFamily: 'Inter',
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#222222',
+  },
+  sheetSub: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    color: '#6a6a6a',
+    marginTop: 2,
+  },
+  sheetClose: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#f2f2f2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  formLabel: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: '#6a6a6a',
+    textTransform: 'uppercase',
+    marginTop: 6,
+    marginBottom: 6,
+  },
+  statusSelectRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  statusSelectBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1.2,
+    borderColor: '#ECEAF0',
+    backgroundColor: '#FAF8FD',
+  },
+  statusSelectText: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#222222',
+  },
+  noGuestsBox: {
+    backgroundColor: '#FAF8FD',
+    borderRadius: 12,
+    padding: 14,
+    alignItems: 'center',
+  },
+  noGuestsText: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    color: '#6a6a6a',
+  },
+  roomGuestCard: {
+    backgroundColor: '#FAF8FD',
+    borderRadius: 14,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#ECEAF0',
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  roomGuestName: {
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#222222',
+  },
+  roomGuestMeta: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#6a6a6a',
+    marginTop: 2,
+  },
+  checkoutBtn: {
+    backgroundColor: '#FFF1F0',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: R.full,
+    borderWidth: 1,
+    borderColor: C.rose,
+  },
+  checkoutBtnText: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '700',
+    color: C.rose,
+  },
+  deleteBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: R.sm,
+    backgroundColor: '#FFF1F0',
+    borderWidth: 1,
+    borderColor: '#FEE4E2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+});

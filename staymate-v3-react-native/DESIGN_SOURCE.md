@@ -1,3 +1,83 @@
+# StayMate V3 — Design System
+
+## Direction
+
+StayMate V3 keeps the V2 visual language and operational surfaces, then applies the final decisions from the design review. The foundation is compact, white/light, rounded, restrained, and mobile-first. V3 is a product design system for a hospitality operations/compliance app—not a marketplace clone.
+
+## V3 decisions
+
+| Area | V3 decision |
+|---|---|
+| Base | V2 visual system |
+| Accent | Purple `#7C3AED` |
+| Accent active | `#6D28D9` |
+| Accent tint | `#EDE9FE` |
+| Dashboard | Keep V2 |
+| PIN / Lock | Keep V2 |
+| Settings | Keep V2 |
+| Scanner | Keep V2; primary check-in experience |
+| Bottom navigation | V1 floating pill pattern with labels + elevated purple Check-in FAB |
+| Rooms | V1 information clarity + V2 two-column grid |
+| Manual Entry | V2 input styling + V1 three-step workflow |
+| Scan flow | Fast OCR path; verify guest, choose stay, confirm |
+
+## Color tokens
+
+- Primary: `#7C3AED`
+- Primary active: `#6D28D9`
+- Primary disabled: `#DDD6FE`
+- Primary tint: `#EDE9FE`
+- Ink: `#222222`
+- Body: `#3F3F3F`
+- Muted: `#6A6A6A`
+- Soft muted: `#929292`
+- Canvas: `#FFFFFF`
+- Soft surface: `#F8F7FB`
+- Success: emerald
+- Informational: sky
+- Warning: amber
+- Destructive/error: rose
+
+## Navigation
+
+The bottom bar uses four destinations: Dashboard, Check-in, Rooms, Settings. Dashboard, Rooms, and Settings use icon + label tabs. Check-in is the center elevated purple FAB and is the primary action. The active destination receives a light purple surface and purple icon/label treatment.
+
+## Rooms
+
+Room cards intentionally borrow V1's high-information structure:
+
+1. Bed icon at top-left
+2. Status pill at top-right
+3. Large room number
+4. Room type
+5. Nightly price
+
+The cards sit in a compact two-column grid to preserve V2's mobile density.
+
+## Manual Entry
+
+Manual entry is a fallback, not the hero flow. It uses three explicit screens:
+
+1. **Guest Details** — full name, document type, ID number, DOB, gender, phone, address, optional ID image upload.
+2. **Stay Details** — room, check-in, check-out, nightly rate.
+3. **Review & Confirm** — guest summary, stay summary, co-guest action, final confirmation.
+
+V2 form-field styling is retained while V1's progressive workflow is restored.
+
+## Scan-first experience
+
+The primary workflow remains:
+
+`Scan ID → OCR → Verify → Select Room → Confirm`
+
+When OCR provides the guest details, the operator should verify the information instead of retyping it. The scan review uses the same V2 form language and then merges into stay confirmation.
+
+## Original V2 reference
+
+The V3 source remains based on the uploaded V2 implementation and its original token reference. The earlier V2 design analysis is preserved below for implementation context.
+
+---
+
 ---
 version: alpha
 name: Airbnb-design-analysis
@@ -543,3 +623,4 @@ There are no progressive elevation tiers — the system either has the one shado
 - **Map view styling:** the search-results map uses Mapbox-tinted tiles with custom Rausch markers; not captured here.
 - **Form input error states:** error text color (`{colors.primary-error-text}`) is documented, but the full input outline + helper-text combination on validation failure was not visible in the captured surfaces.
 - **Sub-brand palettes:** Luxe (`{colors.luxe}`) and Plus (`{colors.plus}`) are documented as tokens, but their full sub-system (typography overrides, surface treatment) lives on separate sub-domains and is not captured here.
+

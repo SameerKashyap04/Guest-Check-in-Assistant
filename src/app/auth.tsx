@@ -9,27 +9,28 @@ import {
   Alert,
   ActivityIndicator,
   StyleSheet,
-  useColorScheme,
-  Linking,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Input } from '@/components/Input';
-import { ShieldCheck, Mail, Lock, Building2, UserPlus, LogIn, Zap, Sparkles, Code2, Globe, ExternalLink } from 'lucide-react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
-import { signUpOwner, loginOwner, signInWithGoogleOwner, resetOwnerPassword } from '@/services/firebaseAuth';
+import {
+  signUpOwner,
+  loginOwner,
+  signInWithGoogleOwner,
+  resetOwnerPassword,
+} from '@/services/firebaseAuth';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { PinScreen } from '@/features/auth/PinScreen';
-import { GoogleLogo } from '@/components/GoogleLogo';
+import { C, R } from '@/theme/tokens';
+import { Icon } from '@/components/v3/Icon';
+import { Field, PrimaryButton } from '@/components/v3/Ui';
 import { useTranslation } from 'react-i18next';
-
 import { assignLegacyUnassignedGuests } from '@/database';
 
 export default function AuthScreen() {
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
 
   const [tab, setTab] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -37,7 +38,8 @@ export default function AuthScreen() {
   const [businessName, setBusinessName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { isAuthenticated, isUnlocked, setOwner, checkPinSetup } = useAuthStore();
+  const { isAuthenticated, isUnlocked, setOwner, checkPinSetup } =
+    useAuthStore();
   const { setBusinessSetup, setPropertyId, setOwnerId } = useSettingsStore();
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export default function AuthScreen() {
     }
   }, [isAuthenticated, isUnlocked]);
 
-  // If owner is authenticated, show Security PIN & Biometrics Screen (Setup or Unlock)
+  // If owner is authenticated, show Security PIN & Biometrics Screen
   if (isAuthenticated && !isUnlocked) {
     return <PinScreen onSuccess={() => router.replace('/(tabs)')} />;
   }
@@ -72,7 +74,10 @@ export default function AuthScreen() {
       router.replace('/(tabs)');
     } catch (err: any) {
       console.error('Google auth error:', err);
-      Alert.alert('Google Sign-In', err?.message || 'Google Sign-In was not completed.');
+      Alert.alert(
+        'Google Sign-In',
+        err?.message || 'Google Sign-In was not completed.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +90,10 @@ export default function AuthScreen() {
     }
 
     if (tab === 'signup' && !businessName.trim()) {
-      Alert.alert('Required Fields', 'Please enter your Homestay Property Name.');
+      Alert.alert(
+        'Required Fields',
+        'Please enter your Homestay Property Name.'
+      );
       return;
     }
 
@@ -94,7 +102,11 @@ export default function AuthScreen() {
       let profile;
 
       if (tab === 'signup') {
-        profile = await signUpOwner(email.trim(), password.trim(), businessName.trim());
+        profile = await signUpOwner(
+          email.trim(),
+          password.trim(),
+          businessName.trim()
+        );
         setBusinessSetup(businessName.trim());
       } else {
         profile = await loginOwner(email.trim(), password.trim());
@@ -122,272 +134,353 @@ export default function AuthScreen() {
       }
     } catch (err: any) {
       console.error('Auth error', err);
-      Alert.alert('Authentication Notice', err?.message || 'Please check your credentials and try again.');
+      Alert.alert(
+        'Authentication Notice',
+        err?.message || 'Please check your credentials and try again.'
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Theme-aware colors using plain StyleSheet (no NativeWind dark: needed)
-  const bg = isDark ? '#0D0F17' : '#F8FAFC';
-  const cardBg = isDark ? '#181A24' : '#FFFFFF';
-  const cardBorder = isDark ? '#1F2937' : 'rgba(0,0,0,0.08)';
-  const textPrimary = isDark ? '#F9FAFB' : '#111827';
-  const textMuted = isDark ? '#9CA3AF' : '#6B7280';
-  const headerBorder = isDark ? '#1F2937' : 'rgba(0,0,0,0.08)';
-  const tabBg = isDark ? 'rgba(31,41,55,0.8)' : '#F3F4F6';
-  const activeTabBg = isDark ? '#181A24' : '#FFFFFF';
-  const submitBtnBg = isDark ? '#FFFFFF' : '#000000';
-  const submitBtnText = isDark ? '#000000' : '#FFFFFF';
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      Alert.alert(
+        'Email Required',
+        'Please enter your registered email address above to reset your password.'
+      );
+      return;
+    }
+    try {
+      await resetOwnerPassword(email.trim());
+      Alert.alert(
+        'Reset Link Sent',
+        `A password reset link has been sent to ${email.trim()}. Please check your email inbox.`
+      );
+    } catch (err: any) {
+      Alert.alert(
+        'Reset Error',
+        err?.message || 'Failed to send password reset email.'
+      );
+    }
+  };
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={[styles.root, { backgroundColor: bg }]}>
+    <View style={[s.container, { paddingTop: insets.top }]}>
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Header */}
-      <View style={[styles.header, { borderBottomColor: headerBorder }]}>
-        <Text style={[styles.headerTitle, { color: textPrimary }]}>{t('ownerPortalTitle')}</Text>
+      {/* Top bar */}
+      <View style={s.header}>
+        <View style={s.brand}>
+          <View style={s.brandMark}>
+            <Icon name="home" size={16} color="#fff" />
+          </View>
+          <Text style={s.brandText}>StayMate</Text>
+        </View>
       </View>
 
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 40 : 0}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView 
-          contentContainerStyle={[styles.scrollContent, { flexGrow: 1 }]}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
+        <ScrollView
+          contentContainerStyle={{
+            padding: 20,
+            paddingBottom: Math.max(40, insets.bottom + 20),
+          }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-
-          {/* Card */}
-          <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
-
-            {/* Icon Header */}
-            <View style={styles.iconHeader}>
-              <View style={styles.shieldCircle}>
-                <ShieldCheck size={36} color="#38BDF8" />
-              </View>
-              <Text style={[styles.cardTitle, { color: textPrimary }]}>{t('ownerAccount')}</Text>
-              <Text style={[styles.cardSubtitle, { color: textMuted }]}>
-                {t('ownerAccountDesc')}
-              </Text>
+          {/* Hero */}
+          <View style={s.hero}>
+            <View style={s.heroMark}>
+              <Icon name="shield" size={28} color={C.primary} />
             </View>
-
-            {/* Tabs */}
-            <View style={[styles.tabBar, { backgroundColor: tabBg }]}>
-              <TouchableOpacity
-                onPress={() => setTab('login')}
-                style={[styles.tab, tab === 'login' && [styles.activeTab, { backgroundColor: activeTabBg }]]}
-              >
-                <LogIn size={15} color={tab === 'login' ? '#38BDF8' : textMuted} />
-                <Text style={[styles.tabText, { color: tab === 'login' ? textPrimary : textMuted }]}>{t('loginTab')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setTab('signup')}
-                style={[styles.tab, tab === 'signup' && [styles.activeTab, { backgroundColor: activeTabBg }]]}
-              >
-                <UserPlus size={15} color={tab === 'signup' ? '#38BDF8' : textMuted} />
-                <Text style={[styles.tabText, { color: tab === 'signup' ? textPrimary : textMuted }]}>{t('signupTab')}</Text>
-              </TouchableOpacity>
+            <Text style={s.h1}>Owner Account</Text>
+            <Text style={s.heroText}>
+              Secure access to your property, guests and self check-ins.
+            </Text>
+            <View style={s.trust}>
+              <Icon name="lock" size={13} color={C.primary} />
+              <Text style={s.trustText}>Secure owner access</Text>
             </View>
+          </View>
 
-            {/* Form */}
-            {tab === 'signup' && (
-              <Input
-                label={t('propertyName')}
-                placeholder="e.g. Sameer Homestay"
-                autoCapitalize="words"
-                autoCorrect={false}
-                returnKeyType="next"
-                value={businessName}
-                onChangeText={setBusinessName}
-                icon={<Building2 size={18} color="#9498AA" />}
-              />
-            )}
-
-            <Input
-              label={t('emailAddress')}
-              placeholder="owner@homestay.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
-              returnKeyType="next"
-              value={email}
-              onChangeText={setEmail}
-              icon={<Mail size={18} color="#9498AA" />}
-            />
-
-            <Input
-              label={t('password')}
-              placeholder="••••••••"
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-              textContentType="password"
-              returnKeyType="done"
-              onSubmitEditing={handleAuthSubmit}
-              value={password}
-              onChangeText={setPassword}
-              icon={<Lock size={18} color="#9498AA" />}
-            />
-
-            {tab === 'login' && (
-              <TouchableOpacity
-                onPress={async () => {
-                  if (!email.trim()) {
-                    Alert.alert('Email Required', 'Please enter your registered email address above to reset your password.');
-                    return;
-                  }
-                  try {
-                    await resetOwnerPassword(email.trim());
-                    Alert.alert('Reset Link Sent', `A password reset link has been sent to ${email.trim()}. Please check your email inbox.`);
-                  } catch (err: any) {
-                    Alert.alert('Reset Error', err?.message || 'Failed to send password reset email.');
-                  }
-                }}
-                activeOpacity={0.7}
-                style={{ alignSelf: 'flex-end', marginTop: -6, marginBottom: 16 }}
-              >
-                <Text style={{ fontSize: 13, fontWeight: '600', color: isDark ? '#60A5FA' : '#2563EB' }}>
-                  Forgot Password?
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {/* Submit */}
+          {/* Segmented Tabs */}
+          <View style={s.tabs}>
             <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setTab('login')}
+              style={[s.tab, tab === 'login' && s.activeTab]}
+            >
+              <Text
+                style={[s.tabText, tab === 'login' && s.activeTabText]}
+              >
+                Log in
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setTab('signup')}
+              style={[s.tab, tab === 'signup' && s.activeTab]}
+            >
+              <Text
+                style={[s.tabText, tab === 'signup' && s.activeTabText]}
+              >
+                Sign up
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Form Fields */}
+          {tab === 'signup' && (
+            <Field
+              label="Property / business name"
+              value={businessName}
+              onChangeText={setBusinessName}
+              placeholder="e.g. Sunrise Homestay"
+              icon="home"
+            />
+          )}
+
+          <Field
+            label="Email address"
+            value={email}
+            onChangeText={setEmail}
+            placeholder="owner@homestay.com"
+            icon="mail"
+            keyboardType="email-address"
+          />
+
+          <Field
+            label={tab === 'login' ? 'Password' : 'Create password'}
+            value={password}
+            onChangeText={setPassword}
+            placeholder={
+              tab === 'login' ? 'Enter your password' : 'At least 8 characters'
+            }
+            secure
+            icon="lock"
+          />
+
+          {tab === 'login' && (
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={handleForgotPassword}
+              style={s.forgotWrap}
+            >
+              <Text style={s.forgot}>Forgot password?</Text>
+            </TouchableOpacity>
+          )}
+
+          <View style={{ marginTop: tab === 'login' ? 6 : 18 }}>
+            <PrimaryButton
+              label={
+                isLoading
+                  ? 'Processing…'
+                  : tab === 'login'
+                  ? 'Log in to StayMate'
+                  : 'Create owner account'
+              }
               onPress={handleAuthSubmit}
               disabled={isLoading}
-              activeOpacity={0.8}
-              style={[styles.submitBtn, { backgroundColor: submitBtnBg, opacity: isLoading ? 0.7 : 1 }]}
-            >
-              {isLoading && <ActivityIndicator size="small" color={isDark ? '#000' : '#fff'} style={{ marginRight: 8 }} />}
-              <Text style={[styles.submitBtnText, { color: submitBtnText }]}>
-                {isLoading ? t('processing') : tab === 'signup' ? t('createOwnerAccount') : t('loginToDashboard')}
-              </Text>
-            </TouchableOpacity>
-
-            {/* Google Sign-In */}
-            <TouchableOpacity
-              onPress={handleGoogleAuth}
-              disabled={isLoading}
-              activeOpacity={0.8}
-              style={[styles.googleBtn, { opacity: isLoading ? 0.7 : 1 }]}
-            >
-              <GoogleLogo size={20} />
-              <Text style={styles.googleBtnText}>
-                {t('continueWithGoogle')}
-              </Text>
-            </TouchableOpacity>
-
+            />
           </View>
 
-          {/* Clean App Version Footer */}
-          <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 16 }}>
-            <Text style={{ fontSize: 11, fontWeight: '700', color: textMuted }}>
-              StayMate v1.2.0 • Simplifying Every Guest Stay
-            </Text>
+          {/* Divider */}
+          <View style={s.div}>
+            <View style={s.line} />
+            <Text style={s.or}>or</Text>
+            <View style={s.line} />
           </View>
+
+          {/* Google Sign-in */}
+          <TouchableOpacity
+            activeOpacity={0.85}
+            style={s.google}
+            onPress={handleGoogleAuth}
+            disabled={isLoading}
+          >
+            <Text style={s.googleText}>G</Text>
+            <Text style={s.googleLabel}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          <Text style={s.note}>
+            By continuing, you agree to StayMate's{' '}
+            <Text style={{ color: '#222222', fontWeight: '700' }}>Terms</Text> and{' '}
+            <Text style={{ color: '#222222', fontWeight: '700' }}>Privacy</Text>.
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
+const s = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#fff',
+  },
   header: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-  },
-  headerTitle: { fontSize: 16, fontWeight: '700' },
-  scrollContent: { padding: 20, flexGrow: 1, justifyContent: 'center' },
-  card: {
-    borderRadius: 24,
-    padding: 24,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-  iconHeader: { alignItems: 'center', marginBottom: 24 },
-  shieldCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 18,
-    backgroundColor: 'rgba(56,189,248,0.12)',
+    borderBottomColor: '#ebebeb',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    paddingHorizontal: 18,
   },
-  cardTitle: { fontSize: 22, fontWeight: '800', textAlign: 'center' },
-  cardSubtitle: { fontSize: 12, textAlign: 'center', marginTop: 4, paddingHorizontal: 16, lineHeight: 18 },
-  tabBar: {
+  brand: {
     flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  brandMark: {
+    width: 30,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: C.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  brandText: {
+    fontFamily: 'Inter',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#222222',
+  },
+  hero: {
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 20,
+  },
+  heroMark: {
+    width: 58,
+    height: 58,
+    borderRadius: 18,
+    backgroundColor: '#EDE9FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  h1: {
+    fontFamily: 'Inter',
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+    color: '#222222',
+  },
+  heroText: {
+    fontFamily: 'Inter',
+    fontSize: 13.5,
+    lineHeight: 20,
+    color: '#6a6a6a',
+    textAlign: 'center',
+    maxWidth: 340,
+    marginTop: 6,
+  },
+  trust: {
+    marginTop: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: R.full,
+    backgroundColor: '#EDE9FE',
+  },
+  trustText: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '700',
+    color: C.primary,
+  },
+  tabs: {
+    height: 50,
     borderRadius: 16,
+    backgroundColor: '#F3F4F6',
     padding: 4,
-    marginBottom: 24,
+    flexDirection: 'row',
+    marginBottom: 20,
   },
   tab: {
     flex: 1,
-    paddingVertical: 10,
-    borderRadius: 12,
-    flexDirection: 'row',
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
   },
   activeTab: {
+    backgroundColor: '#fff',
     shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  tabText: { fontSize: 12, fontWeight: '700' },
-  submitBtn: {
+  tabText: {
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6a6a6a',
+  },
+  activeTabText: {
+    color: '#222222',
+  },
+  forgotWrap: {
+    alignSelf: 'flex-end',
     marginTop: 8,
-    paddingVertical: 14,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 14,
   },
-  submitBtnText: { fontSize: 14, fontWeight: '800' },
-  googleBtn: {
-    marginTop: 10,
-    paddingVertical: 14,
-    borderRadius: 16,
+  forgot: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    fontWeight: '700',
+    color: C.primary,
+  },
+  div: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     gap: 10,
-    backgroundColor: 'rgba(66,133,244,0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(66,133,244,0.3)',
+    marginVertical: 20,
   },
-  googleBtnText: { fontSize: 14, fontWeight: '700', color: '#4285F4' },
-  debugDivider: { marginTop: 16, paddingTop: 16, borderTopWidth: 1 },
-  debugBtn: {
+  line: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#ebebeb',
+  },
+  or: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#929292',
+  },
+  google: {
+    height: 50,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#dddddd',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    backgroundColor: 'rgba(245,158,11,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.3)',
+    gap: 9,
+    backgroundColor: '#fff',
   },
-  debugBtnText: { fontSize: 13, fontWeight: '700', color: '#D97706' },
+  googleText: {
+    fontFamily: 'Inter',
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#4285F4',
+  },
+  googleLabel: {
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#222222',
+  },
+  note: {
+    fontFamily: 'Inter',
+    fontSize: 11.5,
+    color: '#929292',
+    textAlign: 'center',
+    marginTop: 16,
+    lineHeight: 18,
+  },
 });

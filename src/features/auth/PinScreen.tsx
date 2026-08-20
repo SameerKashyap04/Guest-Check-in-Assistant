@@ -1,17 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, Vibration, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import {
+  View,
+  Text,
+  Vibration,
+  TouchableOpacity,
+  Alert,
+  StyleSheet,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as LocalAuthentication from 'expo-local-authentication';
-import { PinPad } from '@/components/PinPad';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Lock, LogOut } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { AIRBNB } from '@/theme/airbnb';
-
-// ─── Airbnb PinScreen for StayMate ───────────────────────────────────────────
-// Direct port of renderPin() from staymate-airbnb-redesign/app.html
-// ─────────────────────────────────────────────────────────────────────────────
+import { C, R } from '@/theme/tokens';
+import { Icon } from '@/components/v3/Icon';
 
 interface PinScreenProps {
   onSuccess?: () => void;
@@ -24,7 +26,9 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
   const [isBiometricSupported, setIsBiometricSupported] = useState(false);
   const { hasPin, setupPin, verifyPin, logout } = useAuthStore();
   const [confirmPin, setConfirmPin] = useState('');
-  const [step, setStep] = useState<'enter' | 'setup' | 'confirm'>(hasPin ? 'enter' : 'setup');
+  const [step, setStep] = useState<'enter' | 'setup' | 'confirm'>(
+    hasPin ? 'enter' : 'setup'
+  );
 
   let router: any = null;
   try {
@@ -135,17 +139,21 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
   };
 
   return (
-    <SafeAreaView style={styles.screen}>
-      {/* Icon Well */}
-      <View style={styles.iconWell}>
-        <Lock size={28} color="#ffffff" />
+    <SafeAreaView style={s.wrap}>
+      {/* Icon */}
+      <View style={s.lock}>
+        <Icon name="lock" size={28} color="#fff" />
       </View>
 
       {/* Headline & Subtitle */}
-      <Text style={styles.title}>
-        {step === 'enter' ? 'Welcome back' : step === 'setup' ? 'Set your PIN' : 'Confirm your PIN'}
+      <Text style={s.title}>
+        {step === 'enter'
+          ? 'Welcome back'
+          : step === 'setup'
+          ? 'Set your PIN'
+          : 'Confirm your PIN'}
       </Text>
-      <Text style={styles.subtitle}>
+      <Text style={s.sub}>
         {step === 'enter'
           ? 'Enter your 4-digit PIN to unlock StayMate'
           : step === 'setup'
@@ -154,114 +162,164 @@ export function PinScreen({ onSuccess }: PinScreenProps = {}) {
       </Text>
 
       {/* 4 PIN Dots */}
-      <View style={styles.dotsRow}>
-        {[0, 1, 2, 3].map(i => (
+      <View style={s.dots}>
+        {[0, 1, 2, 3].map((i) => (
           <View
             key={i}
-            style={[
-              styles.pinDot,
-              pin.length > i && styles.pinDotFilled,
-            ]}
+            style={[s.dot, pin.length > i && s.filled]}
           />
         ))}
       </View>
 
-      {/* Error Message */}
+      {/* Error text if any */}
       {error ? (
-        <Text style={styles.errorText}>{error}</Text>
+        <Text style={s.errorText}>{error}</Text>
       ) : (
-        <View style={{ height: 24, marginBottom: 14 }} />
+        <View style={{ height: 20, marginBottom: 8 }} />
       )}
 
       {/* Keypad */}
-      <PinPad
-        onKeyPress={handleKeyPress}
-        onDelete={handleDelete}
-        onBiometric={handleBiometric}
-        showBiometric={isBiometricSupported && step === 'enter'}
-      />
+      <View style={s.keys}>
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+          <TouchableOpacity
+            key={n}
+            activeOpacity={0.7}
+            onPress={() => handleKeyPress(String(n))}
+            style={s.key}
+          >
+            <Text style={s.keyText}>{n}</Text>
+          </TouchableOpacity>
+        ))}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleBiometric}
+          style={s.key}
+        >
+          <Icon name="fingerprint" size={24} color={C.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => handleKeyPress('0')}
+          style={s.key}
+        >
+          <Text style={s.keyText}>0</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleDelete}
+          style={s.key}
+        >
+          <Icon name="chevronLeft" size={20} color={C.ink} />
+        </TouchableOpacity>
+      </View>
 
       {/* Logout Link */}
       <TouchableOpacity
         onPress={handleLogout}
         activeOpacity={0.7}
-        style={styles.logoutBtn}
+        style={s.logoutBtn}
       >
-        <LogOut size={14} color={AIRBNB.colors.muted} />
-        <Text style={styles.logoutText}>{t('logoutSwitchAccount')}</Text>
+        <Icon name="logout" size={14} color={C.muted} />
+        <Text style={s.logoutText}>{t('logoutSwitchAccount') || 'Log out'}</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: {
+const s = StyleSheet.create({
+  wrap: {
     flex: 1,
-    backgroundColor: AIRBNB.colors.canvas,
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 24,
+    backgroundColor: '#fff',
+    minHeight: '100%',
   },
-  iconWell: {
+  lock: {
     width: 64,
     height: 64,
     borderRadius: 18,
-    backgroundColor: AIRBNB.colors.primary,
+    backgroundColor: C.primary,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 22,
   },
   title: {
+    fontFamily: 'Inter',
     fontSize: 22,
     fontWeight: '600',
-    color: AIRBNB.colors.ink,
-    textAlign: 'center',
     letterSpacing: -0.4,
+    color: '#222222',
+    textAlign: 'center',
   },
-  subtitle: {
+  sub: {
+    fontFamily: 'Inter',
     fontSize: 13.5,
-    color: AIRBNB.colors.muted,
+    fontWeight: '400',
+    color: '#6a6a6a',
     textAlign: 'center',
     marginTop: 6,
     paddingHorizontal: 16,
   },
-  dotsRow: {
+  dots: {
     flexDirection: 'row',
     gap: 14,
-    marginTop: 28,
-    marginBottom: 14,
+    marginTop: 26,
+    marginBottom: 10,
   },
-  pinDot: {
+  dot: {
     width: 14,
     height: 14,
     borderRadius: 7,
     borderWidth: 1.5,
-    borderColor: AIRBNB.colors.ink,
-    backgroundColor: 'transparent',
+    borderColor: '#222222',
   },
-  pinDotFilled: {
-    backgroundColor: AIRBNB.colors.ink,
+  filled: {
+    backgroundColor: '#222222',
   },
   errorText: {
+    fontFamily: 'Inter',
     fontSize: 13,
-    fontWeight: '500',
-    color: AIRBNB.colors.rose,
-    marginBottom: 14,
+    fontWeight: '600',
+    color: C.rose,
+    marginBottom: 8,
     textAlign: 'center',
   },
+  keys: {
+    width: 250,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
+    justifyContent: 'center',
+  },
+  key: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#F8F7FB',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  keyText: {
+    fontFamily: 'Inter',
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#222222',
+  },
   logoutBtn: {
-    marginTop: 24,
+    marginTop: 26,
     paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: AIRBNB.radius.full,
-    backgroundColor: AIRBNB.colors.surfaceSoft,
+    borderRadius: R.full,
+    backgroundColor: '#F8F7FB',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
   },
   logoutText: {
+    fontFamily: 'Inter',
     fontSize: 12.5,
     fontWeight: '600',
-    color: AIRBNB.colors.muted,
+    color: C.muted,
   },
 });

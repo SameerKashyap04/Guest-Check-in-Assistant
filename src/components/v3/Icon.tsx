@@ -1,0 +1,302 @@
+import React from 'react';
+import Svg, { Path, Circle, Rect } from 'react-native-svg';
+
+const P: Record<string, React.ReactNode> = {
+  home: (
+    <>
+      <Path d="M3 10.5 12 3l9 7.5" />
+      <Path d="M5.5 9.5V20a1 1 0 0 0 1 1H9.5a1 1 0 0 0 1-1v-4a2 2 0 0 1 1-2h0a2 2 0 0 1 2 2v4a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1V9.5" />
+    </>
+  ),
+  bed: (
+    <>
+      <Path d="M2 18v-7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v7" />
+      <Path d="M2 18v2M22 18v2" />
+      <Path d="M2 13V7a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+      <Path d="M14 9h6a2 2 0 0 1 2 2v2" />
+    </>
+  ),
+  settings: (
+    <>
+      <Circle cx="12" cy="12" r="3" />
+      <Path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 0 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 0 1 0-4h.1A1.7 1.7 0 0 0 4.7 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 0 1 4 0v.1a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 0 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" />
+    </>
+  ),
+  camera: (
+    <>
+      <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5l1.6-2.4A2 2 0 0 1 9.8 2.6h4.4a2 2 0 0 1 1.7 1L17.5 6H21a2 2 0 0 1 2 2Z" />
+      <Circle cx="12" cy="13" r="4" />
+    </>
+  ),
+  search: (
+    <>
+      <Circle cx="11" cy="11" r="7" />
+      <Path d="m21 21-4.3-4.3" />
+    </>
+  ),
+  bell: (
+    <>
+      <Path d="M6 8a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6" />
+      <Path d="M10.3 21a1.9 1.9 0 0 0 3.4 0" />
+    </>
+  ),
+  chevronRight: <Path d="m9 18 6-6-6-6" />,
+  chevronLeft: <Path d="m15 18-6-6 6-6" />,
+  x: (
+    <>
+      <Path d="M18 6 6 18" />
+      <Path d="M6 6l12 12" />
+    </>
+  ),
+  plus: (
+    <>
+      <Path d="M12 5v14" />
+      <Path d="M5 12h14" />
+    </>
+  ),
+  check: <Path d="M20 6 9 17l-5-5" />,
+  lock: (
+    <>
+      <Rect x="4.5" y="10.5" width="15" height="10" rx="2" />
+      <Path d="M8 10.5V7a4 4 0 0 1 8 0v3.5" />
+    </>
+  ),
+  fingerprint: (
+    <>
+      <Path d="M12 2a8 8 0 0 0-8 8c0 4 1 7 2 9" />
+      <Path d="M12 2a8 8 0 0 1 8 8c0 2.4-.3 4.3-.8 6" />
+      <Path d="M8 20c1.5-2 2-4.5 2-7a2 2 0 0 1 4 0c0 1 0 2-.3 3" />
+    </>
+  ),
+  calendar: (
+    <>
+      <Rect x="3" y="4.5" width="18" height="16.5" rx="2.5" />
+      <Path d="M16 2.5v4M8 2.5v4M3 9.5h18" />
+    </>
+  ),
+  mail: (
+    <>
+      <Rect x="2" y="4.5" width="20" height="15" rx="2.5" />
+      <Path d="m3 6 9 7 9-7" />
+    </>
+  ),
+  phone: (
+    <Path d="M6.6 10.8a15.3 15.3 0 0 0 6.6 6.6l2.2-2.2a1.5 1.5 0 0 1 1.5-.4c1.2.4 2.5.6 3.8.6a1.5 1.5 0 0 1 1.5 1.5V21a1.5 1.5 0 0 1-1.5 1.5C10.7 22.5 1.5 13.3 1.5 2.5A1.5 1.5 0 0 1 3 1h3.7a1.5 1.5 0 0 1 1.5 1.5c0 1.3.2 2.6.6 3.8a1.5 1.5 0 0 1-.4 1.5Z" />
+  ),
+  upload: (
+    <>
+      <Path d="M12 16V4" />
+      <Path d="m6 9 6-6 6 6" />
+      <Path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" />
+    </>
+  ),
+  image: (
+    <>
+      <Rect x="3" y="3" width="18" height="18" rx="2.5" />
+      <Circle cx="9" cy="9" r="1.8" />
+      <Path d="m21 15-5-5-9 9" />
+    </>
+  ),
+  grid: (
+    <>
+      <Rect x="3" y="3" width="8" height="8" rx="1.5" />
+      <Rect x="13" y="3" width="8" height="8" rx="1.5" />
+      <Rect x="3" y="13" width="8" height="8" rx="1.5" />
+      <Rect x="13" y="13" width="8" height="8" rx="1.5" />
+    </>
+  ),
+  list: (
+    <>
+      <Path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+    </>
+  ),
+  cloud: (
+    <>
+      <Path d="M17.5 19a4.5 4.5 0 0 0 0-9 6 6 0 0 0-11.4-2A5 5 0 0 0 6.5 19h11Z" />
+    </>
+  ),
+  users: (
+    <>
+      <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <Circle cx="9" cy="7" r="4" />
+      <Path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8" />
+    </>
+  ),
+  edit: (
+    <>
+      <Path d="M12 20h9" />
+      <Path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </>
+  ),
+  logout: (
+    <>
+      <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <Path d="m16 17 5-5-5-5M21 12H9" />
+    </>
+  ),
+  globe: (
+    <>
+      <Circle cx="12" cy="12" r="9" />
+      <Path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+    </>
+  ),
+  moon: <Path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" />,
+  shield: (
+    <>
+      <Path d="M12 2.5 4 5.5v6c0 5 3.4 8.7 8 10 4.6-1.3 8-5 8-10v-6Z" />
+      <Path d="m9 12 2 2 4-4.5" />
+    </>
+  ),
+  info: (
+    <>
+      <Circle cx="12" cy="12" r="9" />
+      <Path d="M12 8h.01M11 12h1v5h1" />
+    </>
+  ),
+  share: (
+    <>
+      <Circle cx="18" cy="5" r="2.6" />
+      <Circle cx="6" cy="12" r="2.6" />
+      <Circle cx="18" cy="19" r="2.6" />
+      <Path d="m8.3 10.7 7.4-4.2m-7.4 6.8 7.4 4.2" />
+    </>
+  ),
+  qr: (
+    <>
+      <Rect x="3" y="3" width="7" height="7" rx="1" />
+      <Rect x="14" y="3" width="7" height="7" rx="1" />
+      <Rect x="3" y="14" width="7" height="7" rx="1" />
+      <Path d="M14 14h3v3h-3zM18 18h3v3h-3zM18 14h3M14 18h3" />
+    </>
+  ),
+  copy: (
+    <>
+      <Rect x="9" y="9" width="10" height="10" rx="2" />
+      <Path d="M15 9V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
+    </>
+  ),
+  mapPin: (
+    <>
+      <Path d="M12 21s7-6.6 7-12a7 7 0 1 0-14 0c0 5.4 7 12 7 12Z" />
+      <Circle cx="12" cy="9" r="2.6" />
+    </>
+  ),
+  clock: (
+    <>
+      <Circle cx="12" cy="12" r="9" />
+      <Path d="M12 7v5l3.5 2" />
+    </>
+  ),
+  download: (
+    <>
+      <Path d="M12 3v13" />
+      <Path d="m6 11 6 6 6-6" />
+      <Path d="M5 21h14" />
+    </>
+  ),
+  arrowRight: (
+    <>
+      <Path d="M5 12h14" />
+      <Path d="m13 6 6 6-6 6" />
+    </>
+  ),
+  wifi: (
+    <>
+      <Path d="M5 12.55a11 11 0 0 1 14.08 0" />
+      <Path d="M1.42 9a16 16 0 0 1 21.16 0" />
+      <Path d="M8.53 16.11a6 6 0 0 1 6.95 0" />
+      <Circle cx="12" cy="20" r="1" />
+    </>
+  ),
+  trash: (
+    <>
+      <Path d="M3 6h18" />
+      <Path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </>
+  ),
+  aadhaar: (
+    <>
+      <Rect x="3" y="5" width="18" height="14" rx="2.5" />
+      <Circle cx="9" cy="10" r="2.2" />
+      <Path d="M6 15h6" />
+      <Path d="M15 9h3" />
+      <Path d="M15 12h3" />
+    </>
+  ),
+  pan: (
+    <>
+      <Rect x="3" y="5" width="18" height="14" rx="2.5" />
+      <Path d="M7 10h10" />
+      <Path d="M7 14h6" />
+    </>
+  ),
+  voter: (
+    <>
+      <Rect x="4" y="5" width="16" height="14" rx="2.5" />
+      <Circle cx="9" cy="10" r="2" />
+      <Path d="M6.5 15c.8-1.6 4.2-1.6 5 0" />
+      <Path d="M14 9h3" />
+      <Path d="M14 12h3" />
+    </>
+  ),
+  dl: (
+    <>
+      <Rect x="3" y="5" width="18" height="14" rx="2.5" />
+      <Path d="M7 9h3" />
+      <Path d="M7 13h7" />
+      <Path d="M15.5 9.5 17 11l3-3" />
+    </>
+  ),
+  passport: (
+    <>
+      <Rect x="4" y="2.5" width="16" height="19" rx="2" />
+      <Circle cx="12" cy="11" r="3.8" />
+      <Path d="M12 7.2v7.6" />
+      <Path d="M8.2 11h7.6" />
+      <Path d="M8 17h8" />
+    </>
+  ),
+  flashOff: (
+    <>
+      <Path d="M11 2 5 12h5l-1 10 8-13h-5l2-7Z" opacity=".5" />
+      <Path d="M3 3l18 18" />
+    </>
+  ),
+  flip: (
+    <>
+      <Path d="M17 2.1 21 6l-4 3.9" />
+      <Path d="M3 12a9 9 0 0 1 15-6.7l3 3" />
+      <Path d="M7 21.9 3 18l4-3.9" />
+      <Path d="M21 12a9 9 0 0 1-15 6.7l-3-3" />
+    </>
+  ),
+};
+
+export type IconName = keyof typeof P;
+
+export function Icon({
+  name,
+  size = 22,
+  color = '#222222',
+  strokeWidth = 2,
+}: {
+  name: IconName;
+  size?: number;
+  color?: string;
+  strokeWidth?: number;
+}) {
+  return (
+    <Svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color}
+      strokeWidth={strokeWidth}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      {P[name] || P.info}
+    </Svg>
+  );
+}

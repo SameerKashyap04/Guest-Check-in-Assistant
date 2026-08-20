@@ -1,16 +1,48 @@
-import { useEffect, useCallback } from 'react';
-import { DarkTheme, DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import { useEffect } from 'react';
+import { DefaultTheme, ThemeProvider, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Platform } from 'react-native';
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+  Inter_900Black,
+} from '@expo-google-fonts/inter';
 import i18n from '../i18n';
 import { initDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { CustomAlertProvider } from '@/components/CustomAlert';
 
 import '../global.css';
+
+// Inject authentic Inter web font and typography styles on web platform
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  if (!document.getElementById('staymate-inter-webfont')) {
+    const link = document.createElement('link');
+    link.id = 'staymate-inter-webfont';
+    link.rel = 'stylesheet';
+    link.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap';
+    document.head.appendChild(link);
+  }
+  if (!document.getElementById('staymate-inter-css')) {
+    const style = document.createElement('style');
+    style.id = 'staymate-inter-css';
+    style.textContent = `
+      *, *::before, *::after, html, body, #root, input, button, textarea, [data-testid] {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif !important;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        text-rendering: optimizeLegibility;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
 
 // Prevent the splash screen from auto-hiding before app is ready
 SplashScreen.preventAutoHideAsync().catch(() => {});
@@ -21,16 +53,15 @@ const splashSafetyTimeout = setTimeout(() => {
 }, 4000);
 
 export default function RootLayout() {
-  const systemColorScheme = useColorScheme();
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+    Inter_900Black,
+  });
 
-  let theme = 'system';
-  let language = 'en';
-  try {
-    theme = useSettingsStore.getState().theme || 'system';
-    language = useSettingsStore.getState().language || 'en';
-  } catch (_) {}
-
-  const storedTheme = useSettingsStore((s) => s.theme);
   const storedLanguage = useSettingsStore((s) => s.language);
 
   // Force light mode on Web document root
