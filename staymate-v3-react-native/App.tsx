@@ -456,6 +456,7 @@ function MainApp() {
           <Sheet onClose={() => setSheet(null)}>
             <GuestSheet
               id={guestId}
+              guests={guestsList}
               onToast={notify}
               onClose={() => setSheet(null)}
             />
@@ -802,22 +803,40 @@ function RoomSheet({
           </>
         )}
       </View>
-    </ScrollView>
-  );
-}
-
-
-
-function GuestSheet({
+   function GuestSheet({
   id,
+  guests = [],
   onToast,
   onClose,
 }: {
   id: number;
+  guests?: any[];
   onToast: (msg: string) => void;
   onClose: () => void;
 }) {
-  const g = GUESTS.find((x) => x.id === id) || GUESTS[0];
+  const g = guests.find((x) => x.id === id) || GUESTS.find((x) => x.id === id) || GUESTS[0];
+
+  const handleContact = async () => {
+    if (!g.phone) {
+      onToast('No phone number on record');
+      return;
+    }
+    const cleanPhone = g.phone.replace(/[^0-9+]/g, '');
+    const telUrl = `tel:${cleanPhone}`;
+    try {
+      const canOpen = await Linking.canOpenURL(telUrl);
+      if (canOpen) {
+        await Linking.openURL(telUrl);
+      } else {
+        await Clipboard.setStringAsync(g.phone);
+        onToast(`Phone ${g.phone} copied to clipboard! ✓`);
+      }
+    } catch (_) {
+      await Clipboard.setStringAsync(g.phone);
+      onToast(`Phone ${g.phone} copied to clipboard! ✓`);
+    }
+  };
+
   return (
     <ScrollView
       contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 28}}
@@ -827,7 +846,7 @@ function GuestSheet({
       <View style={ms.guestHeaderRow}>
         <View style={ms.avatarLarge}>
           <Text style={ms.avatarLargeText}>
-            {g.name.split(' ').map((n) => n[0]).join('')}
+            {g.name ? g.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'GS'}
           </Text>
         </View>
         <View style={{flex: 1}}>
@@ -836,36 +855,38 @@ function GuestSheet({
             {g.verified ? <Icon name="check" size={15} color={C.emerald}/> : null}
           </View>
           <Text style={ms.bodySm}>
-            {g.verified ? 'Verified registration' : 'Awaiting verification'}
+            {g.verified ? 'Verified registration' : 'Awaiting verification'} · Room {g.room}
           </Text>
         </View>
       </View>
 
-      {/* Photo section: 2 columns */}
-      <View style={ms.photosRow}>
-        <View style={ms.selfieBox}>
-          <Icon name="image" size={26} color="#c13515"/>
-          <Text style={ms.photoLabel}>Selfie</Text>
+      {/* Photo / ID Section */}
+      {g.photoUri || g.photo ? (
+        <View style={{marginVertical: 14, borderRadius: 16, overflow: 'hidden', height: 200, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0'}}>
+          <Image source={{ uri: g.photoUri || g.photo }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
         </View>
-        <View style={ms.idBox}>
-          <View style={{flexDirection: 'row', gap: 6}}>
-            <Icon name="image" size={18} color={C.muted}/>
-            <Icon name="image" size={18} color={C.muted}/>
+      ) : (
+        <View style={{marginVertical: 12, padding: 12, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', flexDirection: 'row', alignItems: 'center', gap: 10}}>
+          <View style={{width: 36, height: 36, borderRadius: 18, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center'}}>
+            <Icon name="shield" size={18} color={C.primary} />
           </View>
-          <Text style={ms.caption}>ID front / back</Text>
+          <View style={{flex: 1}}>
+            <Text style={[ms.titleSm, {fontSize: 13}]}>{g.type || 'ID Card'} Verified</Text>
+            <Text style={ms.bodySm}>{g.idNum || 'Verified on Registration'}</Text>
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Details table */}
       <View style={ms.metaCard}>
         {([
-          ['Room', `${g.room} · ${g.roomType}`],
-          ['Document', `${g.type} — ${g.idNum}`],
-          ['Phone', g.phone],
-          ['Email', g.email],
-          ['Nationality', g.nat],
-          ['Gender', g.gender],
-          ['Address', g.address],
+          ['Room', `${g.room} · ${g.roomType || 'Standard'}`],
+          ['Document', `${g.type || 'ID'} — ${g.idNum || 'Verified'}`],
+          ['Phone', g.phone || '—'],
+          ['Email', g.email || '—'],
+          ['Nationality', g.nat || 'Indian'],
+          ['Gender', g.gender || '—'],
+          ['Address', g.address || '—'],
         ] as [string, string][]).map(([label, val], idx, arr) => (
           <View
             key={label}
@@ -880,6 +901,21 @@ function GuestSheet({
         ))}
       </View>
 
+      {/* Additional Guests if any */}
+      {g.additionalGuests && g.additionalGuests.length > 0 && (
+        <View style={{marginTop: 14}}>
+          <Text style={[ms.titleSm, {marginBottom: 8}]}>
+            Accompanying Co-Guests ({g.additionalGuests.length})
+          </Text>
+          {g.additionalGuests.map((cg: any, idx: number) => (
+            <View key={idx} style={[ms.card, {marginBottom: 8, padding: 12}]}>
+              <Text style={[ms.titleSm, {fontWeight: '700'}]}>{cg.full_name || cg.name || cg.fullName}</Text>
+              <Text style={ms.bodySm}>{cg.relation || 'Co-Guest'} · {cg.id_type || cg.idType || 'ID'}: {cg.id_number || cg.idNumber || '—'}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+
       {/* Action buttons */}
       <View style={{flexDirection: 'row', gap: 10, marginTop: 16}}>
         <SecondaryButton
@@ -893,9 +929,9 @@ function GuestSheet({
         />
         <PrimaryButton
           label="Contact"
-        icon="phone"
+          icon="phone"
           style={{flex: 1}}
-          onPress={() => onToast(`Calling ${g.phone}`)}
+          onPress={handleContact}
         />
       </View>
     </ScrollView>
@@ -1200,6 +1236,112 @@ function SelfCheckins({
     }
     onReject(g);
   };
+
+  if (reviewGuest) {
+    return (
+      <ScrollView
+        contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 28}}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Navigation Header */}
+        <View style={ms.sheetHeaderBar}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setReviewGuest(null)}
+            style={ms.sheetBackBtn}
+          >
+            <Icon name="chevronLeft" size={18} color={C.ink}/>
+          </TouchableOpacity>
+          <Text style={ms.sheetHeaderTitle}>Review Submission</Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setReviewGuest(null)}
+            style={ms.sheetCloseBtnRelative}
+          >
+            <Icon name="x" size={16} color={C.ink}/>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={[ms.bodySm, {marginTop: 2}]}>
+          Online self check-in registration
+        </Text>
+
+        {/* Photo Display with proper framing (4:3 aspect ratio, contain, clean background) */}
+        {reviewGuest.photoUri ? (
+          <View style={{marginTop: 14, borderRadius: 16, overflow: 'hidden', height: 220, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+            <Image source={{ uri: reviewGuest.photoUri }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+          </View>
+        ) : null}
+
+        {/* Details card */}
+        <View style={[ms.card, {marginTop: 14, gap: 10}]}>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Full Name</Text>
+            <Text style={[ms.titleSm, {fontWeight: '700'}]}>{reviewGuest.name}</Text>
+          </View>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Assigned Room</Text>
+            <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>Room {reviewGuest.room}</Text>
+          </View>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Document</Text>
+            <Text style={ms.titleSm}>{reviewGuest.doc}</Text>
+          </View>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Phone</Text>
+            <Text style={ms.titleSm}>{reviewGuest.phone}</Text>
+          </View>
+          {reviewGuest.dob ? (
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Date of Birth</Text>
+              <Text style={ms.titleSm}>{reviewGuest.dob}</Text>
+            </View>
+          ) : null}
+          {reviewGuest.gender ? (
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Gender</Text>
+              <Text style={ms.titleSm}>{reviewGuest.gender}</Text>
+            </View>
+          ) : null}
+          {reviewGuest.address ? (
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Address</Text>
+              <Text style={[ms.titleSm, {flex: 1, textAlign: 'right', marginLeft: 16}]}>{reviewGuest.address}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Co-Guests in Review */}
+        {reviewGuest.additionalGuests && reviewGuest.additionalGuests.length > 0 && (
+          <View style={{marginTop: 14}}>
+            <Text style={[ms.titleSm, {marginBottom: 8}]}>
+              Co-Guests ({reviewGuest.additionalGuests.length})
+            </Text>
+            {reviewGuest.additionalGuests.map((cg: any, idx: number) => (
+              <View key={idx} style={[ms.card, {marginBottom: 8, padding: 12}]}>
+                <Text style={[ms.titleSm, {fontWeight: '700'}]}>{cg.full_name || cg.name || cg.fullName}</Text>
+                <Text style={ms.bodySm}>{cg.relation || 'Co-Guest'} · {cg.id_type || cg.idType || 'ID'}: {cg.id_number || cg.idNumber || '-'}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        <View style={{flexDirection: 'row', gap: 10, marginTop: 20}}>
+          <SecondaryButton
+            label="Reject"
+            style={{flex: 1}}
+            onPress={() => handleLocalReject(reviewGuest)}
+          />
+          <PrimaryButton
+            label="Approve Check-in"
+            icon="check"
+            style={{flex: 1}}
+            onPress={() => handleLocalApprove(reviewGuest)}
+          />
+        </View>
+      </ScrollView>
+    );
+  }
 
   return (
     <>
@@ -1533,114 +1675,6 @@ function SelfCheckins({
           ))
         )}
       </ScrollView>
-
-      {/* Guest Review Sub-Modal */}
-      {reviewGuest && (
-        <Modal visible transparent animationType="slide">
-          <View style={ms.sheetScrim}>
-            <View style={[ms.sheet, {paddingBottom: 24}]}>
-              <View style={ms.handle}/>
-              
-              {/* Navigation Header with Back and Close buttons */}
-              <View style={ms.sheetHeaderBar}>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setReviewGuest(null)}
-                  style={ms.sheetBackBtn}
-                >
-                  <Icon name="chevronLeft" size={18} color={C.ink}/>
-                </TouchableOpacity>
-                <Text style={ms.sheetHeaderTitle}>Review Submission</Text>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setReviewGuest(null)}
-                  style={ms.sheetCloseBtnRelative}
-                >
-                  <Icon name="x" size={16} color={C.ink}/>
-                </TouchableOpacity>
-              </View>
-
-              <ScrollView contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 20}}>
-                <Text style={[ms.bodySm, {marginTop: 2}]}>
-                  Online self check-in registration
-                </Text>
-
-                {reviewGuest.photoUri && (
-                  <View style={{marginTop: 14, borderRadius: 14, overflow: 'hidden', height: 160, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0'}}>
-                    <Image source={{ uri: reviewGuest.photoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
-                  </View>
-                )}
-
-                <View style={[ms.card, {marginTop: 14, gap: 10}]}>
-                  <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                    <Text style={ms.bodySm}>Full Name</Text>
-                    <Text style={[ms.titleSm, {fontWeight: '700'}]}>{reviewGuest.name}</Text>
-                  </View>
-                  <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                    <Text style={ms.bodySm}>Assigned Room</Text>
-                    <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>Room {reviewGuest.room}</Text>
-                  </View>
-                  <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                    <Text style={ms.bodySm}>Document</Text>
-                    <Text style={ms.titleSm}>{reviewGuest.doc}</Text>
-                  </View>
-                  <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                    <Text style={ms.bodySm}>Phone</Text>
-                    <Text style={ms.titleSm}>{reviewGuest.phone}</Text>
-                  </View>
-                  {reviewGuest.dob && (
-                    <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                      <Text style={ms.bodySm}>Date of Birth</Text>
-                      <Text style={ms.titleSm}>{reviewGuest.dob}</Text>
-                    </View>
-                  )}
-                  {reviewGuest.gender && (
-                    <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                      <Text style={ms.bodySm}>Gender</Text>
-                      <Text style={ms.titleSm}>{reviewGuest.gender}</Text>
-                    </View>
-                  )}
-                  {reviewGuest.address && (
-                    <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                      <Text style={ms.bodySm}>Address</Text>
-                      <Text style={[ms.titleSm, {flex: 1, textAlign: 'right', marginLeft: 16}]}>{reviewGuest.address}</Text>
-                    </View>
-                  )}
-                </View>
-
-                {/* Co-Guests in Review */}
-                {reviewGuest.additionalGuests && reviewGuest.additionalGuests.length > 0 && (
-                  <View style={{marginTop: 14}}>
-                    <Text style={[ms.titleSm, {marginBottom: 8}]}>
-                      Co-Guests ({reviewGuest.additionalGuests.length})
-                    </Text>
-                    {reviewGuest.additionalGuests.map((cg: any, idx: number) => (
-                      <View key={idx} style={[ms.card, {marginBottom: 8, padding: 12}]}>
-                        <Text style={[ms.titleSm, {fontWeight: '700'}]}>{cg.full_name || cg.name}</Text>
-                        <Text style={ms.bodySm}>{cg.relation || 'Co-Guest'} · {cg.id_type || 'ID'}: {cg.id_number || '-'}</Text>
-                      </View>
-                    ))}
-                  </View>
-                )}
-
-                <View style={{flexDirection: 'row', gap: 10, marginTop: 20}}>
-                  <SecondaryButton
-                    label="Reject"
-                    style={{flex: 1}}
-                    onPress={() => handleLocalReject(reviewGuest)}
-                  />
-                  <PrimaryButton
-                    label="Approve Check-in"
-                    icon="check"
-                    style={{flex: 1}}
-                    onPress={() => handleLocalApprove(reviewGuest)}
-                  />
-                </View>
-              </ScrollView>
-            </View>
-          </View>
-        </Modal>
-      )}
     </>
   );
 }

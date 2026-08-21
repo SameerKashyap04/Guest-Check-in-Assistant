@@ -432,21 +432,13 @@ export default function SelfCheckinScreen() {
                 <Text style={s.kvLabel}>Total Occupants</Text>
                 <Text style={s.kvVal}>{adultsCount} Adults, {childrenCount} Children</Text>
               </View>
-              {additionalGuests.length > 0 && (
-                <View style={s.kvRow}>
-                  <Text style={s.kvLabel}>Co-Guests</Text>
-                  <Text style={s.kvVal}>+{additionalGuests.length} Guests</Text>
-                </View>
-              )}
+            {/* Reception Proceed Notice */}
+            <View style={s.receptionNoticeBox}>
+              <Text style={s.receptionNoticeTitle}>Registration Complete</Text>
+              <Text style={s.receptionNoticeSub}>
+                Your details have been submitted to the front desk. Please proceed to reception to collect your room key.
+              </Text>
             </View>
-
-            <TouchableOpacity
-              activeOpacity={0.85}
-              style={s.whatsappBtn}
-              onPress={handleNotifyOwner}
-            >
-              <Text style={s.whatsappBtnText}>Send Confirmation via WhatsApp →</Text>
-            </TouchableOpacity>
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -1734,18 +1726,27 @@ const s = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
   },
-  whatsappBtn: {
+  receptionNoticeBox: {
     width: '100%',
-    backgroundColor: '#10B981',
-    paddingVertical: 14,
-    borderRadius: 14,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1.5,
+    borderColor: '#A7F3D0',
+    borderRadius: 16,
+    padding: 16,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  whatsappBtnText: {
+  receptionNoticeTitle: {
     fontFamily: 'Inter',
-    fontSize: 13.5,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#065F46',
+    marginBottom: 4,
+  },
+  receptionNoticeSub: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    color: '#047857',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });
