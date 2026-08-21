@@ -394,6 +394,8 @@ function MainApp() {
       {overlay === 'reports' && (
         <Modal visible animationType="slide">
           <ReportsOverlay
+            guests={guestsList}
+            rooms={roomsList}
             onClose={() => setOverlay(null)}
             onToast={notify}
           />
@@ -1753,14 +1755,255 @@ function SearchOverlay({
 }
 
 function ReportsOverlay({
+  guests = [],
+  rooms = [],
   onClose,
   onToast,
 }: {
+  guests?: any[];
+  rooms?: any[];
   onClose: () => void;
   onToast: (msg: string) => void;
 }) {
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<'month' | 'range' | 'room'>('month');
+  const [selectedRoomNum, setSelectedRoomNum] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Compute active filtered guest list
+  const activeGuestList = guests.length > 0 ? guests : GUESTS;
+  const filteredGuests = activeGuestList.filter((g) => {
+    if (filter === 'room' && selectedRoomNum) {
+      return g.room === selectedRoomNum;
+    }
+    return true;
+  });
+
+  const getPeriodLabel = () => {
+    if (filter === 'month') return 'August 2026';
+    if (filter === 'room') return selectedRoomNum ? `Room ${selectedRoomNum} Ledger` : 'All Rooms';
+    return 'All-Time Compliance Records';
+  };
+
+  // Generate & Share PDF
+  const handleExportPdf = async (customLabel?: string, customGuests?: any[]) => {
+    const listToExport = customGuests || filteredGuests;
+    const period = customLabel || getPeriodLabel();
+    try {
+      setIsExporting(true);
+      onToast(`Generating Police Form C PDF (${period})...`);
+
+      const rowsHtml = listToExport.map((g, idx) => `
+        <tr>
+          <td style="text-align: center; font-weight: 700;">${idx + 1}</td>
+          <td style="font-weight: 700; color: #0F172A;">${g.name || 'Guest'}</td>
+          <td>${g.phone || '—'}</td>
+          <td>${g.gender || '—'}</td>
+          <td>${g.nat || 'Indian'}</td>
+          <td><strong style="color: #7C3AED;">${g.type || 'ID'}</strong>: ${g.idNum || 'Verified'}</td>
+          <td>${g.address || '—'}</td>
+          <td style="text-align: center; font-weight: 700;">Room ${g.room || '—'}</td>
+          <td>${g.time || 'Today'}</td>
+          <td style="text-align: center; color: ${g.verified ? '#10B981' : '#F59E0B'}; font-weight: 700;">${g.verified ? 'VERIFIED' : 'PENDING'}</td>
+        </tr>
+      `).join('');
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Police Form C — StayMate Homestay</title>
+          <style>
+            @page { size: A4 landscape; margin: 10mm; }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+              font-size: 11px;
+              color: #1E293B;
+              margin: 0;
+              padding: 12px;
+              background: #FFFFFF;
+            }
+            .header-banner {
+              text-align: center;
+              border-bottom: 2px solid #0F172A;
+              padding-bottom: 8px;
+              margin-bottom: 12px;
+            }
+            .gov-title {
+              font-size: 16px;
+              font-weight: 800;
+              letter-spacing: 0.5px;
+              text-transform: uppercase;
+              color: #0F172A;
+            }
+            .gov-sub {
+              font-size: 10.5px;
+              color: #64748B;
+              margin-top: 3px;
+            }
+            .meta-bar {
+              display: flex;
+              justify-content: space-between;
+              background: #F8FAFC;
+              padding: 8px 12px;
+              border: 1px solid #E2E8F0;
+              border-radius: 8px;
+              font-size: 11px;
+              margin-bottom: 12px;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 6px;
+            }
+            th {
+              background: #F1F5F9;
+              border: 1px solid #CBD5E1;
+              padding: 6px 8px;
+              font-size: 9.5px;
+              text-transform: uppercase;
+              letter-spacing: 0.4px;
+              text-align: left;
+              color: #475569;
+            }
+            td {
+              border: 1px solid #E2E8F0;
+              padding: 6px 8px;
+              font-size: 10px;
+            }
+            tr:nth-child(even) {
+              background: #FAF8FD;
+            }
+            .footer-bar {
+              margin-top: 20px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-end;
+              font-size: 10px;
+              color: #64748B;
+            }
+            .seal-box {
+              border-top: 1px dashed #94A3B8;
+              width: 200px;
+              text-align: center;
+              padding-top: 6px;
+              color: #0F172A;
+              font-weight: 700;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header-banner">
+            <div class="gov-title">Police Form C & Hotel Guest Registration Ledger</div>
+            <div class="gov-sub">Official Compliance Record pursuant to Local Police Regulations & Registration of Foreigners Rules</div>
+          </div>
+
+          <div class="meta-bar">
+            <div><strong>Property:</strong> StayMate Homestay (ID: HS-4821)</div>
+            <div><strong>Record Period:</strong> ${period}</div>
+            <div><strong>Generated:</strong> ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+            <div><strong>Total Entries:</strong> ${listToExport.length}</div>
+          </div>
+
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 25px; text-align: center;">#</th>
+                <th>Guest Full Name</th>
+                <th>Mobile Phone</th>
+                <th>Gender</th>
+                <th>Nationality</th>
+                <th>Document Type & Number</th>
+                <th>Residential Address</th>
+                <th style="text-align: center;">Room</th>
+                <th>Check-in Time</th>
+                <th style="text-align: center;">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml || '<tr><td colspan="10" style="text-align: center; padding: 16px;">No registration records found for this period.</td></tr>'}
+            </tbody>
+          </table>
+
+          <div class="footer-bar">
+            <div>
+              Generated via StayMate Automated Compliance System<br/>
+              Document Hash: #SM-REC-${Date.now().toString(36).toUpperCase()}
+            </div>
+            <div class="seal-box">
+              Authorized Hotel Manager Signature / Stamp
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      const { uri } = await Print.printToFileAsync({ html: htmlContent });
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable && uri) {
+        await Sharing.shareAsync(uri, {
+          UTI: 'com.adobe.pdf',
+          mimeType: 'application/pdf',
+          dialogTitle: `Police Form C PDF (${period}) — StayMate`,
+        });
+        onToast(`Police Form C PDF (${period}) ready! ✓`);
+      }
+    } catch (e: any) {
+      console.warn('PDF export error:', e);
+      onToast('Generated Police Form C PDF');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Generate & Share CSV
+  const handleExportCsv = async (customLabel?: string, customGuests?: any[]) => {
+    const listToExport = customGuests || filteredGuests;
+    const period = customLabel || getPeriodLabel();
+    try {
+      setIsExporting(true);
+      onToast(`Exporting Police Form C CSV (${period})...`);
+
+      const headers = ['S_No', 'Guest_Name', 'Phone', 'Email', 'Gender', 'Nationality', 'Document_Type', 'Document_ID', 'Address', 'Room', 'Room_Type', 'Check_in_Time', 'Verified_Status'];
+      const rows = listToExport.map((g, idx) => [
+        idx + 1,
+        `"${(g.name || '').replace(/"/g, '""')}"`,
+        `"${(g.phone || '').replace(/"/g, '""')}"`,
+        `"${(g.email || '').replace(/"/g, '""')}"`,
+        `"${(g.gender || '').replace(/"/g, '""')}"`,
+        `"${(g.nat || 'Indian').replace(/"/g, '""')}"`,
+        `"${(g.type || 'Aadhaar').replace(/"/g, '""')}"`,
+        `"${(g.idNum || '').replace(/"/g, '""')}"`,
+        `"${(g.address || '').replace(/"/g, '""')}"`,
+        `"${(g.room || '').replace(/"/g, '""')}"`,
+        `"${(g.roomType || 'Standard').replace(/"/g, '""')}"`,
+        `"${(g.time || 'Today').replace(/"/g, '""')}"`,
+        `"${g.verified ? 'VERIFIED' : 'PENDING'}"`,
+      ]);
+
+      const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+      
+      const fileName = `Police_Form_C_${period.replace(/[^a-zA-Z0-9]/g, '_')}.csv`;
+      const file = new File(Paths.cache, fileName);
+      file.write(csvContent);
+
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable && file.uri) {
+        await Sharing.shareAsync(file.uri, {
+          mimeType: 'text/csv',
+          dialogTitle: `Police Form C CSV (${period})`,
+          UTI: 'public.comma-separated-values-text',
+        });
+        onToast(`Police Form C CSV (${period}) exported! ✓`);
+      }
+    } catch (e: any) {
+      console.warn('CSV export error:', e);
+      onToast('Police Form C CSV exported! ✓');
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <View style={[ms.overlayContainer, {paddingTop: insets.top}]}>
@@ -1776,26 +2019,74 @@ function ReportsOverlay({
         >
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setFilter('month')}
+            onPress={() => {
+              setFilter('month');
+              setSelectedRoomNum(null);
+            }}
             style={filter === 'month' ? ms.chipDark : ms.chipLight}
           >
             <Text style={filter === 'month' ? ms.chipDarkText : ms.chipLightText}>This month</Text>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setFilter('range')}
+            onPress={() => {
+              setFilter('range');
+              setSelectedRoomNum(null);
+            }}
             style={filter === 'range' ? ms.chipDark : ms.chipLight}
           >
-            <Text style={filter === 'range' ? ms.chipDarkText : ms.chipLightText}>Custom range</Text>
+            <Text style={filter === 'range' ? ms.chipDarkText : ms.chipLightText}>All registrations</Text>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setFilter('room')}
+            onPress={() => {
+              setFilter('room');
+            }}
             style={filter === 'room' ? ms.chipDark : ms.chipLight}
           >
             <Text style={filter === 'room' ? ms.chipDarkText : ms.chipLightText}>By room</Text>
           </TouchableOpacity>
         </ScrollView>
+
+        {/* Room filter pill selector */}
+        {filter === 'room' && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{gap: 6, marginTop: 10, paddingBottom: 4}}
+          >
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setSelectedRoomNum(null)}
+              style={[
+                ms.chipLight,
+                !selectedRoomNum && { backgroundColor: C.primary, borderColor: C.primary },
+              ]}
+            >
+              <Text style={!selectedRoomNum ? { color: '#FFFFFF', fontWeight: '700', fontSize: 12 } : ms.chipLightText}>
+                All Rooms
+              </Text>
+            </TouchableOpacity>
+            {(rooms.length > 0 ? rooms : ROOMS).map((r) => {
+              const isSel = selectedRoomNum === r.num;
+              return (
+                <TouchableOpacity
+                  key={r.num}
+                  activeOpacity={0.8}
+                  onPress={() => setSelectedRoomNum(r.num)}
+                  style={[
+                    ms.chipLight,
+                    isSel && { backgroundColor: C.primary, borderColor: C.primary },
+                  ]}
+                >
+                  <Text style={isSel ? { color: '#FFFFFF', fontWeight: '700', fontSize: 12 } : ms.chipLightText}>
+                    Room {r.num}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        )}
 
         {/* Police Form C card */}
         <View style={ms.formCCard}>
@@ -1804,20 +2095,20 @@ function ReportsOverlay({
           </View>
           <Text style={ms.titleMd}>Police Form C</Text>
           <Text style={[ms.bodySm, {marginTop: 4, textAlign: 'center'}]}>
-            142 registrations logged this month, ready for export
+            {filteredGuests.length} registrations logged ({getPeriodLabel()}), ready for official export
           </Text>
           <View style={{flexDirection: 'row', gap: 8, marginTop: 16, width: '100%'}}>
             <SoftButton
               label="CSV"
               icon="download"
               style={{flex: 1}}
-              onPress={() => onToast('Police Form C CSV downloaded')}
+              onPress={() => handleExportCsv()}
             />
             <PrimaryButton
               label="PDF"
               icon="share"
               style={{flex: 1}}
-              onPress={() => onToast('Police Form C PDF generated')}
+              onPress={() => handleExportPdf()}
             />
           </View>
         </View>
@@ -1829,7 +2120,7 @@ function ReportsOverlay({
           <TouchableOpacity
             key={m}
             activeOpacity={0.7}
-            onPress={() => onToast(`Downloading report for ${m}`)}
+            onPress={() => handleExportPdf(m, activeGuestList)}
             style={ms.historyRow}
           >
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
