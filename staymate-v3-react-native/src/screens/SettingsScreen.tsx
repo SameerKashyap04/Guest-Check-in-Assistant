@@ -8,6 +8,8 @@ import {
   Modal,
   TextInput,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import {C, R, shadow} from '../theme/tokens';
 import {Icon, IconName} from '../components/Icon';
@@ -355,7 +357,10 @@ export function SettingsScreen({
       {/* ============================================================ */}
       {activeModal === 'profile' && (
         <Modal visible transparent animationType="slide">
-          <View style={ms.sheetScrim}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={ms.sheetScrim}
+          >
             <View style={ms.sheet}>
               <View style={ms.handle}/>
               <View style={ms.sheetHeaderBar}>
@@ -379,6 +384,8 @@ export function SettingsScreen({
               <ScrollView
                 contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 32}}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
               >
                 <Text style={[ms.bodySm, {marginBottom: 16}]}>
                   Update your property details, address and contact information.
@@ -458,7 +465,7 @@ export function SettingsScreen({
                 </View>
               </ScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       )}
 
@@ -605,7 +612,10 @@ export function SettingsScreen({
       {/* ============================================================ */}
       {activeModal === 'pin' && (
         <Modal visible transparent animationType="slide">
-          <View style={ms.sheetScrim}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={ms.sheetScrim}
+          >
             <View style={ms.sheet}>
               <View style={ms.handle}/>
               <View style={ms.sheetHeaderBar}>
@@ -629,6 +639,8 @@ export function SettingsScreen({
               <ScrollView
                 contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 32}}
                 showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
               >
                 <Text style={[ms.bodySm, {marginBottom: 16}]}>
                   Your 4-digit PIN is used to lock and unlock the app.
@@ -690,7 +702,7 @@ export function SettingsScreen({
                 </View>
               </ScrollView>
             </View>
-          </View>
+          </KeyboardAvoidingView>
         </Modal>
       )}
 

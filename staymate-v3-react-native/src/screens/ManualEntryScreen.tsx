@@ -9,6 +9,8 @@ import {
   Image,
   Alert,
   Platform,
+  KeyboardAvoidingView,
+  Keyboard,
 } from 'react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
@@ -167,70 +169,78 @@ export function ManualEntryScreen({
 
   return (
     <View style={[s.container, {paddingTop: insets.top}]}>
-      {/* Top Header */}
-      <View style={s.header}>
-        <TouchableOpacity
-          onPress={step > 1 ? () => setStep((step - 1) as 1 | 2 | 3) : onClose}
-          activeOpacity={0.8}
-          style={s.backBtn}
-        >
-          <Icon name="chevronLeft" size={19} color={C.ink} />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>{stepTitles[step - 1]}</Text>
-      </View>
-
-      {/* Stepper */}
-      <View style={s.stepper}>
-        {([1, 2, 3] as const).map((n, i) => (
-          <React.Fragment key={n}>
-            <View style={s.stepItem}>
-              <View
-                style={[
-                  s.stepDot,
-                  step === n && s.stepDotActive,
-                  step > n && s.stepDotDone,
-                ]}
-              >
-                {step > n ? (
-                  <Icon name="check" size={13} color={C.primary} />
-                ) : (
-                  <Text
-                    style={[
-                      s.stepDotText,
-                      step === n && s.stepDotTextActive,
-                      step > n && s.stepDotTextDone,
-                    ]}
-                  >
-                    {n}
-                  </Text>
-                )}
-              </View>
-              <Text
-                style={[
-                  s.stepLabel,
-                  step === n && s.stepLabelActive,
-                ]}
-                numberOfLines={1}
-              >
-                {stepLabels[i]}
-              </Text>
-            </View>
-            {i < 2 && (
-              <View style={[s.stepLine, step > n && s.stepLineActive]} />
-            )}
-          </React.Fragment>
-        ))}
-      </View>
-
-      {/* Scrollable Content */}
-      <ScrollView
-        contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 30}}
-        showsVerticalScrollIndicator={false}
+      <KeyboardAvoidingView
+        style={{flex: 1}}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {/* Step 1: Guest details */}
-        {step === 1 && (
-          <View>
-            <Text style={s.sectionHeader}>PRIMARY GUEST DETAILS</Text>
+        {/* Top Header */}
+        <View style={s.header}>
+          <TouchableOpacity
+            onPress={step > 1 ? () => setStep((step - 1) as 1 | 2 | 3) : onClose}
+            activeOpacity={0.8}
+            style={s.backBtn}
+          >
+            <Icon name="chevronLeft" size={19} color={C.ink} />
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>{stepTitles[step - 1]}</Text>
+        </View>
+
+        {/* Stepper */}
+        <View style={s.stepper}>
+          {([1, 2, 3] as const).map((n, i) => (
+            <React.Fragment key={n}>
+              <View style={s.stepItem}>
+                <View
+                  style={[
+                    s.stepDot,
+                    step === n && s.stepDotActive,
+                    step > n && s.stepDotDone,
+                  ]}
+                >
+                  {step > n ? (
+                    <Icon name="check" size={13} color={C.primary} />
+                  ) : (
+                    <Text
+                      style={[
+                        s.stepDotText,
+                        step === n && s.stepDotTextActive,
+                        step > n && s.stepDotTextDone,
+                      ]}
+                    >
+                      {n}
+                    </Text>
+                  )}
+                </View>
+                <Text
+                  style={[
+                    s.stepLabel,
+                    step === n && s.stepLabelActive,
+                  ]}
+                  numberOfLines={1}
+                >
+                  {stepLabels[i]}
+                </Text>
+              </View>
+              {i < 2 && (
+                <View style={[s.stepLine, step > n && s.stepLineActive]} />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
+
+        {/* Scrollable Content */}
+        <ScrollView
+          style={{flex: 1}}
+          contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 60}}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          {/* Step 1: Guest details */}
+          {step === 1 && (
+            <View>
+              <Text style={s.sectionHeader}>PRIMARY GUEST DETAILS</Text>
 
             {/* Upload ID card */}
             <View style={s.uploadCard}>
@@ -653,6 +663,7 @@ export function ManualEntryScreen({
           </View>
         )}
       </View>
+      </KeyboardAvoidingView>
     </View>
   );
 }

@@ -7,6 +7,8 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -212,95 +214,80 @@ export default function ManualEntryScreen() {
 
   return (
     <View style={[s.container, { paddingTop: insets.top }]}>
-      {/* Top Header */}
-      <View style={s.header}>
-        <TouchableOpacity
-          onPress={step > 1 ? () => setStep((step - 1) as 1 | 2 | 3) : () => router.back()}
-          activeOpacity={0.8}
-          style={s.backBtn}
-        >
-          <Icon name="chevronLeft" size={19} color={C.ink} />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>{stepTitles[step - 1]}</Text>
-        <View style={{ width: 36 }} />
-      </View>
-
-      {/* Stepper */}
-      <View style={s.stepper}>
-        {([1, 2, 3] as const).map((n, i) => (
-          <React.Fragment key={n}>
-            <View style={s.stepItem}>
-              <View
-                style={[
-                  s.stepDot,
-                  step === n && s.stepDotActive,
-                  step > n && s.stepDotDone,
-                ]}
-              >
-                {step > n ? (
-                  <Icon name="check" size={13} color={C.primary} />
-                ) : (
-                  <Text
-                    style={[
-                      s.stepDotText,
-                      step === n && s.stepDotTextActive,
-                      step > n && s.stepDotTextDone,
-                    ]}
-                  >
-                    {n}
-                  </Text>
-                )}
-              </View>
-              <Text
-                style={[s.stepLabel, step === n && s.stepLabelActive]}
-                numberOfLines={1}
-              >
-                {['Guest', 'Stay', 'Confirm'][i]}
-              </Text>
-            </View>
-            {i < 2 && (
-              <View
-                style={[s.stepLine, step > i + 1 && s.stepLineActive]}
-              />
-            )}
-          </React.Fragment>
-        ))}
-      </View>
-
-      <ScrollView
+      <KeyboardAvoidingView
         style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingBottom: Math.max(40, insets.bottom + 20),
-        }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
-        {/* STEP 1: Guest Details */}
-        {step === 1 && (
-          <View>
-            {/* Upload ID Button */}
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={handleUploadPhoto}
-              disabled={isScanning}
-              style={s.uploadCard}
-            >
-              <View style={s.uploadIcon}>
-                <Icon name="camera" size={20} color={C.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.uploadTitle}>
-                  {photoUri ? 'ID Photo Selected' : 'Upload & Auto-fill from ID'}
+        {/* Top Header */}
+        <View style={s.header}>
+          <TouchableOpacity
+            onPress={step > 1 ? () => setStep((step - 1) as 1 | 2 | 3) : () => router.back()}
+            activeOpacity={0.8}
+            style={s.backBtn}
+          >
+            <Icon name="chevronLeft" size={19} color={C.ink} />
+          </TouchableOpacity>
+          <Text style={s.headerTitle}>{stepTitles[step - 1]}</Text>
+          <View style={{ width: 36 }} />
+        </View>
+
+        {/* Stepper */}
+        <View style={s.stepper}>
+          {([1, 2, 3] as const).map((n, i) => (
+            <React.Fragment key={n}>
+              <View style={s.stepItem}>
+                <View
+                  style={[
+                    s.stepDot,
+                    step === n && s.stepDotActive,
+                    step > n && s.stepDotDone,
+                  ]}
+                >
+                  {step > n ? (
+                    <Icon name="check" size={13} color={C.primary} />
+                  ) : (
+                    <Text
+                      style={[
+                        s.stepDotText,
+                        step === n && s.stepDotTextActive,
+                        step > n && s.stepDotTextDone,
+                      ]}
+                    >
+                      {n}
+                    </Text>
+                  )}
+                </View>
+                <Text
+                  style={[s.stepLabel, step === n && s.stepLabelActive]}
+                  numberOfLines={1}
+                >
+                  {['Guest', 'Stay', 'Confirm'][i]}
                 </Text>
-                <Text style={s.uploadSub}>
-                  {photoUri
-                    ? 'Tap to choose a different photo'
-                    : 'Extract guest details instantly with AI'}
-                </Text>
               </View>
-              {isScanning && <ActivityIndicator size="small" color={C.primary} />}
-            </TouchableOpacity>
+              {i < 2 && (
+                <View
+                  style={[s.stepLine, step > i + 1 && s.stepLineActive]}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
+
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingBottom: Math.max(40, insets.bottom + 20),
+          }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+        >
+          {/* STEP 1: Guest Details */}
+          {step === 1 && (
+            <View>
+              {/* Upload ID Button */}
 
             <Field
               label="Full Name *"
@@ -507,6 +494,7 @@ export default function ManualEntryScreen() {
           </View>
         )}
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
