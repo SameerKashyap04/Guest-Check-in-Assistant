@@ -57,19 +57,42 @@ export function SettingRow({icon, label, subtitle, onPress, right}: {icon: IconN
   );
 }
 
-export function Field({label, value, onChangeText, placeholder, secure, icon}: {label: string; value: string; onChangeText?: (t: string)=>void; placeholder?: string; secure?: boolean; icon?: IconName}) {
+export function Field({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  secure,
+  icon,
+  onFocus,
+  keyboardType,
+  multiline,
+}: {
+  label: string;
+  value: string;
+  onChangeText?: (t: string) => void;
+  placeholder?: string;
+  secure?: boolean;
+  icon?: IconName;
+  onFocus?: () => void;
+  keyboardType?: any;
+  multiline?: boolean;
+}) {
   return (
     <View style={{marginTop: 12}}>
       <Text style={s.fieldLabel}>{label}</Text>
-      <View style={s.inputWrap}>
+      <View style={[s.inputWrap, multiline && {minHeight: 64, paddingVertical: 6}]}>
         {icon && <Icon name={icon} size={19} color={C.mutedSoft}/>}
         <TextInput
           value={value}
           onChangeText={onChangeText}
+          onFocus={onFocus}
           placeholder={placeholder || `Enter ${label.toLowerCase()}`}
           placeholderTextColor="#9CA3AF"
           secureTextEntry={secure}
-          style={s.input}
+          keyboardType={keyboardType}
+          multiline={multiline}
+          style={[s.input, multiline && {textAlignVertical: 'top'}]}
         />
       </View>
     </View>
