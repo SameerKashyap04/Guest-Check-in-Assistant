@@ -803,7 +803,11 @@ function RoomSheet({
           </>
         )}
       </View>
-   function GuestSheet({
+    </ScrollView>
+  );
+}
+
+function GuestSheet({
   id,
   guests = [],
   onToast,
