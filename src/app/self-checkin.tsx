@@ -432,6 +432,14 @@ export default function SelfCheckinScreen() {
                 <Text style={s.kvLabel}>Total Occupants</Text>
                 <Text style={s.kvVal}>{adultsCount} Adults, {childrenCount} Children</Text>
               </View>
+              {additionalGuests.length > 0 && (
+                <View style={s.kvRow}>
+                  <Text style={s.kvLabel}>Co-Guests</Text>
+                  <Text style={s.kvVal}>+{additionalGuests.length} Guests</Text>
+                </View>
+              )}
+            </View>
+
             {/* Reception Proceed Notice */}
             <View style={s.receptionNoticeBox}>
               <Text style={s.receptionNoticeTitle}>Registration Complete</Text>
