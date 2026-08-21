@@ -124,7 +124,7 @@ export default function PaymentStatusScreen() {
             </Animated.View>
             <Animated.View style={{ opacity: fadeAnim }}>
               <Text className="text-2xl font-extrabold text-slate-900 text-center mb-2">
-                Payment Successful! 🎉
+                Payment Successful
               </Text>
               <Text className="text-sm text-slate-500 text-center mb-6 leading-5">
                 Your {planName} plan is now active.{'\n'}

@@ -1762,9 +1762,9 @@ function PricingOverlay({
         onSelectPlan(planName);
         onClose();
         Alert.alert(
-          '🎉 Subscription Activated!',
+          'Subscription Activated',
           `Your payment of ₹${selectedPlanDetails.amount.toLocaleString('en-IN')} via Devify Pay has been verified successfully.\n\nWelcome to StayMate ${planName} plan!`,
-          [{ text: 'Great! Continue', style: 'default' }]
+          [{ text: 'Continue', style: 'default' }]
         );
         return;
       }

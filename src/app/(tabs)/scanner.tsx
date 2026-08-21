@@ -239,7 +239,7 @@ export default function ScannerScreen() {
       await fetchRooms();
 
       Alert.alert(
-        'Self Check-in Approved! 🎉',
+        'Self Check-in Approved',
         `Guest ${checkin.full_name} assigned to Room ${checkin.room_number} has been registered.`
       );
     } catch (e: any) {

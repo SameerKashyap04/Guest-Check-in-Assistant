@@ -187,7 +187,7 @@ export default function ManualEntryScreen() {
       await fetchRooms();
 
       Alert.alert(
-        'Check-in Confirmed! 🎉',
+        'Check-in Confirmed',
         `Guest ${name} has been assigned to Room ${selectedRoom?.room_number || ''}.`,
         [
           {
