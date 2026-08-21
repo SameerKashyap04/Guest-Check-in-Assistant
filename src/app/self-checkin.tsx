@@ -15,11 +15,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
-  ChevronLeft,
-  Camera,
   Check,
   User,
   Phone,
+  Mail,
   MapPin,
   Building2,
   ShieldCheck,
@@ -30,9 +29,11 @@ import {
   Trash2,
   Bed,
   CreditCard,
-  QrCode,
-  Sparkles,
-  ArrowRight,
+  Camera,
+  Car,
+  Compass,
+  FileText,
+  Users,
 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
@@ -50,17 +51,19 @@ export interface Room {
 export interface AdditionalGuest {
   id: string;
   fullName: string;
+  relation: string;
   phone: string;
   gender: string;
-  dob: string;
+  age: string;
   idType: string;
   idNumber: string;
   frontPhotoUri: string | null;
-  backPhotoUri: string | null;
 }
 
 const DOC_TYPES = ['Aadhaar', 'PAN', 'Passport', 'Driving Licence', 'Voter ID'];
 const GENDERS = ['Male', 'Female', 'Other'];
+const PURPOSES = ['Tourism / Holiday', 'Business / Work', 'Transit / Stopover', 'Personal / Family', 'Medical / Other'];
+const RELATIONS = ['Spouse', 'Child', 'Parent', 'Friend', 'Colleague', 'Relative'];
 
 export default function SelfCheckinScreen() {
   const router = useRouter();
@@ -92,28 +95,39 @@ export default function SelfCheckinScreen() {
     return `${y}-${m}-${d}`;
   };
 
-  // Stepper State (1: Guest details, 2: Stay details, 3: ID Upload & Review)
+  // Stepper State (1: Guest details, 2: Stay & Room, 3: ID Photos & Co-guests)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
 
-  // Form State
+  // Step 1: Guest Personal Details
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
+  const [nationality, setNationality] = useState('Indian');
   const [gender, setGender] = useState('Male');
   const [dob, setDob] = useState('');
   const [idType, setIdType] = useState('Aadhaar');
   const [idNumber, setIdNumber] = useState('');
   const [address, setAddress] = useState('');
+  const [cityState, setCityState] = useState('');
   const [pinCode, setPinCode] = useState('');
+  const [purposeOfVisit, setPurposeOfVisit] = useState('Tourism / Holiday');
+  const [comingFrom, setComingFrom] = useState('');
+  const [goingTo, setGoingTo] = useState('');
+
+  // Step 2: Stay Details
   const [checkInDate, setCheckInDate] = useState(getTodayStr());
   const [checkOutDate, setCheckOutDate] = useState(getTomorrowStr());
+  const [adultsCount, setAdultsCount] = useState('1');
+  const [childrenCount, setChildrenCount] = useState('0');
+  const [vehicleNumber, setVehicleNumber] = useState('');
+  const [specialRequests, setSpecialRequests] = useState('');
 
-  // Additional Guests State
-  const [additionalGuests, setAdditionalGuests] = useState<AdditionalGuest[]>([]);
-
-  // Photos State
+  // Step 3: Photos & Co-Guests
   const [frontPhotoUri, setFrontPhotoUri] = useState<string | null>(null);
   const [backPhotoUri, setBackPhotoUri] = useState<string | null>(null);
   const [selfiePhotoUri, setSelfiePhotoUri] = useState<string | null>(null);
+  const [additionalGuests, setAdditionalGuests] = useState<AdditionalGuest[]>([]);
+  const [agreeTerms, setAgreeTerms] = useState(true);
 
   // Rooms & Submission State
   const [rooms, setRooms] = useState<Room[]>([]);
@@ -170,13 +184,13 @@ export default function SelfCheckinScreen() {
       {
         id: `guest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         fullName: '',
+        relation: 'Spouse',
         phone: '',
         gender: 'Male',
-        dob: '',
+        age: '',
         idType: 'Aadhaar',
         idNumber: '',
         frontPhotoUri: null,
-        backPhotoUri: null,
       },
     ]);
   };
@@ -274,11 +288,7 @@ export default function SelfCheckinScreen() {
         const compressedUri = await compressAndGetBase64(asset);
 
         if (additionalGuestId) {
-          if (target === 'front') {
-            updateAdditionalPerson(additionalGuestId, 'frontPhotoUri', compressedUri);
-          } else if (target === 'back') {
-            updateAdditionalPerson(additionalGuestId, 'backPhotoUri', compressedUri);
-          }
+          updateAdditionalPerson(additionalGuestId, 'frontPhotoUri', compressedUri);
           return;
         }
 
@@ -307,29 +317,44 @@ export default function SelfCheckinScreen() {
       setCurrentStep(1);
       return;
     }
+    if (!agreeTerms) {
+      Alert.alert('Declaration Required', 'Please accept the declaration before submitting.');
+      return;
+    }
 
     const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
     const roomNum = selectedRoom?.room_number || '101';
 
     setIsSubmitting(true);
     try {
+      const fullAddressStr = [address.trim(), cityState.trim(), pinCode.trim()].filter(Boolean).join(', ');
+
       await pushGuestCheckinToCloud({
         property_id: activePropertyId,
         owner_id: activeOwnerId,
         full_name: fullName.trim(),
         phone: phone.trim(),
+        email: email.trim(),
+        nationality,
         gender,
         dob,
         id_type: idType,
         id_number: idNumber.trim(),
-        address: address.trim(),
+        address: fullAddressStr,
         pin_code: pinCode.trim(),
+        purpose_of_visit: purposeOfVisit,
+        coming_from: comingFrom.trim(),
+        going_to: goingTo.trim(),
         photo_uri: frontPhotoUri || '',
         back_photo_uri: backPhotoUri || '',
         selfie_uri: selfiePhotoUri || '',
         room_number: roomNum,
         check_in_date: checkInDate,
         check_out_date: checkOutDate,
+        adults: adultsCount,
+        children: childrenCount,
+        vehicle_number: vehicleNumber.trim(),
+        special_requests: specialRequests.trim(),
         additional_guests: additionalGuests,
       });
 
@@ -345,7 +370,7 @@ export default function SelfCheckinScreen() {
   };
 
   const handleNotifyOwner = () => {
-    const message = `Welcome to ${activePropertyName}!\n\nGuest Self Check-in Completed:\n- Guest Name: ${fullName.trim()}\n- Phone: ${phone.trim()}\n- Assigned Room: Room ${assignedRoomNumber}\n- ID: ${idType} (${idNumber.trim()})\n- Check-in Date: ${checkInDate}\n\nThank you for choosing ${activePropertyName}!`;
+    const message = `*Welcome to ${activePropertyName}!*\n\nGuest Self Check-in Completed:\n- Guest Name: ${fullName.trim()}\n- Phone: ${phone.trim()}\n- Assigned Room: Room ${assignedRoomNumber}\n- ID: ${idType} (${idNumber.trim()})\n- Check-in: ${checkInDate} to ${checkOutDate}\n- Total Occupants: ${Number(adultsCount) + Number(childrenCount)} Guests\n\nThank you for choosing ${activePropertyName}!`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       window.open(whatsappUrl, '_blank');
@@ -393,9 +418,19 @@ export default function SelfCheckinScreen() {
                 <Text style={s.kvLabel}>Phone Number</Text>
                 <Text style={s.kvVal}>{phone}</Text>
               </View>
+              {email ? (
+                <View style={s.kvRow}>
+                  <Text style={s.kvLabel}>Email Address</Text>
+                  <Text style={s.kvVal}>{email}</Text>
+                </View>
+              ) : null}
               <View style={s.kvRow}>
                 <Text style={s.kvLabel}>ID Document</Text>
                 <Text style={s.kvVal}>{idType} · {idNumber}</Text>
+              </View>
+              <View style={s.kvRow}>
+                <Text style={s.kvLabel}>Total Occupants</Text>
+                <Text style={s.kvVal}>{adultsCount} Adults, {childrenCount} Children</Text>
               </View>
               {additionalGuests.length > 0 && (
                 <View style={s.kvRow}>
@@ -426,7 +461,7 @@ export default function SelfCheckinScreen() {
           <Text style={s.headerTitle}>{activePropertyName}</Text>
           <View style={s.headerSubtitleRow}>
             <ShieldCheck size={13} color="#10B981" />
-            <Text style={s.headerSubtitle}>Official Digital Check-in</Text>
+            <Text style={s.headerSubtitle}>Official Digital Registration</Text>
           </View>
         </View>
         <View style={s.propBadge}>
@@ -437,9 +472,9 @@ export default function SelfCheckinScreen() {
       {/* Stepper Navigation */}
       <View style={s.stepperRow}>
         {[
-          { num: 1, label: 'Guest details' },
-          { num: 2, label: 'Stay & room' },
-          { num: 3, label: 'ID & confirm' },
+          { num: 1, label: '1. Guest Details' },
+          { num: 2, label: '2. Stay & Room' },
+          { num: 3, label: '3. ID & Co-guests' },
         ].map((st, i) => {
           const isActive = currentStep === st.num;
           const isDone = currentStep > st.num;
@@ -491,7 +526,7 @@ export default function SelfCheckinScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* STEP 1: GUEST DETAILS */}
+          {/* STEP 1: PRIMARY GUEST DETAILS */}
           {currentStep === 1 && (
             <View>
               <Text style={s.sectionHeader}>PRIMARY GUEST DETAILS</Text>
@@ -504,16 +539,50 @@ export default function SelfCheckinScreen() {
                   <TextInput
                     value={fullName}
                     onChangeText={setFullName}
-                    placeholder="Enter guest full name"
+                    placeholder="Enter full name as per ID card"
                     placeholderTextColor="#94A3B8"
                     style={s.input}
                   />
                 </View>
               </View>
 
+              {/* Mobile Phone & Email */}
+              <View style={s.rowFields}>
+                <View style={{ flex: 1.1 }}>
+                  <Text style={s.fieldLabel}>MOBILE PHONE *</Text>
+                  <View style={s.inputBox}>
+                    <Phone size={17} color="#94A3B8" />
+                    <TextInput
+                      value={phone}
+                      onChangeText={setPhone}
+                      placeholder="+91 9876543210"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="phone-pad"
+                      style={s.input}
+                    />
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>EMAIL ADDRESS</Text>
+                  <View style={s.inputBox}>
+                    <Mail size={17} color="#94A3B8" />
+                    <TextInput
+                      value={email}
+                      onChangeText={setEmail}
+                      placeholder="guest@mail.com"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      style={s.input}
+                    />
+                  </View>
+                </View>
+              </View>
+
               {/* Document Type Chips */}
               <View style={s.fieldGroup}>
-                <Text style={s.fieldLabel}>DOCUMENT TYPE *</Text>
+                <Text style={s.fieldLabel}>ID DOCUMENT TYPE *</Text>
                 <View style={s.chipRow}>
                   {DOC_TYPES.map((dt) => {
                     const isSel = idType === dt;
@@ -541,24 +610,8 @@ export default function SelfCheckinScreen() {
                   <TextInput
                     value={idNumber}
                     onChangeText={setIdNumber}
-                    placeholder="e.g. 4821 9012 3456"
+                    placeholder="Enter document number (e.g. 4821 9012 3456)"
                     placeholderTextColor="#94A3B8"
-                    style={s.input}
-                  />
-                </View>
-              </View>
-
-              {/* Phone Number */}
-              <View style={s.fieldGroup}>
-                <Text style={s.fieldLabel}>MOBILE PHONE NUMBER *</Text>
-                <View style={s.inputBox}>
-                  <Phone size={18} color="#94A3B8" />
-                  <TextInput
-                    value={phone}
-                    onChangeText={setPhone}
-                    placeholder="+91 98765 43210"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="phone-pad"
                     style={s.input}
                   />
                 </View>
@@ -601,19 +654,109 @@ export default function SelfCheckinScreen() {
                 </View>
               </View>
 
-              {/* Address */}
+              {/* Nationality & Purpose of Visit */}
+              <View style={s.rowFields}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>NATIONALITY</Text>
+                  <View style={s.inputBox}>
+                    <TextInput
+                      value={nationality}
+                      onChangeText={setNationality}
+                      placeholder="Indian"
+                      placeholderTextColor="#94A3B8"
+                      style={s.input}
+                    />
+                  </View>
+                </View>
+
+                <View style={{ flex: 1.3 }}>
+                  <Text style={s.fieldLabel}>PURPOSE OF VISIT</Text>
+                  <View style={s.inputBox}>
+                    <Compass size={17} color="#94A3B8" />
+                    <TextInput
+                      value={purposeOfVisit}
+                      onChangeText={setPurposeOfVisit}
+                      placeholder="Tourism / Holiday"
+                      placeholderTextColor="#94A3B8"
+                      style={s.input}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Residential Address */}
               <View style={s.fieldGroup}>
-                <Text style={s.fieldLabel}>RESIDENTIAL ADDRESS</Text>
-                <View style={[s.inputBox, { height: 68, alignItems: 'flex-start', paddingTop: 8 }]}>
+                <Text style={s.fieldLabel}>PERMANENT RESIDENTIAL ADDRESS</Text>
+                <View style={[s.inputBox, { height: 58, alignItems: 'flex-start', paddingTop: 8 }]}>
                   <MapPin size={18} color="#94A3B8" style={{ marginTop: 2 }} />
                   <TextInput
                     value={address}
                     onChangeText={setAddress}
-                    placeholder="Street, City, State"
+                    placeholder="House / Flat No., Building, Street address"
                     placeholderTextColor="#94A3B8"
                     multiline
                     style={[s.input, { textAlignVertical: 'top' }]}
                   />
+                </View>
+              </View>
+
+              {/* City/State & PIN Code */}
+              <View style={s.rowFields}>
+                <View style={{ flex: 1.4 }}>
+                  <Text style={s.fieldLabel}>CITY / STATE</Text>
+                  <View style={s.inputBox}>
+                    <Building2 size={17} color="#94A3B8" />
+                    <TextInput
+                      value={cityState}
+                      onChangeText={setCityState}
+                      placeholder="City, State"
+                      placeholderTextColor="#94A3B8"
+                      style={s.input}
+                    />
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>PIN CODE</Text>
+                  <View style={s.inputBox}>
+                    <TextInput
+                      value={pinCode}
+                      onChangeText={setPinCode}
+                      placeholder="e.g. 560001"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="number-pad"
+                      style={s.input}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Travel Route: Coming From & Going To */}
+              <View style={s.rowFields}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>COMING FROM (ORIGIN)</Text>
+                  <View style={s.inputBox}>
+                    <TextInput
+                      value={comingFrom}
+                      onChangeText={setComingFrom}
+                      placeholder="e.g. Mumbai"
+                      placeholderTextColor="#94A3B8"
+                      style={s.input}
+                    />
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>GOING TO (DESTINATION)</Text>
+                  <View style={s.inputBox}>
+                    <TextInput
+                      value={goingTo}
+                      onChangeText={setGoingTo}
+                      placeholder="e.g. Goa"
+                      placeholderTextColor="#94A3B8"
+                      style={s.input}
+                    />
+                  </View>
                 </View>
               </View>
 
@@ -626,7 +769,7 @@ export default function SelfCheckinScreen() {
                     return;
                   }
                   if (!phone.trim()) {
-                    Alert.alert('Required Field', 'Please enter your phone number.');
+                    Alert.alert('Required Field', 'Please enter your mobile phone number.');
                     return;
                   }
                   if (!idNumber.trim()) {
@@ -636,7 +779,7 @@ export default function SelfCheckinScreen() {
                   setCurrentStep(2);
                 }}
               >
-                <Text style={s.primaryBtnText}>Continue to Stay & Room →</Text>
+                <Text style={s.primaryBtnText}>Continue to Stay & Room Details →</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -676,6 +819,55 @@ export default function SelfCheckinScreen() {
                 </View>
               </View>
 
+              {/* Number of Occupants */}
+              <View style={s.rowFields}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>NUMBER OF ADULTS</Text>
+                  <View style={s.inputBox}>
+                    <Users size={17} color="#94A3B8" />
+                    <TextInput
+                      value={adultsCount}
+                      onChangeText={setAdultsCount}
+                      placeholder="1"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="number-pad"
+                      style={s.input}
+                    />
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>CHILDREN (BELOW 12)</Text>
+                  <View style={s.inputBox}>
+                    <TextInput
+                      value={childrenCount}
+                      onChangeText={setChildrenCount}
+                      placeholder="0"
+                      placeholderTextColor="#94A3B8"
+                      keyboardType="number-pad"
+                      style={s.input}
+                    />
+                  </View>
+                </View>
+              </View>
+
+              {/* Vehicle Number */}
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>VEHICLE NUMBER (OPTIONAL)</Text>
+                <View style={s.inputBox}>
+                  <Car size={18} color="#94A3B8" />
+                  <TextInput
+                    value={vehicleNumber}
+                    onChangeText={setVehicleNumber}
+                    placeholder="e.g. KA 01 AB 1234"
+                    placeholderTextColor="#94A3B8"
+                    autoCapitalize="characters"
+                    style={s.input}
+                  />
+                </View>
+              </View>
+
+              {/* Available Rooms Grid */}
               <Text style={[s.sectionHeader, { marginTop: 18 }]}>SELECT YOUR ROOM</Text>
               <View style={{ gap: 10 }}>
                 {rooms.map((r) => {
@@ -706,6 +898,22 @@ export default function SelfCheckinScreen() {
                 })}
               </View>
 
+              {/* Special Requests / Arrival Note */}
+              <View style={[s.fieldGroup, { marginTop: 16 }]}>
+                <Text style={s.fieldLabel}>SPECIAL REQUESTS / ARRIVAL NOTE (OPTIONAL)</Text>
+                <View style={[s.inputBox, { height: 58, alignItems: 'flex-start', paddingTop: 8 }]}>
+                  <FileText size={18} color="#94A3B8" style={{ marginTop: 2 }} />
+                  <TextInput
+                    value={specialRequests}
+                    onChangeText={setSpecialRequests}
+                    placeholder="e.g. Late check-in around 8 PM, extra bed, etc."
+                    placeholderTextColor="#94A3B8"
+                    multiline
+                    style={[s.input, { textAlignVertical: 'top' }]}
+                  />
+                </View>
+              </View>
+
               <View style={{ flexDirection: 'row', gap: 10, marginTop: 24 }}>
                 <TouchableOpacity
                   activeOpacity={0.8}
@@ -720,18 +928,19 @@ export default function SelfCheckinScreen() {
                   style={[s.primaryBtn, { flex: 2 }]}
                   onPress={() => setCurrentStep(3)}
                 >
-                  <Text style={s.primaryBtnText}>Continue to ID Upload →</Text>
+                  <Text style={s.primaryBtnText}>Continue to ID Photos & Co-guests →</Text>
                 </TouchableOpacity>
               </View>
             </View>
           )}
 
-          {/* STEP 3: ID UPLOAD & CO-GUESTS */}
+          {/* STEP 3: ID PHOTOS, CO-GUESTS & DECLARATION */}
           {currentStep === 3 && (
             <View>
-              <Text style={s.sectionHeader}>ATTACH ID DOCUMENT</Text>
+              <Text style={s.sectionHeader}>PRIMARY GUEST ID DOCUMENT PHOTOS</Text>
 
               {/* Front Photo Upload Card */}
+              <Text style={s.uploadCardLabel}>1. Front Side of ID Card ({idType}) *</Text>
               <View style={s.uploadBox}>
                 {frontPhotoUri ? (
                   <View style={s.previewCard}>
@@ -740,27 +949,24 @@ export default function SelfCheckinScreen() {
                       <Text style={s.uploadDoneTitle}>Front ID Attached ✓</Text>
                       <Text style={s.uploadDoneSub}>{idType} document attached</Text>
                     </View>
-                    <TouchableOpacity
-                      onPress={() => setFrontPhotoUri(null)}
-                      style={s.removeImgBtn}
-                    >
+                    <TouchableOpacity onPress={() => setFrontPhotoUri(null)} style={s.removeImgBtn}>
                       <X size={16} color="#DC2626" />
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <View style={{ alignItems: 'center', padding: 20 }}>
+                  <View style={{ alignItems: 'center', padding: 18 }}>
                     <View style={s.uploadCircle}>
-                      <Upload size={22} color="#7C3AED" />
+                      <Upload size={20} color="#7C3AED" />
                     </View>
-                    <Text style={s.uploadTitle}>Upload {idType} Photo</Text>
-                    <Text style={s.uploadSubtitle}>Capture or select clear photo of your ID card</Text>
-                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                    <Text style={s.uploadTitle}>Upload {idType} Front</Text>
+                    <Text style={s.uploadSubtitle}>Capture or select clear photo of your ID front</Text>
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
                       <TouchableOpacity
                         activeOpacity={0.8}
                         style={s.uploadActionBtn}
                         onPress={() => pickImage('front', true)}
                       >
-                        <Camera size={15} color="#0F172A" />
+                        <Camera size={14} color="#0F172A" />
                         <Text style={s.uploadActionText}>Camera</Text>
                       </TouchableOpacity>
                       <TouchableOpacity
@@ -768,7 +974,7 @@ export default function SelfCheckinScreen() {
                         style={s.uploadActionBtn}
                         onPress={() => pickImage('front', false)}
                       >
-                        <Upload size={15} color="#0F172A" />
+                        <Upload size={14} color="#0F172A" />
                         <Text style={s.uploadActionText}>Gallery</Text>
                       </TouchableOpacity>
                     </View>
@@ -776,10 +982,96 @@ export default function SelfCheckinScreen() {
                 )}
               </View>
 
-              {/* CO-GUESTS SECTION */}
-              <View style={{ marginTop: 20 }}>
+              {/* Back Photo Upload Card */}
+              <Text style={[s.uploadCardLabel, { marginTop: 14 }]}>2. Back Side of ID Card (Optional)</Text>
+              <View style={s.uploadBox}>
+                {backPhotoUri ? (
+                  <View style={s.previewCard}>
+                    <Image source={{ uri: backPhotoUri }} style={s.previewImg} resizeMode="cover" />
+                    <View style={{ flex: 1, paddingLeft: 12 }}>
+                      <Text style={s.uploadDoneTitle}>Back ID Attached ✓</Text>
+                      <Text style={s.uploadDoneSub}>{idType} back side</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setBackPhotoUri(null)} style={s.removeImgBtn}>
+                      <X size={16} color="#DC2626" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{ alignItems: 'center', padding: 18 }}>
+                    <View style={s.uploadCircle}>
+                      <Upload size={20} color="#7C3AED" />
+                    </View>
+                    <Text style={s.uploadTitle}>Upload {idType} Back</Text>
+                    <Text style={s.uploadSubtitle}>Capture or select clear photo of ID back side</Text>
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={s.uploadActionBtn}
+                        onPress={() => pickImage('back', true)}
+                      >
+                        <Camera size={14} color="#0F172A" />
+                        <Text style={s.uploadActionText}>Camera</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={s.uploadActionBtn}
+                        onPress={() => pickImage('back', false)}
+                      >
+                        <Upload size={14} color="#0F172A" />
+                        <Text style={s.uploadActionText}>Gallery</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* Selfie / Live Photo (Optional) */}
+              <Text style={[s.uploadCardLabel, { marginTop: 14 }]}>3. Guest Selfie / Photo (Optional)</Text>
+              <View style={s.uploadBox}>
+                {selfiePhotoUri ? (
+                  <View style={s.previewCard}>
+                    <Image source={{ uri: selfiePhotoUri }} style={s.previewImg} resizeMode="cover" />
+                    <View style={{ flex: 1, paddingLeft: 12 }}>
+                      <Text style={s.uploadDoneTitle}>Selfie Photo Attached ✓</Text>
+                      <Text style={s.uploadDoneSub}>Live photo attached</Text>
+                    </View>
+                    <TouchableOpacity onPress={() => setSelfiePhotoUri(null)} style={s.removeImgBtn}>
+                      <X size={16} color="#DC2626" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{ alignItems: 'center', padding: 18 }}>
+                    <View style={s.uploadCircle}>
+                      <Camera size={20} color="#7C3AED" />
+                    </View>
+                    <Text style={s.uploadTitle}>Take Guest Selfie</Text>
+                    <Text style={s.uploadSubtitle}>Quick photo for check-in verification</Text>
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={s.uploadActionBtn}
+                        onPress={() => pickImage('selfie', true)}
+                      >
+                        <Camera size={14} color="#0F172A" />
+                        <Text style={s.uploadActionText}>Take Selfie</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={s.uploadActionBtn}
+                        onPress={() => pickImage('selfie', false)}
+                      >
+                        <Upload size={14} color="#0F172A" />
+                        <Text style={s.uploadActionText}>Gallery</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* CO-GUESTS / ACCOMPANYING PERSONS */}
+              <View style={{ marginTop: 22 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <Text style={s.sectionHeader}>CO-GUESTS ({additionalGuests.length})</Text>
+                  <Text style={s.sectionHeader}>CO-GUESTS & ACCOMPANYING PERSONS ({additionalGuests.length})</Text>
                   <TouchableOpacity activeOpacity={0.7} onPress={addAdditionalPerson}>
                     <Text style={s.addMoreLink}>+ Add Co-Guest</Text>
                   </TouchableOpacity>
@@ -802,11 +1094,34 @@ export default function SelfCheckinScreen() {
                       style={[s.input, s.coGuestInput]}
                     />
 
+                    {/* Relation & Age */}
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                      <View style={{ flex: 1.2 }}>
+                        <TextInput
+                          value={cg.relation}
+                          onChangeText={(t) => updateAdditionalPerson(cg.id, 'relation', t)}
+                          placeholder="Relation (e.g. Spouse)"
+                          placeholderTextColor="#94A3B8"
+                          style={[s.input, s.coGuestInput]}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <TextInput
+                          value={cg.age}
+                          onChangeText={(t) => updateAdditionalPerson(cg.id, 'age', t)}
+                          placeholder="Age / DOB"
+                          placeholderTextColor="#94A3B8"
+                          style={[s.input, s.coGuestInput]}
+                        />
+                      </View>
+                    </View>
+
+                    {/* ID Type & Number */}
                     <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                       <TextInput
                         value={cg.idNumber}
                         onChangeText={(t) => updateAdditionalPerson(cg.id, 'idNumber', t)}
-                        placeholder="ID number"
+                        placeholder="ID number (Aadhaar / PAN)"
                         placeholderTextColor="#94A3B8"
                         style={[s.input, s.coGuestInput, { flex: 1 }]}
                       />
@@ -819,12 +1134,38 @@ export default function SelfCheckinScreen() {
                         style={[s.input, s.coGuestInput, { flex: 1 }]}
                       />
                     </View>
+
+                    {/* Co-guest Photo Button */}
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => pickImage('front', false, cg.id)}
+                      style={[s.uploadActionBtn, { marginTop: 8, alignSelf: 'flex-start' }]}
+                    >
+                      <Camera size={13} color="#0F172A" />
+                      <Text style={s.uploadActionText}>
+                        {cg.frontPhotoUri ? 'Co-Guest ID Attached ✓' : 'Attach Co-Guest ID Photo'}
+                      </Text>
+                    </TouchableOpacity>
                   </View>
                 ))}
               </View>
 
+              {/* DECLARATION & TERMS CHECKBOX */}
+              <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => setAgreeTerms(!agreeTerms)}
+                style={s.termsBox}
+              >
+                <View style={[s.checkbox, agreeTerms && s.checkboxChecked]}>
+                  {agreeTerms && <Check size={12} color="#FFFFFF" />}
+                </View>
+                <Text style={s.termsText}>
+                  I confirm that all details & ID documents provided are true and accurate, and I agree to the property house rules and check-in terms.
+                </Text>
+              </TouchableOpacity>
+
               {/* SUBMIT BUTTON */}
-              <View style={{ flexDirection: 'row', gap: 10, marginTop: 24 }}>
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   style={s.secondaryBtn}
@@ -1108,6 +1449,13 @@ const s = StyleSheet.create({
     fontWeight: '800',
     color: '#7C3AED',
   },
+  uploadCardLabel: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 6,
+  },
   uploadBox: {
     borderWidth: 1.5,
     borderStyle: 'dashed',
@@ -1117,33 +1465,33 @@ const s = StyleSheet.create({
     overflow: 'hidden',
   },
   uploadCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: '#EDE9FE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   uploadTitle: {
     fontFamily: 'Inter',
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
     color: '#0F172A',
   },
   uploadSubtitle: {
     fontFamily: 'Inter',
-    fontSize: 12,
+    fontSize: 11.5,
     color: '#64748B',
-    marginTop: 3,
+    marginTop: 2,
     textAlign: 'center',
   },
   uploadActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -1209,6 +1557,39 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#7C3AED',
+  },
+  termsBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#FAF8FD',
+    borderWidth: 1,
+    borderColor: '#EDE9FE',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 18,
+  },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 5,
+    borderWidth: 1.5,
+    borderColor: '#94A3B8',
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 2,
+  },
+  checkboxChecked: {
+    backgroundColor: '#7C3AED',
+    borderColor: '#7C3AED',
+  },
+  termsText: {
+    flex: 1,
+    fontFamily: 'Inter',
+    fontSize: 11.5,
+    color: '#475569',
+    lineHeight: 16,
   },
   primaryBtn: {
     backgroundColor: '#7C3AED',
