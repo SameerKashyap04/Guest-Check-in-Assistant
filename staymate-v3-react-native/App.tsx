@@ -873,13 +873,7 @@ function GuestSheet({
             <Icon name="chevronLeft" size={18} color={C.ink}/>
           </TouchableOpacity>
           <Text style={ms.sheetHeaderTitle}>Full Guest Details</Text>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={onClose}
-            style={ms.sheetCloseBtnRelative}
-          >
-            <Icon name="x" size={16} color={C.ink}/>
-          </TouchableOpacity>
+          <View style={{width: 36}} />
         </View>
 
         {/* Guest Name & Status Card */}
@@ -1595,16 +1589,7 @@ function SelfCheckins({
               <Icon name="chevronLeft" size={18} color={C.ink}/>
             </TouchableOpacity>
             <Text style={ms.sheetHeaderTitle}>Full Submission Details</Text>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => {
-                setShowReviewFullDetails(false);
-                setReviewGuest(null);
-              }}
-              style={ms.sheetCloseBtnRelative}
-            >
-              <Icon name="x" size={16} color={C.ink}/>
-            </TouchableOpacity>
+            <View style={{width: 36}} />
           </View>
 
           {/* Guest Name & Status Card */}
@@ -1824,13 +1809,7 @@ function SelfCheckins({
             <Icon name="chevronLeft" size={18} color={C.ink}/>
           </TouchableOpacity>
           <Text style={ms.sheetHeaderTitle}>Review Submission</Text>
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => setReviewGuest(null)}
-            style={ms.sheetCloseBtnRelative}
-          >
-            <Icon name="x" size={16} color={C.ink}/>
-          </TouchableOpacity>
+          <View style={{width: 36}} />
         </View>
 
         <Text style={[ms.bodySm, {marginTop: 2}]}>
