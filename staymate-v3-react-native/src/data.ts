@@ -1,7 +1,7 @@
 export const GUESTS=[
-{id:1,name:'Rohan Sharma',room:'204',type:'Aadhaar',idNum:'XXXX XXXX 4821',phone:'+91 98765 43210',email:'rohan.sharma@email.com',nat:'Indian',gender:'Male',address:'14 MG Road, Guwahati, Assam 781001',time:'9:42 AM',verified:true,roomType:'Deluxe'},
-{id:2,name:'Priya Nair',room:'108',type:'Passport',idNum:'K91XXXXX',phone:'+91 90123 44556',email:'priya.nair@email.com',nat:'Indian',gender:'Female',address:'22 Lake View, Kochi, Kerala 682001',time:'8:15 AM',verified:true,roomType:'Suite'},
-{id:3,name:'Arjun Verma',room:'301',type:'Driving Licence',idNum:'AS01 XXXXXXXXX',phone:'+91 99887 65432',email:'arjun.v@email.com',nat:'Indian',gender:'Male',address:'7 Hilltop Colony, Shillong, Meghalaya',time:'Yesterday',verified:false,roomType:'Standard'}
+{id:1,name:'Rohan Sharma',room:'204',type:'Aadhaar',idNum:'4821 9012 3456',phone:'+91 98765 43210',email:'rohan.sharma@email.com',nat:'Indian',gender:'Male',address:'14 MG Road, Guwahati, Assam 781001',checkIn:'20 Aug 2026, 09:42 AM',checkOut:'23 Aug 2026, 11:00 AM',time:'9:42 AM',verified:true,roomType:'Deluxe'},
+{id:2,name:'Priya Nair',room:'108',type:'Passport',idNum:'K9182374',phone:'+91 90123 44556',email:'priya.nair@email.com',nat:'Indian',gender:'Female',address:'22 Lake View, Kochi, Kerala 682001',checkIn:'21 Aug 2026, 08:15 AM',checkOut:'24 Aug 2026, 11:00 AM',time:'8:15 AM',verified:true,roomType:'Suite'},
+{id:3,name:'Arjun Verma',room:'301',type:'Driving Licence',idNum:'AS01 2018004921',phone:'+91 99887 65432',email:'arjun.v@email.com',nat:'Indian',gender:'Male',address:'7 Hilltop Colony, Shillong, Meghalaya',checkIn:'21 Aug 2026, 02:30 PM',checkOut:'22 Aug 2026, 11:00 AM',time:'Yesterday',verified:false,roomType:'Standard'}
 ] as const;
 
 export const ROOMS=[

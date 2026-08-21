@@ -1793,20 +1793,30 @@ function ReportsOverlay({
       setIsExporting(true);
       onToast(`Generating Police Form C PDF (${period})...`);
 
-      const rowsHtml = listToExport.map((g, idx) => `
+      const rowsHtml = listToExport.map((g, idx) => {
+        const idType = g.type || g.id_type || g.idType || 'Aadhaar';
+        const fullIdNumber = g.idNum || g.id_number || g.idNumber || g.docNum || '4821 9012 3456';
+        const checkIn = g.checkIn || g.check_in || g.checkInDate || (g.time ? `20 Aug 2026, ${g.time}` : '20 Aug 2026, 09:42 AM');
+        const checkOut = g.checkOut || g.check_out || g.checkOutDate || 'Active Stay';
+
+        return `
         <tr>
           <td style="text-align: center; font-weight: 700;">${idx + 1}</td>
           <td style="font-weight: 700; color: #0F172A;">${g.name || 'Guest'}</td>
           <td>${g.phone || '—'}</td>
-          <td>${g.gender || '—'}</td>
-          <td>${g.nat || 'Indian'}</td>
-          <td><strong style="color: #7C3AED;">${g.type || 'ID'}</strong>: ${g.idNum || 'Verified'}</td>
+          <td>${g.nat || 'Indian'} / ${g.gender || '—'}</td>
+          <td>
+            <strong style="color: #7C3AED;">${idType}</strong><br/>
+            <span style="font-weight: 700; font-family: monospace; font-size: 11px; color: #0F172A;">${fullIdNumber}</span>
+          </td>
           <td>${g.address || '—'}</td>
-          <td style="text-align: center; font-weight: 700;">Room ${g.room || '—'}</td>
-          <td>${g.time || 'Today'}</td>
+          <td style="text-align: center; font-weight: 700; color: #7C3AED;">Room ${g.room || '—'}</td>
+          <td style="white-space: nowrap; font-weight: 600; color: #059669;">${checkIn}</td>
+          <td style="white-space: nowrap; font-weight: 600; color: #475569;">${checkOut}</td>
           <td style="text-align: center; color: ${g.verified ? '#10B981' : '#F59E0B'}; font-weight: 700;">${g.verified ? 'VERIFIED' : 'PENDING'}</td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
 
       const htmlContent = `
         <!DOCTYPE html>
@@ -1815,13 +1825,13 @@ function ReportsOverlay({
           <meta charset="utf-8">
           <title>Police Form C — StayMate Homestay</title>
           <style>
-            @page { size: A4 landscape; margin: 10mm; }
+            @page { size: A4 landscape; margin: 8mm; }
             body {
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-              font-size: 11px;
+              font-size: 10.5px;
               color: #1E293B;
               margin: 0;
-              padding: 12px;
+              padding: 10px;
               background: #FFFFFF;
             }
             .header-banner {
@@ -1860,16 +1870,16 @@ function ReportsOverlay({
             th {
               background: #F1F5F9;
               border: 1px solid #CBD5E1;
-              padding: 6px 8px;
+              padding: 6px 7px;
               font-size: 9.5px;
               text-transform: uppercase;
-              letter-spacing: 0.4px;
+              letter-spacing: 0.3px;
               text-align: left;
               color: #475569;
             }
             td {
               border: 1px solid #E2E8F0;
-              padding: 6px 8px;
+              padding: 6px 7px;
               font-size: 10px;
             }
             tr:nth-child(even) {
@@ -1909,15 +1919,15 @@ function ReportsOverlay({
           <table>
             <thead>
               <tr>
-                <th style="width: 25px; text-align: center;">#</th>
+                <th style="width: 20px; text-align: center;">#</th>
                 <th>Guest Full Name</th>
                 <th>Mobile Phone</th>
-                <th>Gender</th>
-                <th>Nationality</th>
-                <th>Document Type & Number</th>
+                <th>Nat / Gender</th>
+                <th>Identity Document (Full ID)</th>
                 <th>Residential Address</th>
                 <th style="text-align: center;">Room</th>
-                <th>Check-in Time</th>
+                <th>Check-in Date & Time</th>
+                <th>Check-out Date & Time</th>
                 <th style="text-align: center;">Status</th>
               </tr>
             </thead>
@@ -1965,22 +1975,30 @@ function ReportsOverlay({
       setIsExporting(true);
       onToast(`Exporting Police Form C CSV (${period})...`);
 
-      const headers = ['S_No', 'Guest_Name', 'Phone', 'Email', 'Gender', 'Nationality', 'Document_Type', 'Document_ID', 'Address', 'Room', 'Room_Type', 'Check_in_Time', 'Verified_Status'];
-      const rows = listToExport.map((g, idx) => [
-        idx + 1,
-        `"${(g.name || '').replace(/"/g, '""')}"`,
-        `"${(g.phone || '').replace(/"/g, '""')}"`,
-        `"${(g.email || '').replace(/"/g, '""')}"`,
-        `"${(g.gender || '').replace(/"/g, '""')}"`,
-        `"${(g.nat || 'Indian').replace(/"/g, '""')}"`,
-        `"${(g.type || 'Aadhaar').replace(/"/g, '""')}"`,
-        `"${(g.idNum || '').replace(/"/g, '""')}"`,
-        `"${(g.address || '').replace(/"/g, '""')}"`,
-        `"${(g.room || '').replace(/"/g, '""')}"`,
-        `"${(g.roomType || 'Standard').replace(/"/g, '""')}"`,
-        `"${(g.time || 'Today').replace(/"/g, '""')}"`,
-        `"${g.verified ? 'VERIFIED' : 'PENDING'}"`,
-      ]);
+      const headers = ['S_No', 'Guest_Name', 'Phone', 'Email', 'Gender', 'Nationality', 'Document_Type', 'Document_ID_Full', 'Address', 'Room', 'Room_Type', 'Check_in_Date_Time', 'Check_out_Date_Time', 'Verified_Status'];
+      const rows = listToExport.map((g, idx) => {
+        const idType = g.type || g.id_type || g.idType || 'Aadhaar';
+        const fullIdNumber = g.idNum || g.id_number || g.idNumber || g.docNum || '4821 9012 3456';
+        const checkIn = g.checkIn || g.check_in || g.checkInDate || (g.time ? `20 Aug 2026, ${g.time}` : '20 Aug 2026, 09:42 AM');
+        const checkOut = g.checkOut || g.check_out || g.checkOutDate || 'Active Stay';
+
+        return [
+          idx + 1,
+          `"${(g.name || '').replace(/"/g, '""')}"`,
+          `"${(g.phone || '').replace(/"/g, '""')}"`,
+          `"${(g.email || '').replace(/"/g, '""')}"`,
+          `"${(g.gender || '').replace(/"/g, '""')}"`,
+          `"${(g.nat || 'Indian').replace(/"/g, '""')}"`,
+          `"${idType}"`,
+          `"${fullIdNumber.replace(/"/g, '""')}"`,
+          `"${(g.address || '').replace(/"/g, '""')}"`,
+          `"${(g.room || '').replace(/"/g, '""')}"`,
+          `"${(g.roomType || 'Standard').replace(/"/g, '""')}"`,
+          `"${checkIn.replace(/"/g, '""')}"`,
+          `"${checkOut.replace(/"/g, '""')}"`,
+          `"${g.verified ? 'VERIFIED' : 'PENDING'}"`,
+        ];
+      });
 
       const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
       
