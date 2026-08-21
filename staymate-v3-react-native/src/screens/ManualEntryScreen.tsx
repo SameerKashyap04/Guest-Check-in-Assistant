@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   ScrollView,
   View,
@@ -32,9 +32,6 @@ export function ManualEntryScreen({
   initialData?: any;
 }) {
   const insets = useSafeAreaInsets();
-  const scrollRef = useRef<ScrollView>(null);
-  const [keyboardVisible, setKeyboardVisible] = useState(false);
-
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState(initialData?.name || '');
   const [docType, setDocType] = useState(initialData?.docType || 'Aadhaar');
@@ -50,21 +47,6 @@ export function ManualEntryScreen({
   const [coGuests, setCoGuests] = useState<CoGuestItem[]>([]);
   const [coGuestModalVisible, setCoGuestModalVisible] = useState(false);
   const [editingCoGuest, setEditingCoGuest] = useState<CoGuestItem | null>(null);
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      () => setKeyboardVisible(true)
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setKeyboardVisible(false)
-    );
-    return () => {
-      showSub.remove();
-      hideSub.remove();
-    };
-  }, []);
 
   useEffect(() => {
     if (initialData) {
@@ -249,12 +231,8 @@ export function ManualEntryScreen({
 
         {/* Scrollable Content */}
         <ScrollView
-          ref={scrollRef}
           style={{flex: 1}}
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingBottom: keyboardVisible ? 260 : 80,
-          }}
+          contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 60}}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
@@ -367,24 +345,12 @@ export function ManualEntryScreen({
               value={phone}
               onChangeText={setPhone}
               placeholder="Enter phone number"
-              keyboardType="phone-pad"
-              onFocus={() => {
-                setTimeout(() => {
-                  scrollRef.current?.scrollTo({y: 280, animated: true});
-                }, 150);
-              }}
             />
             <Field
               label="Address"
               value={address}
               onChangeText={setAddress}
               placeholder="Enter address"
-              multiline
-              onFocus={() => {
-                setTimeout(() => {
-                  scrollRef.current?.scrollToEnd({animated: true});
-                }, 150);
-              }}
             />
 
             {/* Co-Guests Section in Step 1 */}
@@ -655,20 +621,7 @@ export function ManualEntryScreen({
       />
 
       {/* Sticky Bottom Action Bar with Safe Area Inset */}
-      <View style={[s.bottomBar, {paddingBottom: Math.max(12, insets.bottom + 6)}]}>
-        {keyboardVisible && (
-          <View style={s.keyboardBar}>
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() => Keyboard.dismiss()}
-              style={s.dismissBtn}
-            >
-              <Icon name="chevronDown" size={14} color={C.ink} />
-              <Text style={s.dismissBtnText}>Hide Keyboard</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
+      <View style={[s.bottomBar, {paddingBottom: Math.max(16, insets.bottom + 8)}]}>
         {step === 1 && (
           <PrimaryButton
             label="Continue to Stay details →"
@@ -1148,30 +1101,9 @@ const s = StyleSheet.create({
   },
   bottomBar: {
     paddingHorizontal: 20,
-    paddingTop: 10,
+    paddingTop: 12,
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#ECEAF0',
-  },
-  keyboardBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 8,
-  },
-  dismissBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#F1F5F9',
-  },
-  dismissBtnText: {
-    fontFamily: 'Inter',
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#334155',
   },
 });

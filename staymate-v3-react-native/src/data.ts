@@ -24,7 +24,7 @@ export function buildSelfCheckinLink(propertyId = 'HS-4821', propertyName = 'Sta
     const encoded = availableRooms.map(r => `${encodeURIComponent(r.num || r.room_number || '101')}:${encodeURIComponent(r.type || r.room_type || 'Standard')}:${r.price || 0}`).join(';');
     roomsQuery = `&rooms=${encodeURIComponent(encoded)}`;
   }
-  return `https://staymate.co.in/self-checkin?property_id=${propId}&owner_id=${ownerId}&property_name=${propName}${roomsQuery}`;
+  return `https://staymate-co.vercel.app/self-checkin?property_id=${propId}&owner_id=${ownerId}&property_name=${propName}${roomsQuery}`;
 }
 
 export const SELF_CHECKIN_URL = buildSelfCheckinLink('HS-4821', 'StayMate Homestay', [

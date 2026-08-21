@@ -46,6 +46,7 @@ import { AddRoomModal } from './src/components/AddRoomModal';
 import { devifyPay, DevifyCheckoutResult } from './src/services/devifyPay';
 import { WebView } from 'react-native-webview';
 import { securityService } from './src/services/securityService';
+import { subscribeToPropertyCheckins, deleteCloudCheckinDoc } from './src/services/firebaseSync';
 
 // Inject authentic Inter web font and typography styles on web platform
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -83,6 +84,7 @@ function MainApp() {
   const [tab, setTab] = useState<TabName>('dashboard');
   const [roomsList, setRoomsList] = useState<any[]>([...ROOMS]);
   const [guestsList, setGuestsList] = useState<any[]>([...GUESTS]);
+  const [pendingCheckins, setPendingCheckins] = useState<any[]>([...SELF_CHECKINS]);
   const [showAddRoom, setShowAddRoom] = useState(false);
   const [modal, setModal] = useState<{
     title: string;
@@ -135,6 +137,35 @@ function MainApp() {
 
     return () => {
       subscription.remove();
+    };
+  }, []);
+
+  // Subscribe to real-time online self check-in submissions from Firestore
+  useEffect(() => {
+    const unsub = subscribeToPropertyCheckins('HS-4821', (cloudCheckin) => {
+      const formatted = {
+        id: cloudCheckin.id || `cloud_${Date.now()}`,
+        name: cloudCheckin.full_name,
+        room: cloudCheckin.room_number || '101',
+        submitted: 'Just now',
+        doc: `${cloudCheckin.id_type || 'ID'} · ${cloudCheckin.id_number || 'Submitted'}`,
+        phone: cloudCheckin.phone,
+        address: cloudCheckin.address,
+        dob: cloudCheckin.dob,
+        gender: cloudCheckin.gender,
+        photoUri: cloudCheckin.photo_uri || cloudCheckin.selfie_uri,
+        additionalGuests: cloudCheckin.additional_guests || [],
+        raw: cloudCheckin,
+      };
+      setPendingCheckins((prev) => {
+        if (prev.some((p) => p.id === formatted.id)) return prev;
+        return [formatted, ...prev];
+      });
+      notify(`New online check-in received from ${cloudCheckin.full_name}!`);
+    });
+
+    return () => {
+      unsub();
     };
   }, []);
 
@@ -194,6 +225,44 @@ function MainApp() {
     setManualInitialData(null);
     notify(`✓ ${newGuest.name} checked in to Room ${newGuest.room}!`);
     setTab('dashboard');
+  };
+
+  // Handle approval of an online self check-in submission
+  const handleApproveSelfCheckin = (g: any) => {
+    const assignedRoom = g.room || g.room_number || '101';
+    const newGuest = {
+      id: Date.now(),
+      name: g.name || g.full_name || 'Guest',
+      room: assignedRoom,
+      type: g.docType || g.id_type || 'Aadhaar',
+      idNum: g.idNum || g.id_number || 'Verified',
+      phone: g.phone || '',
+      email: g.email || '',
+      nat: 'Indian',
+      gender: g.gender || 'Other',
+      address: g.address || '',
+      time: 'Just now',
+      verified: true,
+      roomType: roomsList.find((r) => r.num === assignedRoom)?.type || 'Standard',
+      photoUri: g.photoUri || g.photo_uri || null,
+      additionalGuests: g.additionalGuests || g.additional_guests || [],
+    };
+    setGuestsList((prev) => [newGuest, ...prev]);
+    handleUpdateRoomStatus(assignedRoom, 'occupied');
+    setPendingCheckins((prev) => prev.filter((item) => item.id !== g.id));
+    if (g.id && typeof g.id === 'string') {
+      deleteCloudCheckinDoc(g.id);
+    }
+    notify(`✓ ${newGuest.name} approved for Room ${assignedRoom}!`);
+  };
+
+  // Handle rejection / discard of an online self check-in submission
+  const handleRejectSelfCheckin = (g: any) => {
+    setPendingCheckins((prev) => prev.filter((item) => item.id !== g.id));
+    if (g.id && typeof g.id === 'string') {
+      deleteCloudCheckinDoc(g.id);
+    }
+    notify(`Check-in request from ${g.name} discarded`);
   };
 
   const content =
@@ -399,16 +468,10 @@ function MainApp() {
         <Modal visible transparent animationType="slide">
           <Sheet onClose={() => setSheet(null)}>
             <SelfCheckins
-              onReview={(id) => {
-                setSheet(null);
-                setGuestId(id);
-                show(
-                  'Review self check-in',
-                  'Guest submitted online. Review the details before approval.',
-                  'Approve',
-                  () => notify('Guest approved for online check-in')
-                );
-              }}
+              pendingList={pendingCheckins}
+              roomsList={roomsList}
+              onApprove={handleApproveSelfCheckin}
+              onReject={handleRejectSelfCheckin}
               onToast={notify}
             />
           </Sheet>
@@ -830,7 +893,7 @@ function GuestSheet({
         />
         <PrimaryButton
           label="Contact"
-          icon="phone"
+        icon="phone"
           style={{flex: 1}}
           onPress={() => onToast(`Calling ${g.phone}`)}
         />
@@ -840,24 +903,30 @@ function GuestSheet({
 }
 
 function SelfCheckins({
-  onReview,
+  pendingList = [],
+  roomsList = [],
+  onApprove,
+  onReject,
   onToast,
 }: {
-  onReview: (guest: any) => void;
+  pendingList: any[];
+  roomsList?: any[];
+  onApprove: (guest: any) => void;
+  onReject: (guest: any) => void;
   onToast: (msg: string) => void;
 }) {
-  const [pendingList, setPendingList] = useState<any[]>([...SELF_CHECKINS]);
   const [reviewGuest, setReviewGuest] = useState<any | null>(null);
   const [copied, setCopied] = useState(false);
-  const [qrLocalUri, setQrLocalUri] = useState<string | null>(null);
 
-  const shareUrl = buildSelfCheckinLink('HS-4821', 'StayMate Homestay', [
+  const availableRooms = roomsList.length > 0 ? roomsList.filter((r) => r.status === 'available') : [
     { num: '101', type: 'Standard', price: 1800 },
     { num: '303', type: 'Cottage', price: 3600 }
-  ]);
+  ];
+
+  const shareUrl = buildSelfCheckinLink('HS-4821', 'StayMate Homestay', availableRooms);
   const qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=500x500&data=${encodeURIComponent(shareUrl)}`;
 
-  const welcomeMessage = `🏡 *Welcome to StayMate Homestay!*\n\nPlease complete your quick guest registration & check-in online before arrival:\n🔗 ${shareUrl}\n\nWe look forward to hosting you!`;
+  const welcomeMessage = `Welcome to StayMate Homestay!\n\nPlease complete your quick guest registration & check-in online before arrival:\n${shareUrl}\n\nWe look forward to hosting you!`;
 
   const standeeCardRef = React.useRef<View>(null);
 
@@ -899,6 +968,27 @@ function SelfCheckins({
       });
       onToast('Check-in link shared! ✓');
     } catch (_) {}
+  };
+
+  // WhatsApp Invite button
+  const handleShareWhatsApp = async () => {
+    const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(welcomeMessage)}`;
+    try {
+      const supported = await Linking.canOpenURL(whatsappUrl);
+      if (supported) {
+        await Linking.openURL(whatsappUrl);
+      } else {
+        await Share.share({
+          title: 'Guest Self Check-in — StayMate',
+          message: welcomeMessage,
+          url: shareUrl,
+        });
+      }
+      onToast('WhatsApp invitation shared! ✓');
+    } catch (_) {
+      await Clipboard.setStringAsync(welcomeMessage);
+      onToast('Message & link copied to clipboard! ✓');
+    }
   };
 
   // Generate & print reception desk standee poster (PDF)
@@ -1097,20 +1187,18 @@ function SelfCheckins({
     }
   };
 
-  const handleApprove = (g: any) => {
-    setPendingList((prev) => prev.filter((item) => item.id !== g.id));
+  const handleLocalApprove = (g: any) => {
     if (reviewGuest?.id === g.id) {
       setReviewGuest(null);
     }
-    onToast(`✓ ${g.name} approved for Room ${g.room}!`);
+    onApprove(g);
   };
 
-  const handleReject = (g: any) => {
-    setPendingList((prev) => prev.filter((item) => item.id !== g.id));
+  const handleLocalReject = (g: any) => {
     if (reviewGuest?.id === g.id) {
       setReviewGuest(null);
     }
-    onToast(`Discarded check-in request from ${g.name}`);
+    onReject(g);
   };
 
   return (
@@ -1250,9 +1338,10 @@ function SelfCheckins({
             borderTopWidth: 1,
             borderTopColor: '#E2E8F0',
             paddingTop: 16,
+            justifyContent: 'space-around',
           }}
         >
-          <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 4 }}>
+          <View style={{ alignItems: 'center', flex: 1 }}>
             <View
               style={{
                 width: 28,
@@ -1267,11 +1356,11 @@ function SelfCheckins({
               <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>1</Text>
             </View>
             <Text style={{ fontSize: 10, fontWeight: '600', color: '#475569', textAlign: 'center' }}>
-              Scan QR with camera
+              Scan QR code
             </Text>
           </View>
 
-          <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 4 }}>
+          <View style={{ alignItems: 'center', flex: 1 }}>
             <View
               style={{
                 width: 28,
@@ -1286,11 +1375,11 @@ function SelfCheckins({
               <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>2</Text>
             </View>
             <Text style={{ fontSize: 10, fontWeight: '600', color: '#475569', textAlign: 'center' }}>
-              Fill details & upload ID
+              Fill details & ID
             </Text>
           </View>
 
-          <View style={{ flex: 1, alignItems: 'center', paddingHorizontal: 4 }}>
+          <View style={{ alignItems: 'center', flex: 1 }}>
             <View
               style={{
                 width: 28,
@@ -1321,7 +1410,7 @@ function SelfCheckins({
       >
         <Text style={ms.displayMd}>Web self check-ins</Text>
         <Text style={[ms.bodySm, {marginTop: 4}]}>
-          Share the QR or link, then review and approve guest details.
+          Share the QR or link, then review and approve guest details in real time.
         </Text>
 
         {/* QR Card */}
@@ -1354,12 +1443,22 @@ function SelfCheckins({
             />
           </View>
 
-          {/* Additional Quick Actions */}
-          <View style={{flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 10}}>
+          {/* WhatsApp & Additional Quick Actions */}
+          <View style={{flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 14, marginTop: 12}}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={handleShareWhatsApp}
+              style={{paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#ECFDF5', borderRadius: 8}}
+            >
+              <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: '#059669'}}>
+                WhatsApp Invite →
+              </Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handleOpenBrowser}
-              style={{paddingVertical: 6}}
+              style={{paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#FAF5FF', borderRadius: 8}}
             >
               <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: C.primary}}>
                 Open Web Form →
@@ -1369,10 +1468,10 @@ function SelfCheckins({
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handlePrintStandee}
-              style={{paddingVertical: 6}}
+              style={{paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#F3F4F6', borderRadius: 8}}
             >
-              <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: '#6B7280'}}>
-                Print QR Standee (PDF) 📄
+              <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: '#4B5563'}}>
+                Print Reception PDF
               </Text>
             </TouchableOpacity>
           </View>
@@ -1412,6 +1511,11 @@ function SelfCheckins({
               <View style={ms.cardDivider}/>
               <Text style={ms.bodySm}>{g.doc}</Text>
               <Text style={[ms.bodySm, {marginTop: 3}]}>{g.phone}</Text>
+              {g.additionalGuests && g.additionalGuests.length > 0 && (
+                <Text style={[ms.bodySm, {marginTop: 2, color: C.primary, fontWeight: '600'}]}>
+                  + {g.additionalGuests.length} Co-Guest(s)
+                </Text>
+              )}
               <View style={{flexDirection: 'row', gap: 8, marginTop: 12}}>
                 <SecondaryButton
                   label="Review"
@@ -1422,7 +1526,7 @@ function SelfCheckins({
                   label="Approve"
                   icon="check"
                   style={{flex: 1}}
-                  onPress={() => handleApprove(g)}
+                  onPress={() => handleLocalApprove(g)}
                 />
               </View>
             </View>
@@ -1484,6 +1588,18 @@ function SelfCheckins({
                     <Text style={ms.bodySm}>Phone</Text>
                     <Text style={ms.titleSm}>{reviewGuest.phone}</Text>
                   </View>
+                  {reviewGuest.dob && (
+                    <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                      <Text style={ms.bodySm}>Date of Birth</Text>
+                      <Text style={ms.titleSm}>{reviewGuest.dob}</Text>
+                    </View>
+                  )}
+                  {reviewGuest.gender && (
+                    <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                      <Text style={ms.bodySm}>Gender</Text>
+                      <Text style={ms.titleSm}>{reviewGuest.gender}</Text>
+                    </View>
+                  )}
                   {reviewGuest.address && (
                     <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
                       <Text style={ms.bodySm}>Address</Text>
@@ -1492,17 +1608,32 @@ function SelfCheckins({
                   )}
                 </View>
 
+                {/* Co-Guests in Review */}
+                {reviewGuest.additionalGuests && reviewGuest.additionalGuests.length > 0 && (
+                  <View style={{marginTop: 14}}>
+                    <Text style={[ms.titleSm, {marginBottom: 8}]}>
+                      Co-Guests ({reviewGuest.additionalGuests.length})
+                    </Text>
+                    {reviewGuest.additionalGuests.map((cg: any, idx: number) => (
+                      <View key={idx} style={[ms.card, {marginBottom: 8, padding: 12}]}>
+                        <Text style={[ms.titleSm, {fontWeight: '700'}]}>{cg.full_name || cg.name}</Text>
+                        <Text style={ms.bodySm}>{cg.relation || 'Co-Guest'} · {cg.id_type || 'ID'}: {cg.id_number || '-'}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+
                 <View style={{flexDirection: 'row', gap: 10, marginTop: 20}}>
                   <SecondaryButton
                     label="Reject"
                     style={{flex: 1}}
-                    onPress={() => handleReject(reviewGuest)}
+                    onPress={() => handleLocalReject(reviewGuest)}
                   />
                   <PrimaryButton
                     label="Approve Check-in"
                     icon="check"
                     style={{flex: 1}}
-                    onPress={() => handleApprove(reviewGuest)}
+                    onPress={() => handleLocalApprove(reviewGuest)}
                   />
                 </View>
               </ScrollView>
