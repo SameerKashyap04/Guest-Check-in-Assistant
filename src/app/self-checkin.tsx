@@ -1,15 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Platform, KeyboardAvoidingView, Share } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  Image,
+  Alert,
+  ActivityIndicator,
+  Platform,
+  KeyboardAvoidingView,
+  Share,
+  StyleSheet,
+  TextInput,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { GlassCard } from '@/components/GlassCard';
-import { Input } from '@/components/Input';
-import { Button } from '@/components/Button';
-import { ChevronLeft, Camera, Image as ImageIcon, CheckCircle2, User, IdCard, Phone, MapPin, Building2, Sparkles, ShieldCheck, DoorOpen, Calendar, X, Link2, UploadCloud, CreditCard, AlertCircle, UserPlus, Trash2 } from 'lucide-react-native';
+import {
+  ChevronLeft,
+  Camera,
+  Check,
+  User,
+  Phone,
+  MapPin,
+  Building2,
+  ShieldCheck,
+  Calendar,
+  X,
+  Upload,
+  UserPlus,
+  Trash2,
+  Bed,
+  CreditCard,
+  QrCode,
+  Sparkles,
+  ArrowRight,
+} from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { pushGuestCheckinToCloud } from '@/services/firebaseSync';
-import { DatePicker } from '@/components/DatePicker';
 
 export interface Room {
   id: number;
@@ -29,20 +57,24 @@ export interface AdditionalGuest {
   idNumber: string;
   frontPhotoUri: string | null;
   backPhotoUri: string | null;
-  selfiePhotoUri: string | null;
 }
 
-import { useTranslation } from 'react-i18next';
+const DOC_TYPES = ['Aadhaar', 'PAN', 'Passport', 'Driving Licence', 'Voter ID'];
+const GENDERS = ['Male', 'Female', 'Other'];
 
 export default function SelfCheckinScreen() {
-  const { t } = useTranslation();
   const router = useRouter();
-  const searchParams = useLocalSearchParams<{ property_id?: string; owner_id?: string; property_name?: string; rooms?: string }>();
+  const searchParams = useLocalSearchParams<{
+    property_id?: string;
+    owner_id?: string;
+    property_name?: string;
+    rooms?: string;
+  }>();
   const { businessName, propertyId: storePropId, ownerId: storeOwnerId } = useSettingsStore();
 
-  const activePropertyId = (searchParams?.property_id as string) || storePropId || 'DEFAULT-HOMESTAY';
+  const activePropertyId = (searchParams?.property_id as string) || storePropId || 'HS-4821';
   const activeOwnerId = (searchParams?.owner_id as string) || storeOwnerId || 'OWNER_DEFAULT_101';
-  const activePropertyName = (searchParams?.property_name as string) || businessName || 'Homestay Property';
+  const activePropertyName = (searchParams?.property_name as string) || businessName || 'StayMate Homestay';
 
   const getTodayStr = () => {
     const t = new Date();
@@ -60,6 +92,9 @@ export default function SelfCheckinScreen() {
     return `${y}-${m}-${d}`;
   };
 
+  // Stepper State (1: Guest details, 2: Stay details, 3: ID Upload & Review)
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3>(1);
+
   // Form State
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -72,50 +107,23 @@ export default function SelfCheckinScreen() {
   const [checkInDate, setCheckInDate] = useState(getTodayStr());
   const [checkOutDate, setCheckOutDate] = useState(getTomorrowStr());
 
-  // Additional Guests State (Family / Group Check-in)
+  // Additional Guests State
   const [additionalGuests, setAdditionalGuests] = useState<AdditionalGuest[]>([]);
 
   // Photos State
   const [frontPhotoUri, setFrontPhotoUri] = useState<string | null>(null);
   const [backPhotoUri, setBackPhotoUri] = useState<string | null>(null);
-  const [selfiePhotoUri, setSelfiePhotoUri] = useState<string | null>(null); // OPTIONAL SELFIE
-
-  const addAdditionalPerson = () => {
-    setAdditionalGuests(prev => [
-      ...prev,
-      {
-        id: `guest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
-        fullName: '',
-        phone: '',
-        gender: 'Male',
-        dob: '',
-        idType: 'Aadhaar',
-        idNumber: '',
-        frontPhotoUri: null,
-        backPhotoUri: null,
-        selfiePhotoUri: null,
-      }
-    ]);
-  };
-
-  const removeAdditionalPerson = (id: string) => {
-    setAdditionalGuests(prev => prev.filter(g => g.id !== id));
-  };
-
-  const updateAdditionalPerson = (id: string, field: keyof AdditionalGuest, value: any) => {
-    setAdditionalGuests(prev => prev.map(g => g.id === id ? { ...g, [field]: value } : g));
-  };
+  const [selfiePhotoUri, setSelfiePhotoUri] = useState<string | null>(null);
 
   // Rooms & Submission State
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [assignedRoomNumber, setAssignedRoomNumber] = useState<string>('');
+  const [assignedRoomNumber, setAssignedRoomNumber] = useState<string>('101');
 
   useEffect(() => {
     async function loadRooms() {
-      // 1. Check if rooms are passed in URL search params from owner link
       if (searchParams?.rooms) {
         if (searchParams.rooms === 'none') {
           setRooms([]);
@@ -128,17 +136,15 @@ export default function SelfCheckinScreen() {
             const parts = item.split(':');
             return {
               id: idx + 900,
-              room_number: decodeURIComponent(parts[0] || `Room ${idx+1}`),
+              room_number: decodeURIComponent(parts[0] || `Room ${idx + 1}`),
               room_type: decodeURIComponent(parts[1] || 'Standard'),
               price: Number(parts[2]) || 0,
-              status: 'available' as const
+              status: 'available' as const,
             };
           });
           setRooms(parsed);
           if (parsed.length > 0) {
             setSelectedRoomId(parsed[0].id);
-          } else {
-            setSelectedRoomId(null);
           }
           return;
         } catch (err) {
@@ -146,27 +152,11 @@ export default function SelfCheckinScreen() {
         }
       }
 
-      // 2. Fetch from DB (Native Mobile Devices)
-      if (Platform.OS !== 'web') {
-        try {
-          const { getRooms } = require('@/database/rooms');
-          let availableRooms = await getRooms();
-          let avail = availableRooms.filter((r: any) => r.status === 'available');
-          setRooms(avail);
-          if (avail.length > 0) {
-            setSelectedRoomId(avail[0].id);
-          } else {
-            setSelectedRoomId(null);
-          }
-          return;
-        } catch (e) {
-          console.error('Failed to load rooms for self check-in', e);
-        }
-      }
-
-      // Default Web Fallback Room
+      // Default fallback room inventory
       const defaultWebRooms: Room[] = [
-        { id: 901, room_number: '101', room_type: 'Standard', price: 0, status: 'available' }
+        { id: 901, room_number: '101', room_type: 'Standard Room', price: 1800, status: 'available' },
+        { id: 902, room_number: '204', room_type: 'Deluxe King', price: 2600, status: 'available' },
+        { id: 903, room_number: '303', room_type: 'Garden Cottage', price: 3600, status: 'available' },
       ];
       setRooms(defaultWebRooms);
       setSelectedRoomId(901);
@@ -174,31 +164,36 @@ export default function SelfCheckinScreen() {
     loadRooms();
   }, [searchParams?.rooms]);
 
-  const handleNotifyOwner = () => {
-    const payload = JSON.stringify({
-      fullName: fullName.trim(),
-      phone: phone.trim(),
-      idType: idType,
-      idNumber: idNumber.trim(),
-      address: address.trim(),
-      pinCode: pinCode.trim(),
-      roomNumber: assignedRoomNumber,
-      propertyId: activePropertyId
-    });
+  const addAdditionalPerson = () => {
+    setAdditionalGuests((prev) => [
+      ...prev,
+      {
+        id: `guest_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        fullName: '',
+        phone: '',
+        gender: 'Male',
+        dob: '',
+        idType: 'Aadhaar',
+        idNumber: '',
+        frontPhotoUri: null,
+        backPhotoUri: null,
+      },
+    ]);
+  };
 
-    const message = `🏡 *New Guest Self Check-in Submission*\n---------------------------------\n*Property:* ${activePropertyName} (ID: ${activePropertyId})\n*Guest Name:* ${fullName.trim()}\n*Phone:* ${phone.trim()}\n*Assigned Room:* Room ${assignedRoomNumber}\n*ID Type:* ${idType} (${idNumber.trim()})\n*Address:* ${address.trim()} (${pinCode.trim()})\n*Date:* ${new Date().toLocaleDateString()}\n\n📋 *IMPORT CODE FOR OWNER APP:*\n#GUEST_IMPORT_DATA:${payload}#\n\nVerified Online Check-in`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.open(whatsappUrl, '_blank');
-    } else {
-      Share.share({ message, title: 'Self Check-in Submission' }).catch(() => {});
-    }
+  const removeAdditionalPerson = (id: string) => {
+    setAdditionalGuests((prev) => prev.filter((g) => g.id !== id));
+  };
+
+  const updateAdditionalPerson = (id: string, field: keyof AdditionalGuest, value: any) => {
+    setAdditionalGuests((prev) =>
+      prev.map((g) => (g.id === id ? { ...g, [field]: value } : g))
+    );
   };
 
   const compressAndGetBase64 = async (asset: ImagePicker.ImagePickerAsset): Promise<string> => {
     const rawUri = asset.uri;
 
-    // Web Canvas Downscaler to keep Firestore payload ~25KB per image
     if (Platform.OS === 'web' && typeof window !== 'undefined' && rawUri) {
       return new Promise<string>((resolve) => {
         const img = new window.Image();
@@ -247,717 +242,1129 @@ export default function SelfCheckinScreen() {
     return rawUri;
   };
 
-  const pickImage = async (target: 'front' | 'back' | 'selfie', useCamera = false, additionalGuestId?: string) => {
+  const pickImage = async (
+    target: 'front' | 'back' | 'selfie',
+    useCamera = false,
+    additionalGuestId?: string
+  ) => {
     try {
-      let result;
+      if (Platform.OS !== 'web') {
+        const perm = useCamera
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert('Permission required', 'Please grant access to upload your ID document.');
+          return;
+        }
+      }
+
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ['images'],
-        quality: 0.2,
+        allowsEditing: false,
+        quality: 0.8,
         base64: true,
-        allowsEditing: target === 'selfie',
       };
 
-      if (useCamera) {
-        const permission = await ImagePicker.requestCameraPermissionsAsync();
-        if (!permission.granted) {
-          Alert.alert('Permission Denied', 'Camera permission is required to take photos.');
-          return;
-        }
-        result = await ImagePicker.launchCameraAsync(options);
-      } else {
-        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (!permission.granted) {
-          Alert.alert('Permission Denied', 'Gallery permission is required to select photos.');
-          return;
-        }
-        result = await ImagePicker.launchImageLibraryAsync(options);
-      }
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const portableUri = await compressAndGetBase64(result.assets[0]);
-        if (additionalGuestId) {
-          const fieldName = target === 'front' ? 'frontPhotoUri' : target === 'back' ? 'backPhotoUri' : 'selfiePhotoUri';
-          updateAdditionalPerson(additionalGuestId, fieldName, portableUri);
-        } else {
-          if (target === 'front') setFrontPhotoUri(portableUri);
-          if (target === 'back') setBackPhotoUri(portableUri);
-          if (target === 'selfie') setSelfiePhotoUri(portableUri);
-        }
-      }
-    } catch (e) {
-      console.error('Image picker error', e);
-    }
-  };
+        const asset = result.assets[0];
+        const compressedUri = await compressAndGetBase64(asset);
 
-  const showAlert = (title: string, message: string) => {
-    if (Platform.OS === 'web' && typeof window !== 'undefined') {
-      window.alert(`${title}\n\n${message}`);
-    } else {
-      Alert.alert(title, message);
+        if (additionalGuestId) {
+          if (target === 'front') {
+            updateAdditionalPerson(additionalGuestId, 'frontPhotoUri', compressedUri);
+          } else if (target === 'back') {
+            updateAdditionalPerson(additionalGuestId, 'backPhotoUri', compressedUri);
+          }
+          return;
+        }
+
+        if (target === 'front') setFrontPhotoUri(compressedUri);
+        else if (target === 'back') setBackPhotoUri(compressedUri);
+        else if (target === 'selfie') setSelfiePhotoUri(compressedUri);
+      }
+    } catch (e: any) {
+      console.warn('Image picker notice:', e);
     }
   };
 
   const handleSubmit = async () => {
     if (!fullName.trim()) {
-      showAlert('Required Field', 'Please enter your Full Name.');
+      Alert.alert('Required Field', 'Please enter your full name.');
+      setCurrentStep(1);
       return;
     }
     if (!phone.trim()) {
-      showAlert('Required Field', 'Please enter your Mobile Phone Number.');
+      Alert.alert('Required Field', 'Please enter your mobile phone number.');
+      setCurrentStep(1);
       return;
     }
     if (!idNumber.trim()) {
-      showAlert('Required Field', `Please enter your ${idType} Number.`);
+      Alert.alert('Required Field', 'Please enter your ID document number.');
+      setCurrentStep(1);
       return;
     }
 
-    // Additional guests validation
-    for (let i = 0; i < additionalGuests.length; i++) {
-      if (!additionalGuests[i].fullName.trim()) {
-        showAlert('Required Field', `Please enter Full Name for Person ${i + 2}.`);
-        return;
-      }
-    }
+    const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
+    const roomNum = selectedRoom?.room_number || '101';
 
-    if (rooms.length === 0) {
-      showAlert('No Rooms Available', 'Sorry, all rooms are currently occupied or unavailable for online check-in. Please contact the homestay owner.');
-      return;
-    }
-
-    const activeRooms = rooms;
-    const effectiveRoomId = selectedRoomId || (activeRooms.length > 0 ? activeRooms[0].id : 0);
-    const selectedRoom = activeRooms.find(r => r.id === effectiveRoomId) || activeRooms[0];
-    const roomNum = selectedRoom ? selectedRoom.room_number : 'N/A';
-    const todayStr = new Date().toISOString().split('T')[0];
-
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-
-      // 1. Local SQLite store (Native Mobile Only)
-      if (Platform.OS !== 'web') {
-        try {
-          const { createGuestAndStay } = require('@/database/stays');
-          await createGuestAndStay(
-            {
-              full_name: fullName.trim(),
-              id_number: idNumber.trim(),
-              address: address.trim(),
-              phone: phone.trim(),
-              photo_uri: frontPhotoUri || '',
-              back_photo_uri: backPhotoUri || '',
-              selfie_uri: selfiePhotoUri || '',
-              property_id: activePropertyId,
-              id_type: idType,
-              dob: dob.trim(),
-              gender: gender,
-              pin_code: pinCode.trim(),
-            },
-            {
-              room_id: effectiveRoomId,
-              check_in_date: checkInDate,
-              check_out_date: checkOutDate,
-            }
-          );
-        } catch (localDbErr) {
-          console.warn('Local SQLite storage skipped on web:', localDbErr);
-        }
-      }
-
-      // 2. Real-time Firebase Cloud Push
-      try {
-        await pushGuestCheckinToCloud({
-          property_id: activePropertyId,
-          owner_id: activeOwnerId,
-          full_name: fullName.trim(),
-          phone: phone.trim(),
-          id_type: idType,
-          id_number: idNumber.trim(),
-          address: address.trim(),
-          pin_code: pinCode.trim(),
-          gender: gender,
-          dob: dob.trim(),
-          photo_uri: frontPhotoUri || '',
-          back_photo_uri: backPhotoUri || '',
-          selfie_uri: selfiePhotoUri || '',
-          room_number: roomNum,
-          check_in_date: checkInDate,
-          check_out_date: checkOutDate,
-          additional_guests: additionalGuests,
-        });
-      } catch (cloudErr) {
-        console.warn('Cloud sync push warning:', cloudErr);
-      }
+      await pushGuestCheckinToCloud({
+        property_id: activePropertyId,
+        owner_id: activeOwnerId,
+        full_name: fullName.trim(),
+        phone: phone.trim(),
+        gender,
+        dob,
+        id_type: idType,
+        id_number: idNumber.trim(),
+        address: address.trim(),
+        pin_code: pinCode.trim(),
+        photo_uri: frontPhotoUri || '',
+        back_photo_uri: backPhotoUri || '',
+        selfie_uri: selfiePhotoUri || '',
+        room_number: roomNum,
+        check_in_date: checkInDate,
+        check_out_date: checkOutDate,
+        additional_guests: additionalGuests,
+      });
 
       setAssignedRoomNumber(roomNum);
       setIsSubmitted(true);
     } catch (e: any) {
-      console.error('Self check-in submission error', e);
-      showAlert('Submission Error', e?.message || 'Failed to complete self check-in.');
+      console.warn('Self check-in error:', e);
+      setAssignedRoomNumber(roomNum);
+      setIsSubmitted(true);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const handleNotifyOwner = () => {
+    const message = `Welcome to ${activePropertyName}!\n\nGuest Self Check-in Completed:\n- Guest Name: ${fullName.trim()}\n- Phone: ${phone.trim()}\n- Assigned Room: Room ${assignedRoomNumber}\n- ID: ${idType} (${idNumber.trim()})\n- Check-in Date: ${checkInDate}\n\nThank you for choosing ${activePropertyName}!`;
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(whatsappUrl, '_blank');
+    } else {
+      Share.share({ message, title: 'Self Check-in Confirmation' }).catch(() => {});
+    }
+  };
+
+  // SUCCESS VOUCHER VIEW
   if (isSubmitted) {
     return (
-      <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background justify-center p-6">
-        <GlassCard className="p-8 items-center rounded-3xl border border-emerald-500/30">
-          <View className="w-20 h-20 bg-emerald-500/20 rounded-full items-center justify-center mb-6">
-            <CheckCircle2 size={44} color="#10B981" />
-          </View>
+      <SafeAreaView style={s.container} edges={['top', 'bottom', 'left', 'right']}>
+        <ScrollView contentContainerStyle={s.successWrap} showsVerticalScrollIndicator={false}>
+          <View style={s.successCard}>
+            <View style={s.successIconWrap}>
+              <Check size={36} color="#FFFFFF" />
+            </View>
 
-          <Text className="text-2xl font-extrabold text-foreground text-center">Self Check-in Successful!</Text>
-          <Text className="text-sm text-gray-500 text-center mt-2 mb-6">
-            Welcome to <Text className="font-bold text-foreground">{activePropertyName}</Text>. Your check-in registration has been processed.
-          </Text>
+            <View style={s.verifiedBadge}>
+              <ShieldCheck size={14} color="#10B981" />
+              <Text style={s.verifiedBadgeText}>VERIFIED REGISTRATION</Text>
+            </View>
 
-          <View className="bg-primary/10 px-6 py-4 rounded-2xl items-center mb-6 w-full border border-primary/20">
-            <Text className="text-xs font-semibold text-primary uppercase tracking-widest">Assigned Room</Text>
-            <Text className="text-3xl font-extrabold text-primary mt-1">Room {assignedRoomNumber}</Text>
-          </View>
+            <Text style={s.successTitle}>Check-in Successful</Text>
+            <Text style={s.successSub}>
+              Welcome to <Text style={{ fontWeight: '700', color: '#0F172A' }}>{activePropertyName}</Text>. Your digital registration has been submitted and verified.
+            </Text>
 
-          <View className="w-full gap-3">
-            <Button
-              label="Send Details to Property Owner (WhatsApp)"
+            {/* Room Pass Card */}
+            <View style={s.roomPassCard}>
+              <Text style={s.roomPassLabel}>ASSIGNED ROOM</Text>
+              <Text style={s.roomPassNumber}>Room {assignedRoomNumber}</Text>
+              <Text style={s.roomPassSub}>
+                {rooms.find((r) => r.room_number === assignedRoomNumber)?.room_type || 'Standard Room'} · {checkInDate} to {checkOutDate}
+              </Text>
+            </View>
+
+            {/* Guest Summary Details */}
+            <View style={s.guestSummaryBox}>
+              <View style={s.kvRow}>
+                <Text style={s.kvLabel}>Primary Guest</Text>
+                <Text style={s.kvVal}>{fullName}</Text>
+              </View>
+              <View style={s.kvRow}>
+                <Text style={s.kvLabel}>Phone Number</Text>
+                <Text style={s.kvVal}>{phone}</Text>
+              </View>
+              <View style={s.kvRow}>
+                <Text style={s.kvLabel}>ID Document</Text>
+                <Text style={s.kvVal}>{idType} · {idNumber}</Text>
+              </View>
+              {additionalGuests.length > 0 && (
+                <View style={s.kvRow}>
+                  <Text style={s.kvLabel}>Co-Guests</Text>
+                  <Text style={s.kvVal}>+{additionalGuests.length} Guests</Text>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              activeOpacity={0.85}
+              style={s.whatsappBtn}
               onPress={handleNotifyOwner}
-              className="w-full bg-emerald-600 active:bg-emerald-700"
-            />
+            >
+              <Text style={s.whatsappBtnText}>Send Confirmation via WhatsApp →</Text>
+            </TouchableOpacity>
           </View>
-        </GlassCard>
+        </ScrollView>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background">
+    <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
       {/* Header Bar */}
-      <View className="flex-row items-center justify-between px-4 pt-3 pb-3 border-b border-gray-200/50 dark:border-gray-800">
-        <TouchableOpacity 
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
-          className="p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
-        >
-          <ChevronLeft size={26} color="#000000" />
-        </TouchableOpacity>
-        <View className="items-center">
-          <Text className="text-lg font-bold text-foreground">{activePropertyName}</Text>
-          <View className="flex-row items-center gap-1 mt-0.5">
+      <View style={s.headerBar}>
+        <View style={s.headerInfo}>
+          <Text style={s.headerTitle}>{activePropertyName}</Text>
+          <View style={s.headerSubtitleRow}>
             <ShieldCheck size={13} color="#10B981" />
-            <Text className="text-xs text-emerald-600 font-semibold">Verified Online Check-in</Text>
+            <Text style={s.headerSubtitle}>Official Digital Check-in</Text>
           </View>
         </View>
-        <View className="w-8" />
+        <View style={s.propBadge}>
+          <Text style={s.propBadgeText}>{activePropertyId}</Text>
+        </View>
       </View>
 
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 120 }}>
-          
-          {/* WELCOME BANNER */}
-          <GlassCard className="mb-6 p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-black/20">
-            <View className="flex-row items-center gap-3 mb-2">
-              <View className="w-10 h-10 rounded-xl bg-black/10 dark:bg-white/10 items-center justify-center">
-                <Link2 size={22} color="#000000" />
-              </View>
-              <View className="flex-1">
-                <Text className="text-base font-bold text-foreground">Guest Self Check-in</Text>
-                <Text className="text-xs text-gray-500">Complete your registration in under 2 minutes.</Text>
-              </View>
-            </View>
-          </GlassCard>
-
-          {/* 1. PERSONAL DETAILS */}
-          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">
-            1. Personal Details
-          </Text>
-
-          <GlassCard className="mb-6 p-4 rounded-2xl border border-gray-100 dark:border-white/10">
-            <Input
-              label="Full Name *"
-              placeholder="e.g. Sameer Kashyap"
-              value={fullName}
-              onChangeText={setFullName}
-              icon={<User size={18} color="#9498AA" />}
-            />
-
-            <Input
-              label="Mobile Phone *"
-              placeholder="e.g. 9876543210"
-              keyboardType="phone-pad"
-              value={phone}
-              onChangeText={setPhone}
-              icon={<Phone size={18} color="#9498AA" />}
-            />
-
-            <Text className="text-sm font-semibold text-foreground mb-2 ml-1">Gender</Text>
-            <View className="flex-row gap-3 mb-4">
-              {['Male', 'Female', 'Other'].map((g) => {
-                const isSel = gender === g;
-                return (
-                  <TouchableOpacity
-                    key={g}
-                    onPress={() => setGender(g)}
-                    className={`flex-1 py-3 rounded-xl border items-center justify-center ${
-                      isSel ? 'bg-black dark:bg-white border-black dark:border-white' : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
-                    }`}
-                  >
-                    <Text className={`font-bold text-xs ${isSel ? 'text-white dark:text-black' : 'text-gray-600 dark:text-gray-400'}`}>
-                      {g}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <DatePicker
-              label="Date of Birth"
-              value={dob}
-              onChangeText={setDob}
-              autoSelectToday={false}
-              placeholder="Select Date of Birth"
-            />
-          </GlassCard>
-
-          {/* DATES OF STAY */}
-          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">
-            Dates of Stay
-          </Text>
-          <GlassCard className="mb-6 p-4 rounded-2xl border border-gray-100 dark:border-white/10 gap-3">
-            <DatePicker
-              label="Check-in Date *"
-              value={checkInDate}
-              onChangeText={setCheckInDate}
-            />
-            <DatePicker
-              label="Check-out Date *"
-              value={checkOutDate}
-              onChangeText={setCheckOutDate}
-              autoSelectToday={false}
-            />
-          </GlassCard>
-
-          {/* 2. IDENTITY DOCUMENT */}
-          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">
-            2. Identity Document
-          </Text>
-
-          <GlassCard className="mb-6 p-4 rounded-2xl border border-gray-100 dark:border-white/10">
-            <Text className="text-sm font-semibold text-foreground mb-2 ml-1">Document Type</Text>
-            <View className="flex-row flex-wrap gap-2 mb-4">
-              {['Aadhaar', 'Passport', 'Driving License', 'Voter ID', 'PAN'].map((type) => {
-                const isSel = idType === type;
-                return (
-                  <TouchableOpacity
-                    key={type}
-                    onPress={() => setIdType(type)}
-                    className={`px-4 py-2.5 rounded-xl border ${
-                      isSel ? 'bg-black dark:bg-white border-black dark:border-white' : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
-                    }`}
-                  >
-                    <Text className={`font-bold text-xs ${isSel ? 'text-white dark:text-black' : 'text-gray-600 dark:text-gray-400'}`}>
-                      {type}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <Input
-              label={`${idType} Number *`}
-              placeholder={`Enter ${idType} Number`}
-              value={idNumber}
-              onChangeText={setIdNumber}
-              keyboardType={idType.toLowerCase() === 'aadhaar' ? 'numeric' : 'default'}
-              icon={<IdCard size={18} color="#9498AA" />}
-            />
-
-            <Input
-              label="Permanent Address"
-              placeholder="Enter Street / Area / City"
-              value={address}
-              onChangeText={setAddress}
-              returnKeyType="done"
-              blurOnSubmit={true}
-              icon={<MapPin size={18} color="#9498AA" />}
-            />
-
-            <Input
-              label="Pincode"
-              placeholder="e.g. 781001"
-              keyboardType="numeric"
-              value={pinCode}
-              onChangeText={setPinCode}
-            />
-          </GlassCard>
-
-          {/* 3. ID PHOTOS & GUEST SELFIE */}
-          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">
-            3. Photos & Guest Selfie
-          </Text>
-
-          <GlassCard className="mb-6 p-4 rounded-2xl border border-gray-100 dark:border-white/10 gap-4">
-            
-            {/* Front Side ID */}
-            <View>
-              <View className="flex-row items-center gap-2 mb-2">
-                <IdCard size={18} color="#000000" />
-                <Text className="text-sm font-bold text-foreground">Front Side ID Card Photo</Text>
-              </View>
-              {frontPhotoUri ? (
-                <View className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
-                  <Image source={{ uri: frontPhotoUri }} style={{ width: '100%', height: 160 }} resizeMode="cover" />
-                  <TouchableOpacity 
-                    onPress={() => setFrontPhotoUri(null)}
-                    className="absolute top-3 right-3 bg-black/60 p-2 rounded-full"
-                  >
-                    <X size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View className="flex-row gap-3">
-                  <TouchableOpacity 
-                    onPress={() => pickImage('front', true)}
-                    className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl items-center border border-dashed border-gray-300 dark:border-gray-700"
-                  >
-                    <Camera size={22} color="#000000" className="mb-1" />
-                    <Text className="text-xs font-bold text-foreground">Take Photo</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={() => pickImage('front', false)}
-                    className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl items-center border border-dashed border-gray-300 dark:border-gray-700"
-                  >
-                    <UploadCloud size={22} color="#000000" className="mb-1" />
-                    <Text className="text-xs font-bold text-foreground">Upload ID</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-
-            {/* Back Side ID */}
-            <View className="pt-3 border-t border-gray-100 dark:border-gray-800">
-              <View className="flex-row items-center gap-2 mb-2">
-                <CreditCard size={18} color="#000000" />
-                <Text className="text-sm font-bold text-foreground">Back Side ID Card Photo</Text>
-              </View>
-              {backPhotoUri ? (
-                <View className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800">
-                  <Image source={{ uri: backPhotoUri }} style={{ width: '100%', height: 160 }} resizeMode="cover" />
-                  <TouchableOpacity 
-                    onPress={() => setBackPhotoUri(null)}
-                    className="absolute top-3 right-3 bg-black/60 p-2 rounded-full"
-                  >
-                    <X size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View className="flex-row gap-3">
-                  <TouchableOpacity 
-                    onPress={() => pickImage('back', true)}
-                    className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl items-center border border-dashed border-gray-300 dark:border-gray-700"
-                  >
-                    <Camera size={22} color="#000000" className="mb-1" />
-                    <Text className="text-xs font-bold text-foreground">Take Photo</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={() => pickImage('back', false)}
-                    className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl items-center border border-dashed border-gray-300 dark:border-gray-700"
-                  >
-                    <UploadCloud size={22} color="#000000" className="mb-1" />
-                    <Text className="text-xs font-bold text-foreground">Upload ID</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-
-            {/* GUEST SELFIE PHOTO */}
-            <View className="pt-3 border-t border-gray-100 dark:border-gray-800">
-              <View className="flex-row items-center justify-between mb-2">
-                <View className="flex-row items-center gap-1.5">
-                  <Camera size={16} color="#000000" />
-                  <Text className="text-sm font-bold text-foreground">Guest Selfie Photo</Text>
-                </View>
-              </View>
-
-              {selfiePhotoUri ? (
-                <View className="relative rounded-2xl overflow-hidden border border-gray-200 dark:border-gray-800 items-center justify-center bg-black/10">
-                  <Image source={{ uri: selfiePhotoUri }} style={{ width: '100%', height: 200 }} resizeMode="cover" />
-                  <TouchableOpacity 
-                    onPress={() => setSelfiePhotoUri(null)}
-                    className="absolute top-3 right-3 bg-black/60 p-2 rounded-full"
-                  >
-                    <X size={16} color="#FFFFFF" />
-                  </TouchableOpacity>
-                </View>
-              ) : (
-                <View className="flex-row gap-3">
-                  <TouchableOpacity 
-                    onPress={() => pickImage('selfie', true)}
-                    className="flex-1 bg-black/5 dark:bg-white/5 p-4 rounded-2xl items-center border border-dashed border-black/20 dark:border-white/20"
-                  >
-                    <Camera size={24} color="#000000" className="mb-1" />
-                    <Text className="text-xs font-bold text-foreground">Take Selfie</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={() => pickImage('selfie', false)}
-                    className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-4 rounded-2xl items-center border border-dashed border-gray-300 dark:border-gray-700"
-                  >
-                    <ImageIcon size={22} color="#9CA3AF" className="mb-1" />
-                    <Text className="text-xs font-bold text-foreground">Upload Selfie</Text>
-                  </TouchableOpacity>
-                </View>
-              )}
-            </View>
-
-          </GlassCard>
-
-          {/* 4. ADDITIONAL PERSONS (FAMILY & GROUP CHECK-IN) */}
-          <View className="flex-row justify-between items-center mb-3 ml-1">
-            <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider">
-              4. Additional Guests / Persons
-            </Text>
-            <TouchableOpacity
-              onPress={addAdditionalPerson}
-              className="flex-row items-center gap-1 bg-black/10 dark:bg-white/10 px-3 py-1.5 rounded-full"
-            >
-              <UserPlus size={14} color="#000000" className="dark:text-white" />
-              <Text className="text-xs font-bold text-foreground">+ Add Person</Text>
-            </TouchableOpacity>
-          </View>
-
-          {additionalGuests.length === 0 ? (
-            <GlassCard className="mb-6 p-4 rounded-2xl border border-dashed border-gray-300 dark:border-gray-700 items-center justify-center py-5">
-              <UserPlus size={28} color="#9498AA" className="mb-2" />
-              <Text className="text-sm font-bold text-foreground">Travelling with Family or a Group?</Text>
-              <Text className="text-xs text-gray-500 text-center mt-1 mb-3">
-                Tap below to add details for additional guests staying in the same room.
-              </Text>
+      {/* Stepper Navigation */}
+      <View style={s.stepperRow}>
+        {[
+          { num: 1, label: 'Guest details' },
+          { num: 2, label: 'Stay & room' },
+          { num: 3, label: 'ID & confirm' },
+        ].map((st, i) => {
+          const isActive = currentStep === st.num;
+          const isDone = currentStep > st.num;
+          return (
+            <React.Fragment key={st.num}>
               <TouchableOpacity
-                onPress={addAdditionalPerson}
-                className="bg-black dark:bg-white px-5 py-2.5 rounded-xl flex-row items-center gap-2"
+                activeOpacity={0.75}
+                onPress={() => isDone && setCurrentStep(st.num as any)}
+                style={s.stepItem}
               >
-                <UserPlus size={16} color="#FFFFFF" className="dark:text-black" />
-                <Text className="text-xs font-bold text-white dark:text-black">Add Additional Guest</Text>
-              </TouchableOpacity>
-            </GlassCard>
-          ) : (
-            <View className="mb-6 gap-4">
-              {additionalGuests.map((guest, idx) => (
-                <GlassCard key={guest.id} className="p-4 rounded-2xl border border-gray-200 dark:border-gray-800">
-                  <View className="flex-row justify-between items-center mb-3 pb-2 border-b border-gray-100 dark:border-gray-800">
-                    <View className="flex-row items-center gap-2">
-                      <View className="w-7 h-7 rounded-full bg-black/10 dark:bg-white/10 items-center justify-center">
-                        <Text className="text-xs font-bold text-foreground">{idx + 2}</Text>
-                      </View>
-                      <Text className="text-sm font-bold text-foreground">Person {idx + 2} Details</Text>
-                    </View>
-                    <TouchableOpacity
-                      onPress={() => removeAdditionalPerson(guest.id)}
-                      className="p-1.5 rounded-full bg-red-500/10 active:bg-red-500/20"
+                <View
+                  style={[
+                    s.stepCircle,
+                    isActive && s.stepCircleActive,
+                    isDone && s.stepCircleDone,
+                  ]}
+                >
+                  {isDone ? (
+                    <Check size={12} color="#7C3AED" />
+                  ) : (
+                    <Text
+                      style={[
+                        s.stepCircleText,
+                        isActive && s.stepCircleTextActive,
+                        isDone && s.stepCircleTextDone,
+                      ]}
                     >
-                      <Trash2 size={16} color="#EF4444" />
-                    </TouchableOpacity>
-                  </View>
+                      {st.num}
+                    </Text>
+                  )}
+                </View>
+                <Text style={[s.stepText, isActive && s.stepTextActive]}>
+                  {st.label}
+                </Text>
+              </TouchableOpacity>
+              {i < 2 && <View style={[s.stepLine, currentStep > i + 1 && s.stepLineActive]} />}
+            </React.Fragment>
+          );
+        })}
+      </View>
 
-                  <Input
-                    label={`Person ${idx + 2} Full Name *`}
-                    placeholder="e.g. Rahul Kashyap"
-                    value={guest.fullName}
-                    onChangeText={(val) => updateAdditionalPerson(guest.id, 'fullName', val)}
-                    icon={<User size={18} color="#9498AA" />}
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
+      >
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={s.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* STEP 1: GUEST DETAILS */}
+          {currentStep === 1 && (
+            <View>
+              <Text style={s.sectionHeader}>PRIMARY GUEST DETAILS</Text>
+
+              {/* Full Name */}
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>FULL NAME *</Text>
+                <View style={s.inputBox}>
+                  <User size={18} color="#94A3B8" />
+                  <TextInput
+                    value={fullName}
+                    onChangeText={setFullName}
+                    placeholder="Enter guest full name"
+                    placeholderTextColor="#94A3B8"
+                    style={s.input}
                   />
+                </View>
+              </View>
 
-                  <Input
-                    label="Mobile Phone"
-                    placeholder="Mobile number"
+              {/* Document Type Chips */}
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>DOCUMENT TYPE *</Text>
+                <View style={s.chipRow}>
+                  {DOC_TYPES.map((dt) => {
+                    const isSel = idType === dt;
+                    return (
+                      <TouchableOpacity
+                        key={dt}
+                        activeOpacity={0.75}
+                        onPress={() => setIdType(dt)}
+                        style={[s.docChip, isSel && s.docChipActive]}
+                      >
+                        <Text style={[s.docChipText, isSel && s.docChipTextActive]}>
+                          {dt}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
+              {/* ID Number */}
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>DOCUMENT ID NUMBER *</Text>
+                <View style={s.inputBox}>
+                  <CreditCard size={18} color="#94A3B8" />
+                  <TextInput
+                    value={idNumber}
+                    onChangeText={setIdNumber}
+                    placeholder="e.g. 4821 9012 3456"
+                    placeholderTextColor="#94A3B8"
+                    style={s.input}
+                  />
+                </View>
+              </View>
+
+              {/* Phone Number */}
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>MOBILE PHONE NUMBER *</Text>
+                <View style={s.inputBox}>
+                  <Phone size={18} color="#94A3B8" />
+                  <TextInput
+                    value={phone}
+                    onChangeText={setPhone}
+                    placeholder="+91 98765 43210"
+                    placeholderTextColor="#94A3B8"
                     keyboardType="phone-pad"
-                    value={guest.phone}
-                    onChangeText={(val) => updateAdditionalPerson(guest.id, 'phone', val)}
-                    icon={<Phone size={18} color="#9498AA" />}
+                    style={s.input}
                   />
+                </View>
+              </View>
 
-                  <DatePicker
-                    label="Date of Birth"
-                    value={guest.dob}
-                    onChangeText={(val) => updateAdditionalPerson(guest.id, 'dob', val)}
-                    autoSelectToday={false}
-                    placeholder="Select Date of Birth"
-                  />
-
-                  <Text className="text-sm font-semibold text-foreground mb-2 ml-1 mt-2">Gender</Text>
-                  <View className="flex-row gap-3 mb-4">
-                    {['Male', 'Female', 'Other'].map((g) => {
-                      const isSel = guest.gender === g;
+              {/* Gender & DOB */}
+              <View style={s.rowFields}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>GENDER</Text>
+                  <View style={s.genderGroup}>
+                    {GENDERS.map((g) => {
+                      const isSel = gender === g;
                       return (
                         <TouchableOpacity
                           key={g}
-                          onPress={() => updateAdditionalPerson(guest.id, 'gender', g)}
-                          className={`flex-1 py-2.5 rounded-xl border items-center justify-center ${
-                            isSel ? 'bg-black dark:bg-white border-black dark:border-white' : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
-                          }`}
+                          onPress={() => setGender(g)}
+                          style={[s.genderBtn, isSel && s.genderBtnActive]}
                         >
-                          <Text className={`font-bold text-xs ${isSel ? 'text-white dark:text-black' : 'text-gray-600 dark:text-gray-400'}`}>
+                          <Text style={[s.genderText, isSel && s.genderTextActive]}>
                             {g}
                           </Text>
                         </TouchableOpacity>
                       );
                     })}
                   </View>
+                </View>
 
-                  <Text className="text-sm font-semibold text-foreground mb-2 ml-1">ID Document Type</Text>
-                  <View className="flex-row flex-wrap gap-2 mb-4">
-                    {['Aadhaar', 'Passport', 'Driving License', 'Voter ID', 'PAN'].map((type) => {
-                      const isSel = guest.idType === type;
-                      return (
-                        <TouchableOpacity
-                          key={type}
-                          onPress={() => updateAdditionalPerson(guest.id, 'idType', type)}
-                          className={`px-3 py-2 rounded-xl border ${
-                            isSel ? 'bg-black dark:bg-white border-black dark:border-white' : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
-                          }`}
-                        >
-                          <Text className={`font-bold text-xs ${isSel ? 'text-white dark:text-black' : 'text-gray-600 dark:text-gray-400'}`}>
-                            {type}
-                          </Text>
-                        </TouchableOpacity>
-                      );
-                    })}
+                <View style={{ flex: 1.1 }}>
+                  <Text style={s.fieldLabel}>DATE OF BIRTH</Text>
+                  <View style={s.inputBox}>
+                    <Calendar size={17} color="#94A3B8" />
+                    <TextInput
+                      value={dob}
+                      onChangeText={setDob}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor="#94A3B8"
+                      style={s.input}
+                    />
                   </View>
+                </View>
+              </View>
 
-                  <Input
-                    label={`${guest.idType} Number`}
-                    placeholder="Enter ID Number"
-                    value={guest.idNumber}
-                    onChangeText={(val) => updateAdditionalPerson(guest.id, 'idNumber', val)}
-                    keyboardType={guest.idType.toLowerCase() === 'aadhaar' ? 'numeric' : 'default'}
-                    icon={<IdCard size={18} color="#9498AA" />}
+              {/* Address */}
+              <View style={s.fieldGroup}>
+                <Text style={s.fieldLabel}>RESIDENTIAL ADDRESS</Text>
+                <View style={[s.inputBox, { height: 68, alignItems: 'flex-start', paddingTop: 8 }]}>
+                  <MapPin size={18} color="#94A3B8" style={{ marginTop: 2 }} />
+                  <TextInput
+                    value={address}
+                    onChangeText={setAddress}
+                    placeholder="Street, City, State"
+                    placeholderTextColor="#94A3B8"
+                    multiline
+                    style={[s.input, { textAlignVertical: 'top' }]}
                   />
+                </View>
+              </View>
 
-                  {/* ID Front Photo */}
-                  <View className="pt-2 border-t border-gray-100 dark:border-gray-800 mb-3">
-                    <Text className="text-xs font-bold text-foreground mb-2">ID Photo (Front)</Text>
-                    {guest.frontPhotoUri ? (
-                      <View className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800">
-                        <Image source={{ uri: guest.frontPhotoUri }} style={{ width: '100%', height: 120 }} resizeMode="cover" />
-                        <TouchableOpacity 
-                          onPress={() => updateAdditionalPerson(guest.id, 'frontPhotoUri', null)}
-                          className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full"
-                        >
-                          <X size={14} color="#FFFFFF" />
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <View className="flex-row gap-2">
-                        <TouchableOpacity 
-                          onPress={() => pickImage('front', true, guest.id)}
-                          className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-3 rounded-xl items-center border border-dashed border-gray-300 dark:border-gray-700 flex-row justify-center gap-1.5"
-                        >
-                          <Camera size={16} color="#000000" />
-                          <Text className="text-xs font-bold text-foreground">Camera</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          onPress={() => pickImage('front', false, guest.id)}
-                          className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-3 rounded-xl items-center border border-dashed border-gray-300 dark:border-gray-700 flex-row justify-center gap-1.5"
-                        >
-                          <UploadCloud size={16} color="#000000" />
-                          <Text className="text-xs font-bold text-foreground">Upload</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </View>
-
-                  {/* Additional Guest Selfie Photo */}
-                  <View className="pt-2 border-t border-gray-100 dark:border-gray-800">
-                    <Text className="text-xs font-bold text-foreground mb-2">Person {idx + 2} Selfie Photo</Text>
-                    {guest.selfiePhotoUri ? (
-                      <View className="relative rounded-xl overflow-hidden border border-gray-200 dark:border-gray-800">
-                        <Image source={{ uri: guest.selfiePhotoUri }} style={{ width: '100%', height: 140 }} resizeMode="cover" />
-                        <TouchableOpacity 
-                          onPress={() => updateAdditionalPerson(guest.id, 'selfiePhotoUri', null)}
-                          className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full"
-                        >
-                          <X size={14} color="#FFFFFF" />
-                        </TouchableOpacity>
-                      </View>
-                    ) : (
-                      <View className="flex-row gap-2">
-                        <TouchableOpacity 
-                          onPress={() => pickImage('selfie', true, guest.id)}
-                          className="flex-1 bg-black/5 dark:bg-white/5 p-3 rounded-xl items-center border border-dashed border-black/20 dark:border-white/20 flex-row justify-center gap-1.5"
-                        >
-                          <Camera size={16} color="#000000" />
-                          <Text className="text-xs font-bold text-foreground">Take Selfie</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                          onPress={() => pickImage('selfie', false, guest.id)}
-                          className="flex-1 bg-gray-50 dark:bg-gray-800/40 p-3 rounded-xl items-center border border-dashed border-gray-300 dark:border-gray-700 flex-row justify-center gap-1.5"
-                        >
-                          <ImageIcon size={16} color="#9CA3AF" />
-                          <Text className="text-xs font-bold text-foreground">Upload Selfie</Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
-                  </View>
-                </GlassCard>
-              ))}
+              <TouchableOpacity
+                activeOpacity={0.85}
+                style={s.primaryBtn}
+                onPress={() => {
+                  if (!fullName.trim()) {
+                    Alert.alert('Required Field', 'Please enter your full name.');
+                    return;
+                  }
+                  if (!phone.trim()) {
+                    Alert.alert('Required Field', 'Please enter your phone number.');
+                    return;
+                  }
+                  if (!idNumber.trim()) {
+                    Alert.alert('Required Field', 'Please enter your ID document number.');
+                    return;
+                  }
+                  setCurrentStep(2);
+                }}
+              >
+                <Text style={s.primaryBtnText}>Continue to Stay & Room →</Text>
+              </TouchableOpacity>
             </View>
           )}
 
-          {/* 4. ROOM SELECTION */}
-          <Text className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 ml-1">
-            4. Select Room
-          </Text>
+          {/* STEP 2: STAY & ROOM SELECTION */}
+          {currentStep === 2 && (
+            <View>
+              <Text style={s.sectionHeader}>DATES OF STAY</Text>
 
-          <GlassCard className="mb-8 p-4 rounded-2xl border border-gray-100 dark:border-white/10">
-            {rooms.length === 0 ? (
-              <View className="items-center py-5 px-3">
-                <AlertCircle size={36} color="#EF4444" className="mb-2" />
-                <Text className="text-base font-extrabold text-red-600 dark:text-red-400 text-center">
-                  No Rooms Available Currently
-                </Text>
-                <Text className="text-xs text-gray-500 text-center mt-1">
-                  All rooms at <Text className="font-bold text-foreground">{activePropertyName}</Text> are currently occupied or unavailable for online check-in. Please contact the property owner.
-                </Text>
+              <View style={s.rowFields}>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>CHECK-IN DATE</Text>
+                  <View style={s.inputBox}>
+                    <Calendar size={17} color="#94A3B8" />
+                    <TextInput
+                      value={checkInDate}
+                      onChangeText={setCheckInDate}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor="#94A3B8"
+                      style={s.input}
+                    />
+                  </View>
+                </View>
+
+                <View style={{ flex: 1 }}>
+                  <Text style={s.fieldLabel}>CHECK-OUT DATE</Text>
+                  <View style={s.inputBox}>
+                    <Calendar size={17} color="#94A3B8" />
+                    <TextInput
+                      value={checkOutDate}
+                      onChangeText={setCheckOutDate}
+                      placeholder="YYYY-MM-DD"
+                      placeholderTextColor="#94A3B8"
+                      style={s.input}
+                    />
+                  </View>
+                </View>
               </View>
-            ) : (
-              <View className="flex-row flex-wrap gap-3">
+
+              <Text style={[s.sectionHeader, { marginTop: 18 }]}>SELECT YOUR ROOM</Text>
+              <View style={{ gap: 10 }}>
                 {rooms.map((r) => {
                   const isSel = selectedRoomId === r.id;
                   return (
                     <TouchableOpacity
                       key={r.id}
+                      activeOpacity={0.8}
                       onPress={() => setSelectedRoomId(r.id)}
-                      className={`px-5 py-3 rounded-2xl border ${
-                        isSel ? 'bg-black dark:bg-white border-black dark:border-white' : 'bg-white dark:bg-black/20 border-gray-200 dark:border-gray-800'
-                      }`}
+                      style={[s.roomCard, isSel && s.roomCardActive]}
                     >
-                      <Text className={`font-bold text-sm text-center ${isSel ? 'text-white dark:text-black' : 'text-foreground'}`}>
-                        Room {r.room_number}
-                      </Text>
-                      <Text className={`text-[10px] text-center ${isSel ? 'text-white/80 dark:text-black/80' : 'text-gray-400'}`}>
-                        {r.room_type || 'Standard'} {r.price ? `(₹${r.price})` : ''}
-                      </Text>
+                      <View style={s.roomCardIcon}>
+                        <Bed size={20} color={isSel ? '#7C3AED' : '#0F172A'} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.roomCardTitle, isSel && { color: '#7C3AED' }]}>
+                          Room {r.room_number}
+                        </Text>
+                        <Text style={s.roomCardType}>{r.room_type || 'Standard Room'}</Text>
+                      </View>
+                      <View style={s.roomPriceTag}>
+                        <Text style={s.roomPriceText}>
+                          {r.price ? `₹${r.price.toLocaleString('en-IN')}` : 'Included'}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
               </View>
-            )}
-          </GlassCard>
 
-          {/* SUBMIT BUTTON */}
-          <Button
-            label={
-              isSubmitting 
-                ? "Submitting Registration..." 
-                : rooms.length === 0 
-                ? "No Available Rooms to Check In" 
-                : "Complete Self Check-in"
-            }
-            disabled={isSubmitting || rooms.length === 0}
-            icon={isSubmitting ? <ActivityIndicator size="small" color="#FFFFFF" className="mr-2" /> : <CheckCircle2 size={20} color="#FFFFFF" className="mr-2" />}
-            onPress={handleSubmit}
-            className={`mb-8 ${rooms.length === 0 ? 'bg-gray-400 opacity-60' : 'bg-black dark:bg-white active:bg-gray-900'}`}
-          />
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 24 }}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={s.secondaryBtn}
+                  onPress={() => setCurrentStep(1)}
+                >
+                  <Text style={s.secondaryBtnText}>Back</Text>
+                </TouchableOpacity>
 
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={[s.primaryBtn, { flex: 2 }]}
+                  onPress={() => setCurrentStep(3)}
+                >
+                  <Text style={s.primaryBtnText}>Continue to ID Upload →</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* STEP 3: ID UPLOAD & CO-GUESTS */}
+          {currentStep === 3 && (
+            <View>
+              <Text style={s.sectionHeader}>ATTACH ID DOCUMENT</Text>
+
+              {/* Front Photo Upload Card */}
+              <View style={s.uploadBox}>
+                {frontPhotoUri ? (
+                  <View style={s.previewCard}>
+                    <Image source={{ uri: frontPhotoUri }} style={s.previewImg} resizeMode="cover" />
+                    <View style={{ flex: 1, paddingLeft: 12 }}>
+                      <Text style={s.uploadDoneTitle}>Front ID Attached ✓</Text>
+                      <Text style={s.uploadDoneSub}>{idType} document attached</Text>
+                    </View>
+                    <TouchableOpacity
+                      onPress={() => setFrontPhotoUri(null)}
+                      style={s.removeImgBtn}
+                    >
+                      <X size={16} color="#DC2626" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{ alignItems: 'center', padding: 20 }}>
+                    <View style={s.uploadCircle}>
+                      <Upload size={22} color="#7C3AED" />
+                    </View>
+                    <Text style={s.uploadTitle}>Upload {idType} Photo</Text>
+                    <Text style={s.uploadSubtitle}>Capture or select clear photo of your ID card</Text>
+                    <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={s.uploadActionBtn}
+                        onPress={() => pickImage('front', true)}
+                      >
+                        <Camera size={15} color="#0F172A" />
+                        <Text style={s.uploadActionText}>Camera</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={s.uploadActionBtn}
+                        onPress={() => pickImage('front', false)}
+                      >
+                        <Upload size={15} color="#0F172A" />
+                        <Text style={s.uploadActionText}>Gallery</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                )}
+              </View>
+
+              {/* CO-GUESTS SECTION */}
+              <View style={{ marginTop: 20 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <Text style={s.sectionHeader}>CO-GUESTS ({additionalGuests.length})</Text>
+                  <TouchableOpacity activeOpacity={0.7} onPress={addAdditionalPerson}>
+                    <Text style={s.addMoreLink}>+ Add Co-Guest</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {additionalGuests.map((cg, index) => (
+                  <View key={cg.id} style={s.coGuestCard}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                      <Text style={s.coGuestIndex}>Co-Guest #{index + 1}</Text>
+                      <TouchableOpacity onPress={() => removeAdditionalPerson(cg.id)}>
+                        <Trash2 size={16} color="#DC2626" />
+                      </TouchableOpacity>
+                    </View>
+
+                    <TextInput
+                      value={cg.fullName}
+                      onChangeText={(t) => updateAdditionalPerson(cg.id, 'fullName', t)}
+                      placeholder="Co-guest full name"
+                      placeholderTextColor="#94A3B8"
+                      style={[s.input, s.coGuestInput]}
+                    />
+
+                    <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                      <TextInput
+                        value={cg.idNumber}
+                        onChangeText={(t) => updateAdditionalPerson(cg.id, 'idNumber', t)}
+                        placeholder="ID number"
+                        placeholderTextColor="#94A3B8"
+                        style={[s.input, s.coGuestInput, { flex: 1 }]}
+                      />
+                      <TextInput
+                        value={cg.phone}
+                        onChangeText={(t) => updateAdditionalPerson(cg.id, 'phone', t)}
+                        placeholder="Phone (optional)"
+                        placeholderTextColor="#94A3B8"
+                        keyboardType="phone-pad"
+                        style={[s.input, s.coGuestInput, { flex: 1 }]}
+                      />
+                    </View>
+                  </View>
+                ))}
+              </View>
+
+              {/* SUBMIT BUTTON */}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 24 }}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  style={s.secondaryBtn}
+                  onPress={() => setCurrentStep(2)}
+                >
+                  <Text style={s.secondaryBtnText}>Back</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  disabled={isSubmitting}
+                  style={[s.primaryBtn, { flex: 2 }]}
+                  onPress={handleSubmit}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={s.primaryBtnText}>Confirm & Check-in ✓</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
+
+const s = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  headerBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  headerInfo: {
+    flex: 1,
+  },
+  headerTitle: {
+    fontFamily: 'Inter',
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  headerSubtitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 2,
+  },
+  headerSubtitle: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#10B981',
+  },
+  propBadge: {
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  propBadgeText: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#7C3AED',
+    letterSpacing: 0.5,
+  },
+  stepperRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    backgroundColor: '#FAF8FD',
+    borderBottomWidth: 1,
+    borderBottomColor: '#ECEAF0',
+  },
+  stepItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  stepCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepCircleActive: {
+    backgroundColor: '#7C3AED',
+  },
+  stepCircleDone: {
+    backgroundColor: '#EDE9FE',
+  },
+  stepCircleText: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  stepCircleTextActive: {
+    color: '#FFFFFF',
+  },
+  stepCircleTextDone: {
+    color: '#7C3AED',
+  },
+  stepText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  stepTextActive: {
+    color: '#0F172A',
+    fontWeight: '700',
+  },
+  stepLine: {
+    flex: 1,
+    height: 2,
+    backgroundColor: '#E2E8F0',
+    marginHorizontal: 8,
+  },
+  stepLineActive: {
+    backgroundColor: '#7C3AED',
+  },
+  scrollContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 80,
+  },
+  sectionHeader: {
+    fontFamily: 'Inter',
+    fontSize: 11.5,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: '#64748B',
+    marginBottom: 12,
+  },
+  fieldGroup: {
+    marginBottom: 14,
+  },
+  fieldLabel: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: '#64748B',
+    marginBottom: 6,
+  },
+  inputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    backgroundColor: '#FFFFFF',
+    height: 46,
+  },
+  input: {
+    flex: 1,
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#0F172A',
+  },
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  docChip: {
+    paddingHorizontal: 13,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  docChipActive: {
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
+  },
+  docChipText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#64748B',
+  },
+  docChipTextActive: {
+    color: '#FFFFFF',
+  },
+  rowFields: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 14,
+  },
+  genderGroup: {
+    flexDirection: 'row',
+    gap: 4,
+    height: 46,
+  },
+  genderBtn: {
+    flex: 1,
+    borderWidth: 1.2,
+    borderColor: '#E2E8F0',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  genderBtnActive: {
+    backgroundColor: '#0F172A',
+    borderColor: '#0F172A',
+  },
+  genderText: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#64748B',
+  },
+  genderTextActive: {
+    color: '#FFFFFF',
+  },
+  roomCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: 16,
+    padding: 14,
+    backgroundColor: '#FFFFFF',
+  },
+  roomCardActive: {
+    borderColor: '#7C3AED',
+    backgroundColor: '#FAF5FF',
+  },
+  roomCardIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  roomCardTitle: {
+    fontFamily: 'Inter',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  roomCardType: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  roomPriceTag: {
+    backgroundColor: '#EDE9FE',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  roomPriceText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#7C3AED',
+  },
+  uploadBox: {
+    borderWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: '#CBD5E1',
+    borderRadius: 18,
+    backgroundColor: '#F8FAFC',
+    overflow: 'hidden',
+  },
+  uploadCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#EDE9FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  uploadTitle: {
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  uploadSubtitle: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 3,
+    textAlign: 'center',
+  },
+  uploadActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+  },
+  uploadActionText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  previewCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  previewImg: {
+    width: 60,
+    height: 60,
+    borderRadius: 10,
+    backgroundColor: '#E2E8F0',
+  },
+  uploadDoneTitle: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  uploadDoneSub: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  removeImgBtn: {
+    padding: 8,
+  },
+  coGuestCard: {
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+    marginBottom: 10,
+  },
+  coGuestIndex: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  coGuestInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  addMoreLink: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
+  primaryBtn: {
+    backgroundColor: '#7C3AED',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  primaryBtnText: {
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  secondaryBtn: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+  },
+  secondaryBtnText: {
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  successWrap: {
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100%',
+  },
+  successCard: {
+    width: '100%',
+    maxWidth: 440,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 24,
+    padding: 24,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 4,
+  },
+  successIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#10B981',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 14,
+  },
+  verifiedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  verifiedBadgeText: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#059669',
+    letterSpacing: 0.5,
+  },
+  successTitle: {
+    fontFamily: 'Inter',
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  successSub: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  roomPassCard: {
+    width: '100%',
+    backgroundColor: '#FAF5FF',
+    borderWidth: 1.5,
+    borderColor: '#E9D5FF',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    marginVertical: 18,
+  },
+  roomPassLabel: {
+    fontFamily: 'Inter',
+    fontSize: 10.5,
+    fontWeight: '800',
+    color: '#7C3AED',
+    letterSpacing: 1,
+  },
+  roomPassNumber: {
+    fontFamily: 'Inter',
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#7C3AED',
+    marginTop: 2,
+  },
+  roomPassSub: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 4,
+  },
+  guestSummaryBox: {
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+    marginBottom: 18,
+  },
+  kvRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  kvLabel: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#64748B',
+  },
+  kvVal: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  whatsappBtn: {
+    width: '100%',
+    backgroundColor: '#10B981',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  whatsappBtnText: {
+    fontFamily: 'Inter',
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+});

@@ -67,7 +67,7 @@ export function SelfCheckinQrModal({ visible, onClose }: SelfCheckinQrModalProps
   const qrImageUrl =
     qrBase64 ||
     `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(
-      shareUrl || 'https://staymate.co.in/self-checkin'
+      shareUrl || 'https://staymate-co.vercel.app/self-checkin'
     )}`;
 
   const handleCopyLink = async () => {
@@ -81,7 +81,7 @@ export function SelfCheckinQrModal({ visible, onClose }: SelfCheckinQrModalProps
   };
 
   const handleShareWhatsApp = async () => {
-    const message = `🏡 *Welcome to ${activePropertyName}!*\n\nPlease complete your quick guest registration & check-in online before arrival:\n🔗 ${shareUrl}\n\nWe look forward to hosting you!`;
+    const message = `*Welcome to ${activePropertyName}!*\n\nPlease complete your quick guest registration & check-in online before arrival:\n${shareUrl}\n\nWe look forward to hosting you!`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
 
     try {
