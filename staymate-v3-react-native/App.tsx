@@ -821,6 +821,19 @@ function GuestSheet({
   onClose: () => void;
 }) {
   const g = guests.find((x) => x.id === id) || GUESTS.find((x) => x.id === id) || GUESTS[0];
+  const [photoTab, setPhotoTab] = useState<'front' | 'back' | 'selfie'>('front');
+  const [showFullDetails, setShowFullDetails] = useState(false);
+
+  const frontPic = g.frontPhotoUri || g.photoUri || g.photo || null;
+  const backPic = g.backPhotoUri || g.backPhoto || null;
+  const selfiePic = g.selfieUri || g.selfie || null;
+
+  const currentPhoto =
+    photoTab === 'front'
+      ? frontPic || backPic || selfiePic
+      : photoTab === 'back'
+      ? backPic || frontPic || selfiePic
+      : selfiePic || frontPic || backPic;
 
   const handleContact = async () => {
     if (!g.phone) {
@@ -843,6 +856,236 @@ function GuestSheet({
     }
   };
 
+  // FULL DETAILS COMPREHENSIVE VIEW
+  if (showFullDetails) {
+    return (
+      <ScrollView
+        contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 28}}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Navigation Header */}
+        <View style={ms.sheetHeaderBar}>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => setShowFullDetails(false)}
+            style={ms.sheetBackBtn}
+          >
+            <Icon name="chevronLeft" size={18} color={C.ink}/>
+          </TouchableOpacity>
+          <Text style={ms.sheetHeaderTitle}>Full Guest Details</Text>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={onClose}
+            style={ms.sheetCloseBtnRelative}
+          >
+            <Icon name="x" size={16} color={C.ink}/>
+          </TouchableOpacity>
+        </View>
+
+        {/* Guest Name & Status Card */}
+        <View style={[ms.card, {padding: 16, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 14}]}>
+          <View style={ms.avatarLarge}>
+            <Text style={ms.avatarLargeText}>
+              {g.name ? g.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'GS'}
+            </Text>
+          </View>
+          <View style={{flex: 1}}>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+              <Text style={[ms.titleMd, {fontSize: 17, fontWeight: '700'}]}>{g.name}</Text>
+              {g.verified ? <Icon name="check" size={16} color={C.emerald}/> : null}
+            </View>
+            <Text style={[ms.bodySm, {marginTop: 2, color: C.primary, fontWeight: '600'}]}>
+              Room {g.room} · {g.roomType || 'Standard'}
+            </Text>
+            <Text style={[ms.bodySm, {marginTop: 1}]}>
+              {g.verified ? 'Verified Registration' : 'Pending Verification'}
+            </Text>
+          </View>
+        </View>
+
+        {/* ALL DOCUMENT IMAGES SECTION */}
+        <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
+          DOCUMENT & VERIFICATION IMAGES
+        </Text>
+        
+        {/* Photo Switcher Tabs */}
+        <View style={{flexDirection: 'row', gap: 6, marginBottom: 10}}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setPhotoTab('front')}
+            style={[
+              ms.chipLight,
+              {flex: 1, alignItems: 'center', justifyContent: 'center'},
+              photoTab === 'front' && {backgroundColor: C.primary, borderColor: C.primary},
+            ]}
+          >
+            <Text style={photoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 12} : ms.chipLightText}>
+              Front ID
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setPhotoTab('back')}
+            style={[
+              ms.chipLight,
+              {flex: 1, alignItems: 'center', justifyContent: 'center'},
+              photoTab === 'back' && {backgroundColor: C.primary, borderColor: C.primary},
+            ]}
+          >
+            <Text style={photoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 12} : ms.chipLightText}>
+              Back ID
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setPhotoTab('selfie')}
+            style={[
+              ms.chipLight,
+              {flex: 1, alignItems: 'center', justifyContent: 'center'},
+              photoTab === 'selfie' && {backgroundColor: C.primary, borderColor: C.primary},
+            ]}
+          >
+            <Text style={photoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 12} : ms.chipLightText}>
+              Live Selfie
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Active Photo Container */}
+        {currentPhoto ? (
+          <View style={{borderRadius: 16, overflow: 'hidden', height: 230, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+            <Image source={{ uri: currentPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+            <View style={{position: 'absolute', bottom: 8, left: 10, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6}}>
+              <Text style={{color: '#FFFFFF', fontSize: 11, fontWeight: '700'}}>
+                {photoTab === 'front' ? 'ID Document (Front Side)' : photoTab === 'back' ? 'ID Document (Back Side)' : 'Live Guest Photo'}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <View style={{padding: 20, backgroundColor: '#FAF8FD', borderRadius: 16, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+            <Icon name="shield" size={24} color={C.primary} />
+            <Text style={[ms.titleSm, {marginTop: 6}]}>{g.type || 'ID Card'} Verified</Text>
+            <Text style={ms.bodySm}>Digital compliance entry on file</Text>
+          </View>
+        )}
+
+        {/* Complete Identification Card */}
+        <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+          PRIMARY IDENTITY DETAILS
+        </Text>
+        <View style={[ms.card, {padding: 14, gap: 10}]}>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Full Legal Name</Text>
+            <Text style={[ms.titleSm, {fontWeight: '700'}]}>{g.name}</Text>
+          </View>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Document Type</Text>
+            <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>{g.type || 'Aadhaar Card'}</Text>
+          </View>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Document ID Number</Text>
+            <Text style={[ms.titleSm, {fontFamily: 'monospace', fontWeight: '700', color: '#0F172A'}]}>{g.idNum || '4821 9012 3456'}</Text>
+          </View>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Nationality</Text>
+            <Text style={ms.titleSm}>{g.nat || 'Indian'}</Text>
+          </View>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Gender</Text>
+            <Text style={ms.titleSm}>{g.gender || '—'}</Text>
+          </View>
+          {g.dob ? (
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Date of Birth</Text>
+              <Text style={ms.titleSm}>{g.dob}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        {/* Contact & Address Card */}
+        <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+          CONTACT & RESIDENTIAL ADDRESS
+        </Text>
+        <View style={[ms.card, {padding: 14, gap: 10}]}>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Mobile Phone</Text>
+            <Text style={[ms.titleSm, {fontWeight: '700', color: C.primary}]}>{g.phone || '—'}</Text>
+          </View>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Email Address</Text>
+            <Text style={ms.titleSm}>{g.email || '—'}</Text>
+          </View>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Permanent Address</Text>
+            <Text style={[ms.titleSm, {flex: 1, textAlign: 'right', marginLeft: 16}]}>{g.address || '—'}</Text>
+          </View>
+        </View>
+
+        {/* Stay & Room Card */}
+        <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+          STAY & ROOM ACCOMMODATION
+        </Text>
+        <View style={[ms.card, {padding: 14, gap: 10}]}>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Assigned Room</Text>
+            <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>Room {g.room}</Text>
+          </View>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Room Category</Text>
+            <Text style={ms.titleSm}>{g.roomType || 'Standard'}</Text>
+          </View>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Check-in Date & Time</Text>
+            <Text style={[ms.titleSm, {color: '#059669', fontWeight: '700'}]}>{g.checkIn || (g.time ? `20 Aug 2026, ${g.time}` : '20 Aug 2026, 09:42 AM')}</Text>
+          </View>
+          <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+            <Text style={ms.bodySm}>Check-out Date & Time</Text>
+            <Text style={[ms.titleSm, {color: '#64748B', fontWeight: '700'}]}>{g.checkOut || 'Active Stay'}</Text>
+          </View>
+        </View>
+
+        {/* Co-Guests Section */}
+        {g.additionalGuests && g.additionalGuests.length > 0 && (
+          <View style={{marginTop: 18}}>
+            <Text style={[ms.sectionCaption, {marginBottom: 8}]}>
+              ACCOMPANYING CO-GUESTS ({g.additionalGuests.length})
+            </Text>
+            {g.additionalGuests.map((cg: any, idx: number) => (
+              <View key={idx} style={[ms.card, {marginBottom: 8, padding: 14}]}>
+                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <Text style={[ms.titleSm, {fontWeight: '700'}]}>{cg.full_name || cg.name || cg.fullName}</Text>
+                  <View style={ms.badgeSoft}>
+                    <Text style={ms.badgeSoftText}>{cg.relation || 'Co-Guest'}</Text>
+                  </View>
+                </View>
+                <Text style={[ms.bodySm, {marginTop: 4}]}>
+                  {cg.id_type || cg.idType || 'ID'}: <Text style={{fontFamily: 'monospace', fontWeight: '600'}}>{cg.id_number || cg.idNumber || '—'}</Text>
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Actions */}
+        <View style={{flexDirection: 'row', gap: 10, marginTop: 22}}>
+          <SecondaryButton
+            label="Back to Summary"
+            icon="chevronLeft"
+            style={{flex: 1}}
+            onPress={() => setShowFullDetails(false)}
+          />
+          <PrimaryButton
+            label="Contact Guest"
+            icon="phone"
+            style={{flex: 1}}
+            onPress={handleContact}
+          />
+        </View>
+      </ScrollView>
+    );
+  }
+
+  // STANDARD SUMMARY VIEW
   return (
     <ScrollView
       contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 28}}
@@ -866,13 +1109,63 @@ function GuestSheet({
         </View>
       </View>
 
+      {/* Photo Selector Switcher */}
+      {(frontPic || backPic || selfiePic) && (
+        <View style={{flexDirection: 'row', gap: 6, marginBottom: 8}}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setPhotoTab('front')}
+            style={[
+              ms.chipLight,
+              {flex: 1, alignItems: 'center', justifyContent: 'center'},
+              photoTab === 'front' && {backgroundColor: C.primary, borderColor: C.primary},
+            ]}
+          >
+            <Text style={photoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+              Front ID
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setPhotoTab('back')}
+            style={[
+              ms.chipLight,
+              {flex: 1, alignItems: 'center', justifyContent: 'center'},
+              photoTab === 'back' && {backgroundColor: C.primary, borderColor: C.primary},
+            ]}
+          >
+            <Text style={photoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+              Back ID
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setPhotoTab('selfie')}
+            style={[
+              ms.chipLight,
+              {flex: 1, alignItems: 'center', justifyContent: 'center'},
+              photoTab === 'selfie' && {backgroundColor: C.primary, borderColor: C.primary},
+            ]}
+          >
+            <Text style={photoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+              Live Photo
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Photo / ID Section */}
-      {g.photoUri || g.photo ? (
-        <View style={{marginVertical: 14, borderRadius: 16, overflow: 'hidden', height: 200, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0'}}>
-          <Image source={{ uri: g.photoUri || g.photo }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+      {currentPhoto ? (
+        <View style={{marginVertical: 6, borderRadius: 16, overflow: 'hidden', height: 200, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+          <Image source={{ uri: currentPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+          <View style={{position: 'absolute', bottom: 8, left: 10, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6}}>
+            <Text style={{color: '#FFFFFF', fontSize: 11, fontWeight: '700'}}>
+              {photoTab === 'front' ? 'Front Side ID' : photoTab === 'back' ? 'Back Side ID' : 'Live Selfie'}
+            </Text>
+          </View>
         </View>
       ) : (
-        <View style={{marginVertical: 12, padding: 12, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', flexDirection: 'row', alignItems: 'center', gap: 10}}>
+        <View style={{marginVertical: 10, padding: 12, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', flexDirection: 'row', alignItems: 'center', gap: 10}}>
           <View style={{width: 36, height: 36, borderRadius: 18, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center'}}>
             <Icon name="shield" size={18} color={C.primary} />
           </View>
@@ -882,6 +1175,33 @@ function GuestSheet({
           </View>
         </View>
       )}
+
+      {/* View Full Details Button */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={() => setShowFullDetails(true)}
+        style={{
+          marginTop: 10,
+          marginBottom: 12,
+          paddingVertical: 11,
+          paddingHorizontal: 14,
+          borderRadius: 12,
+          backgroundColor: '#F3E8FF',
+          borderWidth: 1,
+          borderColor: '#E9D5FF',
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+          <Icon name="file" size={17} color={C.primary} />
+          <Text style={{fontFamily: 'Inter', fontSize: 13.5, fontWeight: '700', color: C.primary}}>
+            View Full Guest & Document Details
+          </Text>
+        </View>
+        <Icon name="chevronRight" size={16} color={C.primary} />
+      </TouchableOpacity>
 
       {/* Details table */}
       <View style={ms.metaCard}>
@@ -1243,7 +1563,252 @@ function SelfCheckins({
     onReject(g);
   };
 
+  const [reviewPhotoTab, setReviewPhotoTab] = useState<'front' | 'back' | 'selfie'>('front');
+  const [showReviewFullDetails, setShowReviewFullDetails] = useState(false);
+
   if (reviewGuest) {
+    const frontPic = reviewGuest.frontPhotoUri || reviewGuest.photo_uri || reviewGuest.photoUri || null;
+    const backPic = reviewGuest.backPhotoUri || reviewGuest.back_photo_uri || null;
+    const selfiePic = reviewGuest.selfieUri || reviewGuest.selfie_uri || null;
+
+    const currentReviewPhoto =
+      reviewPhotoTab === 'front'
+        ? frontPic || backPic || selfiePic
+        : reviewPhotoTab === 'back'
+        ? backPic || frontPic || selfiePic
+        : selfiePic || frontPic || backPic;
+
+    // FULL DETAILS COMPREHENSIVE VIEW FOR ONLINE CHECK-IN
+    if (showReviewFullDetails) {
+      return (
+        <ScrollView
+          contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 28}}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Navigation Header */}
+          <View style={ms.sheetHeaderBar}>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => setShowReviewFullDetails(false)}
+              style={ms.sheetBackBtn}
+            >
+              <Icon name="chevronLeft" size={18} color={C.ink}/>
+            </TouchableOpacity>
+            <Text style={ms.sheetHeaderTitle}>Full Submission Details</Text>
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                setShowReviewFullDetails(false);
+                setReviewGuest(null);
+              }}
+              style={ms.sheetCloseBtnRelative}
+            >
+              <Icon name="x" size={16} color={C.ink}/>
+            </TouchableOpacity>
+          </View>
+
+          {/* Guest Name & Status Card */}
+          <View style={[ms.card, {padding: 16, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 14}]}>
+            <View style={ms.avatarLarge}>
+              <Text style={ms.avatarLargeText}>
+                {reviewGuest.name ? reviewGuest.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'GS'}
+              </Text>
+            </View>
+            <View style={{flex: 1}}>
+              <Text style={[ms.titleMd, {fontSize: 17, fontWeight: '700'}]}>{reviewGuest.name}</Text>
+              <Text style={[ms.bodySm, {marginTop: 2, color: C.primary, fontWeight: '600'}]}>
+                Assigned Room {reviewGuest.room}
+              </Text>
+              <Text style={[ms.bodySm, {marginTop: 1}]}>
+                Submitted online · {reviewGuest.submitted || 'Just now'}
+              </Text>
+            </View>
+          </View>
+
+          {/* ALL DOCUMENT IMAGES SECTION */}
+          <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
+            DOCUMENT & VERIFICATION IMAGES
+          </Text>
+          
+          {/* Photo Switcher Tabs */}
+          <View style={{flexDirection: 'row', gap: 6, marginBottom: 10}}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setReviewPhotoTab('front')}
+              style={[
+                ms.chipLight,
+                {flex: 1, alignItems: 'center', justifyContent: 'center'},
+                reviewPhotoTab === 'front' && {backgroundColor: C.primary, borderColor: C.primary},
+              ]}
+            >
+              <Text style={reviewPhotoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 12} : ms.chipLightText}>
+                Front ID
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setReviewPhotoTab('back')}
+              style={[
+                ms.chipLight,
+                {flex: 1, alignItems: 'center', justifyContent: 'center'},
+                reviewPhotoTab === 'back' && {backgroundColor: C.primary, borderColor: C.primary},
+              ]}
+            >
+              <Text style={reviewPhotoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 12} : ms.chipLightText}>
+                Back ID
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setReviewPhotoTab('selfie')}
+              style={[
+                ms.chipLight,
+                {flex: 1, alignItems: 'center', justifyContent: 'center'},
+                reviewPhotoTab === 'selfie' && {backgroundColor: C.primary, borderColor: C.primary},
+              ]}
+            >
+              <Text style={reviewPhotoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 12} : ms.chipLightText}>
+                Live Selfie
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Active Photo Container */}
+          {currentReviewPhoto ? (
+            <View style={{borderRadius: 16, overflow: 'hidden', height: 230, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+              <Image source={{ uri: currentReviewPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+              <View style={{position: 'absolute', bottom: 8, left: 10, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6}}>
+                <Text style={{color: '#FFFFFF', fontSize: 11, fontWeight: '700'}}>
+                  {reviewPhotoTab === 'front' ? 'ID Document (Front Side)' : reviewPhotoTab === 'back' ? 'ID Document (Back Side)' : 'Live Guest Photo'}
+                </Text>
+              </View>
+            </View>
+          ) : (
+            <View style={{padding: 20, backgroundColor: '#FAF8FD', borderRadius: 16, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+              <Icon name="shield" size={24} color={C.primary} />
+              <Text style={[ms.titleSm, {marginTop: 6}]}>{reviewGuest.doc || 'ID Document'}</Text>
+              <Text style={ms.bodySm}>Digital self check-in registration</Text>
+            </View>
+          )}
+
+          {/* Primary Identity Details Card */}
+          <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+            PRIMARY IDENTITY DETAILS
+          </Text>
+          <View style={[ms.card, {padding: 14, gap: 10}]}>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Full Legal Name</Text>
+              <Text style={[ms.titleSm, {fontWeight: '700'}]}>{reviewGuest.name}</Text>
+            </View>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Document Details</Text>
+              <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>{reviewGuest.doc || reviewGuest.idType || 'Aadhaar'}</Text>
+            </View>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Document ID Number</Text>
+              <Text style={[ms.titleSm, {fontFamily: 'monospace', fontWeight: '700', color: '#0F172A'}]}>{reviewGuest.idNum || reviewGuest.idNumber || reviewGuest.doc || '4821 9012 3456'}</Text>
+            </View>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Nationality</Text>
+              <Text style={ms.titleSm}>{reviewGuest.nationality || reviewGuest.nat || 'Indian'}</Text>
+            </View>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Gender</Text>
+              <Text style={ms.titleSm}>{reviewGuest.gender || '—'}</Text>
+            </View>
+            {reviewGuest.dob ? (
+              <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+                <Text style={ms.bodySm}>Date of Birth</Text>
+                <Text style={ms.titleSm}>{reviewGuest.dob}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          {/* Contact & Address Card */}
+          <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+            CONTACT & RESIDENTIAL ADDRESS
+          </Text>
+          <View style={[ms.card, {padding: 14, gap: 10}]}>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Mobile Phone</Text>
+              <Text style={[ms.titleSm, {fontWeight: '700', color: C.primary}]}>{reviewGuest.phone || '—'}</Text>
+            </View>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Email Address</Text>
+              <Text style={ms.titleSm}>{reviewGuest.email || '—'}</Text>
+            </View>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Permanent Address</Text>
+              <Text style={[ms.titleSm, {flex: 1, textAlign: 'right', marginLeft: 16}]}>{reviewGuest.address || '—'}</Text>
+            </View>
+          </View>
+
+          {/* Stay & Room Card */}
+          <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+            STAY & ROOM SELECTION
+          </Text>
+          <View style={[ms.card, {padding: 14, gap: 10}]}>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Selected Room</Text>
+              <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>Room {reviewGuest.room}</Text>
+            </View>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Check-in Date</Text>
+              <Text style={[ms.titleSm, {color: '#059669', fontWeight: '700'}]}>{reviewGuest.checkInDate || '20 Aug 2026'}</Text>
+            </View>
+            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
+              <Text style={ms.bodySm}>Check-out Date</Text>
+              <Text style={[ms.titleSm, {color: '#64748B', fontWeight: '700'}]}>{reviewGuest.checkOutDate || '23 Aug 2026'}</Text>
+            </View>
+          </View>
+
+          {/* Co-Guests Section */}
+          {reviewGuest.additionalGuests && reviewGuest.additionalGuests.length > 0 && (
+            <View style={{marginTop: 18}}>
+              <Text style={[ms.sectionCaption, {marginBottom: 8}]}>
+                ACCOMPANYING CO-GUESTS ({reviewGuest.additionalGuests.length})
+              </Text>
+              {reviewGuest.additionalGuests.map((cg: any, idx: number) => (
+                <View key={idx} style={[ms.card, {marginBottom: 8, padding: 14}]}>
+                  <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
+                    <Text style={[ms.titleSm, {fontWeight: '700'}]}>{cg.full_name || cg.name || cg.fullName}</Text>
+                    <View style={ms.badgeSoft}>
+                      <Text style={ms.badgeSoftText}>{cg.relation || 'Co-Guest'}</Text>
+                    </View>
+                  </View>
+                  <Text style={[ms.bodySm, {marginTop: 4}]}>
+                    {cg.id_type || cg.idType || 'ID'}: <Text style={{fontFamily: 'monospace', fontWeight: '600'}}>{cg.id_number || cg.idNumber || '—'}</Text>
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Actions */}
+          <View style={{flexDirection: 'row', gap: 10, marginTop: 22}}>
+            <SecondaryButton
+              label="Reject"
+              style={{flex: 1}}
+              onPress={() => {
+                setShowReviewFullDetails(false);
+                handleLocalReject(reviewGuest);
+              }}
+            />
+            <PrimaryButton
+              label="Approve Check-in"
+              icon="check"
+              style={{flex: 1.5}}
+              onPress={() => {
+                setShowReviewFullDetails(false);
+                handleLocalApprove(reviewGuest);
+              }}
+            />
+          </View>
+        </ScrollView>
+      );
+    }
+
+    // STANDARD REVIEW VIEW
     return (
       <ScrollView
         contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 28}}
@@ -1272,15 +1837,92 @@ function SelfCheckins({
           Online self check-in registration
         </Text>
 
-        {/* Photo Display with proper framing (4:3 aspect ratio, contain, clean background) */}
-        {reviewGuest.photoUri ? (
-          <View style={{marginTop: 14, borderRadius: 16, overflow: 'hidden', height: 220, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
-            <Image source={{ uri: reviewGuest.photoUri }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+        {/* Photo Selector Switcher */}
+        {(frontPic || backPic || selfiePic) && (
+          <View style={{flexDirection: 'row', gap: 6, marginTop: 12, marginBottom: 6}}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setReviewPhotoTab('front')}
+              style={[
+                ms.chipLight,
+                {flex: 1, alignItems: 'center', justifyContent: 'center'},
+                reviewPhotoTab === 'front' && {backgroundColor: C.primary, borderColor: C.primary},
+              ]}
+            >
+              <Text style={reviewPhotoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+                Front ID
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setReviewPhotoTab('back')}
+              style={[
+                ms.chipLight,
+                {flex: 1, alignItems: 'center', justifyContent: 'center'},
+                reviewPhotoTab === 'back' && {backgroundColor: C.primary, borderColor: C.primary},
+              ]}
+            >
+              <Text style={reviewPhotoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+                Back ID
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setReviewPhotoTab('selfie')}
+              style={[
+                ms.chipLight,
+                {flex: 1, alignItems: 'center', justifyContent: 'center'},
+                reviewPhotoTab === 'selfie' && {backgroundColor: C.primary, borderColor: C.primary},
+              ]}
+            >
+              <Text style={reviewPhotoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+                Live Selfie
+              </Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* Photo Display with proper framing (Front side ID default) */}
+        {currentReviewPhoto ? (
+          <View style={{marginTop: 6, borderRadius: 16, overflow: 'hidden', height: 220, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+            <Image source={{ uri: currentReviewPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
+            <View style={{position: 'absolute', bottom: 8, left: 10, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6}}>
+              <Text style={{color: '#FFFFFF', fontSize: 11, fontWeight: '700'}}>
+                {reviewPhotoTab === 'front' ? 'ID Document (Front Side)' : reviewPhotoTab === 'back' ? 'ID Document (Back Side)' : 'Live Guest Photo'}
+              </Text>
+            </View>
           </View>
         ) : null}
 
+        {/* View Full Details Button */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => setShowReviewFullDetails(true)}
+          style={{
+            marginTop: 10,
+            marginBottom: 12,
+            paddingVertical: 11,
+            paddingHorizontal: 14,
+            borderRadius: 12,
+            backgroundColor: '#F3E8FF',
+            borderWidth: 1,
+            borderColor: '#E9D5FF',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+            <Icon name="file" size={17} color={C.primary} />
+            <Text style={{fontFamily: 'Inter', fontSize: 13.5, fontWeight: '700', color: C.primary}}>
+              View Full Guest & Document Details
+            </Text>
+          </View>
+          <Icon name="chevronRight" size={16} color={C.primary} />
+        </TouchableOpacity>
+
         {/* Details card */}
-        <View style={[ms.card, {marginTop: 14, gap: 10}]}>
+        <View style={[ms.card, {gap: 10}]}>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
             <Text style={ms.bodySm}>Full Name</Text>
             <Text style={[ms.titleSm, {fontWeight: '700'}]}>{reviewGuest.name}</Text>
