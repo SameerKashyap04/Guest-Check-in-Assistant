@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
   Text,
@@ -45,6 +45,7 @@ import { captureRef } from 'react-native-view-shot';
 import { AddRoomModal } from './src/components/AddRoomModal';
 import { devifyPay, DevifyCheckoutResult } from './src/services/devifyPay';
 import { WebView } from 'react-native-webview';
+import { securityService } from './src/services/securityService';
 
 // Inject authentic Inter web font and typography styles on web platform
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -76,6 +77,9 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 
 function MainApp() {
   const [unlocked, setUnlocked] = useState(false);
+  const [isSecurityReady, setIsSecurityReady] = useState(false);
+  const lastActiveRef = useRef<number>(Date.now());
+
   const [tab, setTab] = useState<TabName>('dashboard');
   const [roomsList, setRoomsList] = useState<any[]>([...ROOMS]);
   const [guestsList, setGuestsList] = useState<any[]>([...GUESTS]);
@@ -95,6 +99,44 @@ function MainApp() {
   const [guestId, setGuestId] = useState<number | null>(null);
   const [toast, setToast] = useState('');
   const [billing, setBilling] = useState(false);
+
+  // Initialize Security Settings & check if lock is required
+  useEffect(() => {
+    (async () => {
+      const cfg = await securityService.init();
+      if (!cfg.isLockEnabled) {
+        setUnlocked(true);
+      }
+      setIsSecurityReady(true);
+    })();
+  }, []);
+
+  // Listen for AppState changes for Auto-Lock
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'background' || nextState === 'inactive') {
+        lastActiveRef.current = Date.now();
+      } else if (nextState === 'active') {
+        const settings = securityService.getSettings();
+        if (settings.isLockEnabled) {
+          const autoLockMins = settings.autoLockMinutes;
+          if (autoLockMins === 0) {
+            // Immediately lock
+            setUnlocked(false);
+          } else if (autoLockMins > 0) {
+            const elapsed = Date.now() - lastActiveRef.current;
+            if (elapsed >= autoLockMins * 60 * 1000) {
+              setUnlocked(false);
+            }
+          }
+        }
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   const notify = (m: string) => {
     setToast(m);
@@ -223,7 +265,7 @@ function MainApp() {
       />
     );
 
-  if (!unlocked) {
+  if (isSecurityReady && !unlocked) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
         <StatusBar style="dark"/>

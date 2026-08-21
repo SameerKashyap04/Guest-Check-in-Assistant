@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useState, useEffect} from 'react';
 import {
   ScrollView,
   View,
@@ -12,6 +12,7 @@ import {
 import {C, R, shadow} from '../theme/tokens';
 import {Icon, IconName} from '../components/Icon';
 import {SettingRow, PrimaryButton, SecondaryButton, Field} from '../components/Ui';
+import {securityService} from '../services/securityService';
 
 interface PropertyProfile {
   name: string;
@@ -77,11 +78,28 @@ export function SettingsScreen({
   });
 
   const [cloudSync, setCloudSync] = useState(true);
+  const [requirePin, setRequirePin] = useState(true);
   const [biometric, setBiometric] = useState(true);
   const [language, setLanguage] = useState('English');
   const [theme, setTheme] = useState('System default');
   const [autoLock, setAutoLock] = useState('After 5 minutes');
-  const [securityPin, setSecurityPin] = useState('1234');
+
+  // Load persistent security settings on mount
+  useEffect(() => {
+    (async () => {
+      const cfg = await securityService.init();
+      setRequirePin(cfg.isLockEnabled);
+      setBiometric(cfg.isBiometricEnabled);
+      const minutesMap: Record<number, string> = {
+        0: 'Immediately',
+        1: 'After 1 minute',
+        5: 'After 5 minutes',
+        15: 'After 15 minutes',
+        [-1]: 'Never',
+      };
+      setAutoLock(minutesMap[cfg.autoLockMinutes] || 'After 5 minutes');
+    })();
+  }, []);
 
   // Modal Sheet State
   const [activeModal, setActiveModal] = useState<
@@ -112,7 +130,7 @@ export function SettingsScreen({
     }
     setProfile(editProfile);
     setActiveModal(null);
-    notify('✓ Property profile updated!');
+    notify('Property profile updated');
   };
 
   // Toggle Cloud Mode
@@ -126,10 +144,19 @@ export function SettingsScreen({
     );
   };
 
+  // Toggle Require PIN
+  const handleToggleRequirePin = async () => {
+    const next = !requirePin;
+    setRequirePin(next);
+    await securityService.setLockEnabled(next);
+    notify(next ? 'App lock enabled (PIN required on launch)' : 'App lock disabled');
+  };
+
   // Toggle Biometric
-  const handleToggleBiometric = () => {
+  const handleToggleBiometric = async () => {
     const next = !biometric;
     setBiometric(next);
+    await securityService.setBiometricEnabled(next);
     notify(
       next
         ? 'Biometric unlock enabled (Face ID / Fingerprint)'
@@ -146,8 +173,9 @@ export function SettingsScreen({
   };
 
   // Save PIN Sheet
-  const handleSavePin = () => {
-    if (currentPinInput !== securityPin) {
+  const handleSavePin = async () => {
+    const currentPin = securityService.getSettings().pin;
+    if (currentPinInput !== currentPin) {
       Alert.alert('Incorrect PIN', 'The current security PIN is incorrect.');
       return;
     }
@@ -159,9 +187,9 @@ export function SettingsScreen({
       Alert.alert('Mismatch', 'New PIN and Confirm PIN do not match.');
       return;
     }
-    setSecurityPin(newPinInput);
+    await securityService.savePin(newPinInput);
     setActiveModal(null);
-    notify('✓ Security PIN changed successfully!');
+    notify('Security PIN changed successfully');
   };
 
   // Initials for avatar
@@ -264,11 +292,23 @@ export function SettingsScreen({
         onPress={() => setActiveModal('theme')}
       />
 
-      {/* SECURITY */}
-      <Text style={[s.sectionHeader, {marginTop: 16}]}>SECURITY</Text>
+      {/* SECURITY & ACCESS */}
+      <Text style={[s.sectionHeader, {marginTop: 16}]}>SECURITY & ACCESS</Text>
+      <SettingRow
+        icon="shield"
+        label="App lock (PIN required)"
+        subtitle="Protect app on launch and resume"
+        onPress={handleToggleRequirePin}
+        right={
+          <TouchableOpacity activeOpacity={0.9} onPress={handleToggleRequirePin}>
+            <Switch on={requirePin}/>
+          </TouchableOpacity>
+        }
+      />
       <SettingRow
         icon="lock"
         label="Change security PIN"
+        subtitle="Update your 4-digit security PIN"
         onPress={handleOpenPin}
       />
       <SettingRow
@@ -285,6 +325,7 @@ export function SettingsScreen({
       <SettingRow
         icon="clock"
         label={`Auto-lock — ${autoLock}`}
+        subtitle="Lock after period of inactivity"
         onPress={() => setActiveModal('autolock')}
       />
 
@@ -693,10 +734,12 @@ export function SettingsScreen({
                     <TouchableOpacity
                       key={opt.id}
                       activeOpacity={0.75}
-                      onPress={() => {
+                      onPress={async () => {
                         setAutoLock(opt.label);
                         setActiveModal(null);
-                        notify(`✓ Auto-lock set to ${opt.label}`);
+                        const mins = opt.id === 'never' ? -1 : parseInt(opt.id, 10);
+                        await securityService.setAutoLockMinutes(mins);
+                        notify(`Auto-lock set to ${opt.label}`);
                       }}
                       style={[ms.optionRow, isSelected && ms.optionRowActive]}
                     >
