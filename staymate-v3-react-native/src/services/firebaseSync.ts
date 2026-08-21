@@ -1,31 +1,11 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import {
-  getFirestore,
-  collection,
-  onSnapshot,
-  query,
-  where,
-  deleteDoc,
-  doc,
-  getDocs,
-  QuerySnapshot,
-  DocumentChange,
-} from 'firebase/firestore';
+/**
+ * Real-time / Polling Cloud Sync for StayMate Self Check-ins
+ * Uses native standard fetch against Firestore REST API (zero npm dependencies)
+ * Fully compatible with Expo Go, iOS, Android, and Web.
+ */
 
-// Firebase Configuration for StayMate Cloud Sync
-const firebaseConfig = {
-  apiKey: "AIzaSyAMPlyK7NKHZqW_mwEfdofXu0LF5_pW7m8",
-  authDomain: "guest-checkin-assistant.firebaseapp.com",
-  databaseURL: "https://guest-checkin-assistant-default-rtdb.firebaseio.com",
-  projectId: "guest-checkin-assistant",
-  storageBucket: "guest-checkin-assistant.firebasestorage.app",
-  messagingSenderId: "765584797318",
-  appId: "1:765584797318:web:5ca184f29c5e0d1a75eb07",
-  measurementId: "G-K2MN0PEHSZ",
-};
-
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-export const db = getFirestore(app);
+const FIRESTORE_BASE_URL =
+  'https://firestore.googleapis.com/v1/projects/guest-checkin-assistant/databases/(default)/documents/guest_checkins';
 
 export interface CloudGuestCheckin {
   id?: string;
@@ -50,20 +30,122 @@ export interface CloudGuestCheckin {
   expires_at?: number;
 }
 
+// Helper to extract primitive value from Firestore REST value object
+function parseFirestoreValue(val: any): any {
+  if (!val || typeof val !== 'object') return val;
+  if ('stringValue' in val) return val.stringValue;
+  if ('integerValue' in val) return parseInt(val.integerValue, 10);
+  if ('doubleValue' in val) return parseFloat(val.doubleValue);
+  if ('booleanValue' in val) return val.booleanValue;
+  if ('timestampValue' in val) return val.timestampValue;
+  if ('arrayValue' in val) {
+    const values = val.arrayValue?.values || [];
+    return values.map(parseFirestoreValue);
+  }
+  if ('mapValue' in val) {
+    const fields = val.mapValue?.fields || {};
+    const res: Record<string, any> = {};
+    for (const k of Object.keys(fields)) {
+      res[k] = parseFirestoreValue(fields[k]);
+    }
+    return res;
+  }
+  return null;
+}
+
+// Helper to parse complete document from Firestore REST response
+function parseFirestoreDoc(doc: any): CloudGuestCheckin | null {
+  try {
+    if (!doc || !doc.fields) return null;
+    const nameStr: string = doc.name || '';
+    const id = nameStr.split('/').pop() || `doc_${Date.now()}`;
+    const fields = doc.fields;
+
+    const data: Record<string, any> = { id };
+    for (const key of Object.keys(fields)) {
+      data[key] = parseFirestoreValue(fields[key]);
+    }
+
+    return {
+      id,
+      property_id: data.property_id || '',
+      owner_id: data.owner_id || 'OWNER_DEFAULT_101',
+      full_name: data.full_name || data.name || 'Guest',
+      phone: data.phone || '',
+      id_type: data.id_type || data.docType || 'Aadhaar',
+      id_number: data.id_number || data.idNum || '',
+      address: data.address || '',
+      pin_code: data.pin_code || '',
+      gender: data.gender || 'Other',
+      dob: data.dob || '',
+      photo_uri: data.photo_uri || data.photoUri || '',
+      back_photo_uri: data.back_photo_uri || '',
+      selfie_uri: data.selfie_uri || '',
+      room_number: data.room_number || data.room || '101',
+      check_in_date: data.check_in_date || '',
+      check_out_date: data.check_out_date || '',
+      additional_guests: Array.isArray(data.additional_guests) ? data.additional_guests : [],
+      created_at: data.created_at,
+      expires_at: data.expires_at,
+    };
+  } catch (e) {
+    console.warn('Error parsing Firestore doc:', e);
+    return null;
+  }
+}
+
+/**
+ * Fetch all pending check-ins from Firestore
+ */
+export async function fetchPendingGuestCheckins(
+  propertyId = 'HS-4821',
+  ownerId = 'OWNER_DEFAULT_101'
+): Promise<CloudGuestCheckin[]> {
+  try {
+    const res = await fetch(FIRESTORE_BASE_URL);
+    if (!res.ok) {
+      return [];
+    }
+    const json = await res.json();
+    const documents = json.documents || [];
+
+    const results: CloudGuestCheckin[] = [];
+    for (const doc of documents) {
+      const parsed = parseFirestoreDoc(doc);
+      if (parsed) {
+        // Filter by property_id or owner_id
+        if (
+          !propertyId ||
+          parsed.property_id === propertyId ||
+          parsed.owner_id === ownerId ||
+          parsed.owner_id === 'OWNER_DEFAULT_101'
+        ) {
+          results.push(parsed);
+        }
+      }
+    }
+    return results;
+  } catch (err) {
+    // Network or offline gracefully handled
+    return [];
+  }
+}
+
 /**
  * Deletes a temporary check-in record from Firebase after approval / discard
  */
 export async function deleteCloudCheckinDoc(docId: string): Promise<void> {
   if (!docId || docId.startsWith('local_') || docId.startsWith('timeout_')) return;
   try {
-    await deleteDoc(doc(db, 'guest_checkins', docId));
+    const url = `${FIRESTORE_BASE_URL}/${encodeURIComponent(docId)}`;
+    await fetch(url, { method: 'DELETE' });
   } catch (e) {
     console.warn(`Failed to delete temporary check-in doc ${docId}:`, e);
   }
 }
 
 /**
- * Listens for online self check-in submissions in real-time.
+ * Listens for online self check-in submissions in real-time via lightweight polling.
  */
 export function subscribeToPropertyCheckins(
   propertyId: string,
@@ -72,61 +154,30 @@ export function subscribeToPropertyCheckins(
 ): () => void {
   if (!propertyId && !ownerId) return () => {};
 
-  try {
-    const checkinsRef = collection(db, 'guest_checkins');
-    const processedDocIds = new Set<string>();
+  const processedDocIds = new Set<string>();
+  let isCancelled = false;
 
-    const handleSnapshot = (snapshot: QuerySnapshot) => {
-      snapshot.docChanges().forEach((change: DocumentChange) => {
-        if (change.type === 'added') {
-          const docId = change.doc.id;
-          if (processedDocIds.has(docId)) return;
-
-          const data = change.doc.data() as CloudGuestCheckin;
-
-          // Strict Multi-Tenant Security Check
-          if (
-            ownerId &&
-            ownerId !== 'OWNER_DEFAULT_101' &&
-            data.owner_id &&
-            data.owner_id !== 'OWNER_DEFAULT_101' &&
-            data.owner_id !== ownerId
-          ) {
-            return;
-          }
-
-          processedDocIds.add(docId);
-          onNewCheckin({ ...data, id: docId });
+  const poll = async () => {
+    if (isCancelled) return;
+    try {
+      const checkins = await fetchPendingGuestCheckins(propertyId, ownerId);
+      for (const item of checkins) {
+        if (item.id && !processedDocIds.has(item.id)) {
+          processedDocIds.add(item.id);
+          onNewCheckin(item);
         }
-      });
-    };
-
-    const handlePermissionError = (error: any) => {
-      if (error?.code !== 'permission-denied') {
-        console.warn('Firestore subscription listener warning:', error);
       }
-    };
+    } catch (_) {}
+  };
 
-    // 1. Primary listener by property_id
-    let unsub1 = () => {};
-    if (propertyId) {
-      const q1 = query(checkinsRef, where('property_id', '==', propertyId));
-      unsub1 = onSnapshot(q1, handleSnapshot, handlePermissionError);
-    }
+  // Immediate first poll
+  poll();
 
-    // 2. Secondary listener by owner_id
-    let unsub2 = () => {};
-    if (ownerId && ownerId !== 'OWNER_DEFAULT_101') {
-      const q2 = query(checkinsRef, where('owner_id', '==', ownerId));
-      unsub2 = onSnapshot(q2, handleSnapshot, handlePermissionError);
-    }
+  // Recurring polling every 4 seconds
+  const intervalId = setInterval(poll, 4000);
 
-    return () => {
-      unsub1();
-      unsub2();
-    };
-  } catch (e) {
-    console.warn('Failed to start Firestore subscription listener:', e);
-    return () => {};
-  }
+  return () => {
+    isCancelled = true;
+    clearInterval(intervalId);
+  };
 }
