@@ -455,7 +455,7 @@ function MainApp() {
       {/* Guest details sheet */}
       {sheet === 'guest' && guestId ? (
         <Modal visible transparent animationType="slide">
-          <Sheet onClose={() => setSheet(null)}>
+          <Sheet onClose={() => setSheet(null)} showClose={false}>
             <GuestSheet
               id={guestId}
               guests={guestsList}
@@ -469,13 +469,14 @@ function MainApp() {
       {/* Web self check-ins sheet */}
       {sheet === 'self' ? (
         <Modal visible transparent animationType="slide">
-          <Sheet onClose={() => setSheet(null)}>
+          <Sheet onClose={() => setSheet(null)} showClose={false}>
             <SelfCheckins
               pendingList={pendingCheckins}
               roomsList={roomsList}
               onApprove={handleApproveSelfCheckin}
               onReject={handleRejectSelfCheckin}
               onToast={notify}
+              onClose={() => setSheet(null)}
             />
           </Sheet>
         </Modal>
@@ -540,19 +541,21 @@ export default function App() {
   );
 }
 
-function Sheet({onClose, children}: {onClose: () => void; children?: React.ReactNode}) {
+function Sheet({onClose, showClose = true, children}: {onClose: () => void; showClose?: boolean; children?: React.ReactNode}) {
   const insets = useSafeAreaInsets();
   return (
     <View style={ms.sheetScrim}>
       <View style={[ms.sheet, {paddingBottom: Math.max(16, insets.bottom)}]}>
         <View style={ms.handle}/>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={onClose}
-          style={ms.sheetCloseBtn}
-        >
-          <Icon name="x" size={16} color={C.ink}/>
-        </TouchableOpacity>
+        {showClose && (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={onClose}
+            style={ms.sheetCloseBtn}
+          >
+            <Icon name="x" size={16} color={C.ink}/>
+          </TouchableOpacity>
+        )}
         {children}
       </View>
     </View>
@@ -873,11 +876,17 @@ function GuestSheet({
             <Icon name="chevronLeft" size={18} color={C.ink}/>
           </TouchableOpacity>
           <Text style={ms.sheetHeaderTitle}>Full Guest Details</Text>
-          <View style={{width: 36}} />
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={onClose}
+            style={ms.sheetBackBtn}
+          >
+            <Icon name="x" size={16} color={C.ink}/>
+          </TouchableOpacity>
         </View>
 
         {/* Guest Name & Status Card */}
-        <View style={[ms.card, {padding: 16, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 14}]}>
+        <View style={[ms.card, {padding: 14, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 12}]}>
           <View style={ms.avatarLarge}>
             <Text style={ms.avatarLargeText}>
               {g.name ? g.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'GS'}
@@ -885,8 +894,8 @@ function GuestSheet({
           </View>
           <View style={{flex: 1}}>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-              <Text style={[ms.titleMd, {fontSize: 17, fontWeight: '700'}]}>{g.name}</Text>
-              {g.verified ? <Icon name="check" size={16} color={C.emerald}/> : null}
+              <Text style={[ms.titleMd, {fontSize: 16, fontWeight: '700'}]}>{g.name}</Text>
+              {g.verified ? <Icon name="check" size={15} color={C.emerald}/> : null}
             </View>
             <Text style={[ms.bodySm, {marginTop: 2, color: C.primary, fontWeight: '600'}]}>
               Room {g.room} · {g.roomType || 'Standard'}
@@ -898,22 +907,22 @@ function GuestSheet({
         </View>
 
         {/* ALL DOCUMENT IMAGES SECTION */}
-        <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
-          DOCUMENT & VERIFICATION IMAGES
+        <Text style={[ms.sectionCaption, {marginTop: 16, marginBottom: 8}]}>
+          {'DOCUMENT & VERIFICATION IMAGES'}
         </Text>
         
         {/* Photo Switcher Tabs */}
-        <View style={{flexDirection: 'row', gap: 6, marginBottom: 10}}>
+        <View style={{flexDirection: 'row', gap: 6, marginBottom: 8}}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setPhotoTab('front')}
             style={[
               ms.chipLight,
-              {flex: 1, alignItems: 'center', justifyContent: 'center'},
+              {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6},
               photoTab === 'front' && {backgroundColor: C.primary, borderColor: C.primary},
             ]}
           >
-            <Text style={photoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 12} : ms.chipLightText}>
+            <Text style={photoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
               Front ID
             </Text>
           </TouchableOpacity>
@@ -922,11 +931,11 @@ function GuestSheet({
             onPress={() => setPhotoTab('back')}
             style={[
               ms.chipLight,
-              {flex: 1, alignItems: 'center', justifyContent: 'center'},
+              {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6},
               photoTab === 'back' && {backgroundColor: C.primary, borderColor: C.primary},
             ]}
           >
-            <Text style={photoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 12} : ms.chipLightText}>
+            <Text style={photoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
               Back ID
             </Text>
           </TouchableOpacity>
@@ -935,11 +944,11 @@ function GuestSheet({
             onPress={() => setPhotoTab('selfie')}
             style={[
               ms.chipLight,
-              {flex: 1, alignItems: 'center', justifyContent: 'center'},
+              {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6},
               photoTab === 'selfie' && {backgroundColor: C.primary, borderColor: C.primary},
             ]}
           >
-            <Text style={photoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 12} : ms.chipLightText}>
+            <Text style={photoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
               Live Selfie
             </Text>
           </TouchableOpacity>
@@ -947,27 +956,27 @@ function GuestSheet({
 
         {/* Active Photo Container */}
         {currentPhoto ? (
-          <View style={{borderRadius: 16, overflow: 'hidden', height: 230, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+          <View style={{borderRadius: 14, overflow: 'hidden', height: 200, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
             <Image source={{ uri: currentPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
-            <View style={{position: 'absolute', bottom: 8, left: 10, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6}}>
-              <Text style={{color: '#FFFFFF', fontSize: 11, fontWeight: '700'}}>
+            <View style={{position: 'absolute', bottom: 6, left: 8, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5}}>
+              <Text style={{color: '#FFFFFF', fontSize: 10, fontWeight: '700'}}>
                 {photoTab === 'front' ? 'ID Document (Front Side)' : photoTab === 'back' ? 'ID Document (Back Side)' : 'Live Guest Photo'}
               </Text>
             </View>
           </View>
         ) : (
-          <View style={{padding: 20, backgroundColor: '#FAF8FD', borderRadius: 16, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
-            <Icon name="shield" size={24} color={C.primary} />
-            <Text style={[ms.titleSm, {marginTop: 6}]}>{g.type || 'ID Card'} Verified</Text>
+          <View style={{padding: 16, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+            <Icon name="shield" size={22} color={C.primary} />
+            <Text style={[ms.titleSm, {marginTop: 4}]}>{g.type || 'ID Card'} Verified</Text>
             <Text style={ms.bodySm}>Digital compliance entry on file</Text>
           </View>
         )}
 
         {/* Complete Identification Card */}
-        <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+        <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
           PRIMARY IDENTITY DETAILS
         </Text>
-        <View style={[ms.card, {padding: 14, gap: 10}]}>
+        <View style={[ms.card, {padding: 12, gap: 8}]}>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
             <Text style={ms.bodySm}>Full Legal Name</Text>
             <Text style={[ms.titleSm, {fontWeight: '700'}]}>{g.name}</Text>
@@ -997,10 +1006,10 @@ function GuestSheet({
         </View>
 
         {/* Contact & Address Card */}
-        <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+        <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
           CONTACT & RESIDENTIAL ADDRESS
         </Text>
-        <View style={[ms.card, {padding: 14, gap: 10}]}>
+        <View style={[ms.card, {padding: 12, gap: 8}]}>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
             <Text style={ms.bodySm}>Mobile Phone</Text>
             <Text style={[ms.titleSm, {fontWeight: '700', color: C.primary}]}>{g.phone || '—'}</Text>
@@ -1016,10 +1025,10 @@ function GuestSheet({
         </View>
 
         {/* Stay & Room Card */}
-        <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+        <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
           STAY & ROOM ACCOMMODATION
         </Text>
-        <View style={[ms.card, {padding: 14, gap: 10}]}>
+        <View style={[ms.card, {padding: 12, gap: 8}]}>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
             <Text style={ms.bodySm}>Assigned Room</Text>
             <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>Room {g.room}</Text>
@@ -1040,12 +1049,12 @@ function GuestSheet({
 
         {/* Co-Guests Section */}
         {g.additionalGuests && g.additionalGuests.length > 0 && (
-          <View style={{marginTop: 18}}>
+          <View style={{marginTop: 16}}>
             <Text style={[ms.sectionCaption, {marginBottom: 8}]}>
               ACCOMPANYING CO-GUESTS ({g.additionalGuests.length})
             </Text>
             {g.additionalGuests.map((cg: any, idx: number) => (
-              <View key={idx} style={[ms.card, {marginBottom: 8, padding: 14}]}>
+              <View key={idx} style={[ms.card, {marginBottom: 8, padding: 12}]}>
                 <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
                   <Text style={[ms.titleSm, {fontWeight: '700'}]}>{cg.full_name || cg.name || cg.fullName}</Text>
                   <View style={ms.badgeSoft}>
@@ -1061,7 +1070,7 @@ function GuestSheet({
         )}
 
         {/* Actions */}
-        <View style={{flexDirection: 'row', gap: 10, marginTop: 22}}>
+        <View style={{flexDirection: 'row', gap: 10, marginTop: 18}}>
           <SecondaryButton
             label="Back to Summary"
             icon="chevronLeft"
@@ -1082,25 +1091,30 @@ function GuestSheet({
   // STANDARD SUMMARY VIEW
   return (
     <ScrollView
-      contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 28}}
+      contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24}}
       showsVerticalScrollIndicator={false}
     >
-      {/* Guest header */}
-      <View style={ms.guestHeaderRow}>
-        <View style={ms.avatarLarge}>
-          <Text style={ms.avatarLargeText}>
-            {g.name ? g.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'GS'}
-          </Text>
-        </View>
-        <View style={{flex: 1}}>
-          <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-            <Text style={ms.titleMd}>{g.name}</Text>
-            {g.verified ? <Icon name="check" size={15} color={C.emerald}/> : null}
+      {/* Guest header with integrated Close button */}
+      <View style={[ms.guestHeaderRow, {justifyContent: 'space-between', marginBottom: 10}]}>
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1}}>
+          <View style={ms.avatarLarge}>
+            <Text style={ms.avatarLargeText}>
+              {g.name ? g.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'GS'}
+            </Text>
           </View>
-          <Text style={ms.bodySm}>
-            {g.verified ? 'Verified registration' : 'Awaiting verification'} · Room {g.room}
-          </Text>
+          <View style={{flex: 1}}>
+            <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+              <Text style={ms.titleMd}>{g.name}</Text>
+              {g.verified ? <Icon name="check" size={15} color={C.emerald}/> : null}
+            </View>
+            <Text style={ms.bodySm}>
+              {g.verified ? 'Verified registration' : 'Awaiting verification'} · Room {g.room}
+            </Text>
+          </View>
         </View>
+        <TouchableOpacity activeOpacity={0.8} onPress={onClose} style={ms.sheetBackBtn}>
+          <Icon name="x" size={16} color={C.ink}/>
+        </TouchableOpacity>
       </View>
 
       {/* Photo Selector Switcher */}
@@ -1111,11 +1125,11 @@ function GuestSheet({
             onPress={() => setPhotoTab('front')}
             style={[
               ms.chipLight,
-              {flex: 1, alignItems: 'center', justifyContent: 'center'},
+              {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5},
               photoTab === 'front' && {backgroundColor: C.primary, borderColor: C.primary},
             ]}
           >
-            <Text style={photoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+            <Text style={photoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : ms.chipLightText}>
               Front ID
             </Text>
           </TouchableOpacity>
@@ -1124,11 +1138,11 @@ function GuestSheet({
             onPress={() => setPhotoTab('back')}
             style={[
               ms.chipLight,
-              {flex: 1, alignItems: 'center', justifyContent: 'center'},
+              {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5},
               photoTab === 'back' && {backgroundColor: C.primary, borderColor: C.primary},
             ]}
           >
-            <Text style={photoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+            <Text style={photoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : ms.chipLightText}>
               Back ID
             </Text>
           </TouchableOpacity>
@@ -1137,31 +1151,31 @@ function GuestSheet({
             onPress={() => setPhotoTab('selfie')}
             style={[
               ms.chipLight,
-              {flex: 1, alignItems: 'center', justifyContent: 'center'},
+              {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5},
               photoTab === 'selfie' && {backgroundColor: C.primary, borderColor: C.primary},
             ]}
           >
-            <Text style={photoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+            <Text style={photoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : ms.chipLightText}>
               Live Photo
             </Text>
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Photo / ID Section */}
+      {/* Photo / ID Section (Compact height 135) */}
       {currentPhoto ? (
-        <View style={{marginVertical: 6, borderRadius: 16, overflow: 'hidden', height: 200, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+        <View style={{borderRadius: 14, overflow: 'hidden', height: 135, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
           <Image source={{ uri: currentPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
-          <View style={{position: 'absolute', bottom: 8, left: 10, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6}}>
-            <Text style={{color: '#FFFFFF', fontSize: 11, fontWeight: '700'}}>
+          <View style={{position: 'absolute', bottom: 6, left: 8, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5}}>
+            <Text style={{color: '#FFFFFF', fontSize: 10, fontWeight: '700'}}>
               {photoTab === 'front' ? 'Front Side ID' : photoTab === 'back' ? 'Back Side ID' : 'Live Selfie'}
             </Text>
           </View>
         </View>
       ) : (
-        <View style={{marginVertical: 10, padding: 12, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', flexDirection: 'row', alignItems: 'center', gap: 10}}>
-          <View style={{width: 36, height: 36, borderRadius: 18, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center'}}>
-            <Icon name="shield" size={18} color={C.primary} />
+        <View style={{marginVertical: 6, padding: 10, backgroundColor: '#FAF8FD', borderRadius: 12, borderWidth: 1, borderColor: '#ECEAF0', flexDirection: 'row', alignItems: 'center', gap: 10}}>
+          <View style={{width: 34, height: 34, borderRadius: 17, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center'}}>
+            <Icon name="shield" size={16} color={C.primary} />
           </View>
           <View style={{flex: 1}}>
             <Text style={[ms.titleSm, {fontSize: 13}]}>{g.type || 'ID Card'} Verified</Text>
@@ -1175,11 +1189,11 @@ function GuestSheet({
         activeOpacity={0.8}
         onPress={() => setShowFullDetails(true)}
         style={{
-          marginTop: 10,
-          marginBottom: 12,
-          paddingVertical: 11,
-          paddingHorizontal: 14,
-          borderRadius: 12,
+          marginTop: 8,
+          marginBottom: 8,
+          paddingVertical: 10,
+          paddingHorizontal: 12,
+          borderRadius: 10,
           backgroundColor: '#F3E8FF',
           borderWidth: 1,
           borderColor: '#E9D5FF',
@@ -1188,13 +1202,13 @@ function GuestSheet({
           justifyContent: 'space-between',
         }}
       >
-        <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
-          <Icon name="file" size={17} color={C.primary} />
-          <Text style={{fontFamily: 'Inter', fontSize: 13.5, fontWeight: '700', color: C.primary}}>
-            View Full Guest & Document Details
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 7}}>
+          <Icon name="file" size={15} color={C.primary} />
+          <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '700', color: C.primary}}>
+            {'View Full Guest & Document Details'}
           </Text>
         </View>
-        <Icon name="chevronRight" size={16} color={C.primary} />
+        <Icon name="chevronRight" size={15} color={C.primary} />
       </TouchableOpacity>
 
       {/* Details table */}
@@ -1203,10 +1217,7 @@ function GuestSheet({
           ['Room', `${g.room} · ${g.roomType || 'Standard'}`],
           ['Document', `${g.type || 'ID'} — ${g.idNum || 'Verified'}`],
           ['Phone', g.phone || '—'],
-          ['Email', g.email || '—'],
           ['Nationality', g.nat || 'Indian'],
-          ['Gender', g.gender || '—'],
-          ['Address', g.address || '—'],
         ] as [string, string][]).map(([label, val], idx, arr) => (
           <View
             key={label}
@@ -1221,23 +1232,8 @@ function GuestSheet({
         ))}
       </View>
 
-      {/* Additional Guests if any */}
-      {g.additionalGuests && g.additionalGuests.length > 0 && (
-        <View style={{marginTop: 14}}>
-          <Text style={[ms.titleSm, {marginBottom: 8}]}>
-            Accompanying Co-Guests ({g.additionalGuests.length})
-          </Text>
-          {g.additionalGuests.map((cg: any, idx: number) => (
-            <View key={idx} style={[ms.card, {marginBottom: 8, padding: 12}]}>
-              <Text style={[ms.titleSm, {fontWeight: '700'}]}>{cg.full_name || cg.name || cg.fullName}</Text>
-              <Text style={ms.bodySm}>{cg.relation || 'Co-Guest'} · {cg.id_type || cg.idType || 'ID'}: {cg.id_number || cg.idNumber || '—'}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
       {/* Action buttons */}
-      <View style={{flexDirection: 'row', gap: 10, marginTop: 16}}>
+      <View style={{flexDirection: 'row', gap: 10, marginTop: 12}}>
         <SecondaryButton
           label="Edit"
           icon="edit"
@@ -1264,12 +1260,14 @@ function SelfCheckins({
   onApprove,
   onReject,
   onToast,
+  onClose,
 }: {
   pendingList: any[];
   roomsList?: any[];
   onApprove: (guest: any) => void;
   onReject: (guest: any) => void;
   onToast: (msg: string) => void;
+  onClose?: () => void;
 }) {
   const [reviewGuest, setReviewGuest] = useState<any | null>(null);
   const [copied, setCopied] = useState(false);
@@ -1589,18 +1587,28 @@ function SelfCheckins({
               <Icon name="chevronLeft" size={18} color={C.ink}/>
             </TouchableOpacity>
             <Text style={ms.sheetHeaderTitle}>Full Submission Details</Text>
-            <View style={{width: 36}} />
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                setShowReviewFullDetails(false);
+                setReviewGuest(null);
+                if (onClose) onClose();
+              }}
+              style={ms.sheetBackBtn}
+            >
+              <Icon name="x" size={16} color={C.ink}/>
+            </TouchableOpacity>
           </View>
 
           {/* Guest Name & Status Card */}
-          <View style={[ms.card, {padding: 16, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 14}]}>
+          <View style={[ms.card, {padding: 14, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 12}]}>
             <View style={ms.avatarLarge}>
               <Text style={ms.avatarLargeText}>
                 {reviewGuest.name ? reviewGuest.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'GS'}
               </Text>
             </View>
             <View style={{flex: 1}}>
-              <Text style={[ms.titleMd, {fontSize: 17, fontWeight: '700'}]}>{reviewGuest.name}</Text>
+              <Text style={[ms.titleMd, {fontSize: 16, fontWeight: '700'}]}>{reviewGuest.name}</Text>
               <Text style={[ms.bodySm, {marginTop: 2, color: C.primary, fontWeight: '600'}]}>
                 Assigned Room {reviewGuest.room}
               </Text>
@@ -1611,22 +1619,22 @@ function SelfCheckins({
           </View>
 
           {/* ALL DOCUMENT IMAGES SECTION */}
-          <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
-            DOCUMENT & VERIFICATION IMAGES
+          <Text style={[ms.sectionCaption, {marginTop: 16, marginBottom: 8}]}>
+            {'DOCUMENT & VERIFICATION IMAGES'}
           </Text>
           
           {/* Photo Switcher Tabs */}
-          <View style={{flexDirection: 'row', gap: 6, marginBottom: 10}}>
+          <View style={{flexDirection: 'row', gap: 6, marginBottom: 8}}>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setReviewPhotoTab('front')}
               style={[
                 ms.chipLight,
-                {flex: 1, alignItems: 'center', justifyContent: 'center'},
+                {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6},
                 reviewPhotoTab === 'front' && {backgroundColor: C.primary, borderColor: C.primary},
               ]}
             >
-              <Text style={reviewPhotoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 12} : ms.chipLightText}>
+              <Text style={reviewPhotoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
                 Front ID
               </Text>
             </TouchableOpacity>
@@ -1635,11 +1643,11 @@ function SelfCheckins({
               onPress={() => setReviewPhotoTab('back')}
               style={[
                 ms.chipLight,
-                {flex: 1, alignItems: 'center', justifyContent: 'center'},
+                {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6},
                 reviewPhotoTab === 'back' && {backgroundColor: C.primary, borderColor: C.primary},
               ]}
             >
-              <Text style={reviewPhotoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 12} : ms.chipLightText}>
+              <Text style={reviewPhotoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
                 Back ID
               </Text>
             </TouchableOpacity>
@@ -1648,11 +1656,11 @@ function SelfCheckins({
               onPress={() => setReviewPhotoTab('selfie')}
               style={[
                 ms.chipLight,
-                {flex: 1, alignItems: 'center', justifyContent: 'center'},
+                {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6},
                 reviewPhotoTab === 'selfie' && {backgroundColor: C.primary, borderColor: C.primary},
               ]}
             >
-              <Text style={reviewPhotoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 12} : ms.chipLightText}>
+              <Text style={reviewPhotoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
                 Live Selfie
               </Text>
             </TouchableOpacity>
@@ -1660,27 +1668,27 @@ function SelfCheckins({
 
           {/* Active Photo Container */}
           {currentReviewPhoto ? (
-            <View style={{borderRadius: 16, overflow: 'hidden', height: 230, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+            <View style={{borderRadius: 14, overflow: 'hidden', height: 200, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
               <Image source={{ uri: currentReviewPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
-              <View style={{position: 'absolute', bottom: 8, left: 10, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6}}>
-                <Text style={{color: '#FFFFFF', fontSize: 11, fontWeight: '700'}}>
+              <View style={{position: 'absolute', bottom: 6, left: 8, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5}}>
+                <Text style={{color: '#FFFFFF', fontSize: 10, fontWeight: '700'}}>
                   {reviewPhotoTab === 'front' ? 'ID Document (Front Side)' : reviewPhotoTab === 'back' ? 'ID Document (Back Side)' : 'Live Guest Photo'}
                 </Text>
               </View>
             </View>
           ) : (
-            <View style={{padding: 20, backgroundColor: '#FAF8FD', borderRadius: 16, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
-              <Icon name="shield" size={24} color={C.primary} />
-              <Text style={[ms.titleSm, {marginTop: 6}]}>{reviewGuest.doc || 'ID Document'}</Text>
+            <View style={{padding: 16, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+              <Icon name="shield" size={22} color={C.primary} />
+              <Text style={[ms.titleSm, {marginTop: 4}]}>{reviewGuest.doc || 'ID Document'}</Text>
               <Text style={ms.bodySm}>Digital self check-in registration</Text>
             </View>
           )}
 
           {/* Primary Identity Details Card */}
-          <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+          <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
             PRIMARY IDENTITY DETAILS
           </Text>
-          <View style={[ms.card, {padding: 14, gap: 10}]}>
+          <View style={[ms.card, {padding: 12, gap: 8}]}>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
               <Text style={ms.bodySm}>Full Legal Name</Text>
               <Text style={[ms.titleSm, {fontWeight: '700'}]}>{reviewGuest.name}</Text>
@@ -1710,10 +1718,10 @@ function SelfCheckins({
           </View>
 
           {/* Contact & Address Card */}
-          <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+          <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
             CONTACT & RESIDENTIAL ADDRESS
           </Text>
-          <View style={[ms.card, {padding: 14, gap: 10}]}>
+          <View style={[ms.card, {padding: 12, gap: 8}]}>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
               <Text style={ms.bodySm}>Mobile Phone</Text>
               <Text style={[ms.titleSm, {fontWeight: '700', color: C.primary}]}>{reviewGuest.phone || '—'}</Text>
@@ -1729,10 +1737,10 @@ function SelfCheckins({
           </View>
 
           {/* Stay & Room Card */}
-          <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+          <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
             STAY & ROOM SELECTION
           </Text>
-          <View style={[ms.card, {padding: 14, gap: 10}]}>
+          <View style={[ms.card, {padding: 12, gap: 8}]}>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
               <Text style={ms.bodySm}>Selected Room</Text>
               <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>Room {reviewGuest.room}</Text>
@@ -1749,12 +1757,12 @@ function SelfCheckins({
 
           {/* Co-Guests Section */}
           {reviewGuest.additionalGuests && reviewGuest.additionalGuests.length > 0 && (
-            <View style={{marginTop: 18}}>
+            <View style={{marginTop: 16}}>
               <Text style={[ms.sectionCaption, {marginBottom: 8}]}>
                 ACCOMPANYING CO-GUESTS ({reviewGuest.additionalGuests.length})
               </Text>
               {reviewGuest.additionalGuests.map((cg: any, idx: number) => (
-                <View key={idx} style={[ms.card, {marginBottom: 8, padding: 14}]}>
+                <View key={idx} style={[ms.card, {marginBottom: 8, padding: 12}]}>
                   <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
                     <Text style={[ms.titleSm, {fontWeight: '700'}]}>{cg.full_name || cg.name || cg.fullName}</Text>
                     <View style={ms.badgeSoft}>
@@ -1770,7 +1778,7 @@ function SelfCheckins({
           )}
 
           {/* Actions */}
-          <View style={{flexDirection: 'row', gap: 10, marginTop: 22}}>
+          <View style={{flexDirection: 'row', gap: 10, marginTop: 18}}>
             <SecondaryButton
               label="Reject"
               style={{flex: 1}}
@@ -1793,10 +1801,10 @@ function SelfCheckins({
       );
     }
 
-    // STANDARD REVIEW VIEW
+    // STANDARD REVIEW VIEW (Compact, perfectly fitted to mobile screen)
     return (
       <ScrollView
-        contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 28}}
+        contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 24}}
         showsVerticalScrollIndicator={false}
       >
         {/* Navigation Header */}
@@ -1809,26 +1817,28 @@ function SelfCheckins({
             <Icon name="chevronLeft" size={18} color={C.ink}/>
           </TouchableOpacity>
           <Text style={ms.sheetHeaderTitle}>Review Submission</Text>
-          <View style={{width: 36}} />
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={onClose || (() => setReviewGuest(null))}
+            style={ms.sheetBackBtn}
+          >
+            <Icon name="x" size={16} color={C.ink}/>
+          </TouchableOpacity>
         </View>
-
-        <Text style={[ms.bodySm, {marginTop: 2}]}>
-          Online self check-in registration
-        </Text>
 
         {/* Photo Selector Switcher */}
         {(frontPic || backPic || selfiePic) && (
-          <View style={{flexDirection: 'row', gap: 6, marginTop: 12, marginBottom: 6}}>
+          <View style={{flexDirection: 'row', gap: 6, marginBottom: 8}}>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setReviewPhotoTab('front')}
               style={[
                 ms.chipLight,
-                {flex: 1, alignItems: 'center', justifyContent: 'center'},
+                {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5},
                 reviewPhotoTab === 'front' && {backgroundColor: C.primary, borderColor: C.primary},
               ]}
             >
-              <Text style={reviewPhotoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+              <Text style={reviewPhotoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : ms.chipLightText}>
                 Front ID
               </Text>
             </TouchableOpacity>
@@ -1837,11 +1847,11 @@ function SelfCheckins({
               onPress={() => setReviewPhotoTab('back')}
               style={[
                 ms.chipLight,
-                {flex: 1, alignItems: 'center', justifyContent: 'center'},
+                {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5},
                 reviewPhotoTab === 'back' && {backgroundColor: C.primary, borderColor: C.primary},
               ]}
             >
-              <Text style={reviewPhotoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+              <Text style={reviewPhotoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : ms.chipLightText}>
                 Back ID
               </Text>
             </TouchableOpacity>
@@ -1850,23 +1860,23 @@ function SelfCheckins({
               onPress={() => setReviewPhotoTab('selfie')}
               style={[
                 ms.chipLight,
-                {flex: 1, alignItems: 'center', justifyContent: 'center'},
+                {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5},
                 reviewPhotoTab === 'selfie' && {backgroundColor: C.primary, borderColor: C.primary},
               ]}
             >
-              <Text style={reviewPhotoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+              <Text style={reviewPhotoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : ms.chipLightText}>
                 Live Selfie
               </Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Photo Display with proper framing (Front side ID default) */}
+        {/* Photo Display with proper framing (Compact 135px height) */}
         {currentReviewPhoto ? (
-          <View style={{marginTop: 6, borderRadius: 16, overflow: 'hidden', height: 220, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+          <View style={{borderRadius: 14, overflow: 'hidden', height: 135, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
             <Image source={{ uri: currentReviewPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
-            <View style={{position: 'absolute', bottom: 8, left: 10, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6}}>
-              <Text style={{color: '#FFFFFF', fontSize: 11, fontWeight: '700'}}>
+            <View style={{position: 'absolute', bottom: 6, left: 8, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5}}>
+              <Text style={{color: '#FFFFFF', fontSize: 10, fontWeight: '700'}}>
                 {reviewPhotoTab === 'front' ? 'ID Document (Front Side)' : reviewPhotoTab === 'back' ? 'ID Document (Back Side)' : 'Live Guest Photo'}
               </Text>
             </View>
@@ -1878,11 +1888,11 @@ function SelfCheckins({
           activeOpacity={0.8}
           onPress={() => setShowReviewFullDetails(true)}
           style={{
-            marginTop: 10,
-            marginBottom: 12,
-            paddingVertical: 11,
-            paddingHorizontal: 14,
-            borderRadius: 12,
+            marginTop: 8,
+            marginBottom: 8,
+            paddingVertical: 10,
+            paddingHorizontal: 12,
+            borderRadius: 10,
             backgroundColor: '#F3E8FF',
             borderWidth: 1,
             borderColor: '#E9D5FF',
@@ -1891,17 +1901,17 @@ function SelfCheckins({
             justifyContent: 'space-between',
           }}
         >
-          <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
-            <Icon name="file" size={17} color={C.primary} />
-            <Text style={{fontFamily: 'Inter', fontSize: 13.5, fontWeight: '700', color: C.primary}}>
-              View Full Guest & Document Details
+          <View style={{flexDirection: 'row', alignItems: 'center', gap: 7}}>
+            <Icon name="file" size={15} color={C.primary} />
+            <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '700', color: C.primary}}>
+              {'View Full Guest & Document Details'}
             </Text>
           </View>
-          <Icon name="chevronRight" size={16} color={C.primary} />
+          <Icon name="chevronRight" size={15} color={C.primary} />
         </TouchableOpacity>
 
-        {/* Details card */}
-        <View style={[ms.card, {gap: 10}]}>
+        {/* Quick Details Card */}
+        <View style={[ms.card, {padding: 12, gap: 8}]}>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
             <Text style={ms.bodySm}>Full Name</Text>
             <Text style={[ms.titleSm, {fontWeight: '700'}]}>{reviewGuest.name}</Text>
@@ -1916,44 +1926,11 @@ function SelfCheckins({
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
             <Text style={ms.bodySm}>Phone</Text>
-            <Text style={ms.titleSm}>{reviewGuest.phone}</Text>
+            <Text style={ms.titleSm}>{reviewGuest.phone} {reviewGuest.additionalGuests?.length ? `· +${reviewGuest.additionalGuests.length} Co-Guest` : ''}</Text>
           </View>
-          {reviewGuest.dob ? (
-            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Date of Birth</Text>
-              <Text style={ms.titleSm}>{reviewGuest.dob}</Text>
-            </View>
-          ) : null}
-          {reviewGuest.gender ? (
-            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Gender</Text>
-              <Text style={ms.titleSm}>{reviewGuest.gender}</Text>
-            </View>
-          ) : null}
-          {reviewGuest.address ? (
-            <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Address</Text>
-              <Text style={[ms.titleSm, {flex: 1, textAlign: 'right', marginLeft: 16}]}>{reviewGuest.address}</Text>
-            </View>
-          ) : null}
         </View>
 
-        {/* Co-Guests in Review */}
-        {reviewGuest.additionalGuests && reviewGuest.additionalGuests.length > 0 && (
-          <View style={{marginTop: 14}}>
-            <Text style={[ms.titleSm, {marginBottom: 8}]}>
-              Co-Guests ({reviewGuest.additionalGuests.length})
-            </Text>
-            {reviewGuest.additionalGuests.map((cg: any, idx: number) => (
-              <View key={idx} style={[ms.card, {marginBottom: 8, padding: 12}]}>
-                <Text style={[ms.titleSm, {fontWeight: '700'}]}>{cg.full_name || cg.name || cg.fullName}</Text>
-                <Text style={ms.bodySm}>{cg.relation || 'Co-Guest'} · {cg.id_type || cg.idType || 'ID'}: {cg.id_number || cg.idNumber || '-'}</Text>
-              </View>
-            ))}
-          </View>
-        )}
-
-        <View style={{flexDirection: 'row', gap: 10, marginTop: 20}}>
+        <View style={{flexDirection: 'row', gap: 10, marginTop: 12}}>
           <SecondaryButton
             label="Reject"
             style={{flex: 1}}
@@ -1962,7 +1939,7 @@ function SelfCheckins({
           <PrimaryButton
             label="Approve Check-in"
             icon="check"
-            style={{flex: 1}}
+            style={{flex: 1.5}}
             onPress={() => handleLocalApprove(reviewGuest)}
           />
         </View>
@@ -3440,7 +3417,7 @@ const ms = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    maxHeight: '86%',
+    maxHeight: '92%',
     backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -3690,6 +3667,13 @@ const ms = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
+  },
+  card: {
+    padding: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
   },
   metaCard: {
     padding: 14,
