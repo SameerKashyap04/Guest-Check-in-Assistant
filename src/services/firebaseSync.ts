@@ -31,6 +31,8 @@ export interface CloudGuestCheckin {
   email?: string;
   nationality?: string;
   purpose_of_visit?: string;
+  coming_from?: string;
+  going_to?: string;
   room_number: string;
   check_in_date: string;
   check_out_date?: string;
