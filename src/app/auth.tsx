@@ -184,13 +184,11 @@ export default function AuthScreen() {
         >
           {/* Header */}
           <View style={s.header}>
-            <View style={s.brandLogoContainer}>
-              <Image
-                source={StayMateLogo}
-                style={s.brandLogo}
-                resizeMode="contain"
-              />
-            </View>
+            <Image
+              source={StayMateLogo}
+              style={s.brandLogo}
+              resizeMode="contain"
+            />
             <Text style={s.title}>
               {tab === 'login' ? 'Welcome back' : 'Create account'}
             </Text>
@@ -362,31 +360,16 @@ const s = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 22,
-  },
-  brandLogoContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: '#F1F1F4',
-    shadowColor: '#7C3AED',
-    shadowOpacity: 0.16,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
+    marginBottom: 24,
   },
   brandLogo: {
-    width: 250,
-    height: 64,
+    width: 295,
+    height: 78,
+    marginBottom: 16,
   },
   title: {
     fontFamily: 'Inter',
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: '700',
     letterSpacing: -0.4,
     color: '#09090B',
@@ -395,7 +378,7 @@ const s = StyleSheet.create({
     fontFamily: 'Inter',
     fontSize: 13.5,
     color: '#71717A',
-    marginTop: 4,
+    marginTop: 3,
   },
   tabs: {
     height: 44,
