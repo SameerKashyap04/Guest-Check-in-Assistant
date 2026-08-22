@@ -81,20 +81,17 @@ export function AccountPortalScreen({
         >
           {/* Header */}
           <View style={s.header}>
-          <Image
-            source={StayMateLogo}
-            style={s.brandLogo}
-            resizeMode="contain"
-          />
-          <Text style={s.title}>
-            {mode === 'login' ? 'Welcome back' : 'Create account'}
-          </Text>
-          <Text style={s.subtitle}>
-            {mode === 'login'
-              ? 'Sign in to access your property'
-              : 'Start managing your check-ins'}
-          </Text>
-        </View>
+            <Image
+              source={StayMateLogo}
+              style={s.brandLogo}
+              resizeMode="contain"
+            />
+            <Text style={s.tagline}>
+              {mode === 'login'
+                ? 'Sign in to access your property'
+                : 'Start managing your check-ins'}
+            </Text>
+          </View>
 
         {/* Segmented Control */}
         <View style={s.tabs}>
@@ -270,22 +267,15 @@ const s = StyleSheet.create({
     marginBottom: 24,
   },
   brandLogo: {
-    width: 250,
-    height: 64,
-    marginBottom: 18,
+    width: 260,
+    height: 68,
+    marginBottom: 8,
   },
-  title: {
+  tagline: {
     fontFamily: 'Inter',
-    fontSize: 24,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    color: '#09090B',
-  },
-  subtitle: {
-    fontFamily: 'Inter',
-    fontSize: 14,
+    fontSize: 13.5,
+    fontWeight: '500',
     color: '#71717A',
-    marginTop: 4,
   },
   tabs: {
     height: 44,
