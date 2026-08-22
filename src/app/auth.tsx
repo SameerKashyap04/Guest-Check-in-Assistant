@@ -174,9 +174,9 @@ export default function AuthScreen() {
       >
         <ScrollView
           contentContainerStyle={{
+            paddingTop: 160,
             paddingHorizontal: 24,
-            paddingTop: Math.max(54, insets.top + 42),
-            paddingBottom: Math.max(28, insets.bottom + 16),
+            paddingBottom: 28,
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
