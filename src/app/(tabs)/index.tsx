@@ -632,6 +632,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 10,
   },
   dateText: {
     fontFamily: 'Inter',
@@ -995,8 +996,7 @@ const s = StyleSheet.create({
     color: C.rose,
   },
   dashLogo: {
-    width: 175,
-    height: 46,
-    marginLeft: -4,
+    width: 135,
+    height: 24,
   },
 });

@@ -62,6 +62,7 @@ export default function SettingsScreen() {
   const [tempPropName, setTempPropName] = useState(businessName || '');
   const [tempUserName, setTempUserName] = useState(userName || 'Sameer');
   const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [helpModalOpen, setHelpModalOpen] = useState(false);
   const [currentPinInput, setCurrentPinInput] = useState('');
   const [newPinInput, setNewPinInput] = useState('');
   const [confirmPinInput, setConfirmPinInput] = useState('');
@@ -198,14 +199,7 @@ export default function SettingsScreen() {
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <View style={s.headerTop}>
-          <Image
-            source={StayMateLogo}
-            style={s.headerLogo}
-            resizeMode="contain"
-          />
-          <Text style={s.h1}>Settings</Text>
-        </View>
+        <Text style={s.h1}>Settings</Text>
 
         {/* Property Profile Card */}
         <TouchableOpacity
@@ -388,6 +382,27 @@ export default function SettingsScreen() {
           }
         />
 
+        {/* HELP & SUPPORT */}
+        <Text style={[s.sectionHeader, { marginTop: 16 }]}>HELP & SUPPORT</Text>
+        <SettingRow
+          icon="info"
+          label="Help Center & FAQs"
+          subtitle="Guides on scanning, sync & check-ins"
+          onPress={() => setHelpModalOpen(true)}
+        />
+        <SettingRow
+          icon="mail"
+          label="Contact Devify Support"
+          subtitle="support@devify.co.in · Fast response"
+          onPress={() => Linking.openURL('mailto:support@devify.co.in?subject=StayMate%20Support%20Request')}
+        />
+        <SettingRow
+          icon="phone"
+          label="WhatsApp Helpline"
+          subtitle="+91 84718 97293 · Chat with support"
+          onPress={() => Linking.openURL('https://wa.me/918471897293?text=Hi%20Devify%20Team%2C%20I%20need%20help%20with%20StayMate.')}
+        />
+
         {/* ABOUT & DEVELOPER */}
         <Text style={[s.sectionHeader, { marginTop: 16 }]}>ABOUT & DEVELOPER</Text>
         <SettingRow
@@ -429,9 +444,16 @@ export default function SettingsScreen() {
           onPress={() => Linking.openURL('https://www.devify.co.in')}
           style={s.devifyFooter}
         >
-          <Text style={s.devifyText}>
-            Engineered by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
-          </Text>
+          <View style={s.footerContentRow}>
+            <Image
+              source={StayMateLogo}
+              style={s.footerLogo}
+              resizeMode="contain"
+            />
+            <Text style={s.devifyText}>
+              Engineered by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+            </Text>
+          </View>
         </TouchableOpacity>
       </ScrollView>
 
@@ -555,6 +577,91 @@ export default function SettingsScreen() {
                 style={{ flex: 1 }}
               />
             </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Help & Support Modal */}
+      <Modal
+        visible={helpModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setHelpModalOpen(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setHelpModalOpen(false)}
+          style={s.modalOverlay}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation?.()}
+            style={s.sheetContent}
+          >
+            <View style={s.sheetHeader}>
+              <Text style={s.sheetTitle}>Help & Support</Text>
+              <TouchableOpacity
+                onPress={() => setHelpModalOpen(false)}
+                style={s.sheetClose}
+              >
+                <Icon name="x" size={18} color={C.ink} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 420 }}>
+              <Text style={{ fontFamily: 'Inter', fontSize: 13, color: '#64748B', marginBottom: 14 }}>
+                Find quick answers or reach out directly to the Devify support team.
+              </Text>
+
+              {/* FAQ 1 */}
+              <View style={{ backgroundColor: '#F8FAFC', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <Text style={{ fontFamily: 'Inter', fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4 }}>
+                  How do I scan guest IDs?
+                </Text>
+                <Text style={{ fontFamily: 'Inter', fontSize: 13, color: '#475569', lineHeight: 18 }}>
+                  Tap the purple Camera button at the bottom navigation, select the document type, and align the card in the frame.
+                </Text>
+              </View>
+
+              {/* FAQ 2 */}
+              <View style={{ backgroundColor: '#F8FAFC', borderRadius: 12, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <Text style={{ fontFamily: 'Inter', fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4 }}>
+                  Does live sync work offline?
+                </Text>
+                <Text style={{ fontFamily: 'Inter', fontSize: 13, color: '#475569', lineHeight: 18 }}>
+                  Yes! You can check in guests offline. Records are saved locally and synced across devices once internet reconnects.
+                </Text>
+              </View>
+
+              {/* FAQ 3 */}
+              <View style={{ backgroundColor: '#F8FAFC', borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                <Text style={{ fontFamily: 'Inter', fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4 }}>
+                  How do guests self check-in?
+                </Text>
+                <Text style={{ fontFamily: 'Inter', fontSize: 13, color: '#475569', lineHeight: 18 }}>
+                  From the Dashboard, tap "Share" on the Self check-in card to send a link to guests before their arrival.
+                </Text>
+              </View>
+
+              <PrimaryButton
+                label="Email Devify Support"
+                icon="mail"
+                onPress={() => {
+                  setHelpModalOpen(false);
+                  Linking.openURL('mailto:support@devify.co.in?subject=StayMate%20Support%20Request');
+                }}
+                style={{ marginBottom: 10 }}
+              />
+
+              <SecondaryButton
+                label="Chat on WhatsApp (+91 84718 97293)"
+                icon="phone"
+                onPress={() => {
+                  setHelpModalOpen(false);
+                  Linking.openURL('https://wa.me/918471897293?text=Hi%20Devify%20Team%2C%20I%20need%20help%20with%20StayMate.');
+                }}
+              />
+            </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>
@@ -804,11 +911,26 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 18,
     marginTop: 12,
+    width: '100%',
+  },
+  footerContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  footerLogo: {
+    width: 96,
+    height: 17,
   },
   devifyText: {
     fontFamily: 'Inter',
     fontSize: 12,
     color: '#94A3B8',
+    lineHeight: 17,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+    paddingTop: 2,
   },
   devifyBrand: {
     fontWeight: '700',
