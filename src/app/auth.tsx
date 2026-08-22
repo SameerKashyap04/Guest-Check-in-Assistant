@@ -363,9 +363,9 @@ const s = StyleSheet.create({
     marginBottom: 24,
   },
   brandLogo: {
-    width: 210,
-    height: 52,
-    marginBottom: 16,
+    width: 250,
+    height: 64,
+    marginBottom: 18,
   },
   title: {
     fontFamily: 'Inter',
