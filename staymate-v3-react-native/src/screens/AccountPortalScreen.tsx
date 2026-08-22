@@ -316,7 +316,10 @@ export function AccountPortalScreen({
                 <TouchableOpacity
                   activeOpacity={0.85}
                   style={s.googleBtn}
-                  onPress={() => onToast('Connecting with Google…')}
+                  onPress={() => {
+                    onToast('Signed in with Google');
+                    setTimeout(onClose, 400);
+                  }}
                 >
                   <Image
                     source={GoogleLogo}
