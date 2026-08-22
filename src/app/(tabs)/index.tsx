@@ -419,17 +419,6 @@ export default function DashboardScreen() {
             style={s.selfShareBtn}
           />
         </TouchableOpacity>
-
-        {/* Devify Developer Attribution */}
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => Linking.openURL('https://www.devify.co.in')}
-          style={s.devifyFooter}
-        >
-          <Text style={s.devifyText}>
-            Developed by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
-          </Text>
-        </TouchableOpacity>
       </ScrollView>
 
       {/* Guest Details Bottom Sheet Modal */}
@@ -1006,22 +995,8 @@ const s = StyleSheet.create({
     color: C.rose,
   },
   dashLogo: {
-    width: 124,
-    height: 32,
-  },
-  devifyFooter: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    marginTop: 12,
-  },
-  devifyText: {
-    fontFamily: 'Inter',
-    fontSize: 12,
-    color: '#94A3B8',
-  },
-  devifyBrand: {
-    fontWeight: '700',
-    color: '#0F172A',
+    width: 175,
+    height: 46,
+    marginLeft: -4,
   },
 });

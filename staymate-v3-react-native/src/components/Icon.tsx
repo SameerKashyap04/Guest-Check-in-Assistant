@@ -20,6 +20,8 @@ const P:Record<string,React.ReactNode>={
  passport:<><Rect x="4" y="2.5" width="16" height="19" rx="2"/><Circle cx="12" cy="11" r="3.8"/><Path d="M12 7.2v7.6"/><Path d="M8.2 11h7.6"/><Path d="M8 17h8"/></>,
  flashOff:<><Path d="M11 2 5 12h5l-1 10 8-13h-5l2-7Z" opacity=".5"/><Path d="M3 3l18 18"/></>,
  flip:<><Path d="M17 2.1 21 6l-4 3.9"/><Path d="M3 12a9 9 0 0 1 15-6.7l3 3"/><Path d="M7 21.9 3 18l4-3.9"/><Path d="M21 12a9 9 0 0 1-15 6.7l-3-3"/></>,
+ external:<><Path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><Path d="m15 3 6 0 0 6"/><Path d="m10 14 11-11"/></>,
+ code:<><Path d="m16 18 6-6-6-6M8 6l-6 6 6 6"/></>,
  eye:<><Path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><Circle cx="12" cy="12" r="3"/></>,
  eyeOff:<><Path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><Path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><Path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><Path d="m2 2 20 20"/></>,
 };

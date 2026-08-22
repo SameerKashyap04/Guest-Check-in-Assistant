@@ -576,8 +576,9 @@ const s = StyleSheet.create({
     gap: 8,
   },
   headerLogo: {
-    width: 124,
-    height: 32,
+    width: 175,
+    height: 46,
+    marginLeft: -4,
   },
   h1: {
     fontFamily: 'Inter',

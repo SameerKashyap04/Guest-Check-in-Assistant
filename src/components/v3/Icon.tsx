@@ -284,6 +284,18 @@ const P: Record<string, React.ReactNode> = {
       <Path d="m2 2 20 20" />
     </>
   ),
+  external: (
+    <>
+      <Path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <Path d="m15 3 6 0 0 6" />
+      <Path d="m10 14 11-11" />
+    </>
+  ),
+  code: (
+    <>
+      <Path d="m16 18 6-6-6-6M8 6l-6 6 6 6" />
+    </>
+  ),
 };
 
 export type IconName = keyof typeof P;

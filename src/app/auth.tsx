@@ -816,14 +816,14 @@ const s = StyleSheet.create({
     fontSize: 11.5,
     color: '#A1A1AA',
     textAlign: 'center',
-    marginTop: 22,
+    marginTop: 14,
     lineHeight: 17,
   },
   devifyBadge: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    marginTop: 10,
+    paddingVertical: 4,
+    marginTop: 2,
   },
   devifyText: {
     fontFamily: 'Inter',

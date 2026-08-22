@@ -308,17 +308,6 @@ export function SettingsScreen({
       {/* SECURITY & ACCESS */}
       <Text style={[s.sectionHeader, {marginTop: 16}]}>SECURITY & ACCESS</Text>
       <SettingRow
-        icon="shield"
-        label="App lock (PIN required)"
-        subtitle="Protect app on launch and resume"
-        onPress={handleToggleRequirePin}
-        right={
-          <TouchableOpacity activeOpacity={0.9} onPress={handleToggleRequirePin}>
-            <Switch on={requirePin}/>
-          </TouchableOpacity>
-        }
-      />
-      <SettingRow
         icon="lock"
         label="Change security PIN"
         subtitle="Update your 4-digit security PIN"
@@ -856,8 +845,9 @@ const s = StyleSheet.create({
     gap: 8,
   },
   headerLogo: {
-    width: 124,
-    height: 32,
+    width: 175,
+    height: 46,
+    marginLeft: -4,
   },
   h1: {
     fontFamily: 'Inter',
