@@ -6,10 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../theme/tokens';
 import { Icon } from '../components/Icon';
+
+const GoogleLogo = require('../../assets/google-logo.png');
+const StayMateIcon = require('../../assets/staymate-icon.jpg');
 
 export function AccountPortalScreen({
   initial = 'login',
@@ -54,7 +58,7 @@ export function AccountPortalScreen({
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={onClose}
-        style={[s.closeBtn, { top: insets.top + 12 }]}
+        style={[s.closeBtn, { top: insets.top + 10 }]}
       >
         <Icon name="x" size={16} color="#64748B" />
       </TouchableOpacity>
@@ -62,16 +66,20 @@ export function AccountPortalScreen({
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 24,
-          paddingTop: insets.top + 28,
-          paddingBottom: Math.max(30, insets.bottom + 16),
+          paddingTop: insets.top + 20,
+          paddingBottom: Math.max(28, insets.bottom + 16),
         }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
         {/* Header */}
         <View style={s.header}>
-          <View style={s.brandIcon}>
-            <Icon name="home" size={24} color="#7C3AED" />
+          <View style={s.brandLogoWrapper}>
+            <Image
+              source={StayMateIcon}
+              style={s.brandLogoImage}
+              resizeMode="cover"
+            />
           </View>
           <Text style={s.title}>
             {mode === 'login' ? 'Welcome back' : 'Create account'}
@@ -215,9 +223,11 @@ export function AccountPortalScreen({
             style={s.googleBtn}
             onPress={() => onToast('Connecting with Google…')}
           >
-            <View style={s.googleIconBox}>
-              <Text style={s.googleLetter}>G</Text>
-            </View>
+            <Image
+              source={GoogleLogo}
+              style={s.googleImage}
+              resizeMode="contain"
+            />
             <Text style={s.googleBtnText}>Continue with Google</Text>
           </TouchableOpacity>
         </View>
@@ -251,36 +261,40 @@ const s = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 26,
+    marginBottom: 22,
   },
-  brandIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: '#09090B',
-    borderWidth: 1.5,
-    borderColor: '#27272A',
+  brandLogoWrapper: {
+    width: 62,
+    height: 62,
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 14,
-    shadowColor: '#000000',
-    shadowOpacity: 0.12,
+    marginBottom: 12,
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.18,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
     elevation: 4,
+    overflow: 'hidden',
+  },
+  brandLogoImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 18,
   },
   title: {
     fontFamily: 'Inter',
-    fontSize: 24,
+    fontSize: 23,
     fontWeight: '800',
     letterSpacing: -0.5,
     color: '#09090B',
   },
   subtitle: {
     fontFamily: 'Inter',
-    fontSize: 14,
+    fontSize: 13.5,
     color: '#71717A',
-    marginTop: 4,
+    marginTop: 3,
   },
   tabs: {
     height: 44,
@@ -288,7 +302,7 @@ const s = StyleSheet.create({
     backgroundColor: '#F4F4F5',
     padding: 3,
     flexDirection: 'row',
-    marginBottom: 22,
+    marginBottom: 20,
   },
   tab: {
     flex: 1,
@@ -318,7 +332,7 @@ const s = StyleSheet.create({
     width: '100%',
   },
   inputGroup: {
-    marginBottom: 14,
+    marginBottom: 13,
   },
   label: {
     fontFamily: 'Inter',
@@ -339,6 +353,8 @@ const s = StyleSheet.create({
   },
   inputIcon: {
     marginRight: 10,
+    width: 20,
+    alignItems: 'center',
   },
   input: {
     flex: 1,
@@ -409,19 +425,9 @@ const s = StyleSheet.create({
     gap: 10,
     backgroundColor: '#FFFFFF',
   },
-  googleIconBox: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#F4F4F5',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  googleLetter: {
-    fontFamily: 'Inter',
-    fontSize: 12,
-    fontWeight: '900',
-    color: '#4285F4',
+  googleImage: {
+    width: 18,
+    height: 18,
   },
   googleBtnText: {
     fontFamily: 'Inter',
@@ -438,5 +444,6 @@ const s = StyleSheet.create({
     lineHeight: 17,
   },
 });
+
 
 

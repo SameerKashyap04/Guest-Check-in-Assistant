@@ -36,8 +36,10 @@ export interface CloudGuestCheckin {
   room_number: string;
   check_in_date: string;
   check_out_date?: string;
-  adults?: number;
-  children?: number;
+  adults?: number | string;
+  children?: number | string;
+  vehicle_number?: string;
+  special_requests?: string;
   additional_guests?: any[];
   created_at?: any;
   expires_at?: number; // 10-day TTL timestamp

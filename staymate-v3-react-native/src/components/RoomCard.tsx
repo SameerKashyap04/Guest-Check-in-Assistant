@@ -10,12 +10,12 @@ export function RoomCard({
   selected = false,
   compact = false,
 }: {
-  room: typeof ROOMS[number];
+  room: any;
   onPress?: () => void;
   selected?: boolean;
   compact?: boolean;
 }) {
-  const m = STATUS_META[room.status];
+  const m = STATUS_META[(room.status as keyof typeof STATUS_META) || 'available'] || STATUS_META.available;
   return (
     <TouchableOpacity
       activeOpacity={0.85}
