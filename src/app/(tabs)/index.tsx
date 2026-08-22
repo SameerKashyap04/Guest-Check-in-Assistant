@@ -12,12 +12,15 @@ import {
   ActivityIndicator,
   StyleSheet,
   Alert,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { C, R } from '@/theme/tokens';
 import { Icon } from '@/components/v3/Icon';
 import { PrimaryButton, SecondaryButton, Field } from '@/components/v3/Ui';
+
+const StayMateLogo = require('../../../assets/images/staymate-logo.png');
 import { openDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -278,15 +281,20 @@ export default function DashboardScreen() {
           />
         }
       >
-        {/* Header row: date + greeting + live sync badge */}
+        {/* Header row: StayMate Logo + live sync badge + date & greeting */}
         <View style={s.headerSection}>
           <View style={s.topRow}>
-            <Text style={s.dateText}>{getTodayStr()}</Text>
+            <Image
+              source={StayMateLogo}
+              style={s.dashLogo}
+              resizeMode="contain"
+            />
             <View style={s.syncBadge}>
               <View style={s.syncDot} />
               <Text style={s.syncText}>Live Sync</Text>
             </View>
           </View>
+          <Text style={s.dateText}>{getTodayStr()}</Text>
           <Text style={s.h1}>
             {getGreeting()}, {userName}
           </Text>
@@ -410,6 +418,17 @@ export default function DashboardScreen() {
             onPress={handleShareSelfCheckin}
             style={s.selfShareBtn}
           />
+        </TouchableOpacity>
+
+        {/* Devify Developer Attribution */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => Linking.openURL('https://www.devify.co.in')}
+          style={s.devifyFooter}
+        >
+          <Text style={s.devifyText}>
+            Developed by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+          </Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -985,5 +1004,24 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: C.rose,
+  },
+  dashLogo: {
+    width: 124,
+    height: 32,
+  },
+  devifyFooter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    marginTop: 12,
+  },
+  devifyText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  devifyBrand: {
+    fontWeight: '700',
+    color: '#0F172A',
   },
 });

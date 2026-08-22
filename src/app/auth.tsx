@@ -11,6 +11,7 @@ import {
   StyleSheet,
   TextInput,
   Image,
+  Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter, Stack } from 'expo-router';
@@ -543,6 +544,17 @@ export default function AuthScreen() {
             <Text style={{ color: '#09090B', fontWeight: '600' }}>Terms</Text> and{' '}
             <Text style={{ color: '#09090B', fontWeight: '600' }}>Privacy</Text>.
           </Text>
+
+          {/* Devify Developer Attribution */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => Linking.openURL('https://www.devify.co.in')}
+            style={s.devifyBadge}
+          >
+            <Text style={s.devifyText}>
+              Developed by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -806,5 +818,20 @@ const s = StyleSheet.create({
     textAlign: 'center',
     marginTop: 22,
     lineHeight: 17,
+  },
+  devifyBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    marginTop: 10,
+  },
+  devifyText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#71717A',
+  },
+  devifyBrand: {
+    fontWeight: '700',
+    color: '#09090B',
   },
 });
