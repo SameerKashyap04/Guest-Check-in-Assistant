@@ -22,6 +22,7 @@ const P:Record<string,React.ReactNode>={
  flip:<><Path d="M17 2.1 21 6l-4 3.9"/><Path d="M3 12a9 9 0 0 1 15-6.7l3 3"/><Path d="M7 21.9 3 18l4-3.9"/><Path d="M21 12a9 9 0 0 1-15 6.7l-3-3"/></>,
  eye:<><Path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><Circle cx="12" cy="12" r="3"/></>,
  eyeOff:<><Path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><Path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><Path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><Path d="m2 2 20 20"/></>,
+ key:<><Circle cx="7.5" cy="14.5" r="4.2"/><Path d="M10.4 11.6 19 3"/><Path d="M14.6 6.8l2.4 2.4"/><Path d="M17 4.4l2.4 2.4"/></>,
 };
 export type IconName=keyof typeof P;
 export function Icon({name,size=22,color='#222222',strokeWidth=2}: {name:IconName,size?:number,color?:string,strokeWidth?:number}){return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">{P[name]}</Svg>}
