@@ -5,6 +5,7 @@ import {
   Modal,
   ScrollView,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   StyleSheet,
   TextInput,
   Platform,
@@ -441,7 +442,7 @@ function MainApp() {
       {/* Room details sheet */}
       {sheet === 'room' && selectedRoom ? (
         <Modal visible transparent animationType="slide">
-          <Sheet onClose={() => setSheet(null)}>
+          <Sheet onClose={() => setSheet(null)} showClose={false}>
             <RoomSheet
               room={roomsList.find((r) => r.num === selectedRoom) || {num: selectedRoom, type: 'Standard', price: 1800, status: 'available'}}
               guests={guestsList}
@@ -566,8 +567,19 @@ function Sheet({onClose, showClose = true, children}: {onClose: () => void; show
   const insets = useSafeAreaInsets();
   return (
     <View style={ms.sheetScrim}>
+      {/* Tap backdrop outside popup card to dismiss */}
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={StyleSheet.absoluteFillObject} />
+      </TouchableWithoutFeedback>
       <View style={[ms.sheet, {paddingBottom: Math.max(16, insets.bottom)}]}>
-        <View style={ms.handle}/>
+        {/* Tap handle bar to dismiss */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={onClose}
+          style={{paddingTop: 2, paddingBottom: 8, width: '100%', alignItems: 'center'}}
+        >
+          <View style={ms.handle}/>
+        </TouchableOpacity>
         {showClose && (
           <TouchableOpacity
             activeOpacity={0.8}
@@ -614,22 +626,27 @@ function RoomSheet({
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
-      <View style={ms.guestHeaderRow}>
-        <View style={[ms.roomSheetBed, {backgroundColor: '#F7F3FF'}]}>
-          <Icon name="bed" size={26} color={C.primary}/>
-        </View>
-        <View style={{flex: 1}}>
-          <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between'}}>
-            <Text style={ms.roomSheetTitle}>Room {room.num}</Text>
-            <View style={[ms.statusPillBadge, {backgroundColor: m.bg, borderColor: m.color}]}>
-              <Icon name={room.status === 'available' ? 'check' : 'info'} size={10} color={m.color}/>
-              <Text style={[ms.statusPillBadgeText, {color: m.color}]}>{m.label}</Text>
-            </View>
+      <View style={[ms.guestHeaderRow, {justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10}]}>
+        <View style={{flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1}}>
+          <View style={[ms.roomSheetBed, {backgroundColor: '#F7F3FF'}]}>
+            <Icon name="bed" size={26} color={C.primary}/>
           </View>
-          <Text style={ms.bodySm}>
-            {room.type} · ₹{room.price.toLocaleString('en-IN')}/night{room.floor ? ` · ${room.floor}` : ''}
-          </Text>
+          <View style={{flex: 1}}>
+            <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 8}}>
+              <Text style={ms.roomSheetTitle}>Room {room.num}</Text>
+              <View style={[ms.statusPillBadge, {backgroundColor: m.bg, borderColor: m.color}]}>
+                <Icon name={room.status === 'available' ? 'check' : 'info'} size={10} color={m.color}/>
+                <Text style={[ms.statusPillBadgeText, {color: m.color}]}>{m.label}</Text>
+              </View>
+            </View>
+            <Text style={ms.bodySm}>
+              {room.type} · ₹{room.price.toLocaleString('en-IN')}/night{room.floor ? ` · ${room.floor}` : ''}
+            </Text>
+          </View>
         </View>
+        <TouchableOpacity activeOpacity={0.8} onPress={onClose} style={ms.sheetBackBtn}>
+          <Icon name="x" size={16} color={C.ink}/>
+        </TouchableOpacity>
       </View>
 
       {/* Quick status switcher */}
@@ -2210,10 +2227,22 @@ function SelfCheckins({
         contentContainerStyle={{paddingHorizontal: 20, paddingTop: 4, paddingBottom: 28}}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={ms.displayMd}>Web self check-ins</Text>
-        <Text style={[ms.bodySm, {marginTop: 4}]}>
-          Share the QR or link, then review and approve guest details in real time.
-        </Text>
+        {/* Header with Close Button */}
+        <View style={{flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12}}>
+          <View style={{flex: 1, paddingRight: 8}}>
+            <Text style={ms.displayMd}>Web self check-ins</Text>
+            <Text style={[ms.bodySm, {marginTop: 3}]}>
+              Share the QR or link, then review and approve guest details in real time.
+            </Text>
+          </View>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={onClose}
+            style={ms.sheetBackBtn}
+          >
+            <Icon name="x" size={16} color={C.ink}/>
+          </TouchableOpacity>
+        </View>
 
         {/* QR Card */}
         <View style={ms.qrCard}>
