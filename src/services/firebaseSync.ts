@@ -28,6 +28,9 @@ export interface CloudGuestCheckin {
   photo_uri?: string;
   back_photo_uri?: string;
   selfie_uri?: string;
+  email?: string;
+  nationality?: string;
+  purpose_of_visit?: string;
   room_number: string;
   check_in_date: string;
   check_out_date?: string;
