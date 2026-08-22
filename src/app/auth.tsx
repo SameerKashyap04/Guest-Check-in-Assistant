@@ -169,17 +169,19 @@ export default function AuthScreen() {
       <Stack.Screen options={{ headerShown: false }} />
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
         style={{ flex: 1 }}
       >
         <ScrollView
           contentContainerStyle={{
-            paddingTop: 150,
+            paddingTop: tab === 'login' ? 150 : Math.max(36, insets.top + 16),
             paddingHorizontal: 24,
-            paddingBottom: 28,
+            paddingBottom: Math.max(140, insets.bottom + 40),
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets={true}
         >
           {/* Header */}
           <View style={s.header}>

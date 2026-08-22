@@ -7,6 +7,8 @@ import {
   StyleSheet,
   TextInput,
   Image,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../theme/tokens';
@@ -63,17 +65,23 @@ export function AccountPortalScreen({
         <Icon name="x" size={16} color="#64748B" />
       </TouchableOpacity>
 
-      <ScrollView
-        contentContainerStyle={{
-          paddingTop: 150,
-          paddingHorizontal: 24,
-          paddingBottom: 28,
-        }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+        style={{ flex: 1 }}
       >
-        {/* Header */}
-        <View style={s.header}>
+        <ScrollView
+          contentContainerStyle={{
+            paddingTop: mode === 'login' ? 150 : Math.max(36, insets.top + 16),
+            paddingHorizontal: 24,
+            paddingBottom: Math.max(140, insets.bottom + 40),
+          }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          automaticallyAdjustKeyboardInsets={true}
+        >
+          {/* Header */}
+          <View style={s.header}>
           <Image
             source={StayMateLogo}
             style={s.brandLogo}
@@ -237,7 +245,8 @@ export function AccountPortalScreen({
           <Text style={{ color: '#09090B', fontWeight: '600' }}>Privacy</Text>.
         </Text>
       </ScrollView>
-    </View>
+    </KeyboardAvoidingView>
+  </View>
   );
 }
 
