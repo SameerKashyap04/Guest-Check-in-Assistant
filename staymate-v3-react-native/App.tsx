@@ -200,15 +200,35 @@ function MainApp() {
     notify(`Room ${roomNum} deleted from property`);
   };
 
-  // Checkout guest from room and set room to cleaning
+  // Checkout guest from room and set room to cleaning (NEVER deletes guest details)
   const handleCheckoutGuest = (roomNum: string, guestName?: string) => {
+    // 1. Update room status to cleaning
     setRoomsList((prev) =>
       prev.map((r) => (r.num === roomNum ? {...r, status: 'cleaning'} : r))
     );
-    setGuestsList((prev) => prev.filter((g) => g.room !== roomNum));
+
+    // 2. Mark guest as checked out with timestamp instead of deleting their record
+    const now = new Date();
+    const formattedCheckOut = `${now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+
+    setGuestsList((prev) =>
+      prev.map((g) => {
+        if (g.room === roomNum && (g.status === 'active' || (!g.status && !g.checkedOut))) {
+          return {
+            ...g,
+            status: 'checked_out',
+            checkedOut: true,
+            checkOut: formattedCheckOut,
+            time: 'Checked out',
+          };
+        }
+        return g;
+      })
+    );
+
     setSheet(null);
     setSelectedRoom(null);
-    notify(`✓ ${guestName ? guestName : `Room ${roomNum}`} checked out! Room set to Cleaning.`);
+    notify(`✓ ${guestName ? guestName : `Room ${roomNum}`} checked out! Guest details preserved.`);
   };
 
   // Handle successful check-in from either Scanner or Manual Entry
@@ -380,6 +400,7 @@ function MainApp() {
       {overlay === 'search' && (
         <Modal visible animationType="slide">
           <SearchOverlay
+            guests={guestsList}
             onClose={() => setOverlay(null)}
             onGuest={(id) => {
               setOverlay(null);
@@ -583,7 +604,8 @@ function RoomSheet({
   onCheckin: () => void;
   onViewGuest: (id: number) => void;
 }) {
-  const activeGuest = guests.find((g) => g.room === room.num);
+  const activeGuest = guests.find((g) => g.room === room.num && (g.status === 'active' || (!g.status && !g.checkedOut)));
+  const lastGuest = guests.find((g) => g.room === room.num && (g.status === 'checked_out' || g.checkedOut));
   const m = STATUS_META[room.status as RoomStatus] || STATUS_META.available;
 
   return (
@@ -695,6 +717,34 @@ function RoomSheet({
           </View>
         </View>
       )}
+
+      {/* Previous Occupant Record (if room is not occupied and has previous guest) */}
+      {room.status !== 'occupied' && lastGuest ? (
+        <View style={{marginTop: 14}}>
+          <Text style={ms.sectionCaption}>LAST CHECKED-OUT OCCUPANT</Text>
+          <View style={[ms.occupantCard, {backgroundColor: '#F8FAFC', borderColor: '#E2E8F0'}]}>
+            <View style={[ms.avatar, {backgroundColor: '#E2E8F0'}]}>
+              <Text style={[ms.avatarText, {color: '#475569'}]}>
+                {lastGuest.name.split(' ').map((n: string) => n[0]).join('')}
+              </Text>
+            </View>
+            <View style={{flex: 1, minWidth: 0}}>
+              <Text style={ms.titleSm}>{lastGuest.name}</Text>
+              <Text style={ms.bodySm}>
+                Checked out: {lastGuest.checkOut || 'Recently'}
+              </Text>
+              <Text style={[ms.bodySm, {color: '#64748B', marginTop: 2}]}>{lastGuest.phone || lastGuest.idNum}</Text>
+            </View>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => onViewGuest(lastGuest.id)}
+              style={[ms.viewGuestPill, {backgroundColor: '#EDE9FE'}]}
+            >
+              <Text style={[ms.viewGuestPillText, {color: C.primary}]}>View Profile</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
 
       {/* Room Details Table */}
       <View style={[ms.metaCard, {marginTop: 16}]}>
@@ -1214,8 +1264,11 @@ function GuestSheet({
       {/* Details table */}
       <View style={ms.metaCard}>
         {([
+          ['Stay Status', (g.status === 'checked_out' || g.checkedOut) ? 'Checked Out (Saved in Ledger)' : 'Active Stay'],
           ['Room', `${g.room} · ${g.roomType || 'Standard'}`],
           ['Document', `${g.type || 'ID'} — ${g.idNum || 'Verified'}`],
+          ['Check-in', g.checkIn || (g.time && g.time !== 'Checked out' ? `20 Aug 2026, ${g.time}` : '20 Aug 2026, 09:42 AM')],
+          ['Check-out', (g.status === 'checked_out' || g.checkedOut) ? (g.checkOut || 'Checked Out') : 'Active Stay'],
           ['Phone', g.phone || '—'],
           ['Nationality', g.nat || 'Indian'],
         ] as [string, string][]).map(([label, val], idx, arr) => (
@@ -1227,7 +1280,10 @@ function GuestSheet({
             ]}
           >
             <Text style={ms.metaLabel}>{label}</Text>
-            <Text style={ms.metaValue}>{val}</Text>
+            <Text style={[
+              ms.metaValue,
+              label === 'Stay Status' && ((g.status === 'checked_out' || g.checkedOut) ? {color: '#64748B', fontWeight: '700'} : {color: '#059669', fontWeight: '700'}),
+            ]}>{val}</Text>
           </View>
         ))}
       </View>
@@ -2284,23 +2340,26 @@ function SelfCheckins({
 }
 
 function SearchOverlay({
+  guests = [],
   onClose,
   onGuest,
 }: {
+  guests?: any[];
   onClose: () => void;
   onGuest: (id: number) => void;
 }) {
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
 
-  const filteredGuests = GUESTS.filter((g) => {
+  const activeGuestList = guests.length > 0 ? guests : GUESTS;
+  const filteredGuests = activeGuestList.filter((g) => {
     if (!query.trim()) return true;
     const q = query.toLowerCase();
     return (
-      g.name.toLowerCase().includes(q) ||
-      g.phone.includes(q) ||
-      g.room.includes(q) ||
-      g.idNum.toLowerCase().includes(q)
+      (g.name && g.name.toLowerCase().includes(q)) ||
+      (g.phone && g.phone.toLowerCase().includes(q)) ||
+      (g.room && String(g.room).toLowerCase().includes(q)) ||
+      (g.idNum && g.idNum.toLowerCase().includes(q))
     );
   });
 
@@ -2322,7 +2381,7 @@ function SearchOverlay({
       </View>
       <ScrollView contentContainerStyle={{padding: 20, paddingBottom: Math.max(20, insets.bottom + 10)}} showsVerticalScrollIndicator={false}>
         <Text style={ms.sectionCaption}>
-          {query.trim() ? `SEARCH RESULTS (${filteredGuests.length})` : 'RECENT GUESTS'}
+          {query.trim() ? `SEARCH RESULTS (${filteredGuests.length})` : 'ALL GUESTS & STAYS'}
         </Text>
         {filteredGuests.map((g) => (
           <View key={g.id}>
@@ -2333,13 +2392,20 @@ function SearchOverlay({
             >
               <View style={ms.avatar}>
                 <Text style={ms.avatarText}>
-                  {g.name.split(' ').map((n) => n[0]).join('')}
+                  {g.name ? g.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'G'}
                 </Text>
               </View>
               <View style={{flex: 1, minWidth: 0}}>
-                <Text style={ms.titleSm}>{g.name}</Text>
+                <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+                  <Text style={ms.titleSm}>{g.name}</Text>
+                  {(g.status === 'checked_out' || g.checkedOut) ? (
+                    <View style={{backgroundColor: '#F1F5F9', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4}}>
+                      <Text style={{fontSize: 9.5, fontWeight: '700', color: '#64748B'}}>CHECKED OUT</Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={ms.bodySm}>
-                  Room {g.room} · {g.phone}
+                  Room {g.room} · {g.phone || g.idNum || 'Verified'}
                 </Text>
               </View>
               <Icon name="chevronRight" size={17} color={C.mutedSoft}/>

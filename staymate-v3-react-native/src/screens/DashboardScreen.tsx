@@ -29,6 +29,11 @@ export function DashboardScreen({
   onGuest: (id: number) => void;
   onSelfCheckin: () => void;
 }) {
+  const activeCount = guests.filter((g) => g.status !== 'checked_out' && !g.checkedOut).length;
+  const checkedOutCount = guests.filter((g) => g.status === 'checked_out' || g.checkedOut).length;
+  const pendingVerifyCount = guests.filter((g) => !g.verified).length;
+  const totalCheckinsToday = guests.length;
+
   return (
     <ScrollView
       style={{flex: 1, backgroundColor: '#fff'}}
@@ -62,10 +67,10 @@ export function DashboardScreen({
       {/* Metrics */}
       <View style={s.metricsGrid}>
         {([
-          ["TODAY'S CHECK-INS", '6'],
-          ["TODAY'S CHECK-OUTS", '3'],
-          ['ACTIVE GUESTS', '14'],
-          ['PENDING VERIFY', '2'],
+          ["TODAY'S CHECK-INS", String(totalCheckinsToday)],
+          ["TODAY'S CHECK-OUTS", String(checkedOutCount)],
+          ['ACTIVE GUESTS', String(activeCount)],
+          ['PENDING VERIFY', String(pendingVerifyCount)],
         ] as [string, string][]).map(([label, value], i) => (
           <View key={label} style={s.metricCard}>
             <Text style={s.metricLabel}>{label}</Text>
@@ -76,42 +81,53 @@ export function DashboardScreen({
 
       {/* Recent check-ins */}
       <View style={s.recentHead}>
-        <Text style={s.sectionTitle}>Recent check-ins</Text>
+        <Text style={s.sectionTitle}>Recent check-ins & stays</Text>
         <TouchableOpacity activeOpacity={0.7}>
-          <Text style={s.viewAll}>View all</Text>
+          <Text style={s.viewAll}>{guests.length} records</Text>
         </TouchableOpacity>
       </View>
 
       <View>
-        {guests.map((g) => (
-          <View key={g.id}>
-            <TouchableOpacity
-              onPress={() => onGuest(g.id)}
-              activeOpacity={0.75}
-              style={s.guestRow}
-            >
-              <View style={s.avatar}>
-                <Text style={s.avatarText}>
-                  {g.name.split(' ').map((n: string) => n[0]).join('')}
-                </Text>
-              </View>
-              <View style={{flex: 1, minWidth: 0}}>
-                <View style={s.nameRow}>
-                  <Text style={s.guestName}>{g.name}</Text>
-                  {g.verified && <Icon name="check" size={14} color={C.emerald}/>}
+        {guests.map((g) => {
+          const isCheckedOut = g.status === 'checked_out' || g.checkedOut;
+          return (
+            <View key={g.id}>
+              <TouchableOpacity
+                onPress={() => onGuest(g.id)}
+                activeOpacity={0.75}
+                style={s.guestRow}
+              >
+                <View style={[s.avatar, isCheckedOut && {backgroundColor: '#F1F5F9'}]}>
+                  <Text style={[s.avatarText, isCheckedOut && {color: '#64748B'}]}>
+                    {g.name ? g.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'GS'}
+                  </Text>
                 </View>
-                <Text style={s.guestSub}>
-                  Room {g.room} · {g.idNum}
-                </Text>
-              </View>
-              <View style={{alignItems: 'flex-end', flexShrink: 0}}>
-                <Text style={s.guestTime}>{g.time}</Text>
-              </View>
-              <Icon name="chevronRight" size={18} color={C.mutedSoft}/>
-            </TouchableOpacity>
-            <View style={s.divider}/>
-          </View>
-        ))}
+                <View style={{flex: 1, minWidth: 0}}>
+                  <View style={s.nameRow}>
+                    <Text style={s.guestName}>{g.name}</Text>
+                    {isCheckedOut ? (
+                      <View style={{backgroundColor: '#F1F5F9', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, marginLeft: 4}}>
+                        <Text style={{fontSize: 9.5, fontWeight: '700', color: '#64748B'}}>OUT</Text>
+                      </View>
+                    ) : g.verified ? (
+                      <Icon name="check" size={14} color={C.emerald}/>
+                    ) : null}
+                  </View>
+                  <Text style={s.guestSub}>
+                    Room {g.room} · {g.idNum || 'Verified'}
+                  </Text>
+                </View>
+                <View style={{alignItems: 'flex-end', flexShrink: 0}}>
+                  <Text style={[s.guestTime, isCheckedOut && {color: '#64748B', fontWeight: '600'}]}>
+                    {isCheckedOut ? 'Checked out' : g.time}
+                  </Text>
+                </View>
+                <Icon name="chevronRight" size={18} color={C.mutedSoft}/>
+              </TouchableOpacity>
+              <View style={s.divider}/>
+            </View>
+          );
+        })}
       </View>
 
       {/* Self check-in card */}
