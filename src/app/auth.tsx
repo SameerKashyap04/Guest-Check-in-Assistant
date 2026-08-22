@@ -28,7 +28,7 @@ import { Icon } from '@/components/v3/Icon';
 import { assignLegacyUnassignedGuests } from '@/database';
 
 const GoogleLogo = require('../../assets/images/google-logo.png');
-const StayMateIcon = require('../../assets/images/staymate-icon.jpg');
+const StayMateLogo = require('../../assets/images/staymate-logo.png');
 
 export default function AuthScreen() {
   const insets = useSafeAreaInsets();
@@ -175,7 +175,7 @@ export default function AuthScreen() {
         <ScrollView
           contentContainerStyle={{
             paddingHorizontal: 24,
-            paddingTop: insets.top + 20,
+            paddingTop: Math.max(54, insets.top + 42),
             paddingBottom: Math.max(28, insets.bottom + 16),
           }}
           showsVerticalScrollIndicator={false}
@@ -183,13 +183,11 @@ export default function AuthScreen() {
         >
           {/* Header */}
           <View style={s.header}>
-            <View style={s.brandLogoWrapper}>
-              <Image
-                source={StayMateIcon}
-                style={s.brandLogoImage}
-                resizeMode="cover"
-              />
-            </View>
+            <Image
+              source={StayMateLogo}
+              style={s.brandLogo}
+              resizeMode="contain"
+            />
             <Text style={s.title}>
               {tab === 'login' ? 'Welcome back' : 'Create account'}
             </Text>
@@ -361,40 +359,25 @@ const s = StyleSheet.create({
   },
   header: {
     alignItems: 'center',
-    marginBottom: 22,
+    marginBottom: 24,
   },
-  brandLogoWrapper: {
-    width: 62,
-    height: 62,
-    borderRadius: 18,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-    shadowColor: '#7C3AED',
-    shadowOpacity: 0.18,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-    overflow: 'hidden',
-  },
-  brandLogoImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 18,
+  brandLogo: {
+    width: 210,
+    height: 52,
+    marginBottom: 16,
   },
   title: {
     fontFamily: 'Inter',
-    fontSize: 23,
+    fontSize: 24,
     fontWeight: '800',
     letterSpacing: -0.5,
     color: '#09090B',
   },
   subtitle: {
     fontFamily: 'Inter',
-    fontSize: 13.5,
+    fontSize: 14,
     color: '#71717A',
-    marginTop: 3,
+    marginTop: 4,
   },
   tabs: {
     height: 44,
