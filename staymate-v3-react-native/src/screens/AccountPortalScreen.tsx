@@ -71,7 +71,7 @@ export function AccountPortalScreen({
       >
         <ScrollView
           contentContainerStyle={{
-            paddingTop: 110,
+            paddingTop: 140,
             paddingHorizontal: 24,
             paddingBottom: Math.max(32, insets.bottom + 16),
           }}
