@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GlassCard } from '@/components/GlassCard';
 import { ChevronLeft, Download, TrendingUp, Users, Calendar, FileText, CheckCircle2, BedDouble, ShieldCheck } from 'lucide-react-native';
@@ -14,6 +14,9 @@ import * as FileSystem from 'expo-file-system/legacy';
 import { useTranslation } from 'react-i18next';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { isAtLimit, getRemainingUsage } from '@/services/entitlementService';
+import { STAYMATE_REPORT_LOGO_BASE64 } from '@/constants/reportLogoBase64';
+
+const StayMateLogo = require('../../assets/images/staymate-logo.png');
 
 export default function ReportsScreen() {
   const { t } = useTranslation();
@@ -217,14 +220,21 @@ export default function ReportsScreen() {
           </head>
           <body>
             <div class="header">
-              <div>
-                <div class="title">${propTitle}</div>
-                <div class="subtitle">Official Guest Register & Property Report (${getDurationLabel()})</div>
-              </div>
-              <div style="text-align: right;">
-                <div style="font-size: 12px; font-weight: bold;">Report Date</div>
-                <div class="subtitle">${exportDate}</div>
-              </div>
+              <table style="width: 100%; border: none; margin: 0 0 12px 0; padding: 0;">
+                <tr style="background: transparent;">
+                  <td style="border: none; padding: 0; width: 175px; vertical-align: middle;">
+                    <img src="${STAYMATE_REPORT_LOGO_BASE64}" width="170" height="30" style="display: block; width: 170px; height: 30px;" alt="StayMate" />
+                  </td>
+                  <td style="border: none; padding: 0 0 0 16px; border-left: 2px solid #E2E8F0; vertical-align: middle;">
+                    <div class="title">${propTitle}</div>
+                    <div class="subtitle">Official Guest Register & Property Report (${getDurationLabel()})</div>
+                  </td>
+                  <td style="border: none; padding: 0; text-align: right; vertical-align: middle;">
+                    <div style="font-size: 12px; font-weight: bold; color: #0F172A;">Report Date</div>
+                    <div class="subtitle">${exportDate}</div>
+                  </td>
+                </tr>
+              </table>
             </div>
 
             <div class="stats-container">
@@ -350,16 +360,21 @@ export default function ReportsScreen() {
     <SafeAreaView edges={['top', 'left', 'right', 'bottom']} className="flex-1 bg-background">
       {/* Header Bar */}
       <View className="flex-row items-center justify-between px-4 pt-3 pb-3 border-b border-gray-200/50 dark:border-gray-800">
-        <View className="flex-row items-center">
+        <View className="flex-row items-center flex-1 mr-2">
           <TouchableOpacity 
             onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
-            className="mr-3 p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
+            className="mr-2 p-2 -ml-2 rounded-full active:bg-gray-100 dark:active:bg-gray-800"
           >
             <ChevronLeft size={26} color="#000000" />
           </TouchableOpacity>
+          <Image
+            source={StayMateLogo}
+            style={{ width: 105, height: 19, marginRight: 8 }}
+            resizeMode="contain"
+          />
           <View>
-            <Text className="text-xl font-bold text-foreground">Property Reports</Text>
-            <Text className="text-xs text-gray-500 font-medium">{businessName || 'Property Overview'}</Text>
+            <Text className="text-base font-bold text-foreground">Reports</Text>
+            <Text className="text-[11px] text-gray-500 font-medium">{businessName || 'Property Overview'}</Text>
           </View>
         </View>
 

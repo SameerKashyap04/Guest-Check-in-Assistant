@@ -21,6 +21,7 @@ import { Icon } from '@/components/v3/Icon';
 import { PrimaryButton, SecondaryButton } from '@/components/v3/Ui';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useRoomsStore } from '@/store/useRoomsStore';
+import { STAYMATE_REPORT_LOGO_BASE64 } from '@/constants/reportLogoBase64';
 
 interface SelfCheckinQrModalProps {
   visible: boolean;
@@ -215,6 +216,9 @@ export function SelfCheckinQrModal({ visible, onClose }: SelfCheckinQrModalProps
         </head>
         <body>
           <div class="container">
+            <div style="text-align: center; margin-bottom: 18px;">
+              <img src="${STAYMATE_REPORT_LOGO_BASE64}" width="200" height="35" style="display: inline-block; width: 200px; height: 35px;" alt="StayMate" />
+            </div>
             <div class="badge">Self Check-in Portal</div>
             <h1>${activePropertyName}</h1>
             <p class="sub">Scan with your phone camera to register & check in</p>

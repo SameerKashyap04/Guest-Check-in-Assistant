@@ -48,6 +48,7 @@ import { devifyPay, DevifyCheckoutResult } from './src/services/devifyPay';
 import { WebView } from 'react-native-webview';
 import { securityService } from './src/services/securityService';
 import { subscribeToPropertyCheckins, deleteCloudCheckinDoc } from './src/services/firebaseSync';
+import { STAYMATE_REPORT_LOGO_BASE64 } from './src/constants/reportLogoBase64';
 
 // Inject authentic Inter web font and typography styles on web platform
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
@@ -1534,6 +1535,9 @@ function SelfCheckins({
         </head>
         <body>
           <div class="container">
+            <div style="text-align: center; margin-bottom: 18px;">
+              <img src="${STAYMATE_REPORT_LOGO_BASE64}" width="200" height="35" style="display: inline-block; width: 200px; height: 35px;" alt="StayMate" />
+            </div>
             <div class="badge">Self Check-in Portal</div>
             <h1>StayMate Homestay</h1>
             <p class="sub">Scan with your phone camera to register & check in online</p>
@@ -2597,9 +2601,17 @@ function ReportsOverlay({
           </style>
         </head>
         <body>
-          <div class="header-banner">
-            <div class="gov-title">Police Form C & Hotel Guest Registration Ledger</div>
-            <div class="gov-sub">Official Compliance Record pursuant to Local Police Regulations & Registration of Foreigners Rules</div>
+          <div class="header-banner" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #7C3AED; padding-bottom: 12px; margin-bottom: 14px;">
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <img src="${STAYMATE_REPORT_LOGO_BASE64}" width="160" height="28" style="display: block; width: 160px; height: 28px;" alt="StayMate" />
+              <div style="border-left: 2px solid #CBD5E1; padding-left: 14px; text-align: left;">
+                <div class="gov-title" style="font-size: 15px; font-weight: 800; color: #0F172A;">Police Form C & Hotel Guest Registration Ledger</div>
+                <div class="gov-sub" style="font-size: 9.5px; color: #64748B; margin-top: 2px;">Official Compliance Record pursuant to Local Police Regulations & Registration of Foreigners Rules</div>
+              </div>
+            </div>
+            <div style="text-align: right; font-size: 10px; color: #64748B; white-space: nowrap; margin-left: 12px;">
+              <div><strong>Period:</strong> ${period}</div>
+            </div>
           </div>
 
           <div class="meta-bar">
