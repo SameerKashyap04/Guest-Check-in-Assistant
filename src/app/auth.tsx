@@ -174,7 +174,7 @@ export default function AuthScreen() {
       >
         <ScrollView
           contentContainerStyle={{
-            paddingTop: 140,
+            paddingTop: 143,
             paddingHorizontal: 24,
             paddingBottom: Math.max(32, insets.bottom + 16),
           }}
@@ -365,7 +365,7 @@ const s = StyleSheet.create({
   brandLogo: {
     width: 295,
     height: 78,
-    marginBottom: 26,
+    marginBottom: 23,
   },
   title: {
     fontFamily: 'Inter',
