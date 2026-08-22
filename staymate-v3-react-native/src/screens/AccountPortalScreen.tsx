@@ -67,18 +67,17 @@ export function AccountPortalScreen({
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
         style={{ flex: 1 }}
       >
         <ScrollView
           contentContainerStyle={{
             paddingTop: 150,
             paddingHorizontal: 24,
-            paddingBottom: Math.max(220, insets.bottom + 80),
+            paddingBottom: Math.max(32, insets.bottom + 16),
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          automaticallyAdjustKeyboardInsets={true}
+          keyboardDismissMode="on-drag"
         >
           {/* Header */}
           <View style={s.header}>
