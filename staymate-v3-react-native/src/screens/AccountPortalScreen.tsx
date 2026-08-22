@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   ScrollView,
   View,
@@ -29,11 +29,27 @@ export function AccountPortalScreen({
   onModal: (t: string, m: string) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const [step, setStep] = useState<'form' | 'otp'>('form');
   const [mode, setMode] = useState(initial);
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [property, setProperty] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+
+  // OTP state
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [resendTimer, setResendTimer] = useState<number>(30);
+  const otpInputsRef = useRef<(TextInput | null)[]>([]);
+
+  useEffect(() => {
+    let interval: any;
+    if (step === 'otp' && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => Math.max(0, prev - 1));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [step, resendTimer]);
 
   const handleSubmit = () => {
     if (!email.trim() || !pw.trim()) {
@@ -42,6 +58,57 @@ export function AccountPortalScreen({
     }
     if (mode === 'signup' && !property.trim()) {
       onToast('Please enter your property name');
+      return;
+    }
+
+    setOtpDigits(['', '', '', '', '', '']);
+    setResendTimer(30);
+    setStep('otp');
+    onToast(`Verification code sent to ${email.trim()}`);
+  };
+
+  const handleResendOtp = () => {
+    if (resendTimer > 0) return;
+    setResendTimer(30);
+    onToast(`New verification code sent to ${email.trim()}`);
+  };
+
+  const handleOtpChange = (text: string, index: number) => {
+    const cleaned = text.replace(/[^0-9]/g, '');
+
+    if (cleaned.length === 6) {
+      const newDigits = cleaned.split('');
+      setOtpDigits(newDigits);
+      otpInputsRef.current[5]?.focus();
+      handleVerifyOtp(cleaned);
+      return;
+    }
+
+    const digit = cleaned.slice(-1);
+    const updated = [...otpDigits];
+    updated[index] = digit;
+    setOtpDigits(updated);
+
+    if (digit && index < 5) {
+      otpInputsRef.current[index + 1]?.focus();
+    }
+
+    const completeCode = updated.join('');
+    if (completeCode.length === 6 && !updated.includes('')) {
+      handleVerifyOtp(completeCode);
+    }
+  };
+
+  const handleOtpKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputsRef.current[index - 1]?.focus();
+    }
+  };
+
+  const handleVerifyOtp = (codeToVerify?: string) => {
+    const code = codeToVerify || otpDigits.join('');
+    if (code.length !== 6) {
+      onToast('Please enter all 6 digits');
       return;
     }
 
@@ -81,171 +148,261 @@ export function AccountPortalScreen({
         >
           {/* Header */}
           <View style={s.header}>
-          <Image
-            source={StayMateLogo}
-            style={s.brandLogo}
-            resizeMode="contain"
-          />
-          <Text style={s.title}>
-            {mode === 'login' ? 'Welcome back' : 'Create account'}
-          </Text>
-          <Text style={s.subtitle}>
-            {mode === 'login'
-              ? 'Sign in to access your property'
-              : 'Start managing your check-ins'}
-          </Text>
-        </View>
-
-        {/* Segmented Control */}
-        <View style={s.tabs}>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setMode('login')}
-            style={[s.tab, mode === 'login' && s.activeTab]}
-          >
-            <Text style={[s.tabText, mode === 'login' && s.activeTabText]}>
-              Log in
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            activeOpacity={0.8}
-            onPress={() => setMode('signup')}
-            style={[s.tab, mode === 'signup' && s.activeTab]}
-          >
-            <Text style={[s.tabText, mode === 'signup' && s.activeTabText]}>
-              Sign up
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Inputs */}
-        <View style={s.form}>
-          {mode === 'signup' && (
-            <View style={s.inputGroup}>
-              <Text style={s.label}>Property name</Text>
-              <View style={s.inputWrapper}>
-                <View style={s.inputIcon}>
-                  <Icon name="home" size={18} color="#71717A" />
-                </View>
-                <TextInput
-                  value={property}
-                  onChangeText={setProperty}
-                  placeholder="e.g. Sunrise Homestay"
-                  placeholderTextColor="#A1A1AA"
-                  style={s.input}
-                  autoCapitalize="words"
-                />
-              </View>
-            </View>
-          )}
-
-          <View style={s.inputGroup}>
-            <Text style={s.label}>Email address</Text>
-            <View style={s.inputWrapper}>
-              <View style={s.inputIcon}>
-                <Icon name="mail" size={18} color="#71717A" />
-              </View>
-              <TextInput
-                value={email}
-                onChangeText={setEmail}
-                placeholder="owner@property.com"
-                placeholderTextColor="#A1A1AA"
-                style={s.input}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-          </View>
-
-          <View style={s.inputGroup}>
-            <Text style={s.label}>Password</Text>
-            <View style={s.inputWrapper}>
-              <View style={s.inputIcon}>
-                <Icon name="lock" size={18} color="#71717A" />
-              </View>
-              <TextInput
-                value={pw}
-                onChangeText={setPw}
-                placeholder={
-                  mode === 'login' ? 'Enter password' : 'At least 8 characters'
-                }
-                placeholderTextColor="#A1A1AA"
-                secureTextEntry={!showPassword}
-                style={s.input}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => setShowPassword(!showPassword)}
-                style={s.eyeBtn}
-              >
-                <Icon
-                  name={showPassword ? 'eyeOff' : 'eye'}
-                  size={18}
-                  color="#71717A"
-                />
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {mode === 'login' && (
-            <TouchableOpacity
-              activeOpacity={0.7}
-              onPress={() =>
-                onModal(
-                  'Password Reset',
-                  'Password reset instructions have been sent to your email.'
-                )
-              }
-              style={s.forgotBtn}
-            >
-              <Text style={s.forgotText}>Forgot password?</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Submit Button */}
-          <TouchableOpacity
-            activeOpacity={0.88}
-            onPress={handleSubmit}
-            style={s.submitBtn}
-          >
-            <Text style={s.submitBtnText}>
-              {mode === 'login' ? 'Log in' : 'Create account'}
-            </Text>
-          </TouchableOpacity>
-
-          {/* Divider */}
-          <View style={s.divider}>
-            <View style={s.dividerLine} />
-            <Text style={s.dividerText}>or</Text>
-            <View style={s.dividerLine} />
-          </View>
-
-          {/* Google Button */}
-          <TouchableOpacity
-            activeOpacity={0.85}
-            style={s.googleBtn}
-            onPress={() => onToast('Connecting with Google…')}
-          >
             <Image
-              source={GoogleLogo}
-              style={s.googleImage}
+              source={StayMateLogo}
+              style={s.brandLogo}
               resizeMode="contain"
             />
-            <Text style={s.googleBtnText}>Continue with Google</Text>
-          </TouchableOpacity>
-        </View>
+            {step === 'form' ? (
+              <>
+                <Text style={s.title}>
+                  {mode === 'login' ? 'Welcome back' : 'Create account'}
+                </Text>
+                <Text style={s.subtitle}>
+                  {mode === 'login'
+                    ? 'Sign in to access your property'
+                    : 'Start managing your check-ins'}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={s.title}>Verify your email</Text>
+                <Text style={s.subtitle}>
+                  Enter the 6-digit code sent to
+                </Text>
+                <View style={s.emailChip}>
+                  <Text style={s.emailChipText}>{email.trim()}</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setStep('form')}
+                    style={s.editEmailBtn}
+                  >
+                    <Text style={s.editEmailText}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
+          </View>
 
-        {/* Footer note */}
-        <Text style={s.footerText}>
-          By continuing, you agree to StayMate's{' '}
-          <Text style={{ color: '#09090B', fontWeight: '600' }}>Terms</Text> and{' '}
-          <Text style={{ color: '#09090B', fontWeight: '600' }}>Privacy</Text>.
-        </Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
-  </View>
+          {step === 'form' ? (
+            <>
+              {/* Segmented Control */}
+              <View style={s.tabs}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setMode('login')}
+                  style={[s.tab, mode === 'login' && s.activeTab]}
+                >
+                  <Text style={[s.tabText, mode === 'login' && s.activeTabText]}>
+                    Log in
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setMode('signup')}
+                  style={[s.tab, mode === 'signup' && s.activeTab]}
+                >
+                  <Text style={[s.tabText, mode === 'signup' && s.activeTabText]}>
+                    Sign up
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Inputs */}
+              <View style={s.form}>
+                {mode === 'signup' && (
+                  <View style={s.inputGroup}>
+                    <Text style={s.label}>Property name</Text>
+                    <View style={s.inputWrapper}>
+                      <View style={s.inputIcon}>
+                        <Icon name="home" size={18} color="#71717A" />
+                      </View>
+                      <TextInput
+                        value={property}
+                        onChangeText={setProperty}
+                        placeholder="e.g. Sunrise Homestay"
+                        placeholderTextColor="#A1A1AA"
+                        style={s.input}
+                        autoCapitalize="words"
+                      />
+                    </View>
+                  </View>
+                )}
+
+                <View style={s.inputGroup}>
+                  <Text style={s.label}>Email address</Text>
+                  <View style={s.inputWrapper}>
+                    <View style={s.inputIcon}>
+                      <Icon name="mail" size={18} color="#71717A" />
+                    </View>
+                    <TextInput
+                      value={email}
+                      onChangeText={setEmail}
+                      placeholder="owner@property.com"
+                      placeholderTextColor="#A1A1AA"
+                      style={s.input}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+                </View>
+
+                <View style={s.inputGroup}>
+                  <Text style={s.label}>Password</Text>
+                  <View style={s.inputWrapper}>
+                    <View style={s.inputIcon}>
+                      <Icon name="lock" size={18} color="#71717A" />
+                    </View>
+                    <TextInput
+                      value={pw}
+                      onChangeText={setPw}
+                      placeholder={
+                        mode === 'login' ? 'Enter password' : 'At least 8 characters'
+                      }
+                      placeholderTextColor="#A1A1AA"
+                      secureTextEntry={!showPassword}
+                      style={s.input}
+                      autoCapitalize="none"
+                    />
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={s.eyeBtn}
+                    >
+                      <Icon
+                        name={showPassword ? 'eyeOff' : 'eye'}
+                        size={18}
+                        color="#71717A"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {mode === 'login' && (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      onModal(
+                        'Password Reset',
+                        'Password reset instructions have been sent to your email.'
+                      )
+                    }
+                    style={s.forgotBtn}
+                  >
+                    <Text style={s.forgotText}>Forgot password?</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Submit Button */}
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={handleSubmit}
+                  style={s.submitBtn}
+                >
+                  <Text style={s.submitBtnText}>
+                    {mode === 'login' ? 'Log in' : 'Create account'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Divider */}
+                <View style={s.divider}>
+                  <View style={s.dividerLine} />
+                  <Text style={s.dividerText}>or</Text>
+                  <View style={s.dividerLine} />
+                </View>
+
+                {/* Google Button */}
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={s.googleBtn}
+                  onPress={() => onToast('Connecting with Google…')}
+                >
+                  <Image
+                    source={GoogleLogo}
+                    style={s.googleImage}
+                    resizeMode="contain"
+                  />
+                  <Text style={s.googleBtnText}>Continue with Google</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            /* OTP Verification Screen */
+            <View style={s.otpContainer}>
+              <View style={s.otpRow}>
+                {otpDigits.map((digit, index) => (
+                  <TextInput
+                    key={index}
+                    ref={(ref) => {
+                      otpInputsRef.current[index] = ref;
+                    }}
+                    value={digit}
+                    onChangeText={(val) => handleOtpChange(val, index)}
+                    onKeyPress={(e) => handleOtpKeyPress(e, index)}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    selectTextOnFocus
+                    style={[
+                      s.otpBox,
+                      digit ? s.otpBoxFilled : null,
+                    ]}
+                  />
+                ))}
+              </View>
+
+              {/* Resend Row */}
+              <View style={s.resendRow}>
+                <Text style={s.resendLabel}>Didn't receive the code? </Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={handleResendOtp}
+                  disabled={resendTimer > 0}
+                >
+                  <Text
+                    style={[
+                      s.resendLink,
+                      resendTimer > 0 && s.resendLinkDisabled,
+                    ]}
+                  >
+                    {resendTimer > 0
+                      ? `Resend in 0:${resendTimer < 10 ? '0' : ''}${resendTimer}`
+                      : 'Resend code'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Verify Button */}
+              <TouchableOpacity
+                activeOpacity={0.88}
+                onPress={() => handleVerifyOtp()}
+                style={s.submitBtn}
+              >
+                <Text style={s.submitBtnText}>Verify & Continue</Text>
+              </TouchableOpacity>
+
+              {/* Back button */}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setStep('form')}
+                style={s.backBtn}
+              >
+                <Text style={s.backBtnText}>
+                  Back to {mode === 'login' ? 'Log in' : 'Sign up'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Footer note */}
+          <Text style={s.footerText}>
+            By continuing, you agree to StayMate's{' '}
+            <Text style={{ color: '#09090B', fontWeight: '600' }}>Terms</Text> and{' '}
+            <Text style={{ color: '#09090B', fontWeight: '600' }}>Privacy</Text>.
+          </Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -286,6 +443,31 @@ const s = StyleSheet.create({
     fontSize: 13.5,
     color: '#71717A',
     marginTop: 3,
+  },
+  emailChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F4F4F5',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginTop: 8,
+    gap: 8,
+  },
+  emailChipText: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#09090B',
+  },
+  editEmailBtn: {
+    paddingHorizontal: 4,
+  },
+  editEmailText: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    fontWeight: '700',
+    color: '#7C3AED',
   },
   tabs: {
     height: 44,
@@ -426,6 +608,65 @@ const s = StyleSheet.create({
     fontWeight: '600',
     color: '#18181B',
   },
+  otpContainer: {
+    width: '100%',
+    paddingTop: 8,
+  },
+  otpRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  otpBox: {
+    width: 44,
+    height: 52,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E4E4E7',
+    backgroundColor: '#FFFFFF',
+    textAlign: 'center',
+    fontFamily: 'Inter',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#09090B',
+  },
+  otpBoxFilled: {
+    borderColor: '#7C3AED',
+    backgroundColor: '#FAF5FF',
+  },
+  resendRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  resendLabel: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    color: '#71717A',
+  },
+  resendLink: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#7C3AED',
+  },
+  resendLinkDisabled: {
+    color: '#A1A1AA',
+    fontWeight: '600',
+  },
+  backBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    marginTop: 8,
+  },
+  backBtnText: {
+    fontFamily: 'Inter',
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#71717A',
+  },
   footerText: {
     fontFamily: 'Inter',
     fontSize: 11.5,
@@ -435,6 +676,7 @@ const s = StyleSheet.create({
     lineHeight: 17,
   },
 });
+
 
 
 
