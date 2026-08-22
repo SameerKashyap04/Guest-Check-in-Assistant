@@ -12,7 +12,10 @@ import {
   Share,
   StyleSheet,
   TextInput,
+  Linking,
 } from 'react-native';
+
+const StayMateLogo = require('../../assets/images/staymate-logo.png');
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Check,
@@ -384,6 +387,12 @@ export default function SelfCheckinScreen() {
     return (
       <SafeAreaView style={s.container} edges={['top', 'bottom', 'left', 'right']}>
         <ScrollView contentContainerStyle={s.successWrap} showsVerticalScrollIndicator={false}>
+          <Image
+            source={StayMateLogo}
+            style={s.successTopLogo}
+            resizeMode="contain"
+          />
+
           <View style={s.successCard}>
             <View style={s.successIconWrap}>
               <Check size={36} color="#FFFFFF" />
@@ -448,6 +457,24 @@ export default function SelfCheckinScreen() {
               </Text>
             </View>
           </View>
+
+          {/* Devify Developer Footer */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => Linking.openURL('https://www.devify.co.in')}
+            style={s.devifyFooter}
+          >
+            <View style={s.footerContentRow}>
+              <Image
+                source={StayMateLogo}
+                style={s.footerLogo}
+                resizeMode="contain"
+              />
+              <Text style={s.devifyText}>
+                Engineered by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+              </Text>
+            </View>
+          </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
     );
@@ -455,6 +482,18 @@ export default function SelfCheckinScreen() {
 
   return (
     <SafeAreaView style={s.container} edges={['top', 'left', 'right']}>
+      {/* Brand Top Bar */}
+      <View style={s.brandBar}>
+        <Image
+          source={StayMateLogo}
+          style={s.headerBrandLogo}
+          resizeMode="contain"
+        />
+        <View style={s.propBadge}>
+          <Text style={s.propBadgeText}>{activePropertyId}</Text>
+        </View>
+      </View>
+
       {/* Header Bar */}
       <View style={s.headerBar}>
         <View style={s.headerInfo}>
@@ -463,9 +502,6 @@ export default function SelfCheckinScreen() {
             <ShieldCheck size={13} color="#10B981" />
             <Text style={s.headerSubtitle}>Official Digital Registration</Text>
           </View>
-        </View>
-        <View style={s.propBadge}>
-          <Text style={s.propBadgeText}>{activePropertyId}</Text>
         </View>
       </View>
 
@@ -1189,6 +1225,24 @@ export default function SelfCheckinScreen() {
               </View>
             </View>
           )}
+
+          {/* Devify Developer Footer */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => Linking.openURL('https://www.devify.co.in')}
+            style={s.devifyFooter}
+          >
+            <View style={s.footerContentRow}>
+              <Image
+                source={StayMateLogo}
+                style={s.footerLogo}
+                resizeMode="contain"
+              />
+              <Text style={s.devifyText}>
+                Engineered by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+              </Text>
+            </View>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -1199,6 +1253,55 @@ const s = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  brandBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  headerBrandLogo: {
+    width: 125,
+    height: 22,
+  },
+  successTopLogo: {
+    width: 145,
+    height: 26,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
+  devifyFooter: {
+    marginTop: 28,
+    marginBottom: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  footerContentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  footerLogo: {
+    width: 80,
+    height: 14,
+  },
+  devifyText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#94A3B8',
+    lineHeight: 16,
+    includeFontPadding: false,
+    textAlignVertical: 'center',
+    paddingTop: 2,
+  },
+  devifyBrand: {
+    fontWeight: '700',
+    color: '#0F172A',
   },
   headerBar: {
     flexDirection: 'row',
