@@ -10,11 +10,15 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Image,
+  Linking,
 } from 'react-native';
 import {C, R, shadow} from '../theme/tokens';
 import {Icon, IconName} from '../components/Icon';
 import {SettingRow, PrimaryButton, SecondaryButton, Field} from '../components/Ui';
 import {securityService} from '../services/securityService';
+
+const StayMateLogo = require('../../assets/staymate-logo.png');
 
 interface PropertyProfile {
   name: string;
@@ -208,7 +212,14 @@ export function SettingsScreen({
       contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 130}}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={s.h1}>Settings</Text>
+      <View style={s.headerTop}>
+        <Image
+          source={StayMateLogo}
+          style={s.headerLogo}
+          resizeMode="contain"
+        />
+        <Text style={s.h1}>Settings</Text>
+      </View>
 
       {/* Profile card */}
       <TouchableOpacity
@@ -331,6 +342,20 @@ export function SettingsScreen({
         onPress={() => setActiveModal('autolock')}
       />
 
+      {/* ABOUT & DEVELOPER */}
+      <Text style={[s.sectionHeader, {marginTop: 16}]}>ABOUT & DEVELOPER</Text>
+      <SettingRow
+        icon="shield"
+        label="StayMate Version"
+        subtitle="v3.0.0 (Production Release)"
+      />
+      <SettingRow
+        icon="external"
+        label="Developed by Devify"
+        subtitle="www.devify.co.in — Tap to visit website"
+        onPress={() => Linking.openURL('https://www.devify.co.in')}
+      />
+
       {/* Actions: Lock app & Log out */}
       <View style={s.bottomActions}>
         <TouchableOpacity
@@ -351,6 +376,17 @@ export function SettingsScreen({
           <Text style={s.logoutBtnText}>Log out</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Devify Footer */}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => Linking.openURL('https://www.devify.co.in')}
+        style={s.devifyFooter}
+      >
+        <Text style={s.devifyText}>
+          Engineered by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+        </Text>
+      </TouchableOpacity>
 
       {/* ============================================================ */}
       {/* 1. PROPERTY PROFILE MODAL SHEET                              */}
@@ -815,13 +851,20 @@ function Switch({on}: {on: boolean}) {
 }
 
 const s = StyleSheet.create({
+  headerTop: {
+    paddingTop: 18,
+    gap: 8,
+  },
+  headerLogo: {
+    width: 124,
+    height: 32,
+  },
   h1: {
     fontFamily: 'Inter',
     fontSize: 22,
     fontWeight: '600',
     letterSpacing: -0.4,
     color: '#222222',
-    paddingTop: 18,
   },
   profileCard: {
     marginTop: 16,
@@ -1021,6 +1064,21 @@ const s = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: C.primary,
+  },
+  devifyFooter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    marginTop: 12,
+  },
+  devifyText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  devifyBrand: {
+    fontWeight: '700',
+    color: '#0F172A',
   },
 });
 

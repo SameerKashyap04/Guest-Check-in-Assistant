@@ -1,9 +1,19 @@
 import React from 'react';
-import {ScrollView, View, Text, TouchableOpacity, StyleSheet} from 'react-native';
+import {
+  ScrollView,
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  Linking,
+} from 'react-native';
 import {C, R, shadow} from '../theme/tokens';
 import {Icon} from '../components/Icon';
 import {GUESTS} from '../data';
 import {PrimaryButton} from '../components/Ui';
+
+const StayMateLogo = require('../../assets/staymate-logo.png');
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -40,15 +50,20 @@ export function DashboardScreen({
       contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 130}}
       showsVerticalScrollIndicator={false}
     >
-      {/* Header row: date + greeting + live sync */}
+      {/* Header row: StayMate Logo + live sync + date & greeting */}
       <View style={{paddingTop: 18}}>
         <View style={s.topRow}>
-          <Text style={s.dateText}>{getTodayStr()}</Text>
+          <Image
+            source={StayMateLogo}
+            style={s.dashLogo}
+            resizeMode="contain"
+          />
           <View style={s.syncBadge}>
             <View style={s.syncDot}/>
             <Text style={s.syncText}>Live Sync</Text>
           </View>
         </View>
+        <Text style={s.dateText}>{getTodayStr()}</Text>
         <Text style={s.h1}>{getGreeting()}, Meera</Text>
       </View>
 
@@ -146,8 +161,20 @@ export function DashboardScreen({
         <PrimaryButton
           label="Share"
           icon="share"
+          onPress={onSelfCheckin}
           style={s.selfShareBtn}
         />
+      </TouchableOpacity>
+
+      {/* Devify Developer Attribution */}
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onPress={() => Linking.openURL('https://www.devify.co.in')}
+        style={s.devifyFooter}
+      >
+        <Text style={s.devifyText}>
+          Developed by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+        </Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -397,5 +424,24 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: R.full,
     gap: 5,
+  },
+  dashLogo: {
+    width: 124,
+    height: 32,
+  },
+  devifyFooter: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    marginTop: 12,
+  },
+  devifyText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#94A3B8',
+  },
+  devifyBrand: {
+    fontWeight: '700',
+    color: '#0F172A',
   },
 });
