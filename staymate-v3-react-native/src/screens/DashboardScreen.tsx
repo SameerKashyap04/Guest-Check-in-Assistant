@@ -81,9 +81,9 @@ export function DashboardScreen({
 
       {/* Recent check-ins */}
       <View style={s.recentHead}>
-        <Text style={s.sectionTitle}>Recent check-ins & stays</Text>
-        <TouchableOpacity activeOpacity={0.7}>
-          <Text style={s.viewAll}>{guests.length} records</Text>
+        <Text style={s.sectionTitle}>Recent check-ins</Text>
+        <TouchableOpacity activeOpacity={0.7} onPress={onSearch}>
+          <Text style={s.viewAll}>View all</Text>
         </TouchableOpacity>
       </View>
 
@@ -296,15 +296,15 @@ const s = StyleSheet.create({
   },
   sectionTitle: {
     fontFamily: 'Inter',
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#222222',
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#111827',
   },
   viewAll: {
     fontFamily: 'Inter',
-    fontSize: 13.5,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#222222',
+    color: '#111827',
   },
   guestRow: {
     flexDirection: 'row',

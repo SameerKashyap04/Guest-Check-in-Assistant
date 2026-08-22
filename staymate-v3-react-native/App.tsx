@@ -3512,10 +3512,10 @@ const ms = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    maxHeight: '92%',
+    maxHeight: '80%',
     backgroundColor: '#fff',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingTop: 14,
     position: 'relative',
     shadowColor: '#000',
