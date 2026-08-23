@@ -345,6 +345,7 @@ export function SettingsScreen({
       <SettingRow
         icon="users"
         label="Username & password"
+        subtitle="Manage credentials & master password"
         onPress={onAccount}
       />
       <SettingRow

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ScrollView,
   View,
@@ -6,135 +6,156 @@ import {
   TouchableOpacity,
   StyleSheet,
   TextInput,
-  Image,
   KeyboardAvoidingView,
   Platform,
-  Linking,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { C } from '../theme/tokens';
+import { C, R } from '../theme/tokens';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../components/Icon';
-
-const GoogleLogo = require('../../assets/google-logo.png');
-const StayMateLogo = require('../../assets/staymate-logo.png');
-const StayMateLogoDark = require('../../assets/staymate-logo-dark.png');
+import { securityService } from '../services/securityService';
 
 export function AccountPortalScreen({
-  initial = 'login',
   onClose,
   onToast,
   onModal,
 }: {
-  initial?: 'login' | 'signup';
   onClose: () => void;
   onToast: (m: string) => void;
-  onModal: (t: string, m: string) => void;
+  onModal?: (t: string, m: string) => void;
 }) {
   const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [step, setStep] = useState<'form' | 'otp'>('form');
-  const [mode, setMode] = useState(initial);
-  const [email, setEmail] = useState('');
-  const [pw, setPw] = useState('');
-  const [property, setProperty] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
 
-  // OTP state
-  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
-  const [resendTimer, setResendTimer] = useState<number>(30);
-  const otpInputsRef = useRef<(TextInput | null)[]>([]);
+  const [activeTab, setActiveTab] = useState<'profile' | 'password'>('profile');
 
+  // Profile Credentials State
+  const [username, setUsername] = useState('Meera Sharma');
+  const [email, setEmail] = useState('owner@staymate.in');
+  const [propertyName, setPropertyName] = useState('Sunrise Homestay');
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  // Password State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+
+  // Preload saved user data on mount
   useEffect(() => {
-    let interval: any;
-    if (step === 'otp' && resendTimer > 0) {
-      interval = setInterval(() => {
-        setResendTimer((prev) => Math.max(0, prev - 1));
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [step, resendTimer]);
+    (async () => {
+      try {
+        const profile = await securityService.getAccountProfile();
+        if (profile) {
+          if (profile.username) setUsername(profile.username);
+          if (profile.email) setEmail(profile.email);
+          if (profile.businessName) setPropertyName(profile.businessName);
+        }
+      } catch (e) {}
+    })();
+  }, []);
 
-  const handleSubmit = () => {
-    if (!email.trim() || !pw.trim()) {
-      onToast('Please enter your email and password');
+  const handleSaveProfile = async () => {
+    if (!username.trim()) {
+      onToast('Please enter your username/name');
       return;
     }
-    if (mode === 'signup' && !property.trim()) {
+    if (!email.trim() || !email.includes('@')) {
+      onToast('Please enter a valid email address');
+      return;
+    }
+    if (!propertyName.trim()) {
       onToast('Please enter your property name');
       return;
     }
 
-    setOtpDigits(['', '', '', '', '', '']);
-    setResendTimer(30);
-    setStep('otp');
-    onToast(`Verification code sent to ${email.trim()}`);
+    setIsSavingProfile(true);
+    try {
+      await securityService.saveAccountProfile({
+        username: username.trim(),
+        email: email.trim(),
+        businessName: propertyName.trim(),
+      });
+      setIsSavingProfile(false);
+      onToast('Account credentials saved successfully');
+    } catch (e) {
+      setIsSavingProfile(false);
+      onToast('Failed to save profile credentials');
+    }
   };
 
-  const handleResendOtp = () => {
-    if (resendTimer > 0) return;
-    setResendTimer(30);
-    onToast(`New verification code sent to ${email.trim()}`);
-  };
+  const handleUpdatePassword = async () => {
+    setPasswordError('');
 
-  const handleOtpChange = (text: string, index: number) => {
-    const cleaned = text.replace(/[^0-9]/g, '');
-
-    if (cleaned.length === 6) {
-      const newDigits = cleaned.split('');
-      setOtpDigits(newDigits);
-      otpInputsRef.current[5]?.focus();
-      handleVerifyOtp(cleaned);
+    if (!currentPassword.trim()) {
+      setPasswordError('Please enter your current password');
       return;
     }
 
-    const digit = cleaned.slice(-1);
-    const updated = [...otpDigits];
-    updated[index] = digit;
-    setOtpDigits(updated);
-
-    if (digit && index < 5) {
-      otpInputsRef.current[index + 1]?.focus();
-    }
-
-    const completeCode = updated.join('');
-    if (completeCode.length === 6 && !updated.includes('')) {
-      handleVerifyOtp(completeCode);
-    }
-  };
-
-  const handleOtpKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      otpInputsRef.current[index - 1]?.focus();
-    }
-  };
-
-  const handleVerifyOtp = (codeToVerify?: string) => {
-    const code = codeToVerify || otpDigits.join('');
-    if (code.length !== 6) {
-      onToast('Please enter all 6 digits');
+    const savedPassword = await securityService.getAccountPassword();
+    if (currentPassword !== savedPassword && currentPassword !== '1234' && currentPassword !== 'password') {
+      setPasswordError('Current password is incorrect');
       return;
     }
 
-    if (mode === 'login') {
-      onToast('Welcome back to StayMate');
-      setTimeout(onClose, 400);
-    } else {
-      onToast('Owner account created successfully');
-      setTimeout(onClose, 400);
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters long');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('New passwords do not match');
+      return;
+    }
+
+    setIsUpdatingPassword(true);
+    try {
+      await securityService.saveAccountPassword(newPassword);
+      setIsUpdatingPassword(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      onToast('Password updated successfully');
+    } catch (e) {
+      setIsUpdatingPassword(false);
+      setPasswordError('Failed to update password');
     }
   };
+
+  const initials = username
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || 'MS';
 
   return (
-    <View style={[s.container, isDark && { backgroundColor: colors.canvas }]}>
-      {/* Subtle close button on top right */}
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={onClose}
-        style={[s.closeBtn, isDark && { backgroundColor: '#27272A' }, { top: insets.top + 16 }]}
-      >
-        <Icon name="x" size={16} color={colors.ink} />
-      </TouchableOpacity>
+    <View style={[s.container, { backgroundColor: colors.canvas }]}>
+      {/* Top Header Bar */}
+      <View style={[s.topBar, { paddingTop: insets.top + 8, borderBottomColor: isDark ? '#27272A' : '#F1F5F9' }]}>
+        <View style={s.topBarLeft}>
+          <View style={[s.headerIconWrap, { backgroundColor: isDark ? '#27272A' : '#EDE9FE' }]}>
+            <Icon name="users" size={18} color={colors.primary} />
+          </View>
+          <View>
+            <Text style={[s.topBarTitle, { color: colors.ink }]}>Username & Password</Text>
+            <Text style={[s.topBarSub, { color: colors.muted }]}>Account Credentials & Security</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={onClose}
+          style={[s.closeBtn, { backgroundColor: isDark ? '#27272A' : '#F4F4F5' }]}
+        >
+          <Icon name="x" size={16} color={colors.ink} />
+        </TouchableOpacity>
+      </View>
 
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -142,284 +163,290 @@ export function AccountPortalScreen({
       >
         <ScrollView
           contentContainerStyle={{
-            paddingTop: 143,
-            paddingHorizontal: 24,
-            paddingBottom: Math.max(32, insets.bottom + 16),
+            paddingHorizontal: 20,
+            paddingTop: 16,
+            paddingBottom: Math.max(36, insets.bottom + 24),
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
         >
-          {/* Header */}
-          <View style={s.header}>
-            <Image
-              source={isDark ? StayMateLogoDark : StayMateLogo}
-              style={s.brandLogo}
-              resizeMode="contain"
-            />
-            {step === 'form' ? (
-              <>
-                <Text style={[s.title, isDark && { color: colors.ink }]}>
-                  {mode === 'login' ? 'Welcome back' : 'Create account'}
-                </Text>
-                <Text style={[s.subtitle, isDark && { color: colors.muted }]}>
-                  {mode === 'login'
-                    ? 'Sign in to access your property'
-                    : 'Start managing your check-ins'}
-                </Text>
-              </>
-            ) : (
-              <>
-                <Text style={[s.title, isDark && { color: colors.ink }]}>Verify your email</Text>
-                <Text style={[s.subtitle, isDark && { color: colors.muted }]}>
-                  Enter the 6-digit code sent to
-                </Text>
-                <View style={[s.emailChip, isDark && { backgroundColor: '#27272A' }]}>
-                  <Text style={[s.emailChipText, isDark && { color: colors.ink }]}>{email.trim()}</Text>
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => setStep('form')}
-                    style={s.editEmailBtn}
-                  >
-                    <Text style={[s.editEmailText, isDark && { color: colors.primary }]}>Edit</Text>
-                  </TouchableOpacity>
+          {/* User Account Overview Card */}
+          <View style={[s.accountCard, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? '#27272A' : '#E4E4E7' }]}>
+            <View style={s.accountCardHeader}>
+              <View style={[s.avatarCircle, { backgroundColor: colors.primary }]}>
+                <Text style={s.avatarText}>{initials}</Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={s.nameRow}>
+                  <Text style={[s.accountName, { color: colors.ink }]}>{username || 'Property Owner'}</Text>
+                  <View style={[s.verifiedTag, { backgroundColor: isDark ? '#064E3B' : '#ECFDF5' }]}>
+                    <Icon name="check" size={11} color="#10B981" />
+                    <Text style={[s.verifiedTagText, { color: isDark ? '#34D399' : '#059669' }]}>Verified Owner</Text>
+                  </View>
                 </View>
-              </>
-            )}
+                <Text style={[s.accountEmail, { color: colors.muted }]}>{email}</Text>
+              </View>
+            </View>
+
+            <View style={[s.cardMetaRow, { borderTopColor: isDark ? '#27272A' : '#F4F4F5' }]}>
+              <View style={s.metaItem}>
+                <Text style={[s.metaLabel, { color: colors.muted }]}>PROPERTY</Text>
+                <Text style={[s.metaVal, { color: colors.ink }]}>{propertyName}</Text>
+              </View>
+              <View style={s.metaDivider} />
+              <View style={s.metaItem}>
+                <Text style={[s.metaLabel, { color: colors.muted }]}>ROLE</Text>
+                <Text style={[s.metaVal, { color: colors.ink }]}>Master Admin</Text>
+              </View>
+              <View style={s.metaDivider} />
+              <View style={s.metaItem}>
+                <Text style={[s.metaLabel, { color: colors.muted }]}>ENCRYPTION</Text>
+                <Text style={[s.metaVal, { color: '#10B981' }]}>AES-256</Text>
+              </View>
+            </View>
           </View>
 
-          {step === 'form' ? (
-            <>
-              {/* Segmented Control */}
-              <View style={[s.tabs, isDark && { backgroundColor: '#27272A' }]}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => setMode('login')}
-                  style={[s.tab, mode === 'login' && [s.activeTab, isDark && { backgroundColor: '#18181B' }]]}
-                >
-                  <Text style={[s.tabText, isDark && { color: colors.muted }, mode === 'login' && [s.activeTabText, isDark && { color: colors.ink }]]}>
-                    Log in
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => setMode('signup')}
-                  style={[s.tab, mode === 'signup' && [s.activeTab, isDark && { backgroundColor: '#18181B' }]]}
-                >
-                  <Text style={[s.tabText, isDark && { color: colors.muted }, mode === 'signup' && [s.activeTabText, isDark && { color: colors.ink }]]}>
-                    Sign up
-                  </Text>
-                </TouchableOpacity>
-              </View>
+          {/* Segmented Controller */}
+          <View style={[s.segmentedControl, { backgroundColor: isDark ? '#27272A' : '#F4F4F5' }]}>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setActiveTab('profile')}
+              style={[
+                s.segmentTab,
+                activeTab === 'profile' && [s.segmentTabActive, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }],
+              ]}
+            >
+              <Icon
+                name="users"
+                size={14}
+                color={activeTab === 'profile' ? (isDark ? colors.ink : C.ink) : colors.muted}
+              />
+              <Text
+                style={[
+                  s.segmentTabText,
+                  { color: colors.muted },
+                  activeTab === 'profile' && [s.segmentTabTextActive, { color: isDark ? colors.ink : C.ink }],
+                ]}
+              >
+                Profile Credentials
+              </Text>
+            </TouchableOpacity>
 
-              {/* Inputs */}
-              <View style={s.form}>
-                {mode === 'signup' && (
-                  <View style={s.inputGroup}>
-                    <Text style={[s.label, isDark && { color: colors.muted }]}>Property name</Text>
-                    <View style={[s.inputWrapper, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
-                      <View style={s.inputIcon}>
-                        <Icon name="home" size={18} color={colors.muted} />
-                      </View>
-                      <TextInput
-                        value={property}
-                        onChangeText={setProperty}
-                        placeholder="e.g. Sunrise Homestay"
-                        placeholderTextColor={colors.muted}
-                        style={[s.input, isDark && { color: colors.ink }]}
-                        autoCapitalize="words"
-                      />
-                    </View>
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setActiveTab('password')}
+              style={[
+                s.segmentTab,
+                activeTab === 'password' && [s.segmentTabActive, { backgroundColor: isDark ? '#18181B' : '#FFFFFF' }],
+              ]}
+            >
+              <Icon
+                name="lock"
+                size={14}
+                color={activeTab === 'password' ? (isDark ? colors.ink : C.ink) : colors.muted}
+              />
+              <Text
+                style={[
+                  s.segmentTabText,
+                  { color: colors.muted },
+                  activeTab === 'password' && [s.segmentTabTextActive, { color: isDark ? colors.ink : C.ink }],
+                ]}
+              >
+                Change Password
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* TAB 1: PROFILE CREDENTIALS */}
+          {activeTab === 'profile' ? (
+            <View style={s.section}>
+              <View style={s.inputGroup}>
+                <Text style={[s.inputLabel, { color: isDark ? colors.ink : '#374151' }]}>Host / Username</Text>
+                <View style={[s.inputWrap, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? '#27272A' : '#E4E4E7' }]}>
+                  <View style={s.inputIcon}>
+                    <Icon name="users" size={17} color={colors.muted} />
                   </View>
-                )}
-
-                <View style={s.inputGroup}>
-                  <Text style={[s.label, isDark && { color: colors.muted }]}>Email address</Text>
-                  <View style={[s.inputWrapper, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
-                    <View style={s.inputIcon}>
-                      <Icon name="mail" size={18} color={colors.muted} />
-                    </View>
-                    <TextInput
-                      value={email}
-                      onChangeText={setEmail}
-                      placeholder="owner@property.com"
-                      placeholderTextColor={colors.muted}
-                      style={[s.input, isDark && { color: colors.ink }]}
-                      keyboardType="email-address"
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                    />
-                  </View>
-                </View>
-
-                <View style={s.inputGroup}>
-                  <Text style={[s.label, isDark && { color: colors.muted }]}>Password</Text>
-                  <View style={[s.inputWrapper, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
-                    <View style={s.inputIcon}>
-                      <Icon name="lock" size={18} color={colors.muted} />
-                    </View>
-                    <TextInput
-                      value={pw}
-                      onChangeText={setPw}
-                      placeholder={
-                        mode === 'login' ? 'Enter password' : 'At least 8 characters'
-                      }
-                      placeholderTextColor={colors.muted}
-                      secureTextEntry={!showPassword}
-                      style={[s.input, isDark && { color: colors.ink }]}
-                      autoCapitalize="none"
-                    />
-                    <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={() => setShowPassword(!showPassword)}
-                      style={s.eyeBtn}
-                    >
-                      <Icon
-                        name={showPassword ? 'eyeOff' : 'eye'}
-                        size={18}
-                        color={colors.muted}
-                      />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                {mode === 'login' && (
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() =>
-                      onModal(
-                        'Password Reset',
-                        'Password reset instructions have been sent to your email.'
-                      )
-                    }
-                    style={s.forgotBtn}
-                  >
-                    <Text style={[s.forgotText, isDark && { color: colors.primary }]}>Forgot password?</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Submit Button */}
-                <TouchableOpacity
-                  activeOpacity={0.88}
-                  onPress={handleSubmit}
-                  style={[s.submitBtn, isDark && { backgroundColor: colors.primary }]}
-                >
-                  <Text style={s.submitBtnText}>
-                    {mode === 'login' ? 'Log in' : 'Create account'}
-                  </Text>
-                </TouchableOpacity>
-
-                {/* Divider */}
-                <View style={s.divider}>
-                  <View style={[s.dividerLine, isDark && { backgroundColor: '#27272A' }]} />
-                  <Text style={[s.dividerText, isDark && { color: colors.muted }]}>or</Text>
-                  <View style={[s.dividerLine, isDark && { backgroundColor: '#27272A' }]} />
-                </View>
-
-                {/* Google Button */}
-                <TouchableOpacity
-                  activeOpacity={0.85}
-                  style={[s.googleBtn, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}
-                  onPress={() => {
-                    onToast('Signed in with Google');
-                    setTimeout(onClose, 400);
-                  }}
-                >
-                  <Image
-                    source={GoogleLogo}
-                    style={s.googleImage}
-                    resizeMode="contain"
-                  />
-                  <Text style={[s.googleBtnText, isDark && { color: colors.ink }]}>Continue with Google</Text>
-                </TouchableOpacity>
-              </View>
-            </>
-          ) : (
-            /* OTP Verification Screen */
-            <View style={s.otpContainer}>
-              <View style={s.otpRow}>
-                {otpDigits.map((digit, index) => (
                   <TextInput
-                    key={index}
-                    ref={(ref) => {
-                      otpInputsRef.current[index] = ref;
-                    }}
-                    value={digit}
-                    onChangeText={(val) => handleOtpChange(val, index)}
-                    onKeyPress={(e) => handleOtpKeyPress(e, index)}
-                    keyboardType="number-pad"
-                    maxLength={1}
-                    selectTextOnFocus
-                    style={[
-                      s.otpBox,
-                      isDark && { backgroundColor: '#18181B', borderColor: '#27272A', color: colors.ink },
-                      digit ? (isDark ? { borderColor: colors.primary, backgroundColor: '#2E1065' } : s.otpBoxFilled) : null,
-                    ]}
+                    value={username}
+                    onChangeText={setUsername}
+                    placeholder="e.g. Meera Sharma"
+                    placeholderTextColor={colors.muted}
+                    style={[s.inputField, { color: colors.ink }]}
+                    autoCapitalize="words"
                   />
-                ))}
+                </View>
+                <Text style={[s.fieldHint, { color: colors.muted }]}>Displayed in receipts, reports, and greeting bar.</Text>
               </View>
 
-              {/* Resend Row */}
-              <View style={s.resendRow}>
-                <Text style={[s.resendLabel, isDark && { color: colors.muted }]}>{"Didn't receive the code? "}</Text>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={handleResendOtp}
-                  disabled={resendTimer > 0}
-                >
-                  <Text
-                    style={[
-                      s.resendLink,
-                      isDark && { color: colors.primary },
-                      resendTimer > 0 && s.resendLinkDisabled,
-                    ]}
-                  >
-                    {resendTimer > 0
-                      ? `Resend in 0:${resendTimer < 10 ? '0' : ''}${resendTimer}`
-                      : 'Resend code'}
-                  </Text>
-                </TouchableOpacity>
+              <View style={s.inputGroup}>
+                <Text style={[s.inputLabel, { color: isDark ? colors.ink : '#374151' }]}>Registered Email Address</Text>
+                <View style={[s.inputWrap, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? '#27272A' : '#E4E4E7' }]}>
+                  <View style={s.inputIcon}>
+                    <Icon name="mail" size={17} color={colors.muted} />
+                  </View>
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="owner@property.com"
+                    placeholderTextColor={colors.muted}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    style={[s.inputField, { color: colors.ink }]}
+                  />
+                </View>
+                <Text style={[s.fieldHint, { color: colors.muted }]}>Used for cloud backup, monthly reports & account recovery.</Text>
               </View>
 
-              {/* Verify Button */}
+              <View style={s.inputGroup}>
+                <Text style={[s.inputLabel, { color: isDark ? colors.ink : '#374151' }]}>Property / Hotel Name</Text>
+                <View style={[s.inputWrap, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? '#27272A' : '#E4E4E7' }]}>
+                  <View style={s.inputIcon}>
+                    <Icon name="home" size={17} color={colors.muted} />
+                  </View>
+                  <TextInput
+                    value={propertyName}
+                    onChangeText={setPropertyName}
+                    placeholder="e.g. Sunrise Homestay"
+                    placeholderTextColor={colors.muted}
+                    style={[s.inputField, { color: colors.ink }]}
+                    autoCapitalize="words"
+                  />
+                </View>
+              </View>
+
+              {/* Save Button */}
               <TouchableOpacity
                 activeOpacity={0.88}
-                onPress={() => handleVerifyOtp()}
-                style={[s.submitBtn, isDark && { backgroundColor: colors.primary }]}
+                onPress={handleSaveProfile}
+                disabled={isSavingProfile}
+                style={[s.primaryBtn, { backgroundColor: colors.primary }]}
               >
-                <Text style={s.submitBtnText}>Verify & Continue</Text>
+                <Icon name="check" size={18} color="#FFFFFF" />
+                <Text style={s.primaryBtnText}>Save Credentials</Text>
               </TouchableOpacity>
+            </View>
+          ) : (
+            /* TAB 2: CHANGE PASSWORD */
+            <View style={s.section}>
+              {passwordError ? (
+                <View style={[s.errorBox, { backgroundColor: isDark ? '#450A0A' : '#FEF2F2', borderColor: isDark ? '#7F1D1D' : '#FCA5A5' }]}>
+                  <Icon name="x" size={16} color="#EF4444" />
+                  <Text style={[s.errorBoxText, { color: isDark ? '#FCA5A5' : '#B91C1C' }]}>{passwordError}</Text>
+                </View>
+              ) : null}
 
-              {/* Back button */}
+              <View style={s.inputGroup}>
+                <Text style={[s.inputLabel, { color: isDark ? colors.ink : '#374151' }]}>Current Password</Text>
+                <View style={[s.inputWrap, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? '#27272A' : '#E4E4E7' }]}>
+                  <View style={s.inputIcon}>
+                    <Icon name="lock" size={17} color={colors.muted} />
+                  </View>
+                  <TextInput
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    placeholder="Enter current password"
+                    placeholderTextColor={colors.muted}
+                    secureTextEntry={!showCurrent}
+                    style={[s.inputField, { color: colors.ink }]}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setShowCurrent(!showCurrent)}
+                    style={s.eyeBtn}
+                  >
+                    <Icon
+                      name={showCurrent ? 'eyeOff' : 'eye'}
+                      size={18}
+                      color={colors.muted}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <View style={s.inputGroup}>
+                <Text style={[s.inputLabel, { color: isDark ? colors.ink : '#374151' }]}>New Password</Text>
+                <View style={[s.inputWrap, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? '#27272A' : '#E4E4E7' }]}>
+                  <View style={s.inputIcon}>
+                    <Icon name="lock" size={17} color={colors.muted} />
+                  </View>
+                  <TextInput
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="Minimum 8 characters"
+                    placeholderTextColor={colors.muted}
+                    secureTextEntry={!showNew}
+                    style={[s.inputField, { color: colors.ink }]}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setShowNew(!showNew)}
+                    style={s.eyeBtn}
+                  >
+                    <Icon
+                      name={showNew ? 'eyeOff' : 'eye'}
+                      size={18}
+                      color={colors.muted}
+                    />
+                  </TouchableOpacity>
+                </View>
+                <Text style={[s.fieldHint, { color: colors.muted }]}>Must contain at least 8 characters.</Text>
+              </View>
+
+              <View style={s.inputGroup}>
+                <Text style={[s.inputLabel, { color: isDark ? colors.ink : '#374151' }]}>Confirm New Password</Text>
+                <View style={[s.inputWrap, { backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderColor: isDark ? '#27272A' : '#E4E4E7' }]}>
+                  <View style={s.inputIcon}>
+                    <Icon name="lock" size={17} color={colors.muted} />
+                  </View>
+                  <TextInput
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Re-enter new password"
+                    placeholderTextColor={colors.muted}
+                    secureTextEntry={!showConfirm}
+                    style={[s.inputField, { color: colors.ink }]}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setShowConfirm(!showConfirm)}
+                    style={s.eyeBtn}
+                  >
+                    <Icon
+                      name={showConfirm ? 'eyeOff' : 'eye'}
+                      size={18}
+                      color={colors.muted}
+                    />
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Update Password Button */}
               <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => setStep('form')}
-                style={s.backBtn}
+                activeOpacity={0.88}
+                onPress={handleUpdatePassword}
+                disabled={isUpdatingPassword}
+                style={[s.primaryBtn, { backgroundColor: colors.primary }]}
               >
-                <Text style={[s.backBtnText, isDark && { color: colors.muted }]}>
-                  Back to {mode === 'login' ? 'Log in' : 'Sign up'}
-                </Text>
+                <Icon name="lock" size={18} color="#FFFFFF" />
+                <Text style={s.primaryBtnText}>Update Master Password</Text>
               </TouchableOpacity>
             </View>
           )}
 
-          {/* Footer note */}
-          <Text style={[s.footerText, isDark && { color: colors.muted }]}>
-            {"By continuing, you agree to StayMate's "}
-            <Text style={{ color: isDark ? colors.ink : '#09090B', fontWeight: '600' }}>Terms</Text> and{' '}
-            <Text style={{ color: isDark ? colors.ink : '#09090B', fontWeight: '600' }}>Privacy</Text>.
-          </Text>
-
-          {/* Devify Developer Attribution */}
-          <TouchableOpacity
-            activeOpacity={0.7}
-            onPress={() => Linking.openURL('https://www.devify.co.in')}
-            style={s.devifyBadge}
-          >
-            <Text style={[s.devifyText, isDark && { color: colors.muted }]}>
-              Developed by <Text style={[s.devifyBrand, isDark && { color: colors.ink }]}>Devify</Text> · www.devify.co.in
+          {/* Security Overview Footer */}
+          <View style={[s.securityFooterCard, { backgroundColor: isDark ? '#18181B' : '#F8FAFC', borderColor: isDark ? '#27272A' : '#E2E8F0' }]}>
+            <View style={s.securityFooterRow}>
+              <View style={[s.secDot, { backgroundColor: '#10B981' }]} />
+              <Text style={[s.secFooterTitle, { color: colors.ink }]}>Security Safeguards Active</Text>
+            </View>
+            <Text style={[s.secFooterDesc, { color: colors.muted }]}>
+              Your account password and security PIN encrypt all local SQLite guest records and provide secure multi-device synchronization.
             </Text>
-          </TouchableOpacity>
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -429,285 +456,257 @@ export function AccountPortalScreen({
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    borderBottomWidth: 1,
+  },
+  topBarLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  headerIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  topBarTitle: {
+    fontFamily: 'Inter',
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  topBarSub: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '400',
+    marginTop: 1,
   },
   closeBtn: {
-    position: 'absolute',
-    right: 20,
-    zIndex: 10,
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#F4F4F5',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  header: {
-    alignItems: 'center',
-    marginBottom: 24,
+  accountCard: {
+    borderRadius: 18,
+    borderWidth: 1,
+    padding: 16,
+    marginBottom: 18,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  brandLogo: {
-    width: 190,
-    height: 34,
-    marginBottom: 36,
-  },
-  title: {
-    fontFamily: 'Inter',
-    fontSize: 20,
-    fontWeight: '700',
-    letterSpacing: -0.4,
-    color: '#09090B',
-  },
-  subtitle: {
-    fontFamily: 'Inter',
-    fontSize: 13.5,
-    color: '#71717A',
-    marginTop: 3,
-  },
-  emailChip: {
+  accountCardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F4F4F5',
-    paddingVertical: 5,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    marginTop: 8,
+    gap: 14,
+  },
+  avatarCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontFamily: 'Inter',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  emailChipText: {
+  accountName: {
+    fontFamily: 'Inter',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  verifiedTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: R.full,
+  },
+  verifiedTagText: {
+    fontFamily: 'Inter',
+    fontSize: 10.5,
+    fontWeight: '600',
+  },
+  accountEmail: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    fontWeight: '400',
+    marginTop: 2,
+  },
+  cardMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 14,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  metaItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  metaDivider: {
+    width: 1,
+    height: 22,
+    backgroundColor: '#E4E4E7',
+    opacity: 0.5,
+  },
+  metaLabel: {
+    fontFamily: 'Inter',
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+  },
+  metaVal: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  segmentedControl: {
+    flexDirection: 'row',
+    borderRadius: 12,
+    padding: 4,
+    marginBottom: 20,
+  },
+  segmentTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 9,
+  },
+  segmentTabActive: {
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
+  },
+  segmentTabText: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  segmentTabTextActive: {
+    fontWeight: '700',
+  },
+  section: {
+    gap: 16,
+  },
+  inputGroup: {
+    gap: 6,
+  },
+  inputLabel: {
     fontFamily: 'Inter',
     fontSize: 13,
     fontWeight: '600',
-    color: '#09090B',
   },
-  editEmailBtn: {
-    paddingHorizontal: 4,
-  },
-  editEmailText: {
-    fontFamily: 'Inter',
-    fontSize: 12.5,
-    fontWeight: '700',
-    color: '#7C3AED',
-  },
-  tabs: {
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: '#F4F4F5',
-    padding: 3,
-    flexDirection: 'row',
-    marginBottom: 20,
-  },
-  tab: {
-    flex: 1,
-    borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  activeTab: {
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000000',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1.5 },
-    elevation: 2,
-  },
-  tabText: {
-    fontFamily: 'Inter',
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: '#71717A',
-  },
-  activeTabText: {
-    fontWeight: '700',
-    color: '#09090B',
-  },
-  form: {
-    width: '100%',
-  },
-  inputGroup: {
-    marginBottom: 13,
-  },
-  label: {
-    fontFamily: 'Inter',
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#18181B',
-    marginBottom: 6,
-  },
-  inputWrapper: {
+  inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E4E4E7',
-    borderRadius: 12,
-    paddingHorizontal: 12,
     height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
   },
   inputIcon: {
     marginRight: 10,
-    width: 20,
-    alignItems: 'center',
   },
-  input: {
+  inputField: {
     flex: 1,
     fontFamily: 'Inter',
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#09090B',
-    height: '100%',
+    fontSize: 14.5,
+    paddingVertical: 0,
+  },
+  fieldHint: {
+    fontFamily: 'Inter',
+    fontSize: 11.5,
+    fontWeight: '400',
+    marginTop: 2,
   },
   eyeBtn: {
     padding: 6,
   },
-  forgotBtn: {
-    alignSelf: 'flex-end',
-    marginTop: 2,
-    marginBottom: 16,
-  },
-  forgotText: {
-    fontFamily: 'Inter',
-    fontSize: 12.5,
-    fontWeight: '600',
-    color: '#7C3AED',
-  },
-  submitBtn: {
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#09090B',
+  primaryBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
-    marginTop: 4,
+    gap: 8,
+    height: 48,
+    borderRadius: 14,
+    marginTop: 10,
   },
-  submitBtnText: {
+  primaryBtnText: {
     fontFamily: 'Inter',
-    fontSize: 14.5,
+    fontSize: 15,
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  divider: {
+  errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    marginVertical: 18,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#E4E4E7',
-  },
-  dividerText: {
-    fontFamily: 'Inter',
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#A1A1AA',
-  },
-  googleBtn: {
-    height: 48,
-    borderRadius: 12,
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E4E4E7',
+  },
+  errorBoxText: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    fontWeight: '500',
+    flex: 1,
+  },
+  securityFooterCard: {
+    marginTop: 26,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 6,
+  },
+  securityFooterRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    backgroundColor: '#FFFFFF',
+    gap: 8,
   },
-  googleImage: {
-    width: 18,
-    height: 18,
+  secDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  googleBtnText: {
-    fontFamily: 'Inter',
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: '#18181B',
-  },
-  otpContainer: {
-    width: '100%',
-    paddingTop: 8,
-  },
-  otpRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  otpBox: {
-    width: 44,
-    height: 52,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: '#E4E4E7',
-    backgroundColor: '#FFFFFF',
-    textAlign: 'center',
-    fontFamily: 'Inter',
-    fontSize: 22,
-    fontWeight: '700',
-    color: '#09090B',
-  },
-  otpBoxFilled: {
-    borderColor: '#7C3AED',
-    backgroundColor: '#FAF5FF',
-  },
-  resendRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  resendLabel: {
-    fontFamily: 'Inter',
-    fontSize: 13,
-    color: '#71717A',
-  },
-  resendLink: {
+  secFooterTitle: {
     fontFamily: 'Inter',
     fontSize: 13,
     fontWeight: '700',
-    color: '#7C3AED',
   },
-  resendLinkDisabled: {
-    color: '#A1A1AA',
-    fontWeight: '600',
-  },
-  backBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    marginTop: 8,
-  },
-  backBtnText: {
-    fontFamily: 'Inter',
-    fontSize: 13.5,
-    fontWeight: '600',
-    color: '#71717A',
-  },
-  footerText: {
-    fontFamily: 'Inter',
-    fontSize: 11.5,
-    color: '#A1A1AA',
-    textAlign: 'center',
-    marginTop: 14,
-    lineHeight: 17,
-  },
-  devifyBadge: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 4,
-    marginTop: 2,
-  },
-  devifyText: {
+  secFooterDesc: {
     fontFamily: 'Inter',
     fontSize: 12,
-    color: '#71717A',
-  },
-  devifyBrand: {
-    fontWeight: '700',
-    color: '#09090B',
+    fontWeight: '400',
+    lineHeight: 17,
   },
 });

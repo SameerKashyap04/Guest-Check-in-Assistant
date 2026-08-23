@@ -13,6 +13,8 @@ const STORAGE_KEYS = {
   AUTO_LOCK_MINUTES: '@staymate_auto_lock_minutes',
   FAILED_ATTEMPTS: '@staymate_failed_attempts',
   LOCKOUT_UNTIL: '@staymate_lockout_until',
+  ACCOUNT_PASSWORD: '@staymate_account_password',
+  USER_PROFILE: '@staymate_user_profile',
 };
 
 const DEFAULT_PIN = '1234';
@@ -226,6 +228,51 @@ class SecurityService {
     await AsyncStorage.setItem(STORAGE_KEYS.PIN, DEFAULT_PIN);
     await AsyncStorage.setItem(STORAGE_KEYS.FAILED_ATTEMPTS, '0');
     await AsyncStorage.removeItem(STORAGE_KEYS.LOCKOUT_UNTIL);
+  }
+
+  /**
+   * Account profile management
+   */
+  async getAccountProfile(): Promise<{ username: string; email: string; businessName: string }> {
+    try {
+      const raw = await AsyncStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+      if (raw) {
+        return JSON.parse(raw);
+      }
+    } catch (e) {}
+    return {
+      username: 'Meera Sharma',
+      email: 'owner@staymate.in',
+      businessName: 'Sunrise Homestay',
+    };
+  }
+
+  async saveAccountProfile(profile: { username: string; email: string; businessName: string }): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+    } catch (e) {
+      console.warn('[SecurityService] Save profile error:', e);
+    }
+  }
+
+  /**
+   * Account password management
+   */
+  async getAccountPassword(): Promise<string> {
+    try {
+      const pwd = await AsyncStorage.getItem(STORAGE_KEYS.ACCOUNT_PASSWORD);
+      return pwd || 'StayMate@2026';
+    } catch (e) {
+      return 'StayMate@2026';
+    }
+  }
+
+  async saveAccountPassword(password: string): Promise<void> {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.ACCOUNT_PASSWORD, password);
+    } catch (e) {
+      console.warn('[SecurityService] Save password error:', e);
+    }
   }
 }
 
