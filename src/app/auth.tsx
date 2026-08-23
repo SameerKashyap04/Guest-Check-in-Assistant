@@ -91,9 +91,14 @@ export default function AuthScreen() {
       }
       setOwner(profile);
       setOwnerId(profile.uid);
-      useAuthStore.setState({ isUnlocked: true });
 
-      router.replace('/(tabs)');
+      const pinExists = await checkPinSetup();
+      if (!pinExists) {
+        useAuthStore.setState({ isUnlocked: false });
+      } else {
+        useAuthStore.setState({ isUnlocked: true });
+        router.replace('/(tabs)');
+      }
     } catch (err: any) {
       console.error('Google auth error:', err);
       Alert.alert(
@@ -220,16 +225,20 @@ export default function AuthScreen() {
         setPropertyId(profile.propertyId);
         assignLegacyUnassignedGuests(profile.propertyId).catch(() => {});
       }
-      useAuthStore.setState({ isUnlocked: true });
-
-      if (profile.isOffline) {
-        Alert.alert(
-          'Offline Mode Activated',
-          'Logged in using local owner account. Cloud sync will resume when internet is connected.',
-          [{ text: 'Continue', onPress: () => router.replace('/(tabs)') }]
-        );
+      const pinExists = await checkPinSetup();
+      if (!pinExists) {
+        useAuthStore.setState({ isUnlocked: false });
       } else {
-        setTimeout(() => router.replace('/(tabs)'), 50);
+        useAuthStore.setState({ isUnlocked: true });
+        if (profile.isOffline) {
+          Alert.alert(
+            'Offline Mode Activated',
+            'Logged in using local owner account. Cloud sync will resume when internet is connected.',
+            [{ text: 'Continue', onPress: () => router.replace('/(tabs)') }]
+          );
+        } else {
+          setTimeout(() => router.replace('/(tabs)'), 50);
+        }
       }
     } catch (err: any) {
       console.error('Auth verification error', err);

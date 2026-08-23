@@ -31,6 +31,7 @@ import {Icon} from './src/components/Icon';
 import {BottomNav, TabName} from './src/components/BottomNav';
 import {PrimaryButton, SecondaryButton, SoftButton, IconButton} from './src/components/Ui';
 import {PinScreen} from './src/screens/PinScreen';
+import {LoginScreen} from './src/screens/LoginScreen';
 import {DashboardScreen} from './src/screens/DashboardScreen';
 import {RoomsScreen} from './src/screens/RoomsScreen';
 import {ScannerScreen} from './src/screens/ScannerScreen';
@@ -79,6 +80,8 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 }
 
 function MainApp() {
+  const [authStage, setAuthStage] = useState<'login' | 'set_password' | 'enter_pin' | 'dashboard'>('login');
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [unlocked, setUnlocked] = useState(false);
   const [isSecurityReady, setIsSecurityReady] = useState(false);
   const lastActiveRef = useRef<number>(Date.now());
@@ -105,13 +108,28 @@ function MainApp() {
   const [toast, setToast] = useState('');
   const [billing, setBilling] = useState(false);
 
+  const handleLoginSuccess = async (userData?: any) => {
+    setCurrentUser(userData || { email: 'host@staymate.in' });
+    const cfg = await securityService.init();
+    if (!cfg.hasCustomPin) {
+      setAuthStage('set_password');
+    } else {
+      setUnlocked(true);
+      setAuthStage('dashboard');
+      notify(`Welcome, ${userData?.businessName || 'Host'}!`);
+    }
+  };
+
+  const handleSetPasswordSuccess = () => {
+    setUnlocked(true);
+    setAuthStage('dashboard');
+    notify('✓ Master security password configured!');
+  };
+
   // Initialize Security Settings & check if lock is required
   useEffect(() => {
     (async () => {
       const cfg = await securityService.init();
-      if (!cfg.isLockEnabled) {
-        setUnlocked(true);
-      }
       setIsSecurityReady(true);
     })();
   }, []);
@@ -357,20 +375,41 @@ function MainApp() {
             'Log out',
             () => {
               setUnlocked(false);
+              setAuthStage('login');
+              setCurrentUser(null);
               setModal(null);
               notify('Logged out securely');
             }
           )
         }
-        onLock={() => setUnlocked(false)}
+        onLock={() => {
+          setUnlocked(false);
+          setAuthStage('enter_pin');
+        }}
       />
     );
 
+  // STAGE 1: Host Login Screen
+  if (authStage === 'login') {
+    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+  }
+
+  // STAGE 2: Set Master Password / PIN Screen
+  if (authStage === 'set_password') {
+    return (
+      <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+        <StatusBar style="dark"/>
+        <PinScreen mode="setup" onUnlock={handleSetPasswordSuccess} onPinSet={handleSetPasswordSuccess} />
+      </SafeAreaView>
+    );
+  }
+
+  // STAGE 3: Unlock Guard for existing sessions / auto-lock
   if (isSecurityReady && !unlocked) {
     return (
       <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
         <StatusBar style="dark"/>
-        <PinScreen onUnlock={() => setUnlocked(true)}/>
+        <PinScreen mode="enter" onUnlock={() => { setUnlocked(true); setAuthStage('dashboard'); }} />
       </SafeAreaView>
     );
   }

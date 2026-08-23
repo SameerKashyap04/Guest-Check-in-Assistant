@@ -24,6 +24,7 @@ export interface SecuritySettings {
   isLockEnabled: boolean;
   isBiometricEnabled: boolean;
   autoLockMinutes: number; // 0 = immediately, 1 = 1m, 5 = 5m, 15 = 15m, -1 = never
+  hasCustomPin: boolean;
 }
 
 class SecurityService {
@@ -31,6 +32,7 @@ class SecurityService {
   private isLockEnabled: boolean = true;
   private isBiometricEnabled: boolean = true;
   private autoLockMinutes: number = 5;
+  private hasCustomPin: boolean = false;
   private isInitialized: boolean = false;
 
   /**
@@ -47,8 +49,10 @@ class SecurityService {
 
       if (savedPin && savedPin.length === 4) {
         this.cachedPin = savedPin;
+        this.hasCustomPin = true;
       } else {
         this.cachedPin = DEFAULT_PIN;
+        this.hasCustomPin = false;
         await AsyncStorage.setItem(STORAGE_KEYS.PIN, DEFAULT_PIN);
       }
 
@@ -59,6 +63,7 @@ class SecurityService {
     } catch (e) {
       console.warn('[SecurityService] Init fallback:', e);
       this.cachedPin = DEFAULT_PIN;
+      this.hasCustomPin = false;
       this.isLockEnabled = true;
       this.isBiometricEnabled = true;
       this.autoLockMinutes = 5;
@@ -74,7 +79,12 @@ class SecurityService {
       isLockEnabled: this.isLockEnabled,
       isBiometricEnabled: this.isBiometricEnabled,
       autoLockMinutes: this.autoLockMinutes,
+      hasCustomPin: this.hasCustomPin,
     };
+  }
+
+  async changePin(newPin: string): Promise<boolean> {
+    return this.savePin(newPin);
   }
 
   /**
@@ -137,6 +147,7 @@ class SecurityService {
       throw new Error('PIN must be exactly 4 digits');
     }
     this.cachedPin = newPin;
+    this.hasCustomPin = true;
     await AsyncStorage.setItem(STORAGE_KEYS.PIN, newPin);
     return true;
   }
