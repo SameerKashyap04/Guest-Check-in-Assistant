@@ -23,6 +23,7 @@ import {SettingRow, PrimaryButton, SecondaryButton, Field} from '../components/U
 import {securityService} from '../services/securityService';
 
 const StayMateLogo = require('../../assets/staymate-logo.png');
+const StayMateLogoDark = require('../../assets/staymate-logo-dark.png');
 
 interface PropertyProfile {
   name: string;
@@ -452,7 +453,7 @@ export function SettingsScreen({
       >
         <View style={s.footerContentRow}>
           <Image
-            source={StayMateLogo}
+            source={isDark ? StayMateLogoDark : StayMateLogo}
             style={s.footerLogo}
             resizeMode="contain"
           />

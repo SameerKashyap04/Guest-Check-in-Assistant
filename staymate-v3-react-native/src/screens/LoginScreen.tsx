@@ -13,10 +13,12 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../components/Icon';
 
 const GoogleLogo = require('../../assets/google-logo.png');
 const StayMateLogo = require('../../assets/staymate-logo.png');
+const StayMateLogoDark = require('../../assets/staymate-logo-dark.png');
 
 export function LoginScreen({
   initial = 'login',
@@ -29,6 +31,7 @@ export function LoginScreen({
   onClose?: () => void;
   showClose?: boolean;
 }) {
+  const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [mode, setMode] = useState(initial);
@@ -62,10 +65,7 @@ export function LoginScreen({
 
     setOtpDigits(['', '', '', '', '', '']);
     setResendTimer(30);
-    onLoginSuccess({
-      email: email.trim(),
-      businessName: property.trim() || 'Sunrise Homestay',
-    });
+    setStep('otp');
   };
 
   const handleResendOtp = () => {
@@ -118,15 +118,15 @@ export function LoginScreen({
   };
 
   return (
-    <View style={s.container}>
+    <View style={[s.container, isDark && { backgroundColor: colors.canvas }]}>
       {/* Subtle close button on top right if enabled */}
       {showClose && onClose && (
         <TouchableOpacity
           activeOpacity={0.8}
           onPress={onClose}
-          style={[s.closeBtn, { top: insets.top + 16 }]}
+          style={[s.closeBtn, isDark && { backgroundColor: '#27272A' }, { top: insets.top + 16 }]}
         >
-          <Icon name="x" size={16} color="#64748B" />
+          <Icon name="x" size={16} color={colors.ink} />
         </TouchableOpacity>
       )}
 
@@ -147,16 +147,16 @@ export function LoginScreen({
           {/* Header */}
           <View style={s.header}>
             <Image
-              source={StayMateLogo}
+              source={isDark ? StayMateLogoDark : StayMateLogo}
               style={s.brandLogo}
               resizeMode="contain"
             />
             {step === 'form' ? (
               <>
-                <Text style={s.title}>
+                <Text style={[s.title, isDark && { color: colors.ink }]}>
                   {mode === 'login' ? 'Welcome back' : 'Create account'}
                 </Text>
-                <Text style={s.subtitle}>
+                <Text style={[s.subtitle, isDark && { color: colors.muted }]}>
                   {mode === 'login'
                     ? 'Sign in to access your property'
                     : 'Start managing your check-ins'}
@@ -164,18 +164,18 @@ export function LoginScreen({
               </>
             ) : (
               <>
-                <Text style={s.title}>Verify your email</Text>
-                <Text style={s.subtitle}>
+                <Text style={[s.title, isDark && { color: colors.ink }]}>Verify your email</Text>
+                <Text style={[s.subtitle, isDark && { color: colors.muted }]}>
                   Enter the 6-digit code sent to
                 </Text>
-                <View style={s.emailChip}>
-                  <Text style={s.emailChipText}>{email.trim()}</Text>
+                <View style={[s.emailChip, isDark && { backgroundColor: '#27272A' }]}>
+                  <Text style={[s.emailChipText, isDark && { color: colors.ink }]}>{email.trim()}</Text>
                   <TouchableOpacity
                     activeOpacity={0.7}
                     onPress={() => setStep('form')}
                     style={s.editEmailBtn}
                   >
-                    <Text style={s.editEmailText}>Edit</Text>
+                    <Text style={[s.editEmailText, isDark && { color: colors.primary }]}>Edit</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -185,22 +185,22 @@ export function LoginScreen({
           {step === 'form' ? (
             <>
               {/* Segmented Control */}
-              <View style={s.tabs}>
+              <View style={[s.tabs, isDark && { backgroundColor: '#27272A' }]}>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setMode('login')}
-                  style={[s.tab, mode === 'login' && s.activeTab]}
+                  style={[s.tab, mode === 'login' && [s.activeTab, isDark && { backgroundColor: '#18181B' }]]}
                 >
-                  <Text style={[s.tabText, mode === 'login' && s.activeTabText]}>
+                  <Text style={[s.tabText, isDark && { color: colors.muted }, mode === 'login' && [s.activeTabText, isDark && { color: colors.ink }]]}>
                     Log in
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setMode('signup')}
-                  style={[s.tab, mode === 'signup' && s.activeTab]}
+                  style={[s.tab, mode === 'signup' && [s.activeTab, isDark && { backgroundColor: '#18181B' }]]}
                 >
-                  <Text style={[s.tabText, mode === 'signup' && s.activeTabText]}>
+                  <Text style={[s.tabText, isDark && { color: colors.muted }, mode === 'signup' && [s.activeTabText, isDark && { color: colors.ink }]]}>
                     Sign up
                   </Text>
                 </TouchableOpacity>
@@ -210,10 +210,10 @@ export function LoginScreen({
               <View style={s.form}>
                 {mode === 'signup' && (
                   <View style={s.inputGroup}>
-                    <Text style={s.label}>Property name</Text>
-                    <View style={s.inputWrapper}>
+                    <Text style={[s.label, isDark && { color: colors.muted }]}>Property name</Text>
+                    <View style={[s.inputWrapper, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
                       <View style={s.inputIcon}>
-                        <Icon name="home" size={18} color="#71717A" />
+                        <Icon name="home" size={18} color={colors.muted} />
                       </View>
                       <TextInput
                         value={property}

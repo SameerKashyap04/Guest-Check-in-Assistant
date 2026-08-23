@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 
 const StayMateLogo = require('../../../assets/images/staymate-logo.png');
+const StayMateLogoDark = require('../../../assets/images/staymate-logo-dark.png');
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -444,7 +445,7 @@ export default function SettingsScreen() {
         >
           <View style={s.footerContentRow}>
             <Image
-              source={StayMateLogo}
+              source={(colorScheme === 'dark' || theme === 'dark') ? StayMateLogoDark : StayMateLogo}
               style={s.footerLogo}
               resizeMode="contain"
             />

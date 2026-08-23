@@ -15,10 +15,13 @@ import { useTranslation } from 'react-i18next';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { isAtLimit, getRemainingUsage } from '@/services/entitlementService';
 import { STAYMATE_REPORT_LOGO_BASE64 } from '@/constants/reportLogoBase64';
+import { useTheme } from '@/theme/ThemeContext';
 
 const StayMateLogo = require('../../assets/images/staymate-logo.png');
+const StayMateLogoDark = require('../../assets/images/staymate-logo-dark.png');
 
 export default function ReportsScreen() {
+  const { isDark } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
   const { businessName } = useSettingsStore();
@@ -368,7 +371,7 @@ export default function ReportsScreen() {
             <ChevronLeft size={26} color="#000000" />
           </TouchableOpacity>
           <Image
-            source={StayMateLogo}
+            source={isDark ? StayMateLogoDark : StayMateLogo}
             style={{ width: 105, height: 19, marginRight: 8 }}
             resizeMode="contain"
           />

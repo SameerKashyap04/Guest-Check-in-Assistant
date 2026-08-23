@@ -15,7 +15,10 @@ import {
   Linking,
 } from 'react-native';
 
+import { useTheme } from '@/theme/ThemeContext';
+
 const StayMateLogo = require('../../assets/images/staymate-logo.png');
+const StayMateLogoDark = require('../../assets/images/staymate-logo-dark.png');
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   Check,

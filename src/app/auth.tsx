@@ -27,13 +27,16 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { PinScreen } from '@/features/auth/PinScreen';
 import { C } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeContext';
 import { Icon } from '@/components/v3/Icon';
 import { assignLegacyUnassignedGuests } from '@/database';
 
 const GoogleLogo = require('../../assets/images/google-logo.png');
 const StayMateLogo = require('../../assets/images/staymate-logo.png');
+const StayMateLogoDark = require('../../assets/images/staymate-logo-dark.png');
 
 export default function AuthScreen() {
+  const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
@@ -289,7 +292,7 @@ export default function AuthScreen() {
           {/* Header */}
           <View style={s.header}>
             <Image
-              source={StayMateLogo}
+              source={isDark ? StayMateLogoDark : StayMateLogo}
               style={s.brandLogo}
               resizeMode="contain"
             />

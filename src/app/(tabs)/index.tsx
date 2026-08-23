@@ -19,8 +19,10 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { C, R } from '@/theme/tokens';
 import { Icon } from '@/components/v3/Icon';
 import { PrimaryButton, SecondaryButton, Field } from '@/components/v3/Ui';
+import { useTheme } from '@/theme/ThemeContext';
 
 const StayMateLogo = require('../../../assets/images/staymate-logo.png');
+const StayMateLogoDark = require('../../../assets/images/staymate-logo-dark.png');
 import { openDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -54,6 +56,7 @@ function getTodayStr(): string {
 }
 
 export default function DashboardScreen() {
+  const { isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
@@ -285,7 +288,7 @@ export default function DashboardScreen() {
         <View style={s.headerSection}>
           <View style={s.topRow}>
             <Image
-              source={StayMateLogo}
+              source={isDark ? StayMateLogoDark : StayMateLogo}
               style={s.dashLogo}
               resizeMode="contain"
             />

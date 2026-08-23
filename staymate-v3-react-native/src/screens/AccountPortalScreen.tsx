@@ -18,6 +18,7 @@ import { Icon } from '../components/Icon';
 
 const GoogleLogo = require('../../assets/google-logo.png');
 const StayMateLogo = require('../../assets/staymate-logo.png');
+const StayMateLogoDark = require('../../assets/staymate-logo-dark.png');
 
 export function AccountPortalScreen({
   initial = 'login',
@@ -152,7 +153,7 @@ export function AccountPortalScreen({
           {/* Header */}
           <View style={s.header}>
             <Image
-              source={StayMateLogo}
+              source={isDark ? StayMateLogoDark : StayMateLogo}
               style={s.brandLogo}
               resizeMode="contain"
             />

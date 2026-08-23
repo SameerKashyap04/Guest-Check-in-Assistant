@@ -15,6 +15,7 @@ import { GUESTS } from '../data';
 import { PrimaryButton } from '../components/Ui';
 
 const StayMateLogo = require('../../assets/staymate-logo.png');
+const StayMateLogoDark = require('../../assets/staymate-logo-dark.png');
 
 function getGreeting(): string {
   const h = new Date().getHours();
@@ -56,7 +57,7 @@ export function DashboardScreen({
       <View style={{ paddingTop: 18 }}>
         <View style={s.topRow}>
           <Image
-            source={StayMateLogo}
+            source={isDark ? StayMateLogoDark : StayMateLogo}
             style={s.dashLogo}
             resizeMode="contain"
           />
