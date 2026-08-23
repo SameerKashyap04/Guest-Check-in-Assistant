@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { getRooms, addRoom, updateRoom, deleteRoom, Room } from '@/database/rooms';
 import { useSettingsStore } from './useSettingsStore';
+import { syncPropertyRoomsToCloud } from '@/services/firebaseSync';
 
 interface RoomsState {
   rooms: Room[];
@@ -20,9 +21,16 @@ export const useRoomsStore = create<RoomsState>((set, get) => ({
   fetchRooms: async () => {
     set({ isLoading: true, error: null });
     try {
-      const activePropertyId = useSettingsStore.getState().propertyId;
+      const activePropertyId = useSettingsStore.getState().propertyId || 'HS-DEFAULT';
+      const businessName = useSettingsStore.getState().businessName || 'My Homestay';
+      const ownerId = useSettingsStore.getState().ownerId || 'OWNER_DEFAULT_101';
       const rooms = await getRooms(activePropertyId);
       set({ rooms, isLoading: false });
+
+      // Automatically sync rooms and live availability to Firestore for public self check-in
+      if (rooms && rooms.length > 0) {
+        syncPropertyRoomsToCloud(activePropertyId, businessName, rooms, ownerId).catch(() => {});
+      }
     } catch (error: any) {
       set({ error: error.message || 'Failed to fetch rooms', isLoading: false });
     }

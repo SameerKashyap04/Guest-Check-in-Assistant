@@ -9,6 +9,8 @@ import {
   deleteDoc, 
   doc, 
   getDocs,
+  getDoc,
+  setDoc,
   QuerySnapshot, 
   DocumentChange 
 } from '@firebase/firestore';
@@ -273,4 +275,116 @@ export function subscribeToPendingCheckinCount(
     return () => {};
   }
 }
+
+export interface CloudRoom {
+  id: number;
+  room_number: string;
+  room_type?: string | null;
+  price?: number | null;
+  status: 'available' | 'occupied' | 'cleaning' | 'maintenance';
+}
+
+export interface CloudPropertyRooms {
+  property_id: string;
+  property_name?: string;
+  owner_id?: string;
+  updated_at?: any;
+  rooms: CloudRoom[];
+}
+
+/**
+ * Synchronizes a homestay's room inventory and live availability to Firestore.
+ */
+export async function syncPropertyRoomsToCloud(
+  propertyId: string,
+  propertyName: string,
+  rooms: any[],
+  ownerId?: string
+): Promise<void> {
+  if (!propertyId) return;
+  try {
+    const docRef = doc(db, 'property_rooms', propertyId);
+    const cleanedRooms: CloudRoom[] = rooms.map((r) => ({
+      id: Number(r.id) || Date.now(),
+      room_number: String(r.room_number || ''),
+      room_type: r.room_type || 'Standard Room',
+      price: Number(r.price) || 0,
+      status: r.status || 'available',
+    }));
+
+    await setDoc(
+      docRef,
+      {
+        property_id: propertyId,
+        property_name: propertyName || 'Homestay',
+        owner_id: ownerId || 'OWNER_DEFAULT_101',
+        updated_at: serverTimestamp(),
+        rooms: cleanedRooms,
+      },
+      { merge: true }
+    );
+  } catch (e) {
+    console.warn('[Firestore] Failed to sync property rooms to cloud:', e);
+  }
+}
+
+/**
+ * Subscribes to LIVE real-time room availability for a specific homestay property.
+ */
+export function subscribeToPropertyRooms(
+  propertyId: string,
+  onUpdate: (rooms: CloudRoom[], propertyName?: string) => void
+): () => void {
+  if (!propertyId) return () => {};
+
+  try {
+    const docRef = doc(db, 'property_rooms', propertyId);
+    const unsub = onSnapshot(
+      docRef,
+      (docSnap) => {
+        if (docSnap.exists()) {
+          const data = docSnap.data() as CloudPropertyRooms;
+          const roomsList = Array.isArray(data.rooms) ? data.rooms : [];
+          onUpdate(roomsList, data.property_name);
+        } else {
+          onUpdate([], undefined);
+        }
+      },
+      (error) => {
+        if (error?.code !== 'permission-denied') {
+          console.warn('[Firestore] Error listening to property rooms:', error);
+        }
+      }
+    );
+    return unsub;
+  } catch (e) {
+    console.warn('[Firestore] Failed to subscribe to property rooms:', e);
+    return () => {};
+  }
+}
+
+/**
+ * Fetches one-time room inventory for a specific property from Firestore.
+ */
+export async function getPropertyRoomsFromCloud(
+  propertyId: string
+): Promise<{ rooms: CloudRoom[]; property_name?: string } | null> {
+  if (!propertyId) return null;
+  try {
+    const docRef = doc(db, 'property_rooms', propertyId);
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      const data = snap.data() as CloudPropertyRooms;
+      return {
+        rooms: Array.isArray(data.rooms) ? data.rooms : [],
+        property_name: data.property_name,
+      };
+    }
+    return null;
+  } catch (e) {
+    console.warn('[Firestore] Failed to get property rooms from cloud:', e);
+    return null;
+  }
+}
+
 

@@ -41,7 +41,7 @@ import {
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
-import { pushGuestCheckinToCloud } from '@/services/firebaseSync';
+import { pushGuestCheckinToCloud, subscribeToPropertyRooms } from '@/services/firebaseSync';
 import { SelfCheckinDatePicker } from '@/components/SelfCheckinDatePicker';
 
 export interface Room {
@@ -49,7 +49,7 @@ export interface Room {
   room_number: string;
   room_type?: string;
   price?: number;
-  status: 'available' | 'occupied' | 'maintenance';
+  status: 'available' | 'occupied' | 'cleaning' | 'maintenance';
 }
 
 export interface AdditionalGuest {
@@ -83,6 +83,7 @@ export default function SelfCheckinScreen() {
   const activePropertyId = (searchParams?.property_id as string) || storePropId || 'HS-4821';
   const activeOwnerId = (searchParams?.owner_id as string) || storeOwnerId || 'OWNER_DEFAULT_101';
   const activePropertyName = (searchParams?.property_name as string) || businessName || 'StayMate Homestay';
+  const [dynamicPropertyName, setDynamicPropertyName] = useState<string>(activePropertyName);
 
   const getTodayStr = () => {
     const t = new Date();
@@ -134,7 +135,7 @@ export default function SelfCheckinScreen() {
   const [additionalGuests, setAdditionalGuests] = useState<AdditionalGuest[]>([]);
   const [agreeTerms, setAgreeTerms] = useState(true);
 
-  // Rooms & Submission State
+  // Rooms & Submission State (Dynamic Available-Only Rooms)
   const [rooms, setRooms] = useState<Room[]>([]);
   const [selectedRoomId, setSelectedRoomId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -142,16 +143,58 @@ export default function SelfCheckinScreen() {
   const [assignedRoomNumber, setAssignedRoomNumber] = useState<string>('101');
 
   useEffect(() => {
-    async function loadRooms() {
-      if (searchParams?.rooms) {
-        if (searchParams.rooms === 'none') {
-          setRooms([]);
-          setSelectedRoomId(null);
+    let isSubscribed = true;
+
+    // 1. If property_id exists, subscribe to live real-time available rooms for THIS homestay
+    const propId = (searchParams?.property_id as string) || storePropId;
+    let unsub = () => {};
+
+    if (propId) {
+      unsub = subscribeToPropertyRooms(propId, (cloudRooms, cloudPropName) => {
+        if (!isSubscribed) return;
+        if (cloudPropName) {
+          setDynamicPropertyName(cloudPropName);
+        }
+        if (Array.isArray(cloudRooms) && cloudRooms.length > 0) {
+          // Show ONLY AVAILABLE rooms at that time for this homestay
+          const availableOnly: Room[] = cloudRooms
+            .filter((r) => r.status === 'available')
+            .map((r, idx) => ({
+              id: r.id || idx + 900,
+              room_number: r.room_number,
+              room_type: r.room_type || 'Standard Room',
+              price: r.price || 0,
+              status: 'available',
+            }));
+
+          setRooms(availableOnly);
+          if (availableOnly.length > 0) {
+            setSelectedRoomId((prev) => {
+              if (prev && availableOnly.some((ar) => ar.id === prev)) {
+                return prev;
+              }
+              return availableOnly[0].id;
+            });
+          } else {
+            setSelectedRoomId(null);
+          }
           return;
         }
-        try {
-          const raw = String(searchParams.rooms);
-          const parsed = raw.split(';').map((item, idx) => {
+      });
+    }
+
+    // 2. Initial / fallback check with searchParams?.rooms if cloud has not synced yet
+    if (searchParams?.rooms) {
+      if (searchParams.rooms === 'none') {
+        setRooms([]);
+        setSelectedRoomId(null);
+        return () => { isSubscribed = false; unsub(); };
+      }
+      try {
+        const raw = String(searchParams.rooms);
+        const parsed: Room[] = raw
+          .split(';')
+          .map((item, idx) => {
             const parts = item.split(':');
             return {
               id: idx + 900,
@@ -161,27 +204,22 @@ export default function SelfCheckinScreen() {
               status: 'available' as const,
             };
           });
-          setRooms(parsed);
-          if (parsed.length > 0) {
-            setSelectedRoomId(parsed[0].id);
-          }
-          return;
-        } catch (err) {
-          console.error('Failed to parse URL query rooms', err);
-        }
-      }
 
-      // Default fallback room inventory
-      const defaultWebRooms: Room[] = [
-        { id: 901, room_number: '101', room_type: 'Standard Room', price: 1800, status: 'available' },
-        { id: 902, room_number: '204', room_type: 'Deluxe King', price: 2600, status: 'available' },
-        { id: 903, room_number: '303', room_type: 'Garden Cottage', price: 3600, status: 'available' },
-      ];
-      setRooms(defaultWebRooms);
-      setSelectedRoomId(901);
+        setRooms(parsed);
+        if (parsed.length > 0) {
+          setSelectedRoomId(parsed[0].id);
+        }
+        return () => { isSubscribed = false; unsub(); };
+      } catch (err) {
+        console.error('Failed to parse URL query rooms', err);
+      }
     }
-    loadRooms();
-  }, [searchParams?.rooms]);
+
+    return () => {
+      isSubscribed = false;
+      unsub();
+    };
+  }, [searchParams?.property_id, searchParams?.rooms, storePropId]);
 
   const addAdditionalPerson = () => {
     setAdditionalGuests((prev) => [
@@ -331,7 +369,7 @@ export default function SelfCheckinScreen() {
     }
 
     const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
-    const roomNum = selectedRoom?.room_number || '101';
+    const roomNum = selectedRoom?.room_number || (rooms.length > 0 ? rooms[0].room_number : 'Assigned on Arrival');
 
     setIsSubmitting(true);
     try {
@@ -378,7 +416,9 @@ export default function SelfCheckinScreen() {
   };
 
   const handleNotifyOwner = () => {
-    const message = `*Welcome to ${activePropertyName}!*\n\nGuest Self Check-in Completed:\n- Guest Name: ${fullName.trim()}\n- Phone: ${phone.trim()}\n- Assigned Room: Room ${assignedRoomNumber}\n- ID: ${idType} (${idNumber.trim()})\n- Check-in: ${checkInDate} to ${checkOutDate}\n- Total Occupants: ${Number(adultsCount) + Number(childrenCount)} Guests\n\nThank you for choosing ${activePropertyName}!`;
+    const propertyTitle = dynamicPropertyName || activePropertyName;
+    const roomLabel = assignedRoomNumber === 'Assigned on Arrival' ? 'Assigned on Arrival' : `Room ${assignedRoomNumber}`;
+    const message = `*Welcome to ${propertyTitle}!*\n\nGuest Self Check-in Completed:\n- Guest Name: ${fullName.trim()}\n- Phone: ${phone.trim()}\n- Room: ${roomLabel}\n- ID: ${idType} (${idNumber.trim()})\n- Check-in: ${checkInDate} to ${checkOutDate}\n- Total Occupants: ${Number(adultsCount) + Number(childrenCount)} Guests\n\nThank you for choosing ${propertyTitle}!`;
     const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
     if (Platform.OS === 'web' && typeof window !== 'undefined') {
       window.open(whatsappUrl, '_blank');
@@ -410,15 +450,17 @@ export default function SelfCheckinScreen() {
 
             <Text style={s.successTitle}>Check-in Successful</Text>
             <Text style={s.successSub}>
-              Welcome to <Text style={{ fontWeight: '700', color: '#0F172A' }}>{activePropertyName}</Text>. Your digital registration has been submitted and verified.
+              Welcome to <Text style={{ fontWeight: '700', color: '#0F172A' }}>{dynamicPropertyName || activePropertyName}</Text>. Your digital registration has been submitted and verified.
             </Text>
 
             {/* Room Pass Card */}
             <View style={s.roomPassCard}>
               <Text style={s.roomPassLabel}>ASSIGNED ROOM</Text>
-              <Text style={s.roomPassNumber}>Room {assignedRoomNumber}</Text>
+              <Text style={s.roomPassNumber}>
+                {assignedRoomNumber === 'Assigned on Arrival' ? 'Assigned on Arrival' : `Room ${assignedRoomNumber}`}
+              </Text>
               <Text style={s.roomPassSub}>
-                {rooms.find((r) => r.room_number === assignedRoomNumber)?.room_type || 'Standard Room'} · {checkInDate} to {checkOutDate}
+                {rooms.find((r) => r.room_number === assignedRoomNumber)?.room_type || 'Standard Stay'} · {checkInDate} to {checkOutDate}
               </Text>
             </View>
 
@@ -508,7 +550,7 @@ export default function SelfCheckinScreen() {
       {/* Header Bar */}
       <View style={s.headerBar}>
         <View style={s.headerInfo}>
-          <Text style={s.headerTitle}>{activePropertyName}</Text>
+          <Text style={s.headerTitle}>{dynamicPropertyName || activePropertyName}</Text>
           <View style={s.headerSubtitleRow}>
             <ShieldCheck size={13} color="#10B981" />
             <Text style={s.headerSubtitle}>Official Digital Registration</Text>
@@ -904,34 +946,48 @@ export default function SelfCheckinScreen() {
 
               {/* Available Rooms Grid */}
               <Text style={[s.sectionHeader, { marginTop: 18 }]}>SELECT YOUR ROOM</Text>
-              <View style={{ gap: 10 }}>
-                {rooms.map((r) => {
-                  const isSel = selectedRoomId === r.id;
-                  return (
-                    <TouchableOpacity
-                      key={r.id}
-                      activeOpacity={0.8}
-                      onPress={() => setSelectedRoomId(r.id)}
-                      style={[s.roomCard, isSel && s.roomCardActive]}
-                    >
-                      <View style={s.roomCardIcon}>
-                        <Bed size={20} color={isSel ? '#7C3AED' : '#0F172A'} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[s.roomCardTitle, isSel && { color: '#7C3AED' }]}>
-                          Room {r.room_number}
-                        </Text>
-                        <Text style={s.roomCardType}>{r.room_type || 'Standard Room'}</Text>
-                      </View>
-                      <View style={s.roomPriceTag}>
-                        <Text style={s.roomPriceText}>
-                          {r.price ? `₹${r.price.toLocaleString('en-IN')}` : 'Included'}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
+              {rooms && rooms.length > 0 ? (
+                <View style={{ gap: 10 }}>
+                  {rooms.map((r) => {
+                    const isSel = selectedRoomId === r.id;
+                    return (
+                      <TouchableOpacity
+                        key={r.id}
+                        activeOpacity={0.8}
+                        onPress={() => setSelectedRoomId(r.id)}
+                        style={[s.roomCard, isSel && s.roomCardActive]}
+                      >
+                        <View style={s.roomCardIcon}>
+                          <Bed size={20} color={isSel ? '#7C3AED' : '#0F172A'} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.roomCardTitle, isSel && { color: '#7C3AED' }]}>
+                            Room {r.room_number}
+                          </Text>
+                          <Text style={s.roomCardType}>{r.room_type || 'Standard Room'}</Text>
+                        </View>
+                        <View style={s.roomPriceTag}>
+                          <Text style={s.roomPriceText}>
+                            {r.price ? `₹${r.price.toLocaleString('en-IN')}` : 'Included'}
+                          </Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              ) : (
+                <View style={s.noRoomsCard}>
+                  <View style={s.noRoomsIconCircle}>
+                    <Bed size={22} color="#7C3AED" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.noRoomsTitle}>Room Assigned on Arrival</Text>
+                    <Text style={s.noRoomsSubtitle}>
+                      All designated rooms are currently occupied or in preparation. Your room will be allocated at the front desk upon check-in.
+                    </Text>
+                  </View>
+                </View>
+              )}
 
               {/* Special Requests / Arrival Note */}
               <View style={[s.fieldGroup, { marginTop: 16 }]}>
@@ -1594,6 +1650,39 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
     color: '#7C3AED',
+  },
+  noRoomsCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: '#FAF5FF',
+    borderWidth: 1.5,
+    borderColor: '#E9D5FF',
+    borderRadius: 16,
+    padding: 16,
+    marginTop: 4,
+  },
+  noRoomsIconCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#EDE9FE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noRoomsTitle: {
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 3,
+  },
+  noRoomsSubtitle: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#64748B',
+    lineHeight: 17,
   },
   uploadCardLabel: {
     fontFamily: 'Inter',
