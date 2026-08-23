@@ -1,4 +1,4 @@
-import React, {useMemo, useState} from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   ScrollView,
   View,
@@ -7,10 +7,11 @@ import {
   StyleSheet,
   TextInput,
 } from 'react-native';
-import {C, R} from '../theme/tokens';
-import {ROOMS, STATUS_META, RoomStatus} from '../data';
-import {RoomCard} from '../components/RoomCard';
-import {Icon} from '../components/Icon';
+import { C, R } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
+import { ROOMS, STATUS_META, RoomStatus } from '../data';
+import { RoomCard } from '../components/RoomCard';
+import { Icon } from '../components/Icon';
 
 export interface RoomItem {
   num: string;
@@ -30,6 +31,7 @@ export function RoomsScreen({
   onSelect?: (room: string) => void;
   onAddRoom?: () => void;
 }) {
+  const { isDark, colors } = useTheme();
   const [filter, setFilter] = useState<'all' | RoomStatus>('all');
   const [list, setList] = useState(false);
   const [query, setQuery] = useState('');
@@ -55,34 +57,45 @@ export function RoomsScreen({
 
   return (
     <ScrollView
-      style={{flex: 1, backgroundColor: '#fff'}}
-      contentContainerStyle={{paddingHorizontal: 20, paddingTop: 6, paddingBottom: 130}}
+      style={{ flex: 1, backgroundColor: colors.canvas }}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 6, paddingBottom: 130 }}
       showsVerticalScrollIndicator={false}
     >
       {/* Header */}
       <View style={s.head}>
         <View>
-          <Text style={s.h1}>Rooms</Text>
-          <Text style={s.sub}>
-            {rooms.length} rooms <Text style={{color: '#B5BAC3'}}>•</Text>{' '}
-            <Text style={{color: '#059669', fontWeight: '600'}}>
+          <Text style={[s.h1, { color: colors.ink }]}>Rooms</Text>
+          <Text style={[s.sub, { color: colors.muted }]}>
+            {rooms.length} rooms <Text style={{ color: colors.mutedSoft }}>•</Text>{' '}
+            <Text style={{ color: '#059669', fontWeight: '600' }}>
               {counts.available} available now
             </Text>
           </Text>
         </View>
-        <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
           <TouchableOpacity
             onPress={() => setList(!list)}
             activeOpacity={0.8}
-            style={s.iconBtn}
+            style={[
+              s.iconBtn,
+              { backgroundColor: isDark ? '#27272A' : '#f2f2f2' },
+            ]}
           >
-            <Icon name={list ? 'grid' : 'list'} size={18} color={C.ink} />
+            <Icon name={list ? 'grid' : 'list'} size={18} color={colors.ink} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* 5-Stat bar — all numbers colored solid black #222222 */}
-      <View style={s.stats}>
+      {/* 5-Stat bar */}
+      <View
+        style={[
+          s.stats,
+          {
+            backgroundColor: isDark ? '#18181B' : '#FAF8FD',
+            borderColor: isDark ? '#27272A' : '#ECEAF0',
+          },
+        ]}
+      >
         {(['all', 'available', 'occupied', 'cleaning', 'maintenance'] as const).map((k) => {
           const label =
             k === 'all' ? 'Total' : k === 'maintenance' ? 'Maint.' : STATUS_META[k].label;
@@ -92,20 +105,33 @@ export function RoomsScreen({
               key={k}
               activeOpacity={0.7}
               onPress={() => setFilter(k)}
-              style={[s.stat, isSelected && s.statActive]}
+              style={[
+                s.stat,
+                isSelected && [
+                  s.statActive,
+                  { backgroundColor: isDark ? '#27272A' : '#ffffff' },
+                ],
+              ]}
             >
               <Text
                 style={[
                   s.statNum,
-                  k === 'available' && {color: '#059669'},
-                  k === 'occupied' && {color: C.primary},
-                  k === 'cleaning' && {color: '#D97706'},
-                  k === 'maintenance' && {color: '#DC2626'},
+                  { color: colors.ink },
+                  k === 'available' && { color: '#059669' },
+                  k === 'occupied' && { color: colors.primary },
+                  k === 'cleaning' && { color: '#D97706' },
+                  k === 'maintenance' && { color: '#DC2626' },
                 ]}
               >
                 {counts[k]}
               </Text>
-              <Text style={[s.statLabel, isSelected && {fontWeight: '700', color: C.ink}]}>
+              <Text
+                style={[
+                  s.statLabel,
+                  { color: colors.muted },
+                  isSelected && { fontWeight: '700', color: colors.ink },
+                ]}
+              >
                 {label}
               </Text>
             </TouchableOpacity>
@@ -124,11 +150,21 @@ export function RoomsScreen({
             key={k}
             activeOpacity={0.75}
             onPress={() => setFilter(k)}
-            style={[s.chip, filter === k && s.chipActive]}
+            style={[
+              s.chip,
+              { backgroundColor: isDark ? '#27272A' : '#f2f2f2' },
+              filter === k && { backgroundColor: isDark ? colors.primary : '#222222' },
+            ]}
           >
-            <Text style={[s.chipText, filter === k && s.chipTextActive]}>
+            <Text
+              style={[
+                s.chipText,
+                { color: colors.muted },
+                filter === k && s.chipTextActive,
+              ]}
+            >
               {k === 'all' ? 'All Rooms' : STATUS_META[k].label}{' '}
-              <Text style={{opacity: 0.7}}>({counts[k]})</Text>
+              <Text style={{ opacity: 0.7 }}>({counts[k]})</Text>
             </Text>
           </TouchableOpacity>
         ))}
@@ -138,8 +174,8 @@ export function RoomsScreen({
       {filtered.length === 0 ? (
         <View style={s.emptyState}>
           <Icon name="bed" size={32} color="#94A3B8" />
-          <Text style={s.emptyTitle}>No rooms found</Text>
-          <Text style={s.emptySub}>
+          <Text style={[s.emptyTitle, { color: colors.ink }]}>No rooms found</Text>
+          <Text style={[s.emptySub, { color: colors.muted }]}>
             {query ? `No rooms matching "${query}"` : `No rooms currently in ${filter} status.`}
           </Text>
           <TouchableOpacity
@@ -147,35 +183,46 @@ export function RoomsScreen({
               setFilter('all');
               setQuery('');
             }}
-            style={s.clearBtn}
+            style={[s.clearBtn, { backgroundColor: colors.primary }]}
             activeOpacity={0.75}
           >
             <Text style={s.clearBtnText}>Show All Rooms</Text>
           </TouchableOpacity>
         </View>
       ) : list ? (
-        <View style={{gap: 10, marginTop: 16}}>
+        <View style={{ gap: 10, marginTop: 16 }}>
           {filtered.map((r) => (
             <TouchableOpacity
               key={r.num}
               onPress={() => onSelect?.(r.num)}
               activeOpacity={0.85}
-              style={s.listCard}
+              style={[
+                s.listCard,
+                {
+                  backgroundColor: isDark ? '#18181B' : '#ffffff',
+                  borderColor: isDark ? '#27272A' : '#ECEAF0',
+                },
+              ]}
             >
-              <View style={s.listBed}>
-                <Icon name="bed" size={18} color={C.primary} />
+              <View
+                style={[
+                  s.listBed,
+                  { backgroundColor: isDark ? '#2E1065' : '#F7F3FF' },
+                ]}
+              >
+                <Icon name="bed" size={18} color={colors.primary} />
               </View>
-              <View style={{flex: 1, minWidth: 0}}>
+              <View style={{ flex: 1, minWidth: 0 }}>
                 <View style={s.listCardTop}>
-                  <Text style={s.listNum}>Room {r.num}</Text>
-                  <StatusPill status={r.status} />
+                  <Text style={[s.listNum, { color: colors.ink }]}>Room {r.num}</Text>
+                  <StatusPill status={r.status} isDark={isDark} />
                 </View>
-                <Text style={s.listMeta}>
+                <Text style={[s.listMeta, { color: colors.muted }]}>
                   {r.type} · ₹{r.price.toLocaleString('en-IN')}/night
                   {r.floor ? ` · ${r.floor}` : ''}
                 </Text>
               </View>
-              <Icon name="chevronRight" size={16} color="#94A3B8" />
+              <Icon name="chevronRight" size={16} color={colors.mutedSoft} />
             </TouchableOpacity>
           ))}
         </View>
@@ -193,7 +240,7 @@ export function RoomsScreen({
       <TouchableOpacity
         activeOpacity={0.85}
         onPress={onAddRoom}
-        style={s.addBtn}
+        style={[s.addBtn, { backgroundColor: colors.primary }]}
       >
         <Icon name="plus" size={19} color="#fff" />
         <Text style={s.addBtnText}>Add Room</Text>
@@ -202,12 +249,20 @@ export function RoomsScreen({
   );
 }
 
-function StatusPill({status}: {status: RoomStatus}) {
+function StatusPill({ status, isDark }: { status: RoomStatus; isDark?: boolean }) {
   const m = STATUS_META[status];
   return (
-    <View style={[s.statusPill, {backgroundColor: m.bg, borderColor: m.color}]}>
+    <View
+      style={[
+        s.statusPill,
+        {
+          backgroundColor: isDark ? m.color + '22' : m.bg,
+          borderColor: isDark ? m.color + '88' : m.color,
+        },
+      ]}
+    >
       <Icon name={status === 'available' ? 'check' : 'info'} size={10} color={m.color} />
-      <Text style={[s.statusPillText, {color: m.color}]}>
+      <Text style={[s.statusPillText, { color: m.color }]}>
         {status === 'maintenance' ? 'Maint.' : m.label}
       </Text>
     </View>
@@ -226,20 +281,17 @@ const s = StyleSheet.create({
     fontSize: 22,
     fontWeight: '700',
     letterSpacing: -0.4,
-    color: '#222222',
   },
   sub: {
     fontFamily: 'Inter',
     fontSize: 13.5,
     fontWeight: '400',
-    color: '#6a6a6a',
     marginTop: 4,
   },
   iconBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#f2f2f2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -249,8 +301,6 @@ const s = StyleSheet.create({
     paddingHorizontal: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#ECEAF0',
-    backgroundColor: '#FAF8FD',
     flexDirection: 'row',
   },
   stat: {
@@ -261,25 +311,22 @@ const s = StyleSheet.create({
     borderRadius: 12,
   },
   statActive: {
-    backgroundColor: '#ffffff',
     shadowColor: '#000',
     shadowOpacity: 0.06,
     shadowRadius: 6,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
   statNum: {
     fontFamily: 'Inter',
     fontSize: 20,
     fontWeight: '800',
-    color: '#222222',
     lineHeight: 24,
   },
   statLabel: {
     fontFamily: 'Inter',
     fontSize: 11,
     fontWeight: '500',
-    color: '#6a6a6a',
     marginTop: 2,
   },
   chipsRow: {
@@ -291,18 +338,13 @@ const s = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 7.5,
     borderRadius: 999,
-    backgroundColor: '#f2f2f2',
     borderWidth: 1,
     borderColor: 'transparent',
-  },
-  chipActive: {
-    backgroundColor: '#222222',
   },
   chipText: {
     fontFamily: 'Inter',
     fontSize: 12.5,
     fontWeight: '500',
-    color: '#6a6a6a',
   },
   chipTextActive: {
     color: '#ffffff',
@@ -321,22 +363,19 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-    backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#ECEAF0',
     borderRadius: 16,
     gap: 12,
     shadowColor: '#000',
     shadowOpacity: 0.03,
     shadowRadius: 6,
-    shadowOffset: {width: 0, height: 2},
+    shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
   listBed: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#F7F3FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -348,15 +387,13 @@ const s = StyleSheet.create({
   },
   listNum: {
     fontFamily: 'Inter',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#222222',
   },
   listMeta: {
     fontFamily: 'Inter',
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '400',
-    color: '#6a6a6a',
   },
   statusPill: {
     flexDirection: 'row',
@@ -364,61 +401,52 @@ const s = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 999,
+    borderRadius: R.full,
     borderWidth: 1,
   },
   statusPillText: {
     fontFamily: 'Inter',
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   emptyState: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 40,
-    gap: 8,
+    paddingHorizontal: 20,
   },
   emptyTitle: {
     fontFamily: 'Inter',
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#334155',
-    marginTop: 4,
+    marginTop: 12,
   },
   emptySub: {
     fontFamily: 'Inter',
-    fontSize: 13,
-    color: '#64748B',
+    fontSize: 13.5,
     textAlign: 'center',
-    paddingHorizontal: 20,
+    marginTop: 4,
   },
   clearBtn: {
-    marginTop: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 999,
+    marginTop: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: R.full,
   },
   clearBtnText: {
     fontFamily: 'Inter',
-    fontSize: 12.5,
+    fontSize: 13,
     fontWeight: '600',
-    color: C.primary,
+    color: '#ffffff',
   },
   addBtn: {
-    marginTop: 24,
-    height: 50,
-    borderRadius: 16,
-    backgroundColor: '#222222',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: {width: 0, height: 4},
-    elevation: 3,
+    height: 50,
+    borderRadius: 14,
+    marginTop: 20,
   },
   addBtnText: {
     fontFamily: 'Inter',

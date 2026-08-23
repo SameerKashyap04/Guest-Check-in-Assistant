@@ -1,4 +1,4 @@
-export const C = {
+export const C_LIGHT = {
   primary: '#7C3AED',
   primaryActive: '#6D28D9',
   primaryDisabled: '#DDD6FE',
@@ -23,7 +23,48 @@ export const C = {
   amberBg: '#FFF6E5',
   rose: '#D92D20',
   roseBg: '#FFF1F0',
+  cardBg: '#FFFFFF',
+  cardBorder: '#ECEAF0',
+  inputBg: '#FFFFFF',
+  inputBorder: '#E4E4E7',
+  bottomNavBg: 'rgba(255, 255, 255, 0.96)',
+  bottomNavBorder: '#ECEAF0',
 };
+
+export const C_DARK = {
+  primary: '#9061F9',
+  primaryActive: '#7C3AED',
+  primaryDisabled: '#4C1D95',
+  primaryTint: '#2E1065',
+  primaryTintStrong: '#3B0764',
+  ink: '#F9FAFB',
+  body: '#E5E7EB',
+  muted: '#9CA3AF',
+  mutedSoft: '#6B7280',
+  hairline: '#27272A',
+  hairlineSoft: '#1F1F23',
+  borderStrong: '#3F3F46',
+  canvas: '#09090B',
+  surfaceSoft: '#18181B',
+  surfaceStrong: '#27272A',
+  onPrimary: '#FFFFFF',
+  emerald: '#10B981',
+  emeraldBg: '#064E3B',
+  sky: '#8B5CF6',
+  skyBg: '#2E1065',
+  amber: '#F59E0B',
+  amberBg: '#451A03',
+  rose: '#EF4444',
+  roseBg: '#450A0A',
+  cardBg: '#18181B',
+  cardBorder: '#27272A',
+  inputBg: '#18181B',
+  inputBorder: '#27272A',
+  bottomNavBg: 'rgba(24, 24, 27, 0.96)',
+  bottomNavBorder: '#27272A',
+};
+
+export const C = C_LIGHT;
 
 export const R = {
   xs: 4,

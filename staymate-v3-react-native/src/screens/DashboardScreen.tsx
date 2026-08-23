@@ -8,10 +8,11 @@ import {
   Image,
   Linking,
 } from 'react-native';
-import {C, R, shadow} from '../theme/tokens';
-import {Icon} from '../components/Icon';
-import {GUESTS} from '../data';
-import {PrimaryButton} from '../components/Ui';
+import { C, R, shadow } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
+import { Icon } from '../components/Icon';
+import { GUESTS } from '../data';
+import { PrimaryButton } from '../components/Ui';
 
 const StayMateLogo = require('../../assets/staymate-logo.png');
 
@@ -23,7 +24,7 @@ function getGreeting(): string {
 }
 
 function getTodayStr(): string {
-  return new Date().toLocaleDateString('en-IN', {weekday: 'long', day: 'numeric', month: 'long'});
+  return new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
 export function DashboardScreen({
@@ -39,6 +40,7 @@ export function DashboardScreen({
   onGuest: (id: number) => void;
   onSelfCheckin: () => void;
 }) {
+  const { isDark, colors } = useTheme();
   const activeCount = guests.filter((g) => g.status !== 'checked_out' && !g.checkedOut).length;
   const checkedOutCount = guests.filter((g) => g.status === 'checked_out' || g.checkedOut).length;
   const pendingVerifyCount = guests.filter((g) => !g.verified).length;
@@ -46,36 +48,56 @@ export function DashboardScreen({
 
   return (
     <ScrollView
-      style={{flex: 1, backgroundColor: '#fff'}}
-      contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 130}}
+      style={{ flex: 1, backgroundColor: colors.canvas }}
+      contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 130 }}
       showsVerticalScrollIndicator={false}
     >
       {/* Header row: StayMate Logo + live sync + date & greeting */}
-      <View style={{paddingTop: 18}}>
+      <View style={{ paddingTop: 18 }}>
         <View style={s.topRow}>
           <Image
             source={StayMateLogo}
             style={s.dashLogo}
             resizeMode="contain"
           />
-          <View style={s.syncBadge}>
-            <View style={s.syncDot}/>
-            <Text style={s.syncText}>Live Sync</Text>
+          <View style={[s.syncBadge, isDark && { backgroundColor: '#064E3B' }]}>
+            <View style={s.syncDot} />
+            <Text style={[s.syncText, isDark && { color: '#34D399' }]}>Live Sync</Text>
           </View>
         </View>
-        <Text style={s.dateText}>{getTodayStr()}</Text>
-        <Text style={s.h1}>{getGreeting()}, Meera</Text>
+        <Text style={[s.dateText, { color: colors.muted }]}>{getTodayStr()}</Text>
+        <Text style={[s.h1, { color: colors.ink }]}>{getGreeting()}, Meera</Text>
       </View>
 
       {/* Search + bell */}
       <View style={s.searchRow}>
-        <TouchableOpacity onPress={onSearch} activeOpacity={0.8} style={s.searchPill}>
-          <Icon name="search" size={18} color={C.muted}/>
-          <Text style={s.searchPlaceholder}>Search guests, rooms, IDs…</Text>
+        <TouchableOpacity
+          onPress={onSearch}
+          activeOpacity={0.8}
+          style={[
+            s.searchPill,
+            {
+              backgroundColor: isDark ? '#18181B' : '#fff',
+              borderColor: isDark ? '#27272A' : '#dddddd',
+            },
+          ]}
+        >
+          <Icon name="search" size={18} color={colors.muted} />
+          <Text style={[s.searchPlaceholder, { color: colors.mutedSoft }]}>Search guests, rooms, IDs…</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={onReports} activeOpacity={0.8} style={s.reportsBtn}>
-          <Icon name="bell" size={20} color={C.ink}/>
-          <View style={s.alertDot}/>
+        <TouchableOpacity
+          onPress={onReports}
+          activeOpacity={0.8}
+          style={[
+            s.reportsBtn,
+            {
+              backgroundColor: isDark ? '#18181B' : '#fff',
+              borderColor: isDark ? '#27272A' : '#dddddd',
+            },
+          ]}
+        >
+          <Icon name="bell" size={20} color={colors.ink} />
+          <View style={[s.alertDot, { backgroundColor: colors.primary }]} />
         </TouchableOpacity>
       </View>
 
@@ -87,18 +109,27 @@ export function DashboardScreen({
           ['ACTIVE GUESTS', String(activeCount)],
           ['PENDING VERIFY', String(pendingVerifyCount)],
         ] as [string, string][]).map(([label, value], i) => (
-          <View key={label} style={s.metricCard}>
-            <Text style={s.metricLabel}>{label}</Text>
-            <Text style={[s.metricNum, i === 2 && {color: C.primary}]}>{value}</Text>
+          <View
+            key={label}
+            style={[
+              s.metricCard,
+              {
+                backgroundColor: isDark ? '#18181B' : '#fff',
+                borderColor: isDark ? '#27272A' : '#ebebeb',
+              },
+            ]}
+          >
+            <Text style={[s.metricLabel, { color: colors.muted }]}>{label}</Text>
+            <Text style={[s.metricNum, { color: colors.ink }, i === 2 && { color: colors.primary }]}>{value}</Text>
           </View>
         ))}
       </View>
 
       {/* Recent check-ins */}
       <View style={s.recentHead}>
-        <Text style={s.sectionTitle}>Recent check-ins</Text>
+        <Text style={[s.sectionTitle, { color: colors.ink }]}>Recent check-ins</Text>
         <TouchableOpacity activeOpacity={0.7} onPress={onSearch}>
-          <Text style={s.viewAll}>View all</Text>
+          <Text style={[s.viewAll, { color: colors.primary }]}>View all</Text>
         </TouchableOpacity>
       </View>
 
@@ -112,34 +143,48 @@ export function DashboardScreen({
                 activeOpacity={0.75}
                 style={s.guestRow}
               >
-                <View style={[s.avatar, isCheckedOut && {backgroundColor: '#F1F5F9'}]}>
-                  <Text style={[s.avatarText, isCheckedOut && {color: '#64748B'}]}>
+                <View
+                  style={[
+                    s.avatar,
+                    { backgroundColor: isDark ? '#2E1065' : '#EDE9FE' },
+                    isCheckedOut && { backgroundColor: isDark ? '#27272A' : '#F1F5F9' },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      s.avatarText,
+                      { color: isDark ? '#DDD6FE' : '#5B21B6' },
+                      isCheckedOut && { color: '#64748B' },
+                    ]}
+                  >
                     {g.name ? g.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'GS'}
                   </Text>
                 </View>
-                <View style={{flex: 1, minWidth: 0}}>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <View style={s.nameRow}>
-                    <Text style={s.guestName}>{g.name}</Text>
+                    <Text style={[s.guestName, { color: colors.ink }]}>{g.name}</Text>
                     {isCheckedOut ? (
-                      <View style={{backgroundColor: '#F1F5F9', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, marginLeft: 4}}>
-                        <Text style={{fontSize: 9.5, fontWeight: '700', color: '#64748B'}}>OUT</Text>
+                      <View style={{ backgroundColor: isDark ? '#27272A' : '#F1F5F9', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4, marginLeft: 4 }}>
+                        <Text style={{ fontSize: 9.5, fontWeight: '700', color: '#64748B' }}>OUT</Text>
                       </View>
                     ) : g.verified ? (
-                      <Icon name="check" size={14} color={C.emerald}/>
+                      <Icon name="check" size={14} color={C.emerald} />
                     ) : null}
                   </View>
-                  <Text style={s.guestSub}>
+                  <Text style={[s.guestSub, { color: colors.muted }]}>
                     Room {g.room} · {g.idNum || 'Verified'}
                   </Text>
                 </View>
-                <View style={{alignItems: 'flex-end', flexShrink: 0}}>
-                  <Text style={[s.guestTime, isCheckedOut && {color: '#64748B', fontWeight: '600'}]}>
+                <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+                  <Text style={[s.guestTime, { color: colors.muted }, isCheckedOut && { color: '#64748B', fontWeight: '600' }]}>
                     {isCheckedOut ? 'Checked out' : g.time}
                   </Text>
                 </View>
-                <Icon name="chevronRight" size={18} color={C.mutedSoft}/>
+                <Icon name="chevronRight" size={18} color={colors.mutedSoft} />
               </TouchableOpacity>
-              {idx < Math.min(guests.length, 3) - 1 && <View style={s.divider}/>}
+              {idx < Math.min(guests.length, 3) - 1 && (
+                <View style={[s.divider, { backgroundColor: isDark ? '#27272A' : '#ebebeb' }]} />
+              )}
             </View>
           );
         })}
@@ -149,14 +194,20 @@ export function DashboardScreen({
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={onSelfCheckin}
-        style={s.selfCard}
+        style={[
+          s.selfCard,
+          {
+            backgroundColor: isDark ? '#18181B' : '#fff',
+            borderColor: isDark ? '#27272A' : '#ebebeb',
+          },
+        ]}
       >
-        <View style={s.selfIcon}>
-          <Icon name="qr" size={18} color={C.ink}/>
+        <View style={[s.selfIcon, { backgroundColor: isDark ? '#27272A' : '#f2f2f2' }]}>
+          <Icon name="qr" size={18} color={colors.ink} />
         </View>
-        <View style={{flex: 1, minWidth: 0}}>
-          <Text style={s.selfTitle}>Self check-in QR & link</Text>
-          <Text style={s.selfSub}>Share & manage online check-ins</Text>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[s.selfTitle, { color: colors.ink }]}>Self check-in QR & link</Text>
+          <Text style={[s.selfSub, { color: colors.muted }]}>Share & manage online check-ins</Text>
         </View>
         <PrimaryButton
           label="Share"
@@ -180,7 +231,6 @@ const s = StyleSheet.create({
     fontFamily: 'Inter',
     fontSize: 13.5,
     fontWeight: '400',
-    color: '#6a6a6a',
     marginBottom: 2,
   },
   syncBadge: {
@@ -210,7 +260,6 @@ const s = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: -0.4,
     lineHeight: 27,
-    color: '#222222',
     marginTop: 2,
   },
   searchRow: {
@@ -224,38 +273,33 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#dddddd',
     borderRadius: R.full,
     paddingHorizontal: 18,
     height: 48,
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 8,
-    shadowOffset: {width: 0, height: 4},
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
   searchPlaceholder: {
     fontFamily: 'Inter',
     fontSize: 13.5,
     fontWeight: '400',
-    color: '#929292',
   },
   reportsBtn: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#dddddd',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 8,
-    shadowOffset: {width: 0, height: 4},
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
   alertDot: {
@@ -265,7 +309,6 @@ const s = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#7C3AED',
     borderWidth: 1.5,
     borderColor: '#fff',
   },
@@ -277,15 +320,13 @@ const s = StyleSheet.create({
   },
   metricCard: {
     width: '48.4%',
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#ebebeb',
     borderRadius: 14,
     padding: 14,
     shadowColor: '#000',
     shadowOpacity: 0.04,
     shadowRadius: 8,
-    shadowOffset: {width: 0, height: 4},
+    shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
   metricLabel: {
@@ -293,7 +334,6 @@ const s = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.2,
-    color: '#6a6a6a',
     textTransform: 'uppercase',
   },
   metricNum: {
@@ -302,7 +342,6 @@ const s = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: -0.5,
     marginTop: 6,
-    color: '#222222',
   },
   recentHead: {
     flexDirection: 'row',
@@ -315,13 +354,11 @@ const s = StyleSheet.create({
     fontFamily: 'Inter',
     fontSize: 17,
     fontWeight: '700',
-    color: '#111827',
   },
   viewAll: {
     fontFamily: 'Inter',
     fontSize: 14,
     fontWeight: '600',
-    color: '#111827',
   },
   guestRow: {
     flexDirection: 'row',
@@ -333,7 +370,6 @@ const s = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#EDE9FE',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -341,7 +377,6 @@ const s = StyleSheet.create({
     fontFamily: 'Inter',
     fontSize: 15,
     fontWeight: '700',
-    color: '#5B21B6',
   },
   nameRow: {
     flexDirection: 'row',
@@ -352,46 +387,39 @@ const s = StyleSheet.create({
     fontFamily: 'Inter',
     fontSize: 15,
     fontWeight: '500',
-    color: '#222222',
   },
   guestSub: {
     fontFamily: 'Inter',
     fontSize: 13.5,
     fontWeight: '400',
-    color: '#6a6a6a',
     marginTop: 2,
   },
   guestTime: {
     fontFamily: 'Inter',
     fontSize: 12.5,
     fontWeight: '500',
-    color: '#6a6a6a',
   },
   divider: {
     height: 1,
-    backgroundColor: '#ebebeb',
   },
   selfCard: {
     marginTop: 16,
     padding: 10,
     borderRadius: 16,
-    backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#ebebeb',
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
     shadowColor: '#111827',
     shadowOpacity: 0.06,
     shadowRadius: 12,
-    shadowOffset: {width: 0, height: 3},
+    shadowOffset: { width: 0, height: 3 },
     elevation: 2,
   },
   selfIcon: {
     width: 38,
     height: 38,
     borderRadius: 12,
-    backgroundColor: '#f2f2f2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -400,13 +428,11 @@ const s = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     lineHeight: 18,
-    color: '#222222',
   },
   selfSub: {
     fontFamily: 'Inter',
     fontSize: 12,
     lineHeight: 16,
-    color: '#6a6a6a',
     marginTop: 2,
   },
   selfShareBtn: {

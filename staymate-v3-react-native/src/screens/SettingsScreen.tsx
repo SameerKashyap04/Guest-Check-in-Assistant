@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {C, R, shadow} from '../theme/tokens';
+import {useTheme, ThemeMode} from '../theme/ThemeContext';
 import {Icon, IconName} from '../components/Icon';
 import {SettingRow, PrimaryButton, SecondaryButton, Field} from '../components/Ui';
 import {securityService} from '../services/securityService';
@@ -46,7 +47,7 @@ const LANGUAGES = [
   {id: 'fr', name: 'French', native: 'Français'},
 ];
 
-const THEMES = [
+const THEMES: {id: ThemeMode; name: string; desc: string}[] = [
   {id: 'system', name: 'System default', desc: 'Follows device appearance'},
   {id: 'light', name: 'Light mode', desc: 'Crisp bright interface'},
   {id: 'dark', name: 'Dark mode', desc: 'Sleek low-light theme'},
@@ -76,6 +77,8 @@ export function SettingsScreen({
   onLock: () => void;
   onToast?: (msg: string) => void;
 }) {
+  const { themeMode, isDark, colors, setThemeMode } = useTheme();
+
   // Live State
   const [profile, setProfile] = useState<PropertyProfile>({
     name: 'Sunrise Homestay',
@@ -90,7 +93,6 @@ export function SettingsScreen({
   const [requirePin, setRequirePin] = useState(true);
   const [biometric, setBiometric] = useState(true);
   const [language, setLanguage] = useState('English');
-  const [theme, setTheme] = useState('System default');
   const [autoLock, setAutoLock] = useState('After 5 minutes');
 
   // Load persistent security settings on mount
@@ -261,38 +263,45 @@ export function SettingsScreen({
     .map((w) => w[0].toUpperCase())
     .join('') || 'SM';
 
+  const currentThemeLabel =
+    themeMode === 'dark'
+      ? 'Dark mode'
+      : themeMode === 'light'
+      ? 'Light mode'
+      : 'System default';
+
   return (
     <ScrollView
-      style={{flex: 1, backgroundColor: '#fff'}}
+      style={{flex: 1, backgroundColor: colors.canvas}}
       contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 130}}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={s.h1}>Settings</Text>
+      <Text style={[s.h1, { color: colors.ink }]}>Settings</Text>
 
       {/* Profile card */}
       <TouchableOpacity
         activeOpacity={0.8}
-        style={s.profileCard}
+        style={[s.profileCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}
         onPress={handleOpenProfile}
       >
         <View style={s.profileMark}>
           <Text style={s.profileMarkText}>{initials}</Text>
         </View>
         <View style={{flex: 1}}>
-          <Text style={s.profileTitle}>{profile.name}</Text>
-          <Text style={s.profileSub}>
+          <Text style={[s.profileTitle, { color: colors.ink }]}>{profile.name}</Text>
+          <Text style={[s.profileSub, isDark && { color: colors.muted }]}>
             {profile.code} · {profile.owner}
           </Text>
         </View>
-        <Icon name="chevronRight" size={18} color={C.mutedSoft}/>
+        <Icon name="chevronRight" size={18} color={colors.mutedSoft}/>
       </TouchableOpacity>
 
       {/* Plan & Usage card */}
-      <View style={s.planCard}>
+      <View style={[s.planCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
         <View style={s.planTop}>
           <View>
-            <Text style={s.planTitle}>Professional plan</Text>
-            <Text style={s.planSub}>12 days left on trial</Text>
+            <Text style={[s.planTitle, { color: colors.ink }]}>Professional plan</Text>
+            <Text style={[s.planSub, isDark && { color: colors.muted }]}>12 days left on trial</Text>
           </View>
           <View style={s.proBadge}>
             <Text style={s.proBadgeText}>PRO</Text>
@@ -303,7 +312,7 @@ export function SettingsScreen({
         <UsageBar label="Reports & exports" value="6 / 10" pct={60} dark/>
 
         <View style={s.ocrRow}>
-          <Text style={s.ocrText}>AI Document OCR</Text>
+          <Text style={[s.ocrText, isDark && { color: colors.ink }]}>AI Document OCR</Text>
           <View style={s.activeBadge}>
             <Text style={s.activeBadgeText}>Active</Text>
           </View>
@@ -317,7 +326,7 @@ export function SettingsScreen({
       </View>
 
       {/* DATA STORAGE */}
-      <Text style={s.sectionHeader}>DATA STORAGE</Text>
+      <Text style={[s.sectionHeader, { color: colors.muted }]}>DATA STORAGE</Text>
       <SettingRow
         icon="cloud"
         label="Cloud mode"
@@ -331,7 +340,7 @@ export function SettingsScreen({
       />
 
       {/* GENERAL */}
-      <Text style={[s.sectionHeader, {marginTop: 16}]}>GENERAL</Text>
+      <Text style={[s.sectionHeader, {marginTop: 16, color: colors.muted}]}>GENERAL</Text>
       <SettingRow
         icon="users"
         label="Username & password"
@@ -349,12 +358,12 @@ export function SettingsScreen({
       />
       <SettingRow
         icon="moon"
-        label={`Theme — ${theme}`}
+        label={`Theme — ${currentThemeLabel}`}
         onPress={() => setActiveModal('theme')}
       />
 
       {/* SECURITY & ACCESS */}
-      <Text style={[s.sectionHeader, {marginTop: 16}]}>SECURITY & ACCESS</Text>
+      <Text style={[s.sectionHeader, {marginTop: 16, color: colors.muted}]}>SECURITY & ACCESS</Text>
       <SettingRow
         icon="lock"
         label="Change security PIN"
@@ -645,23 +654,23 @@ export function SettingsScreen({
       {activeModal === 'theme' && (
         <Modal visible transparent animationType="slide">
           <View style={ms.sheetScrim}>
-            <View style={ms.sheet}>
-              <View style={ms.handle}/>
-              <View style={ms.sheetHeaderBar}>
+            <View style={[ms.sheet, isDark && { backgroundColor: '#18181B' }]}>
+              <View style={[ms.handle, isDark && { backgroundColor: '#3F3F46' }]}/>
+              <View style={[ms.sheetHeaderBar, isDark && { borderBottomColor: '#27272A' }]}>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => setActiveModal(null)}
-                  style={ms.sheetBackBtn}
+                  style={[ms.sheetBackBtn, isDark && { backgroundColor: '#27272A' }]}
                 >
-                  <Icon name="chevronLeft" size={18} color={C.ink}/>
+                  <Icon name="chevronLeft" size={18} color={colors.ink}/>
                 </TouchableOpacity>
-                <Text style={ms.sheetHeaderTitle}>Select Theme</Text>
+                <Text style={[ms.sheetHeaderTitle, isDark && { color: colors.ink }]}>Select Theme</Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => setActiveModal(null)}
-                  style={ms.sheetCloseBtnRelative}
+                  style={[ms.sheetCloseBtnRelative, isDark && { backgroundColor: '#27272A' }]}
                 >
-                  <Icon name="x" size={16} color={C.ink}/>
+                  <Icon name="x" size={16} color={colors.ink}/>
                 </TouchableOpacity>
               </View>
 
@@ -669,35 +678,46 @@ export function SettingsScreen({
                 contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 32}}
                 showsVerticalScrollIndicator={false}
               >
-                <Text style={[ms.bodySm, {marginBottom: 14}]}>
+                <Text style={[ms.bodySm, {marginBottom: 14}, isDark && { color: colors.muted }]}>
                   Customize the look and contrast of StayMate.
                 </Text>
 
                 {THEMES.map((th) => {
-                  const isSelected = theme === th.name;
+                  const isSelected = themeMode === th.id;
                   return (
                     <TouchableOpacity
                       key={th.id}
                       activeOpacity={0.75}
-                      onPress={() => {
-                        setTheme(th.name);
+                      onPress={async () => {
+                        await setThemeMode(th.id);
                         setActiveModal(null);
                         notify(`✓ Theme set to ${th.name}`);
                       }}
-                      style={[ms.optionRow, isSelected && ms.optionRowActive]}
+                      style={[
+                        ms.optionRow,
+                        isSelected && ms.optionRowActive,
+                        isDark && {
+                          backgroundColor: isSelected ? '#2E1065' : '#27272A',
+                          borderColor: isSelected ? colors.primary : '#3F3F46',
+                        },
+                      ]}
                     >
                       <View style={{flex: 1}}>
-                        <Text style={[ms.optionTitle, isSelected && ms.optionTitleActive]}>
+                        <Text style={[
+                          ms.optionTitle,
+                          isSelected && ms.optionTitleActive,
+                          isDark && { color: isSelected ? colors.primary : colors.ink },
+                        ]}>
                           {th.name}
                         </Text>
-                        <Text style={ms.optionDesc}>{th.desc}</Text>
+                        <Text style={[ms.optionDesc, isDark && { color: colors.muted }]}>{th.desc}</Text>
                       </View>
                       {isSelected ? (
-                        <View style={ms.checkCircle}>
+                        <View style={[ms.checkCircle, { backgroundColor: colors.primary }]}>
                           <Icon name="check" size={14} color="#fff"/>
                         </View>
                       ) : (
-                        <View style={ms.uncheckCircle}/>
+                        <View style={[ms.uncheckCircle, isDark && { borderColor: '#52525B', backgroundColor: '#18181B' }]}/>
                       )}
                     </TouchableOpacity>
                   );

@@ -48,6 +48,7 @@ export default function SettingsScreen() {
     propertyId,
     storageMode,
     language,
+    theme,
     setStorageMode,
     setBusinessSetup,
     setUserName,
@@ -63,6 +64,7 @@ export default function SettingsScreen() {
   const [tempPropName, setTempPropName] = useState(businessName || '');
   const [tempUserName, setTempUserName] = useState(userName || 'Sameer');
   const [pinModalOpen, setPinModalOpen] = useState(false);
+  const [themeModalOpen, setThemeModalOpen] = useState(false);
   const [helpModalOpen, setHelpModalOpen] = useState(false);
   const [currentPinInput, setCurrentPinInput] = useState('');
   const [newPinInput, setNewPinInput] = useState('');
@@ -343,13 +345,8 @@ export default function SettingsScreen() {
         />
         <SettingRow
           icon="moon"
-          label="Theme — Light (Restrained)"
-          onPress={() =>
-            Alert.alert(
-              'Theme',
-              'StayMate V3 uses the unified light product aesthetic.'
-            )
-          }
+          label={`Theme — ${theme === 'dark' ? 'Dark mode' : theme === 'light' ? 'Light mode' : 'System default'}`}
+          onPress={() => setThemeModalOpen(true)}
         />
 
         {/* SECURITY */}
@@ -510,6 +507,107 @@ export default function SettingsScreen() {
                 style={{ flex: 1 }}
               />
             </View>
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
+
+      {/* Theme Selector Modal */}
+      <Modal
+        visible={themeModalOpen}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setThemeModalOpen(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setThemeModalOpen(false)}
+          style={s.modalOverlay}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={(e) => e.stopPropagation?.()}
+            style={s.sheetContent}
+          >
+            <View style={s.sheetHeader}>
+              <Text style={s.sheetTitle}>Select Theme</Text>
+              <TouchableOpacity
+                onPress={() => setThemeModalOpen(false)}
+                style={s.sheetClose}
+              >
+                <Icon name="x" size={18} color={C.ink} />
+              </TouchableOpacity>
+            </View>
+
+            {[
+              { id: 'system', name: 'System default', desc: 'Follows device appearance' },
+              { id: 'light', name: 'Light mode', desc: 'Crisp bright interface' },
+              { id: 'dark', name: 'Dark mode', desc: 'Sleek low-light theme' },
+            ].map((th) => {
+              const isSelected = theme === th.id;
+              return (
+                <TouchableOpacity
+                  key={th.id}
+                  activeOpacity={0.75}
+                  onPress={() => {
+                    setTheme(th.id as any);
+                    setThemeModalOpen(false);
+                    Alert.alert('Theme', `✓ Theme set to ${th.name}`);
+                  }}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: 14,
+                    borderRadius: 14,
+                    borderWidth: 1.2,
+                    borderColor: isSelected ? C.primary : '#ECEAF0',
+                    backgroundColor: isSelected ? '#FAF5FF' : '#ffffff',
+                    marginBottom: 10,
+                  }}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text
+                      style={{
+                        fontFamily: 'Inter',
+                        fontSize: 15,
+                        fontWeight: '600',
+                        color: isSelected ? C.primary : '#1E293B',
+                      }}
+                    >
+                      {th.name}
+                    </Text>
+                    <Text style={{ fontFamily: 'Inter', fontSize: 12.5, color: '#64748B', marginTop: 2 }}>
+                      {th.desc}
+                    </Text>
+                  </View>
+                  {isSelected ? (
+                    <View
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        backgroundColor: C.primary,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Icon name="check" size={14} color="#fff" />
+                    </View>
+                  ) : (
+                    <View
+                      style={{
+                        width: 24,
+                        height: 24,
+                        borderRadius: 12,
+                        borderWidth: 1.5,
+                        borderColor: '#CBD5E1',
+                        backgroundColor: '#fff',
+                      }}
+                    />
+                  )}
+                </TouchableOpacity>
+              );
+            })}
           </TouchableOpacity>
         </TouchableOpacity>
       </Modal>

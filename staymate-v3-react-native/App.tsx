@@ -27,6 +27,7 @@ import {
   Inter_900Black,
 } from '@expo-google-fonts/inter';
 import {C, R, shadow} from './src/theme/tokens';
+import {ThemeProvider, useTheme} from './src/theme/ThemeContext';
 import {Icon} from './src/components/Icon';
 import {BottomNav, TabName} from './src/components/BottomNav';
 import {PrimaryButton, SecondaryButton, SoftButton, IconButton} from './src/components/Ui';
@@ -80,6 +81,7 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
 }
 
 function MainApp() {
+  const { isDark, colors } = useTheme();
   const [authStage, setAuthStage] = useState<'login' | 'set_password' | 'enter_pin' | 'dashboard'>('login');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [unlocked, setUnlocked] = useState(false);
@@ -390,8 +392,8 @@ function MainApp() {
   // STAGE 2: Set Master Password / PIN Screen
   if (authStage === 'set_password') {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-        <StatusBar style="dark"/>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.canvas }]} edges={['top', 'bottom', 'left', 'right']}>
+        <StatusBar style={isDark ? "light" : "dark"}/>
         <PinScreen mode="setup" onUnlock={handleSetPasswordSuccess} onPinSet={handleSetPasswordSuccess} />
       </SafeAreaView>
     );
@@ -400,17 +402,17 @@ function MainApp() {
   // STAGE 3: Unlock Guard for existing sessions / auto-lock
   if (isSecurityReady && !unlocked) {
     return (
-      <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
-        <StatusBar style="dark"/>
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.canvas }]} edges={['top', 'bottom', 'left', 'right']}>
+        <StatusBar style={isDark ? "light" : "dark"}/>
         <PinScreen mode="enter" onUnlock={() => { setUnlocked(true); setAuthStage('dashboard'); }} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-      <StatusBar style="dark"/>
-      <View style={{flex: 1}}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.canvas }]} edges={['top', 'left', 'right']}>
+      <StatusBar style={isDark ? "light" : "dark"}/>
+      <View style={{flex: 1, backgroundColor: colors.canvas}}>
         {content}
         <BottomNav tab={tab} onChange={(t) => setTab(t)}/>
       </View>
@@ -602,37 +604,40 @@ export default function App() {
 
   return (
     <SafeAreaProvider initialMetrics={initialWindowMetrics} style={styles.root}>
-      <View style={styles.webWrapper}>
-        <MainApp/>
-      </View>
+      <ThemeProvider>
+        <View style={styles.webWrapper}>
+          <MainApp/>
+        </View>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }
 
 function Sheet({onClose, showClose = true, children}: {onClose: () => void; showClose?: boolean; children?: React.ReactNode}) {
   const insets = useSafeAreaInsets();
+  const { isDark, colors } = useTheme();
   return (
     <View style={ms.sheetScrim}>
       {/* Tap backdrop outside popup card to dismiss */}
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={StyleSheet.absoluteFillObject} />
       </TouchableWithoutFeedback>
-      <View style={[ms.sheet, {paddingBottom: Math.max(16, insets.bottom)}]}>
+      <View style={[ms.sheet, isDark && { backgroundColor: '#18181B' }, {paddingBottom: Math.max(16, insets.bottom)}]}>
         {/* Tap handle bar to dismiss */}
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={onClose}
           style={{paddingTop: 2, paddingBottom: 8, width: '100%', alignItems: 'center'}}
         >
-          <View style={ms.handle}/>
+          <View style={[ms.handle, isDark && { backgroundColor: '#3F3F46' }]}/>
         </TouchableOpacity>
         {showClose && (
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={onClose}
-            style={ms.sheetCloseBtn}
+            style={[ms.sheetCloseBtn, isDark && { backgroundColor: '#27272A' }]}
           >
-            <Icon name="x" size={16} color={C.ink}/>
+            <Icon name="x" size={16} color={colors.ink}/>
           </TouchableOpacity>
         )}
         {children}
