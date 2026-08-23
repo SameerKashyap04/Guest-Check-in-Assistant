@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import {
   ScrollView,
   View,
@@ -12,7 +12,10 @@ import {
   Platform,
   Image,
   Linking,
+  Animated,
+  Vibration,
 } from 'react-native';
+import {SafeAreaView, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {C, R, shadow} from '../theme/tokens';
 import {Icon, IconName} from '../components/Icon';
 import {SettingRow, PrimaryButton, SecondaryButton, Field} from '../components/Ui';
@@ -114,9 +117,22 @@ export function SettingsScreen({
 
   // Form Temp States
   const [editProfile, setEditProfile] = useState<PropertyProfile>(profile);
-  const [currentPinInput, setCurrentPinInput] = useState('');
-  const [newPinInput, setNewPinInput] = useState('');
-  const [confirmPinInput, setConfirmPinInput] = useState('');
+  const insets = useSafeAreaInsets();
+  const [changePinStep, setChangePinStep] = useState<'current' | 'new' | 'confirm'>('current');
+  const [changePinDigits, setChangePinDigits] = useState('');
+  const [tempNewPin, setTempNewPin] = useState('');
+  const [changePinError, setChangePinError] = useState('');
+  const changePinShakeAnim = useRef(new Animated.Value(0)).current;
+
+  const triggerChangePinShake = () => {
+    Animated.sequence([
+      Animated.timing(changePinShakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(changePinShakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(changePinShakeAnim, { toValue: 8, duration: 50, useNativeDriver: true }),
+      Animated.timing(changePinShakeAnim, { toValue: -8, duration: 50, useNativeDriver: true }),
+      Animated.timing(changePinShakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+  };
 
   const notify = (msg: string) => {
     if (onToast) onToast(msg);
@@ -172,30 +188,69 @@ export function SettingsScreen({
 
   // Open PIN Sheet
   const handleOpenPin = () => {
-    setCurrentPinInput('');
-    setNewPinInput('');
-    setConfirmPinInput('');
+    setChangePinStep('current');
+    setChangePinDigits('');
+    setTempNewPin('');
+    setChangePinError('');
     setActiveModal('pin');
   };
 
-  // Save PIN Sheet
-  const handleSavePin = async () => {
-    const currentPin = securityService.getSettings().pin;
-    if (currentPinInput !== currentPin) {
-      Alert.alert('Incorrect PIN', 'The current security PIN is incorrect.');
-      return;
+  const handleChangePinKeyPress = async (key: string) => {
+    if (changePinDigits.length >= 4) return;
+    const next = changePinDigits + key;
+    setChangePinDigits(next);
+    setChangePinError('');
+
+    if (next.length === 4) {
+      if (changePinStep === 'current') {
+        const verifyRes = await securityService.verifyPin(next);
+        if (verifyRes.success) {
+          setTimeout(() => {
+            setChangePinStep('new');
+            setChangePinDigits('');
+            setChangePinError('');
+          }, 150);
+        } else {
+          triggerChangePinShake();
+          if (Platform.OS !== 'web') Vibration.vibrate(200);
+          setTimeout(() => {
+            setChangePinDigits('');
+            setChangePinError('Incorrect current PIN. Try again.');
+          }, 150);
+        }
+      } else if (changePinStep === 'new') {
+        setTempNewPin(next);
+        setTimeout(() => {
+          setChangePinStep('confirm');
+          setChangePinDigits('');
+          setChangePinError('');
+        }, 150);
+      } else if (changePinStep === 'confirm') {
+        if (next === tempNewPin) {
+          await securityService.savePin(next);
+          notify('✓ Security PIN changed successfully');
+          setActiveModal(null);
+          setChangePinStep('current');
+          setChangePinDigits('');
+          setTempNewPin('');
+          setChangePinError('');
+        } else {
+          triggerChangePinShake();
+          if (Platform.OS !== 'web') Vibration.vibrate(200);
+          setTimeout(() => {
+            setChangePinDigits('');
+            setTempNewPin('');
+            setChangePinError('PINs do not match. Enter new PIN again.');
+            setChangePinStep('new');
+          }, 150);
+        }
+      }
     }
-    if (newPinInput.length !== 4 || !/^\d{4}$/.test(newPinInput)) {
-      Alert.alert('Invalid PIN', 'Please enter a 4-digit numeric PIN.');
-      return;
-    }
-    if (newPinInput !== confirmPinInput) {
-      Alert.alert('Mismatch', 'New PIN and Confirm PIN do not match.');
-      return;
-    }
-    await securityService.savePin(newPinInput);
-    setActiveModal(null);
-    notify('Security PIN changed successfully');
+  };
+
+  const handleChangePinDelete = () => {
+    setChangePinDigits((prev) => prev.slice(0, -1));
+    setChangePinError('');
   };
 
   // Initials for avatar
@@ -657,98 +712,191 @@ export function SettingsScreen({
       {/* 4. CHANGE SECURITY PIN MODAL SHEET                           */}
       {/* ============================================================ */}
       {activeModal === 'pin' && (
-        <Modal visible transparent animationType="slide">
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={ms.sheetScrim}
-          >
-            <View style={ms.sheet}>
-              <View style={ms.handle}/>
-              <View style={ms.sheetHeaderBar}>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setActiveModal(null)}
-                  style={ms.sheetBackBtn}
-                >
-                  <Icon name="chevronLeft" size={18} color={C.ink}/>
-                </TouchableOpacity>
-                <Text style={ms.sheetHeaderTitle}>Change Security PIN</Text>
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  onPress={() => setActiveModal(null)}
-                  style={ms.sheetCloseBtnRelative}
-                >
-                  <Icon name="x" size={16} color={C.ink}/>
-                </TouchableOpacity>
-              </View>
+        <Modal visible animationType="slide">
+          <SafeAreaView style={{flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30}}>
+            {/* Close button on top right */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                setActiveModal(null);
+                setChangePinStep('current');
+                setChangePinDigits('');
+                setTempNewPin('');
+                setChangePinError('');
+              }}
+              style={{
+                position: 'absolute',
+                top: insets.top + 16,
+                right: 20,
+                width: 36,
+                height: 36,
+                borderRadius: 18,
+                backgroundColor: '#F8F7FB',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 10,
+              }}
+            >
+              <Icon name="x" size={18} color={C.ink} />
+            </TouchableOpacity>
 
-              <ScrollView
-                contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 32}}
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
-              >
-                <Text style={[ms.bodySm, {marginBottom: 16}]}>
-                  Your 4-digit PIN is used to lock and unlock the app.
-                </Text>
-
-                <View style={ms.inputGroup}>
-                  <Text style={ms.inputLabel}>CURRENT PIN</Text>
-                  <TextInput
-                    value={currentPinInput}
-                    onChangeText={setCurrentPinInput}
-                    placeholder="Enter current 4-digit PIN (default: 1234)"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="number-pad"
-                    maxLength={4}
-                    secureTextEntry
-                    style={ms.inputField}
-                  />
-                </View>
-
-                <View style={ms.inputGroup}>
-                  <Text style={ms.inputLabel}>NEW 4-DIGIT PIN</Text>
-                  <TextInput
-                    value={newPinInput}
-                    onChangeText={setNewPinInput}
-                    placeholder="Enter new 4-digit PIN"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="number-pad"
-                    maxLength={4}
-                    secureTextEntry
-                    style={ms.inputField}
-                  />
-                </View>
-
-                <View style={ms.inputGroup}>
-                  <Text style={ms.inputLabel}>CONFIRM NEW PIN</Text>
-                  <TextInput
-                    value={confirmPinInput}
-                    onChangeText={setConfirmPinInput}
-                    placeholder="Re-enter new 4-digit PIN"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="number-pad"
-                    maxLength={4}
-                    secureTextEntry
-                    style={ms.inputField}
-                  />
-                </View>
-
-                <View style={{flexDirection: 'row', gap: 10, marginTop: 14}}>
-                  <SecondaryButton
-                    label="Cancel"
-                    style={{flex: 1}}
-                    onPress={() => setActiveModal(null)}
-                  />
-                  <PrimaryButton
-                    label="Update PIN"
-                    style={{flex: 1.6}}
-                    onPress={handleSavePin}
-                  />
-                </View>
-              </ScrollView>
+            <View style={{
+              width: 64,
+              height: 64,
+              borderRadius: 18,
+              backgroundColor: C.primary,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: 22,
+            }}>
+              <Icon name="lock" size={28} color="#fff" />
             </View>
-          </KeyboardAvoidingView>
+
+            <Text style={{
+              fontFamily: 'Inter',
+              fontSize: 22,
+              fontWeight: '600',
+              letterSpacing: -0.4,
+              color: '#222222',
+            }}>
+              {changePinStep === 'current'
+                ? 'Enter Current PIN'
+                : changePinStep === 'new'
+                ? 'Set New 4-digit PIN'
+                : 'Confirm New PIN'}
+            </Text>
+            <Text style={{
+              fontFamily: 'Inter',
+              fontSize: 13.5,
+              fontWeight: '400',
+              color: changePinError ? '#EF4444' : '#6a6a6a',
+              textAlign: 'center',
+              marginTop: 6,
+              paddingHorizontal: 10,
+            }}>
+              {changePinError
+                ? changePinError
+                : changePinStep === 'current'
+                ? 'Enter your current 4-digit PIN to verify identity'
+                : changePinStep === 'new'
+                ? 'Choose a new 4-digit PIN for app security'
+                : 'Re-enter your new 4-digit PIN to confirm'}
+            </Text>
+
+            {/* 4 dots with shakeAnim */}
+            <Animated.View style={{
+              flexDirection: 'row',
+              gap: 14,
+              marginVertical: 30,
+              transform: [{ translateX: changePinShakeAnim }],
+            }}>
+              {[0, 1, 2, 3].map((i) => (
+                <View
+                  key={i}
+                  style={{
+                    width: 14,
+                    height: 14,
+                    borderRadius: 7,
+                    borderWidth: 1.5,
+                    borderColor: changePinError ? '#EF4444' : '#222222',
+                    backgroundColor: i < changePinDigits.length ? (changePinError ? '#EF4444' : '#222222') : 'transparent',
+                  }}
+                />
+              ))}
+            </Animated.View>
+
+            {/* Numeric Keypad matching lock screen */}
+            <View style={{
+              width: 240,
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              gap: 14,
+              justifyContent: 'center',
+            }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+                <TouchableOpacity
+                  key={n}
+                  activeOpacity={0.7}
+                  onPress={() => handleChangePinKeyPress(String(n))}
+                  style={{
+                    width: 66,
+                    height: 66,
+                    borderRadius: 33,
+                    backgroundColor: '#F8F7FB',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text style={{
+                    fontFamily: 'Inter',
+                    fontSize: 22,
+                    fontWeight: '500',
+                    color: '#222222',
+                  }}>{n}</Text>
+                </TouchableOpacity>
+              ))}
+              <View style={{ width: 66, height: 66 }} />
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => handleChangePinKeyPress('0')}
+                style={{
+                  width: 66,
+                  height: 66,
+                  borderRadius: 33,
+                  backgroundColor: '#F8F7FB',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Text style={{
+                  fontFamily: 'Inter',
+                  fontSize: 22,
+                  fontWeight: '500',
+                  color: '#222222',
+                }}>0</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={handleChangePinDelete}
+                style={{
+                  width: 66,
+                  height: 66,
+                  borderRadius: 33,
+                  backgroundColor: '#F8F7FB',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Icon name="chevronLeft" size={20} color={C.ink} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Cancel Button */}
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() => {
+                setActiveModal(null);
+                setChangePinStep('current');
+                setChangePinDigits('');
+                setTempNewPin('');
+                setChangePinError('');
+              }}
+              style={{
+                marginTop: 24,
+                paddingVertical: 10,
+                paddingHorizontal: 20,
+                borderRadius: R.full,
+                backgroundColor: '#F1F5F9',
+              }}
+            >
+              <Text style={{
+                fontFamily: 'Inter',
+                fontSize: 13,
+                fontWeight: '600',
+                color: '#64748B',
+              }}>Cancel</Text>
+            </TouchableOpacity>
+          </SafeAreaView>
         </Modal>
       )}
 

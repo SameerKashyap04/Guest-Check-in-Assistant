@@ -25,6 +25,7 @@ import {
   Field,
   Switch,
 } from '@/components/v3/Ui';
+import { PinScreen } from '@/features/auth/PinScreen';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -513,72 +514,38 @@ export default function SettingsScreen() {
         </TouchableOpacity>
       </Modal>
 
-      {/* PIN Change Modal */}
+      {/* Change PIN Modal */}
       <Modal
         visible={pinModalOpen}
-        transparent
         animationType="slide"
         onRequestClose={() => setPinModalOpen(false)}
       >
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setPinModalOpen(false)}
-          style={s.modalOverlay}
-        >
+        <View style={{ flex: 1, backgroundColor: '#fff' }}>
           <TouchableOpacity
-            activeOpacity={1}
-            onPress={(e) => e.stopPropagation?.()}
-            style={s.sheetContent}
+            activeOpacity={0.7}
+            onPress={() => setPinModalOpen(false)}
+            style={{
+              position: 'absolute',
+              top: insets.top + 16,
+              right: 20,
+              width: 36,
+              height: 36,
+              borderRadius: 18,
+              backgroundColor: '#F8F7FB',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10,
+            }}
           >
-            <View style={s.sheetHeader}>
-              <Text style={s.sheetTitle}>Change Security PIN</Text>
-              <TouchableOpacity
-                onPress={() => setPinModalOpen(false)}
-                style={s.sheetClose}
-              >
-                <Icon name="x" size={18} color={C.ink} />
-              </TouchableOpacity>
-            </View>
-
-            <Field
-              label="Current 4-digit PIN"
-              value={currentPinInput}
-              onChangeText={setCurrentPinInput}
-              placeholder="••••"
-              secure
-              keyboardType="numeric"
-            />
-            <Field
-              label="New 4-digit PIN"
-              value={newPinInput}
-              onChangeText={setNewPinInput}
-              placeholder="••••"
-              secure
-              keyboardType="numeric"
-            />
-            <Field
-              label="Confirm New PIN"
-              value={confirmPinInput}
-              onChangeText={setConfirmPinInput}
-              placeholder="••••"
-              secure
-              keyboardType="numeric"
-            />
-
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 20 }}>
-              <SecondaryButton
-                label="Cancel"
-                onPress={() => setPinModalOpen(false)}
-                style={{ flex: 1 }}
-              />
-              <PrimaryButton
-                label="Update PIN"
-                onPress={handleUpdatePin}
-                style={{ flex: 1 }}
-              />
-            </View>
+            <Icon name="x" size={18} color={C.ink} />
           </TouchableOpacity>
-        </TouchableOpacity>
+          <PinScreen
+            onSuccess={() => {
+              setPinModalOpen(false);
+              Alert.alert('Success', 'Security PIN updated successfully.');
+            }}
+          />
+        </View>
       </Modal>
 
       {/* Help & Support Modal */}
