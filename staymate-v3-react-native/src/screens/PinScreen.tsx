@@ -105,13 +105,13 @@ export function PinScreen({
         setCurrentStep('confirm');
       } else if (currentStep === 'confirm') {
         if (next === setupPinFirst) {
-          await securityService.changePin(next);
+          await securityService.savePin(next);
           if (onPinSet) onPinSet(next);
           onUnlock();
         } else {
           triggerShake();
           if (Platform.OS !== 'web') Vibration.vibrate(200);
-          setError('PINs do not match. Please re-enter.');
+          setError('PINs do not match. Try again.');
           setPin('');
           setSetupPinFirst('');
           setCurrentStep('setup');
@@ -148,33 +148,23 @@ export function PinScreen({
       await securityService.resetToDefaultPin();
       onUnlock();
     } else {
-      await securityService.changePin('1234');
+      await securityService.savePin('1234');
       if (onPinSet) onPinSet('1234');
       onUnlock();
     }
   };
 
-  const isSetupFlow = currentStep === 'setup' || currentStep === 'confirm';
-
   return (
     <View style={s.wrap}>
-      {/* Stage Badge for Setup */}
-      {isSetupFlow && (
-        <View style={s.stepBadge}>
-          <Text style={s.stepBadgeText}>STEP 2 OF 2 · SET APP PASSWORD</Text>
-        </View>
-      )}
-
       <View style={s.lock}>
         <Icon name="lock" size={28} color="#fff" />
       </View>
-
       <Text style={s.title}>
         {currentStep === 'enter'
           ? 'Welcome back'
           : currentStep === 'setup'
-          ? 'Set Security Password'
-          : 'Confirm Security Password'}
+          ? 'Set your PIN'
+          : 'Confirm your PIN'}
       </Text>
       <Text style={s.sub}>
         {error
@@ -184,8 +174,8 @@ export function PinScreen({
           : currentStep === 'enter'
           ? 'Enter your 4-digit PIN to unlock StayMate'
           : currentStep === 'setup'
-          ? 'Choose a 4-digit PIN for instant access to your homestay dashboard'
-          : 'Re-enter your 4-digit PIN to confirm'}
+          ? 'Choose a 4-digit PIN to secure the app'
+          : 'Re-enter your 4-digit PIN'}
       </Text>
 
       <Animated.View style={[s.dots, { transform: [{ translateX: shakeAnim }] }]}>
@@ -215,9 +205,9 @@ export function PinScreen({
         ))}
         <TouchableOpacity
           activeOpacity={0.7}
-          disabled={lockoutSeconds > 0 || isSetupFlow}
+          disabled={lockoutSeconds > 0 || currentStep !== 'enter'}
           onPress={handleBiometricPress}
-          style={[s.key, isSetupFlow && { opacity: 0.3 }]}
+          style={[s.key, currentStep !== 'enter' && { opacity: 0.3 }]}
         >
           <Icon name="fingerprint" size={22} color={C.primary} />
         </TouchableOpacity>
@@ -245,7 +235,7 @@ export function PinScreen({
         style={s.quickUnlock}
       >
         <Text style={s.quickUnlockText}>
-          {isSetupFlow ? 'Skip & Use Default PIN (1234) →' : 'Quick Unlock (Demo) →'}
+          {currentStep !== 'enter' ? 'Skip (Use 1234) →' : 'Quick Unlock (Demo) →'}
         </Text>
       </TouchableOpacity>
     </View>
@@ -261,20 +251,6 @@ const s = StyleSheet.create({
     backgroundColor: '#fff',
     minHeight: '100%',
   },
-  stepBadge: {
-    backgroundColor: '#EDE9FE',
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: R.full,
-    marginBottom: 16,
-  },
-  stepBadgeText: {
-    fontFamily: 'Inter',
-    color: C.primary,
-    fontSize: 11.5,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
   lock: {
     width: 64,
     height: 64,
@@ -282,7 +258,7 @@ const s = StyleSheet.create({
     backgroundColor: C.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 22,
   },
   title: {
     fontFamily: 'Inter',
@@ -299,12 +275,11 @@ const s = StyleSheet.create({
     textAlign: 'center',
     marginTop: 6,
     paddingHorizontal: 10,
-    lineHeight: 19,
   },
   dots: {
     flexDirection: 'row',
     gap: 14,
-    marginVertical: 26,
+    marginVertical: 30,
   },
   dot: {
     width: 14,
@@ -342,7 +317,7 @@ const s = StyleSheet.create({
     color: '#222222',
   },
   quickUnlock: {
-    marginTop: 22,
+    marginTop: 24,
     paddingVertical: 10,
     paddingHorizontal: 16,
     borderRadius: R.full,

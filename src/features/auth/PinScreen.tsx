@@ -141,15 +141,6 @@ export function PinScreen({ onSuccess, initialMode }: PinScreenProps = {}) {
 
   return (
     <SafeAreaView style={s.wrap}>
-      {/* Step Badge if in Setup flow */}
-      {step !== 'enter' && (
-        <View style={{backgroundColor: '#EDE9FE', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, marginBottom: 16}}>
-          <Text style={{color: C.primary, fontSize: 11.5, fontWeight: '700', letterSpacing: 0.5}}>
-            STEP 2 OF 2 · SET APP PASSWORD
-          </Text>
-        </View>
-      )}
-
       {/* Icon */}
       <View style={s.lock}>
         <Icon name="lock" size={28} color="#fff" />
@@ -160,15 +151,15 @@ export function PinScreen({ onSuccess, initialMode }: PinScreenProps = {}) {
         {step === 'enter'
           ? 'Welcome back'
           : step === 'setup'
-          ? 'Set Security Password'
-          : 'Confirm Security Password'}
+          ? 'Set your PIN'
+          : 'Confirm your PIN'}
       </Text>
       <Text style={s.sub}>
         {step === 'enter'
           ? 'Enter your 4-digit PIN to unlock StayMate'
           : step === 'setup'
-          ? 'Choose a 4-digit PIN for fast biometric and secure access to your dashboard'
-          : 'Re-enter your 4-digit PIN to confirm'}
+          ? 'Choose a 4-digit PIN to secure the app'
+          : 'Re-enter your 4-digit PIN'}
       </Text>
 
       {/* 4 PIN Dots */}
