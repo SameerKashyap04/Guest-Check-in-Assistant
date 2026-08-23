@@ -619,7 +619,7 @@ export default function SettingsScreen() {
         animationType="slide"
         onRequestClose={() => setPinModalOpen(false)}
       >
-        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        <View style={{ flex: 1, backgroundColor: (colorScheme === 'dark' || theme === 'dark') ? '#09090B' : '#fff' }}>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => setPinModalOpen(false)}
@@ -630,13 +630,13 @@ export default function SettingsScreen() {
               width: 36,
               height: 36,
               borderRadius: 18,
-              backgroundColor: '#F8F7FB',
+              backgroundColor: (colorScheme === 'dark' || theme === 'dark') ? '#27272A' : '#F8F7FB',
               alignItems: 'center',
               justifyContent: 'center',
               zIndex: 10,
             }}
           >
-            <Icon name="x" size={18} color={C.ink} />
+            <Icon name="x" size={18} color={(colorScheme === 'dark' || theme === 'dark') ? '#F4F4F5' : C.ink} />
           </TouchableOpacity>
           <PinScreen
             onSuccess={() => {

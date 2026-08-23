@@ -744,7 +744,7 @@ export function SettingsScreen({
       {/* ============================================================ */}
       {activeModal === 'pin' && (
         <Modal visible animationType="slide">
-          <SafeAreaView style={{flex: 1, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30}}>
+          <SafeAreaView style={{flex: 1, backgroundColor: isDark ? colors.canvas : '#fff', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30}}>
             {/* Close button on top right */}
             <TouchableOpacity
               activeOpacity={0.7}
@@ -762,13 +762,13 @@ export function SettingsScreen({
                 width: 36,
                 height: 36,
                 borderRadius: 18,
-                backgroundColor: '#F8F7FB',
+                backgroundColor: isDark ? '#27272A' : '#F8F7FB',
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 10,
               }}
             >
-              <Icon name="x" size={18} color={C.ink} />
+              <Icon name="x" size={18} color={colors.ink} />
             </TouchableOpacity>
 
             <View style={{
@@ -788,7 +788,7 @@ export function SettingsScreen({
               fontSize: 22,
               fontWeight: '600',
               letterSpacing: -0.4,
-              color: '#222222',
+              color: isDark ? colors.ink : '#222222',
             }}>
               {changePinStep === 'current'
                 ? 'Enter Current PIN'
@@ -800,7 +800,7 @@ export function SettingsScreen({
               fontFamily: 'Inter',
               fontSize: 13.5,
               fontWeight: '400',
-              color: changePinError ? '#EF4444' : '#6a6a6a',
+              color: changePinError ? '#EF4444' : (isDark ? colors.muted : '#6a6a6a'),
               textAlign: 'center',
               marginTop: 6,
               paddingHorizontal: 10,
@@ -829,8 +829,8 @@ export function SettingsScreen({
                     height: 14,
                     borderRadius: 7,
                     borderWidth: 1.5,
-                    borderColor: changePinError ? '#EF4444' : '#222222',
-                    backgroundColor: i < changePinDigits.length ? (changePinError ? '#EF4444' : '#222222') : 'transparent',
+                    borderColor: changePinError ? '#EF4444' : (isDark ? '#3F3F46' : '#222222'),
+                    backgroundColor: i < changePinDigits.length ? (changePinError ? '#EF4444' : (isDark ? colors.primary : '#222222')) : 'transparent',
                   }}
                 />
               ))}
@@ -853,7 +853,9 @@ export function SettingsScreen({
                     width: 66,
                     height: 66,
                     borderRadius: 33,
-                    backgroundColor: '#F8F7FB',
+                    backgroundColor: isDark ? '#18181B' : '#F8F7FB',
+                    borderWidth: isDark ? 1 : 0,
+                    borderColor: '#27272A',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
@@ -862,7 +864,7 @@ export function SettingsScreen({
                     fontFamily: 'Inter',
                     fontSize: 22,
                     fontWeight: '500',
-                    color: '#222222',
+                    color: isDark ? colors.ink : '#222222',
                   }}>{n}</Text>
                 </TouchableOpacity>
               ))}
@@ -874,7 +876,9 @@ export function SettingsScreen({
                   width: 66,
                   height: 66,
                   borderRadius: 33,
-                  backgroundColor: '#F8F7FB',
+                  backgroundColor: isDark ? '#18181B' : '#F8F7FB',
+                  borderWidth: isDark ? 1 : 0,
+                  borderColor: '#27272A',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
@@ -883,7 +887,7 @@ export function SettingsScreen({
                   fontFamily: 'Inter',
                   fontSize: 22,
                   fontWeight: '500',
-                  color: '#222222',
+                  color: isDark ? colors.ink : '#222222',
                 }}>0</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -893,12 +897,14 @@ export function SettingsScreen({
                   width: 66,
                   height: 66,
                   borderRadius: 33,
-                  backgroundColor: '#F8F7FB',
+                  backgroundColor: isDark ? '#18181B' : '#F8F7FB',
+                  borderWidth: isDark ? 1 : 0,
+                  borderColor: '#27272A',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Icon name="chevronLeft" size={20} color={C.ink} />
+                <Icon name="chevronLeft" size={20} color={colors.ink} />
               </TouchableOpacity>
             </View>
 
@@ -917,14 +923,16 @@ export function SettingsScreen({
                 paddingVertical: 10,
                 paddingHorizontal: 20,
                 borderRadius: R.full,
-                backgroundColor: '#F1F5F9',
+                backgroundColor: isDark ? '#18181B' : '#F1F5F9',
+                borderWidth: isDark ? 1 : 0,
+                borderColor: '#27272A',
               }}
             >
               <Text style={{
                 fontFamily: 'Inter',
                 fontSize: 13,
                 fontWeight: '600',
-                color: '#64748B',
+                color: isDark ? colors.muted : '#64748B',
               }}>Cancel</Text>
             </TouchableOpacity>
           </SafeAreaView>
