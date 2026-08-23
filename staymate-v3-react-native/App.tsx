@@ -100,7 +100,8 @@ function MainApp() {
   const [manual, setManual] = useState(false);
   const [manualInitialData, setManualInitialData] = useState<any | null>(null);
   const [account, setAccount] = useState(false);
-  const [guestId, setGuestId] = useState<number | null>(null);
+  const [guestId, setGuestId] = useState<any>(null);
+  const [selectedGuestObj, setSelectedGuestObj] = useState<any>(null);
   const [toast, setToast] = useState('');
   const [billing, setBilling] = useState(false);
 
@@ -466,9 +467,10 @@ function MainApp() {
                 setManualInitialData({room: selectedRoom});
                 setManual(true);
               }}
-              onViewGuest={(gId) => {
+              onViewGuest={(gId, gObj) => {
                 setSheet(null);
                 setGuestId(gId);
+                setSelectedGuestObj(gObj || guestsList.find((g) => String(g.id) === String(gId)));
                 setSheet('guest');
               }}
             />
@@ -485,14 +487,16 @@ function MainApp() {
       />
 
       {/* Guest details sheet */}
-      {sheet === 'guest' && guestId ? (
+      {sheet === 'guest' && (guestId || selectedGuestObj) ? (
         <Modal visible transparent animationType="slide">
-          <Sheet onClose={() => setSheet(null)} showClose={false}>
+          <Sheet onClose={() => { setSheet(null); setSelectedGuestObj(null); }} showClose={false}>
             <GuestSheet
               id={guestId}
+              guestObj={selectedGuestObj}
               guests={guestsList}
+              pendingCheckins={pendingCheckins}
               onToast={notify}
-              onClose={() => setSheet(null)}
+              onClose={() => { setSheet(null); setSelectedGuestObj(null); }}
             />
           </Sheet>
         </Modal>
@@ -624,7 +628,7 @@ function RoomSheet({
   onCheckout: (guestName?: string) => void;
   onDeleteRoom: () => void;
   onCheckin: () => void;
-  onViewGuest: (id: number) => void;
+  onViewGuest: (id: any, guest?: any) => void;
 }) {
   const activeGuest = guests.find((g) => g.room === room.num && (g.status === 'active' || (!g.status && !g.checkedOut)));
   const lastGuest = guests.find((g) => g.room === room.num && (g.status === 'checked_out' || g.checkedOut));
@@ -703,7 +707,7 @@ function RoomSheet({
             </View>
             <TouchableOpacity
               activeOpacity={0.8}
-              onPress={() => onViewGuest(activeGuest.id)}
+              onPress={() => onViewGuest(activeGuest.id, activeGuest)}
               style={ms.viewGuestPill}
             >
               <Text style={ms.viewGuestPillText}>Profile</Text>
@@ -891,22 +895,69 @@ function RoomSheet({
 
 function GuestSheet({
   id,
+  guestObj,
   guests = [],
+  pendingCheckins = [],
   onToast,
   onClose,
 }: {
-  id: number;
+  id?: any;
+  guestObj?: any;
   guests?: any[];
+  pendingCheckins?: any[];
   onToast: (msg: string) => void;
   onClose: () => void;
 }) {
-  const g = guests.find((x) => x.id === id) || GUESTS.find((x) => x.id === id) || GUESTS[0];
+  const g = guestObj 
+    || guests.find((x) => String(x.id) === String(id)) 
+    || GUESTS.find((x) => String(x.id) === String(id)) 
+    || (id ? guests.find((x) => x.name === id) : null)
+    || guests[0] 
+    || GUESTS[0];
+
   const [photoTab, setPhotoTab] = useState<'front' | 'back' | 'selfie'>('front');
   const [showFullDetails, setShowFullDetails] = useState(false);
 
-  const frontPic = g.frontPhotoUri || g.photoUri || g.photo_uri || g.photo || g.raw?.photo_uri || null;
-  const backPic = g.backPhotoUri || g.back_photo_uri || g.backPhoto || g.raw?.back_photo_uri || null;
-  const selfiePic = g.selfieUri || g.selfie_uri || g.selfie || g.raw?.selfie_uri || null;
+  // Look up in pending checkins as extra fallback if object in guestsList lacks photos
+  const matchedCheckin = pendingCheckins.find((p: any) => 
+    (p.name && g.name && p.name.toLowerCase() === g.name.toLowerCase()) || 
+    (p.full_name && g.name && p.full_name.toLowerCase() === g.name.toLowerCase()) ||
+    (p.room && g.room && String(p.room) === String(g.room)) ||
+    (p.room_number && g.room && String(p.room_number) === String(g.room))
+  );
+
+  const frontPic = 
+    g.frontPhotoUri || 
+    g.photoUri || 
+    g.photo_uri || 
+    g.front_photo_uri || 
+    g.photo || 
+    g.raw?.photo_uri || 
+    g.raw?.frontPhotoUri || 
+    matchedCheckin?.frontPhotoUri || 
+    matchedCheckin?.photo_uri || 
+    null;
+
+  const backPic = 
+    g.backPhotoUri || 
+    g.back_photo_uri || 
+    g.backPhoto || 
+    g.raw?.back_photo_uri || 
+    g.raw?.backPhotoUri || 
+    matchedCheckin?.backPhotoUri || 
+    matchedCheckin?.back_photo_uri || 
+    null;
+
+  const selfiePic = 
+    g.selfieUri || 
+    g.selfie_uri || 
+    g.selfie || 
+    g.selfiePhotoUri ||
+    g.raw?.selfie_uri || 
+    g.raw?.selfiePhotoUri || 
+    matchedCheckin?.selfieUri || 
+    matchedCheckin?.selfie_uri || 
+    null;
 
   const currentPhoto =
     photoTab === 'front'
