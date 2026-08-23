@@ -266,11 +266,17 @@ function MainApp() {
       nat: 'Indian',
       gender: g.gender || 'Other',
       address: g.address || '',
+      dob: g.dob || g.raw?.dob || '',
+      pinCode: g.pin_code || g.pinCode || g.raw?.pin_code || '',
       time: 'Just now',
       verified: true,
       roomType: roomsList.find((r) => r.num === assignedRoom)?.type || 'Standard',
-      photoUri: g.photoUri || g.photo_uri || null,
+      photoUri: g.photoUri || g.photo_uri || g.frontPhotoUri || g.raw?.photo_uri || null,
+      frontPhotoUri: g.frontPhotoUri || g.photoUri || g.photo_uri || g.raw?.photo_uri || null,
+      backPhotoUri: g.backPhotoUri || g.back_photo_uri || g.raw?.back_photo_uri || null,
+      selfieUri: g.selfieUri || g.selfie_uri || g.raw?.selfie_uri || null,
       additionalGuests: g.additionalGuests || g.additional_guests || [],
+      raw: g.raw || g,
     };
     setGuestsList((prev) => [newGuest, ...prev]);
     handleUpdateRoomStatus(assignedRoom, 'occupied');
@@ -898,9 +904,9 @@ function GuestSheet({
   const [photoTab, setPhotoTab] = useState<'front' | 'back' | 'selfie'>('front');
   const [showFullDetails, setShowFullDetails] = useState(false);
 
-  const frontPic = g.frontPhotoUri || g.photoUri || g.photo_uri || g.photo || null;
-  const backPic = g.backPhotoUri || g.back_photo_uri || g.backPhoto || null;
-  const selfiePic = g.selfieUri || g.selfie_uri || g.selfie || null;
+  const frontPic = g.frontPhotoUri || g.photoUri || g.photo_uri || g.photo || g.raw?.photo_uri || null;
+  const backPic = g.backPhotoUri || g.back_photo_uri || g.backPhoto || g.raw?.back_photo_uri || null;
+  const selfiePic = g.selfieUri || g.selfie_uri || g.selfie || g.raw?.selfie_uri || null;
 
   const currentPhoto =
     photoTab === 'front'
