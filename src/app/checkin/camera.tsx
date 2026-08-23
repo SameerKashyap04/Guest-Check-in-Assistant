@@ -59,9 +59,30 @@ export default function CameraScannerScreen() {
     };
   }, [isFocused]);
 
+  // Captured photo refs for instant synchronous access across async renders
+  const capturedFrontUriRef = useRef<string>('');
+  const capturedBackUriRef = useRef<string>('');
+
+  // Target scanning side: 'front' or 'back'
+  const initialSide = (params.targetSide === 'back' ? 'back' : 'front') as 'front' | 'back';
+  const [scanSide, setScanSide] = useState<'front' | 'back'>(initialSide);
+  const [frontCapturedUri, setFrontCapturedUri] = useState<string | null>(null);
+  const [backCapturedUri, setBackCapturedUri] = useState<string | null>(null);
+
   useFocusEffect(
     useCallback(() => {
-      useAutoCaptureStore.getState().reset();
+      const target = (params.targetSide === 'back' ? 'back' : 'front') as 'front' | 'back';
+      setScanSide(target);
+
+      if (target === 'back') {
+        useAutoCaptureStore.getState().setStatus('PROCESSING_BACK');
+      } else {
+        useAutoCaptureStore.getState().reset();
+        capturedFrontUriRef.current = '';
+        capturedBackUriRef.current = '';
+        setFrontCapturedUri(null);
+        setBackCapturedUri(null);
+      }
       
       // If a specific ID type was selected, lock it in immediately
       if (params.idType && params.idType !== 'UNKNOWN') {
@@ -72,14 +93,8 @@ export default function CameraScannerScreen() {
       return () => {
         setIsFocused(false);
       };
-    }, [params.idType])
+    }, [params.targetSide, params.idType])
   );
-
-  // Target scanning side: 'front' or 'back'
-  const initialSide = (params.targetSide === 'back' ? 'back' : 'front') as 'front' | 'back';
-  const [scanSide, setScanSide] = useState<'front' | 'back'>(initialSide);
-  const [frontCapturedUri, setFrontCapturedUri] = useState<string | null>(null);
-  const [backCapturedUri, setBackCapturedUri] = useState<string | null>(null);
 
   const handleCapturePress = async () => {
     let capturedUri = '';
@@ -100,6 +115,7 @@ export default function CameraScannerScreen() {
     const profile = { ...useAutoCaptureStore.getState().extractedData };
     if (scanSide === 'front') {
       const uri = capturedUri || profile.photoUri || '';
+      capturedFrontUriRef.current = uri;
       profile.photoUri = uri;
       setFrontCapturedUri(uri);
       useAutoCaptureStore.getState().updateExtractedData({ photoUri: uri });
@@ -112,12 +128,10 @@ export default function CameraScannerScreen() {
 
       // Transition to Back side scan
       setScanSide('back');
-      useAutoCaptureStore.getState().setStatus('FLIP_DOCUMENT');
-      setTimeout(() => {
-        useAutoCaptureStore.getState().setStatus('PROCESSING_BACK');
-      }, 1500);
+      useAutoCaptureStore.getState().setStatus('PROCESSING_BACK');
     } else {
       const uri = capturedUri || profile.backPhotoUri || '';
+      capturedBackUriRef.current = uri;
       profile.backPhotoUri = uri;
       setBackCapturedUri(uri);
       useAutoCaptureStore.getState().updateExtractedData({ backPhotoUri: uri });
@@ -128,7 +142,7 @@ export default function CameraScannerScreen() {
         return;
       }
 
-      navigateToReview(profile);
+      navigateToReview(profile, uri);
     }
   };
 
@@ -158,7 +172,10 @@ export default function CameraScannerScreen() {
     });
   };
 
-  const navigateToReview = (profile: any) => {
+  const navigateToReview = (profile: any, currentBackUri?: string) => {
+    const finalFront = capturedFrontUriRef.current || frontCapturedUri || profile?.photoUri || '';
+    const finalBack = currentBackUri || capturedBackUriRef.current || backCapturedUri || profile?.backPhotoUri || '';
+
     if (params.returnToReview === 'true') {
       let existing: any[] = [];
       if (params.existingGuests) {
@@ -178,8 +195,8 @@ export default function CameraScannerScreen() {
         dob: profile?.dob?.value || '',
         gender: profile?.gender?.value || '',
         pinCode: profile?.pinCode?.value || '',
-        photoUri: profile?.photoUri || frontCapturedUri || '',
-        backPhotoUri: profile?.backPhotoUri || backCapturedUri || ''
+        photoUri: finalFront,
+        backPhotoUri: finalBack
       };
       existing.push(newGuest);
       router.push({
@@ -195,8 +212,8 @@ export default function CameraScannerScreen() {
         params: {
           guestProfile: JSON.stringify({
             ...profile,
-            photoUri: profile?.photoUri || frontCapturedUri || '',
-            backPhotoUri: profile?.backPhotoUri || backCapturedUri || ''
+            photoUri: finalFront,
+            backPhotoUri: finalBack
           }),
         },
       });

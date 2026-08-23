@@ -61,7 +61,10 @@ export function useAutoCapture({
             
             if (currentStatus === 'PROCESSING_BACK') {
               mergedProfile.backPhotoUri = photo.uri;
-            } else if (!mergedProfile.photoUri || currentStatus === 'PROCESSING_FRONT' || currentStatus === 'IDLE') {
+              if (currentProfile.photoUri) {
+                mergedProfile.photoUri = currentProfile.photoUri;
+              }
+            } else if (currentStatus === 'PROCESSING_FRONT' || currentStatus === 'IDLE') {
               mergedProfile.photoUri = photo.uri;
             }
 

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, ScrollView, Image, Alert, TouchableOpacity, Platform, Modal, ActivityIndicator, KeyboardAvoidingView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { GlassCard } from '@/components/GlassCard';
 import { Button } from '@/components/Button';
 import { DatePicker } from '@/components/DatePicker';
@@ -126,11 +126,49 @@ export default function ReviewScreen() {
     return [primaryGuest];
   });
 
-  useEffect(() => {
-    if (initialGuestList.length > 0) {
-      setGuestsData(initialGuestList);
-    }
-  }, [params.guestList]);
+  useFocusEffect(
+    useCallback(() => {
+      if (params.guestList) {
+        try {
+          const listStr = Array.isArray(params.guestList) ? params.guestList[0] : params.guestList;
+          const parsed = JSON.parse(listStr);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setGuestsData(parsed);
+          }
+        } catch (e) {
+          console.warn("Failed to parse guestList on focus", e);
+        }
+      } else if (params.guestProfile) {
+        try {
+          const guestProfileStr = Array.isArray(params.guestProfile) ? params.guestProfile[0] : params.guestProfile;
+          const p = JSON.parse(guestProfileStr);
+          if (p) {
+            setGuestsData(prev => {
+              const updatedFirst: GuestItem = {
+                id: prev[0]?.id || 'guest-1',
+                name: p.fullName?.value || prev[0]?.name || '',
+                idNumber: p.idNumber?.value || prev[0]?.idNumber || '',
+                address: p.address?.value || prev[0]?.address || '',
+                phone: prev[0]?.phone || '',
+                docType: p.idType || prev[0]?.docType || 'UNKNOWN',
+                dob: p.dob?.value || prev[0]?.dob || '',
+                gender: p.gender?.value || prev[0]?.gender || '',
+                pinCode: p.pinCode?.value || prev[0]?.pinCode || '',
+                photoUri: p.photoUri || prev[0]?.photoUri || '',
+                backPhotoUri: p.backPhotoUri || prev[0]?.backPhotoUri || '',
+              };
+              if (prev.length === 0) return [updatedFirst];
+              const next = [...prev];
+              next[0] = updatedFirst;
+              return next;
+            });
+          }
+        } catch (e) {
+          console.warn("Failed to parse guestProfile on focus", e);
+        }
+      }
+    }, [params.guestList, params.guestProfile])
+  );
 
   const today = new Date().toISOString().split('T')[0];
   const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
