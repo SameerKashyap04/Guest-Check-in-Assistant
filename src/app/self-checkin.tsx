@@ -1487,7 +1487,7 @@ const s = StyleSheet.create({
   input: {
     flex: 1,
     fontFamily: 'Inter',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '500',
     color: '#0F172A',
   },
@@ -1696,7 +1696,10 @@ const s = StyleSheet.create({
     borderColor: '#E2E8F0',
     borderRadius: 8,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 8,
+    fontFamily: 'Inter',
+    fontSize: 16,
+    color: '#0F172A',
   },
   addMoreLink: {
     fontFamily: 'Inter',

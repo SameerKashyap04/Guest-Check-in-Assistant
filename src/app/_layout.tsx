@@ -22,6 +22,18 @@ import '../global.css';
 
 // Inject authentic Inter web font and typography styles on web platform
 if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  // Prevent iOS Safari / mobile browser auto-zoom on input focus
+  let viewportMeta = document.querySelector('meta[name="viewport"]');
+  if (!viewportMeta) {
+    viewportMeta = document.createElement('meta');
+    viewportMeta.setAttribute('name', 'viewport');
+    document.head.appendChild(viewportMeta);
+  }
+  viewportMeta.setAttribute(
+    'content',
+    'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover'
+  );
+
   if (!document.getElementById('staymate-inter-webfont')) {
     const link = document.createElement('link');
     link.id = 'staymate-inter-webfont';
@@ -38,6 +50,14 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         text-rendering: optimizeLegibility;
+      }
+      input, textarea, select {
+        font-size: 16px !important;
+      }
+      @media screen and (max-width: 768px) {
+        input, textarea, select {
+          font-size: 16px !important;
+        }
       }
     `;
     document.head.appendChild(style);
