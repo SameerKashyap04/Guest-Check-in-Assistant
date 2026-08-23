@@ -8,9 +8,9 @@ import {
   Alert,
   AlertButton,
   AlertOptions,
-  useColorScheme,
+  Platform,
 } from 'react-native';
-import { CheckCircle2, AlertCircle, ShieldAlert, Info, HelpCircle } from 'lucide-react-native';
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, HelpCircle } from 'lucide-react-native';
 
 export type AlertType = 'success' | 'error' | 'warning' | 'info' | 'confirm';
 
@@ -35,9 +35,9 @@ export const showCustomAlert = (
     const lower = (title + ' ' + (message || '')).toLowerCase();
     if (lower.includes('error') || lower.includes('failed') || lower.includes('denied') || lower.includes('invalid')) {
       inferredType = 'error';
-    } else if (lower.includes('success') || lower.includes('approved') || lower.includes('complete') || lower.includes('imported')) {
+    } else if (lower.includes('success') || lower.includes('approved') || lower.includes('complete') || lower.includes('imported') || lower.includes('created') || lower.includes('confirmed')) {
       inferredType = 'success';
-    } else if (lower.includes('warning') || lower.includes('required') || lower.includes('cannot')) {
+    } else if (lower.includes('warning') || lower.includes('required') || lower.includes('cannot') || lower.includes('missing') || lower.includes('notice')) {
       inferredType = 'warning';
     } else if (buttons && buttons.some(b => b.style === 'destructive')) {
       inferredType = 'confirm';
@@ -62,8 +62,6 @@ if (typeof Alert.alert === 'function') {
 
 export function CustomAlertProvider() {
   const [currentAlert, setCurrentAlert] = useState<CustomAlertOptions | null>(null);
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
 
   useEffect(() => {
     const listener: AlertListener = (opt) => setCurrentAlert(opt);
@@ -88,32 +86,32 @@ export function CustomAlertProvider() {
     switch (alertType) {
       case 'success':
         return (
-          <View style={[styles.iconCircle, { backgroundColor: 'rgba(16,185,129,0.15)' }]}>
-            <CheckCircle2 size={32} color="#10B981" />
+          <View style={[styles.iconContainer, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}>
+            <CheckCircle2 size={30} color="#059669" strokeWidth={2.4} />
           </View>
         );
       case 'error':
         return (
-          <View style={[styles.iconCircle, { backgroundColor: 'rgba(239,68,68,0.15)' }]}>
-            <AlertCircle size={32} color="#EF4444" />
+          <View style={[styles.iconContainer, { backgroundColor: '#FEF2F2', borderColor: '#FECACA' }]}>
+            <AlertCircle size={30} color="#DC2626" strokeWidth={2.4} />
           </View>
         );
       case 'warning':
         return (
-          <View style={[styles.iconCircle, { backgroundColor: 'rgba(245,158,11,0.15)' }]}>
-            <ShieldAlert size={32} color="#F59E0B" />
+          <View style={[styles.iconContainer, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }]}>
+            <AlertTriangle size={30} color="#7C3AED" strokeWidth={2.4} />
           </View>
         );
       case 'confirm':
         return (
-          <View style={[styles.iconCircle, { backgroundColor: 'rgba(56,189,248,0.15)' }]}>
-            <HelpCircle size={32} color="#0284C7" />
+          <View style={[styles.iconContainer, { backgroundColor: '#F0F9FF', borderColor: '#BAE6FD' }]}>
+            <HelpCircle size={30} color="#0284C7" strokeWidth={2.4} />
           </View>
         );
       default:
         return (
-          <View style={[styles.iconCircle, { backgroundColor: 'rgba(56,189,248,0.15)' }]}>
-            <Info size={32} color="#0284C7" />
+          <View style={[styles.iconContainer, { backgroundColor: '#F5F3FF', borderColor: '#DDD6FE' }]}>
+            <Info size={30} color="#7C3AED" strokeWidth={2.4} />
           </View>
         );
     }
@@ -123,12 +121,6 @@ export function CustomAlertProvider() {
   const actionButtons = currentAlert.buttons && currentAlert.buttons.length > 0
     ? currentAlert.buttons
     : defaultButtons;
-
-  const cardBg = isDark ? '#181A24' : '#FFFFFF';
-  const cardBorder = isDark ? '#1F2937' : '#F3F4F6';
-  const titleColor = isDark ? '#F9FAFB' : '#111827';
-  const subtitleColor = isDark ? '#9CA3AF' : '#6B7280';
-  const overlayBg = isDark ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.6)';
 
   return (
     <Modal
@@ -141,25 +133,25 @@ export function CustomAlertProvider() {
       <TouchableOpacity
         activeOpacity={1}
         onPress={handleClose}
-        style={[styles.overlay, { backgroundColor: overlayBg }]}
+        style={styles.overlay}
       >
         <TouchableOpacity
           activeOpacity={1}
           onPress={(e) => e.stopPropagation?.()}
-          style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}
+          style={styles.card}
         >
           {renderIcon()}
 
-          <Text style={[styles.title, { color: titleColor }]}>
+          <Text style={styles.title}>
             {currentAlert.title}
           </Text>
 
           {currentAlert.message ? (
-            <Text style={[styles.message, { color: subtitleColor }]}>
+            <Text style={styles.message}>
               {currentAlert.message}
             </Text>
           ) : (
-            <View style={{ marginBottom: 16 }} />
+            <View style={{ marginBottom: 12 }} />
           )}
 
           <View style={styles.buttonsContainer}>
@@ -167,23 +159,27 @@ export function CustomAlertProvider() {
               const isDestructive = btn.style === 'destructive';
               const isCancel = btn.style === 'cancel';
 
-              let btnBg = isDark ? '#FFFFFF' : '#000000';
-              let btnTextColor = isDark ? '#000000' : '#FFFFFF';
+              let btnBg = '#7C3AED';
+              let btnTextColor = '#FFFFFF';
 
               if (isDestructive) {
                 btnBg = '#DC2626';
                 btnTextColor = '#FFFFFF';
               } else if (isCancel) {
-                btnBg = isDark ? '#1F2937' : '#F3F4F6';
-                btnTextColor = isDark ? '#D1D5DB' : '#374151';
+                btnBg = '#F1F5F9';
+                btnTextColor = '#475569';
               }
 
               return (
                 <TouchableOpacity
                   key={index}
-                  activeOpacity={0.8}
+                  activeOpacity={0.85}
                   onPress={() => handleButtonPress(btn)}
-                  style={[styles.button, { backgroundColor: btnBg }]}
+                  style={[
+                    styles.button,
+                    { backgroundColor: btnBg },
+                    !isCancel && !isDestructive && styles.primaryBtnGlow,
+                  ]}
                 >
                   <Text style={[styles.buttonText, { color: btnTextColor }]}>
                     {btn.text}
@@ -203,57 +199,81 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    ...(Platform.OS === 'web'
+      ? ({ backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)' } as any)
+      : {}),
   },
   card: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 380,
     borderRadius: 24,
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 26,
+    paddingBottom: 22,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
+    borderColor: '#E2E8F0',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 10,
+    shadowColor: '#0F172A',
+    shadowOpacity: 0.15,
+    shadowRadius: 25,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 12,
   },
-  iconCircle: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+  iconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 20,
+    borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   title: {
-    fontSize: 18,
+    fontFamily: 'Inter',
+    fontSize: 18.5,
     fontWeight: '800',
+    color: '#0F172A',
     textAlign: 'center',
     marginBottom: 8,
+    letterSpacing: -0.2,
   },
   message: {
+    fontFamily: 'Inter',
     fontSize: 14,
     fontWeight: '500',
+    color: '#475569',
     textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 24,
-    paddingHorizontal: 8,
+    lineHeight: 21,
+    marginBottom: 22,
+    paddingHorizontal: 6,
   },
   buttonsContainer: {
     width: '100%',
-    gap: 10,
+    gap: 9,
     flexDirection: 'column',
   },
   button: {
     width: '100%',
-    paddingVertical: 14,
-    borderRadius: 16,
+    paddingVertical: 13.5,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  primaryBtnGlow: {
+    shadowColor: '#7C3AED',
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
   buttonText: {
-    fontSize: 14,
-    fontWeight: '800',
+    fontFamily: 'Inter',
+    fontSize: 14.5,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });
+

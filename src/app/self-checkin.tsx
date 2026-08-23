@@ -42,6 +42,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { pushGuestCheckinToCloud } from '@/services/firebaseSync';
+import { SelfCheckinDatePicker } from '@/components/SelfCheckinDatePicker';
 
 export interface Room {
   id: number;
@@ -693,17 +694,13 @@ export default function SelfCheckinScreen() {
                 </View>
 
                 <View style={{ flex: 1.1 }}>
-                  <Text style={s.fieldLabel}>DATE OF BIRTH</Text>
-                  <View style={s.inputBox}>
-                    <Calendar size={17} color="#94A3B8" />
-                    <TextInput
-                      value={dob}
-                      onChangeText={setDob}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#94A3B8"
-                      style={s.input}
-                    />
-                  </View>
+                  <SelfCheckinDatePicker
+                    label="DATE OF BIRTH"
+                    value={dob}
+                    onChange={setDob}
+                    mode="dob"
+                    placeholder="YYYY-MM-DD"
+                  />
                 </View>
               </View>
 
@@ -844,31 +841,23 @@ export default function SelfCheckinScreen() {
 
               <View style={s.rowFields}>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.fieldLabel}>CHECK-IN DATE</Text>
-                  <View style={s.inputBox}>
-                    <Calendar size={17} color="#94A3B8" />
-                    <TextInput
-                      value={checkInDate}
-                      onChangeText={setCheckInDate}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#94A3B8"
-                      style={s.input}
-                    />
-                  </View>
+                  <SelfCheckinDatePicker
+                    label="CHECK-IN DATE"
+                    value={checkInDate}
+                    onChange={setCheckInDate}
+                    mode="stay"
+                    placeholder="YYYY-MM-DD"
+                  />
                 </View>
 
                 <View style={{ flex: 1 }}>
-                  <Text style={s.fieldLabel}>CHECK-OUT DATE</Text>
-                  <View style={s.inputBox}>
-                    <Calendar size={17} color="#94A3B8" />
-                    <TextInput
-                      value={checkOutDate}
-                      onChangeText={setCheckOutDate}
-                      placeholder="YYYY-MM-DD"
-                      placeholderTextColor="#94A3B8"
-                      style={s.input}
-                    />
-                  </View>
+                  <SelfCheckinDatePicker
+                    label="CHECK-OUT DATE"
+                    value={checkOutDate}
+                    onChange={setCheckOutDate}
+                    mode="stay"
+                    placeholder="YYYY-MM-DD"
+                  />
                 </View>
               </View>
 
@@ -1147,24 +1136,23 @@ export default function SelfCheckinScreen() {
                       style={[s.input, s.coGuestInput]}
                     />
 
-                    {/* Relation & Age */}
+                    {/* Relation & Date of Birth */}
                     <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
-                      <View style={{ flex: 1.2 }}>
+                      <View style={{ flex: 1.1 }}>
                         <TextInput
                           value={cg.relation}
                           onChangeText={(t) => updateAdditionalPerson(cg.id, 'relation', t)}
                           placeholder="Relation (e.g. Spouse)"
                           placeholderTextColor="#94A3B8"
-                          style={[s.input, s.coGuestInput]}
+                          style={[s.input, s.coGuestInput, { paddingVertical: 12 }]}
                         />
                       </View>
-                      <View style={{ flex: 1 }}>
-                        <TextInput
+                      <View style={{ flex: 1.3 }}>
+                        <SelfCheckinDatePicker
                           value={cg.age}
-                          onChangeText={(t) => updateAdditionalPerson(cg.id, 'age', t)}
-                          placeholder="Age / DOB"
-                          placeholderTextColor="#94A3B8"
-                          style={[s.input, s.coGuestInput]}
+                          onChange={(d) => updateAdditionalPerson(cg.id, 'age', d)}
+                          mode="dob"
+                          placeholder="Date of Birth"
                         />
                       </View>
                     </View>
