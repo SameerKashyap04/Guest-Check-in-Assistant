@@ -110,14 +110,7 @@ function MainApp() {
 
   const handleLoginSuccess = async (userData?: any) => {
     setCurrentUser(userData || { email: 'host@staymate.in' });
-    const cfg = await securityService.init();
-    if (!cfg.hasCustomPin) {
-      setAuthStage('set_password');
-    } else {
-      setUnlocked(true);
-      setAuthStage('dashboard');
-      notify(`Welcome, ${userData?.businessName || 'Host'}!`);
-    }
+    setAuthStage('set_password');
   };
 
   const handleSetPasswordSuccess = () => {

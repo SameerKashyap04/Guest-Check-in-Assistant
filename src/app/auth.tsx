@@ -38,6 +38,7 @@ export default function AuthScreen() {
   const router = useRouter();
 
   const [step, setStep] = useState<'form' | 'otp'>('form');
+  const [authStage, setAuthStage] = useState<'form' | 'set_pin'>('form');
   const [tab, setTab] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -70,10 +71,23 @@ export default function AuthScreen() {
 
   // If owner is already authenticated and unlocked, redirect directly to dashboard
   useEffect(() => {
-    if (isAuthenticated && isUnlocked) {
+    if (isAuthenticated && isUnlocked && authStage === 'form') {
       setTimeout(() => router.replace('/(tabs)'), 50);
     }
-  }, [isAuthenticated, isUnlocked]);
+  }, [isAuthenticated, isUnlocked, authStage]);
+
+  // If set_pin stage is active, present PIN setup screen
+  if (authStage === 'set_pin') {
+    return (
+      <PinScreen
+        initialMode="setup"
+        onSuccess={() => {
+          useAuthStore.setState({ isUnlocked: true });
+          router.replace('/(tabs)');
+        }}
+      />
+    );
+  }
 
   // If owner is authenticated, show Security PIN & Biometrics Screen
   if (isAuthenticated && !isUnlocked) {
@@ -91,14 +105,8 @@ export default function AuthScreen() {
       }
       setOwner(profile);
       setOwnerId(profile.uid);
-
-      const pinExists = await checkPinSetup();
-      if (!pinExists) {
-        useAuthStore.setState({ isUnlocked: false });
-      } else {
-        useAuthStore.setState({ isUnlocked: true });
-        router.replace('/(tabs)');
-      }
+      useAuthStore.setState({ isUnlocked: false });
+      setAuthStage('set_pin');
     } catch (err: any) {
       console.error('Google auth error:', err);
       Alert.alert(
@@ -225,21 +233,8 @@ export default function AuthScreen() {
         setPropertyId(profile.propertyId);
         assignLegacyUnassignedGuests(profile.propertyId).catch(() => {});
       }
-      const pinExists = await checkPinSetup();
-      if (!pinExists) {
-        useAuthStore.setState({ isUnlocked: false });
-      } else {
-        useAuthStore.setState({ isUnlocked: true });
-        if (profile.isOffline) {
-          Alert.alert(
-            'Offline Mode Activated',
-            'Logged in using local owner account. Cloud sync will resume when internet is connected.',
-            [{ text: 'Continue', onPress: () => router.replace('/(tabs)') }]
-          );
-        } else {
-          setTimeout(() => router.replace('/(tabs)'), 50);
-        }
-      }
+      useAuthStore.setState({ isUnlocked: false });
+      setAuthStage('set_pin');
     } catch (err: any) {
       console.error('Auth verification error', err);
       Alert.alert(
