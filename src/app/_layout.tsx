@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
-import { DefaultTheme, ThemeProvider, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
+import { DefaultTheme, DarkTheme, ThemeProvider as ExpoNavThemeProvider } from '@react-navigation/native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -17,6 +18,8 @@ import i18n from '../i18n';
 import { initDatabase } from '@/database';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { CustomAlertProvider } from '@/components/CustomAlert';
+import { ThemeProvider as StayMateThemeProvider, useTheme } from '@/theme/ThemeContext';
+import { useColorScheme as useNativeWindColorScheme } from 'nativewind';
 
 import '../global.css';
 
@@ -72,6 +75,52 @@ const splashSafetyTimeout = setTimeout(() => {
   SplashScreen.hideAsync().catch(() => {});
 }, 4000);
 
+function RootNavigationContent() {
+  const { isDark, colors } = useTheme();
+  const { setColorScheme } = useNativeWindColorScheme();
+
+  // Sync NativeWind and Web document element with active theme
+  useEffect(() => {
+    try {
+      if (setColorScheme) {
+        setColorScheme(isDark ? 'dark' : 'light');
+      }
+      if (Platform.OS === 'web' && typeof document !== 'undefined') {
+        if (isDark) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }
+    } catch (e) {
+      console.warn('Unable to sync color scheme', e);
+    }
+  }, [isDark, setColorScheme]);
+
+  return (
+    <ExpoNavThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.canvas },
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="auth" />
+        <Stack.Screen name="setup" />
+        <Stack.Screen name="checkin" />
+        <Stack.Screen name="subscription" />
+        <Stack.Screen name="search" />
+        <Stack.Screen name="reports" />
+        <Stack.Screen name="registrations" />
+      </Stack>
+      <CustomAlertProvider />
+    </ExpoNavThemeProvider>
+  );
+}
+
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Inter_400Regular,
@@ -83,17 +132,6 @@ export default function RootLayout() {
   });
 
   const storedLanguage = useSettingsStore((s) => s.language);
-
-  // Force light mode on Web document root
-  useEffect(() => {
-    try {
-      if (Platform.OS === 'web' && typeof document !== 'undefined') {
-        document.documentElement.classList.remove('dark');
-      }
-    } catch (e) {
-      console.warn('Unable to set color scheme', e);
-    }
-  }, []);
 
   // Sync i18n language
   useEffect(() => {
@@ -121,21 +159,9 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={DefaultTheme}>
-        <StatusBar style="dark" />
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(tabs)" />
-          <Stack.Screen name="auth" />
-          <Stack.Screen name="setup" />
-          <Stack.Screen name="checkin" />
-          <Stack.Screen name="subscription" />
-          <Stack.Screen name="search" />
-          <Stack.Screen name="reports" />
-          <Stack.Screen name="registrations" />
-        </Stack>
-        <CustomAlertProvider />
-      </ThemeProvider>
+      <StayMateThemeProvider>
+        <RootNavigationContent />
+      </StayMateThemeProvider>
     </GestureHandlerRootView>
   );
 }

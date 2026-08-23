@@ -56,7 +56,7 @@ function getTodayStr(): string {
 }
 
 export default function DashboardScreen() {
-  const { isDark } = useTheme();
+  const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const router = useRouter();
@@ -268,9 +268,9 @@ export default function DashboardScreen() {
   };
 
   return (
-    <View style={[s.screen, { paddingTop: insets.top }]}>
+    <View style={[s.screen, { paddingTop: insets.top, backgroundColor: colors.canvas }]}>
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: colors.canvas }}
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -292,13 +292,13 @@ export default function DashboardScreen() {
               style={s.dashLogo}
               resizeMode="contain"
             />
-            <View style={s.syncBadge}>
+            <View style={[s.syncBadge, isDark && { backgroundColor: '#064E3B' }]}>
               <View style={s.syncDot} />
-              <Text style={s.syncText}>Live Sync</Text>
+              <Text style={[s.syncText, isDark && { color: '#34D399' }]}>Live Sync</Text>
             </View>
           </View>
-          <Text style={s.dateText}>{getTodayStr()}</Text>
-          <Text style={s.h1}>
+          <Text style={[s.dateText, { color: colors.muted }]}>{getTodayStr()}</Text>
+          <Text style={[s.h1, { color: colors.ink }]}>
             {getGreeting()}, {userName}
           </Text>
         </View>
@@ -308,17 +308,29 @@ export default function DashboardScreen() {
           <TouchableOpacity
             onPress={() => router.push('/search')}
             activeOpacity={0.8}
-            style={s.searchPill}
+            style={[
+              s.searchPill,
+              {
+                backgroundColor: colors.card,
+                borderColor: colors.border,
+              },
+            ]}
           >
-            <Icon name="search" size={18} color={C.muted} />
-            <Text style={s.searchPlaceholder}>Search guests, rooms, IDs…</Text>
+            <Icon name="search" size={18} color={colors.muted} />
+            <Text style={[s.searchPlaceholder, { color: colors.muted }]}>Search guests, rooms, IDs…</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => router.push('/reports')}
             activeOpacity={0.8}
-            style={s.reportsBtn}
+            style={[
+              s.reportsBtn,
+              {
+                backgroundColor: isDark ? '#27272A' : '#FFFFFF',
+                borderColor: colors.border,
+              },
+            ]}
           >
-            <Icon name="bell" size={20} color={C.ink} />
+            <Icon name="bell" size={20} color={colors.ink} />
             {overviewStats.pendingVerif > 0 && <View style={s.alertDot} />}
           </TouchableOpacity>
         </View>
@@ -331,9 +343,24 @@ export default function DashboardScreen() {
             ['ACTIVE GUESTS', String(overviewStats.activeGuests)],
             ['PENDING VERIFY', String(overviewStats.pendingVerif)],
           ].map(([label, value], i) => (
-            <View key={label} style={s.metricCard}>
-              <Text style={s.metricLabel}>{label}</Text>
-              <Text style={[s.metricNum, i === 2 && { color: C.primary }]}>
+            <View
+              key={label}
+              style={[
+                s.metricCard,
+                {
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <Text style={[s.metricLabel, { color: colors.muted }]}>{label}</Text>
+              <Text
+                style={[
+                  s.metricNum,
+                  { color: colors.ink },
+                  i === 2 && { color: colors.primary },
+                ]}
+              >
                 {value}
               </Text>
             </View>

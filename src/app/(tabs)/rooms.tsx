@@ -22,9 +22,11 @@ import { getGuestsForRoom, checkoutGuestOrRemoveFromRoom } from '@/database/stay
 import { isRoomLimitReached, getLimit } from '@/services/entitlementService';
 import { formatLimit } from '@/config/plans';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '@/theme/ThemeContext';
 
 export default function RoomsScreen() {
   const insets = useSafeAreaInsets();
+  const { isDark, colors } = useTheme();
   const { t } = useTranslation();
   const router = useRouter();
   const { rooms, fetchRooms, createRoom, editRoom, removeRoom, isLoading } =
@@ -197,32 +199,34 @@ export default function RoomsScreen() {
   };
 
   return (
-    <View style={[s.screen, { paddingTop: insets.top }]}>
+    <View style={[s.screen, { paddingTop: insets.top, backgroundColor: colors.canvas }]}>
       <ScrollView
-        style={{ flex: 1 }}
+        style={{ flex: 1, backgroundColor: colors.canvas }}
         contentContainerStyle={s.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         {/* Header */}
         <View style={s.head}>
           <View>
-            <Text style={s.h1}>Rooms</Text>
-            <Text style={s.sub}>
-              {rooms.length} rooms <Text style={{ color: '#B5BAC3' }}>•</Text>{' '}
-              {counts.available} available now
+            <Text style={[s.h1, { color: colors.ink }]}>Rooms</Text>
+            <Text style={[s.sub, { color: colors.muted }]}>
+              {rooms.length} rooms <Text style={{ color: colors.mutedSoft }}>•</Text>{' '}
+              <Text style={{ color: '#059669', fontWeight: '600' }}>
+                {counts.available} available now
+              </Text>
             </Text>
           </View>
           <TouchableOpacity
             onPress={() => setIsListView(!isListView)}
             activeOpacity={0.8}
-            style={s.iconBtn}
+            style={[s.iconBtn, { backgroundColor: isDark ? '#27272A' : '#f2f2f2' }]}
           >
-            <Icon name={isListView ? 'grid' : 'list'} size={18} color={C.ink} />
+            <Icon name={isListView ? 'grid' : 'list'} size={18} color={colors.ink} />
           </TouchableOpacity>
         </View>
 
         {/* 5-Stat bar */}
-        <View style={s.stats}>
+        <View style={[s.stats, { backgroundColor: isDark ? '#18181B' : '#FAF8FD', borderColor: isDark ? '#27272A' : '#ECEAF0' }]}>
           {(
             ['all', 'available', 'occupied', 'cleaning', 'maintenance'] as const
           ).map((k) => {
@@ -232,15 +236,27 @@ export default function RoomsScreen() {
                 : k === 'maintenance'
                 ? 'Maint.'
                 : STATUS_META[k]?.label || k;
+            const isSelected = filter === k;
             return (
               <TouchableOpacity
                 key={k}
                 activeOpacity={0.7}
                 onPress={() => setFilter(k)}
-                style={s.stat}
+                style={[s.stat, isSelected && { backgroundColor: isDark ? '#27272A' : '#ffffff' }]}
               >
-                <Text style={s.statNum}>{counts[k]}</Text>
-                <Text style={s.statLabel}>{label}</Text>
+                <Text
+                  style={[
+                    s.statNum,
+                    { color: colors.ink },
+                    k === 'available' && { color: '#059669' },
+                    k === 'occupied' && { color: colors.primary },
+                    k === 'cleaning' && { color: '#D97706' },
+                    k === 'maintenance' && { color: '#DC2626' },
+                  ]}
+                >
+                  {counts[k]}
+                </Text>
+                <Text style={[s.statLabel, { color: colors.muted }, isSelected && { fontWeight: '700', color: colors.ink }]}>{label}</Text>
               </TouchableOpacity>
             );
           })}

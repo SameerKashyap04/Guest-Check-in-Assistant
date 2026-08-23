@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { useColorScheme } from 'nativewind';
+import { useTheme, ThemeMode } from '@/theme/ThemeContext';
 import { C, R, shadow } from '@/theme/tokens';
 import { Icon } from '@/components/v3/Icon';
 import {
@@ -39,6 +40,7 @@ import { SubscriptionPlan } from '@/types/subscription';
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
+  const { themeMode, isDark, colors, setThemeMode } = useTheme();
   const { t, i18n } = useTranslation();
   const { colorScheme, setColorScheme } = useColorScheme();
   const router = useRouter();
@@ -544,13 +546,14 @@ export default function SettingsScreen() {
               { id: 'light', name: 'Light mode', desc: 'Crisp bright interface' },
               { id: 'dark', name: 'Dark mode', desc: 'Sleek low-light theme' },
             ].map((th) => {
-              const isSelected = theme === th.id;
+              const isSelected = (themeMode || theme) === th.id;
               return (
                 <TouchableOpacity
                   key={th.id}
                   activeOpacity={0.75}
-                  onPress={() => {
+                  onPress={async () => {
                     setTheme(th.id as any);
+                    await setThemeMode(th.id as ThemeMode);
                     setThemeModalOpen(false);
                     Alert.alert('Theme', `✓ Theme set to ${th.name}`);
                   }}
@@ -561,8 +564,10 @@ export default function SettingsScreen() {
                     padding: 14,
                     borderRadius: 14,
                     borderWidth: 1.2,
-                    borderColor: isSelected ? C.primary : '#ECEAF0',
-                    backgroundColor: isSelected ? '#FAF5FF' : '#ffffff',
+                    borderColor: isSelected ? colors.primary : isDark ? '#27272A' : '#ECEAF0',
+                    backgroundColor: isSelected
+                      ? (isDark ? '#2E1065' : '#FAF5FF')
+                      : (isDark ? '#18181B' : '#ffffff'),
                     marginBottom: 10,
                   }}
                 >
@@ -572,12 +577,12 @@ export default function SettingsScreen() {
                         fontFamily: 'Inter',
                         fontSize: 15,
                         fontWeight: '600',
-                        color: isSelected ? C.primary : '#1E293B',
+                        color: isSelected ? colors.primary : colors.ink,
                       }}
                     >
                       {th.name}
                     </Text>
-                    <Text style={{ fontFamily: 'Inter', fontSize: 12.5, color: '#64748B', marginTop: 2 }}>
+                    <Text style={{ fontFamily: 'Inter', fontSize: 12.5, color: colors.muted, marginTop: 2 }}>
                       {th.desc}
                     </Text>
                   </View>
@@ -587,7 +592,7 @@ export default function SettingsScreen() {
                         width: 24,
                         height: 24,
                         borderRadius: 12,
-                        backgroundColor: C.primary,
+                        backgroundColor: colors.primary,
                         alignItems: 'center',
                         justifyContent: 'center',
                       }}
@@ -601,8 +606,7 @@ export default function SettingsScreen() {
                         height: 24,
                         borderRadius: 12,
                         borderWidth: 1.5,
-                        borderColor: '#CBD5E1',
-                        backgroundColor: '#fff',
+                        borderColor: isDark ? '#3F3F46' : '#CBD5E1',
                       }}
                     />
                   )}

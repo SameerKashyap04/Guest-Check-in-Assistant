@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { C, R } from '../../theme/tokens';
+import { useTheme } from '../../theme/ThemeContext';
 import { Icon } from './Icon';
 
 export interface RoomItemData {
@@ -32,6 +33,7 @@ export function RoomCard({
   selected?: boolean;
   compact?: boolean;
 }) {
+  const { isDark, colors } = useTheme();
   const statusKey = (room.status || 'available').toLowerCase();
   const m = STATUS_META[statusKey] || STATUS_META.available;
   const price = room.price_per_night ?? 0;
@@ -40,18 +42,35 @@ export function RoomCard({
     <TouchableOpacity
       activeOpacity={0.85}
       onPress={onPress}
-      style={[s.card, compact && s.compact, selected && s.selected]}
+      style={[
+        s.card,
+        {
+          backgroundColor: colors.card,
+          borderColor: colors.border,
+        },
+        compact && s.compact,
+        selected && [s.selected, { borderColor: colors.primary }],
+      ]}
     >
       {/* Top row */}
       <View style={s.top}>
-        <View style={[s.bed, compact && s.bedCompact]}>
-          <Icon name="bed" size={compact ? 16 : 18} color={C.primary} />
+        <View
+          style={[
+            s.bed,
+            { backgroundColor: isDark ? '#2E1065' : '#F7F3FF' },
+            compact && s.bedCompact,
+          ]}
+        >
+          <Icon name="bed" size={compact ? 16 : 18} color={colors.primary} />
         </View>
         <View
           style={[
             s.status,
             compact && s.statusCompact,
-            { borderColor: m.color, backgroundColor: m.bg },
+            {
+              borderColor: m.color,
+              backgroundColor: isDark ? '#18181B' : m.bg,
+            },
           ]}
         >
           <Icon
@@ -73,13 +92,40 @@ export function RoomCard({
 
       {/* Info */}
       <View style={s.body}>
-        <Text style={[s.num, compact && s.numCompact]}>{room.room_number}</Text>
-        <Text style={[s.type, compact && s.typeCompact]} numberOfLines={1}>
+        <Text
+          style={[
+            s.num,
+            { color: colors.ink },
+            compact && s.numCompact,
+          ]}
+        >
+          {room.room_number}
+        </Text>
+        <Text
+          style={[
+            s.type,
+            { color: colors.muted },
+            compact && s.typeCompact,
+          ]}
+          numberOfLines={1}
+        >
           {room.room_type || 'Standard'}
         </Text>
-        <Text style={[s.price, compact && s.priceCompact]}>
+        <Text
+          style={[
+            s.price,
+            { color: colors.ink },
+            compact && s.priceCompact,
+          ]}
+        >
           ₹{price.toLocaleString('en-IN')}
-          <Text style={[s.caption, compact && { fontSize: 10.5 }]}>
+          <Text
+            style={[
+              s.caption,
+              { color: colors.muted },
+              compact && { fontSize: 10.5 },
+            ]}
+          >
             {' '}
             / night
           </Text>
@@ -91,9 +137,7 @@ export function RoomCard({
 
 const s = StyleSheet.create({
   card: {
-    backgroundColor: '#fff',
     borderWidth: 1.2,
-    borderColor: '#ECEAF0',
     borderRadius: 22,
     padding: 14,
     minHeight: 144,
@@ -110,9 +154,8 @@ const s = StyleSheet.create({
     padding: 12,
   },
   selected: {
-    borderColor: C.primary,
     borderWidth: 2,
-    shadowColor: C.primary,
+    shadowColor: '#7C3AED',
     shadowOpacity: 0.18,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 4 },
@@ -127,7 +170,6 @@ const s = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#F7F3FF',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -167,7 +209,6 @@ const s = StyleSheet.create({
     fontSize: 27,
     fontWeight: '800',
     letterSpacing: -0.6,
-    color: '#222222',
     lineHeight: 29,
   },
   numCompact: {
@@ -178,7 +219,6 @@ const s = StyleSheet.create({
     fontFamily: 'Inter',
     fontSize: 13,
     fontWeight: '500',
-    color: '#929292',
     marginTop: 3,
   },
   typeCompact: {
@@ -189,7 +229,6 @@ const s = StyleSheet.create({
     fontFamily: 'Inter',
     fontSize: 15,
     fontWeight: '800',
-    color: '#222222',
     marginTop: 6,
   },
   priceCompact: {
@@ -200,6 +239,5 @@ const s = StyleSheet.create({
     fontFamily: 'Inter',
     fontSize: 11.5,
     fontWeight: '400',
-    color: '#929292',
   },
 });
