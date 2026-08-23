@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../components/Icon';
 
 const GoogleLogo = require('../../assets/google-logo.png');
@@ -29,6 +30,7 @@ export function AccountPortalScreen({
   onToast: (m: string) => void;
   onModal: (t: string, m: string) => void;
 }) {
+  const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<'form' | 'otp'>('form');
   const [mode, setMode] = useState(initial);
@@ -123,14 +125,14 @@ export function AccountPortalScreen({
   };
 
   return (
-    <View style={s.container}>
+    <View style={[s.container, isDark && { backgroundColor: colors.canvas }]}>
       {/* Subtle close button on top right */}
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={onClose}
-        style={[s.closeBtn, { top: insets.top + 16 }]}
+        style={[s.closeBtn, isDark && { backgroundColor: '#27272A' }, { top: insets.top + 16 }]}
       >
-        <Icon name="x" size={16} color="#64748B" />
+        <Icon name="x" size={16} color={colors.ink} />
       </TouchableOpacity>
 
       <KeyboardAvoidingView
@@ -156,10 +158,10 @@ export function AccountPortalScreen({
             />
             {step === 'form' ? (
               <>
-                <Text style={s.title}>
+                <Text style={[s.title, isDark && { color: colors.ink }]}>
                   {mode === 'login' ? 'Welcome back' : 'Create account'}
                 </Text>
-                <Text style={s.subtitle}>
+                <Text style={[s.subtitle, isDark && { color: colors.muted }]}>
                   {mode === 'login'
                     ? 'Sign in to access your property'
                     : 'Start managing your check-ins'}
@@ -167,18 +169,18 @@ export function AccountPortalScreen({
               </>
             ) : (
               <>
-                <Text style={s.title}>Verify your email</Text>
-                <Text style={s.subtitle}>
+                <Text style={[s.title, isDark && { color: colors.ink }]}>Verify your email</Text>
+                <Text style={[s.subtitle, isDark && { color: colors.muted }]}>
                   Enter the 6-digit code sent to
                 </Text>
-                <View style={s.emailChip}>
-                  <Text style={s.emailChipText}>{email.trim()}</Text>
+                <View style={[s.emailChip, isDark && { backgroundColor: '#27272A' }]}>
+                  <Text style={[s.emailChipText, isDark && { color: colors.ink }]}>{email.trim()}</Text>
                   <TouchableOpacity
                     activeOpacity={0.7}
                     onPress={() => setStep('form')}
                     style={s.editEmailBtn}
                   >
-                    <Text style={s.editEmailText}>Edit</Text>
+                    <Text style={[s.editEmailText, isDark && { color: colors.primary }]}>Edit</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -188,22 +190,22 @@ export function AccountPortalScreen({
           {step === 'form' ? (
             <>
               {/* Segmented Control */}
-              <View style={s.tabs}>
+              <View style={[s.tabs, isDark && { backgroundColor: '#27272A' }]}>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setMode('login')}
-                  style={[s.tab, mode === 'login' && s.activeTab]}
+                  style={[s.tab, mode === 'login' && [s.activeTab, isDark && { backgroundColor: '#18181B' }]]}
                 >
-                  <Text style={[s.tabText, mode === 'login' && s.activeTabText]}>
+                  <Text style={[s.tabText, isDark && { color: colors.muted }, mode === 'login' && [s.activeTabText, isDark && { color: colors.ink }]]}>
                     Log in
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setMode('signup')}
-                  style={[s.tab, mode === 'signup' && s.activeTab]}
+                  style={[s.tab, mode === 'signup' && [s.activeTab, isDark && { backgroundColor: '#18181B' }]]}
                 >
-                  <Text style={[s.tabText, mode === 'signup' && s.activeTabText]}>
+                  <Text style={[s.tabText, isDark && { color: colors.muted }, mode === 'signup' && [s.activeTabText, isDark && { color: colors.ink }]]}>
                     Sign up
                   </Text>
                 </TouchableOpacity>
@@ -213,17 +215,17 @@ export function AccountPortalScreen({
               <View style={s.form}>
                 {mode === 'signup' && (
                   <View style={s.inputGroup}>
-                    <Text style={s.label}>Property name</Text>
-                    <View style={s.inputWrapper}>
+                    <Text style={[s.label, isDark && { color: colors.muted }]}>Property name</Text>
+                    <View style={[s.inputWrapper, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
                       <View style={s.inputIcon}>
-                        <Icon name="home" size={18} color="#71717A" />
+                        <Icon name="home" size={18} color={colors.muted} />
                       </View>
                       <TextInput
                         value={property}
                         onChangeText={setProperty}
                         placeholder="e.g. Sunrise Homestay"
-                        placeholderTextColor="#A1A1AA"
-                        style={s.input}
+                        placeholderTextColor={colors.muted}
+                        style={[s.input, isDark && { color: colors.ink }]}
                         autoCapitalize="words"
                       />
                     </View>
@@ -231,17 +233,17 @@ export function AccountPortalScreen({
                 )}
 
                 <View style={s.inputGroup}>
-                  <Text style={s.label}>Email address</Text>
-                  <View style={s.inputWrapper}>
+                  <Text style={[s.label, isDark && { color: colors.muted }]}>Email address</Text>
+                  <View style={[s.inputWrapper, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
                     <View style={s.inputIcon}>
-                      <Icon name="mail" size={18} color="#71717A" />
+                      <Icon name="mail" size={18} color={colors.muted} />
                     </View>
                     <TextInput
                       value={email}
                       onChangeText={setEmail}
                       placeholder="owner@property.com"
-                      placeholderTextColor="#A1A1AA"
-                      style={s.input}
+                      placeholderTextColor={colors.muted}
+                      style={[s.input, isDark && { color: colors.ink }]}
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -250,10 +252,10 @@ export function AccountPortalScreen({
                 </View>
 
                 <View style={s.inputGroup}>
-                  <Text style={s.label}>Password</Text>
-                  <View style={s.inputWrapper}>
+                  <Text style={[s.label, isDark && { color: colors.muted }]}>Password</Text>
+                  <View style={[s.inputWrapper, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
                     <View style={s.inputIcon}>
-                      <Icon name="lock" size={18} color="#71717A" />
+                      <Icon name="lock" size={18} color={colors.muted} />
                     </View>
                     <TextInput
                       value={pw}
@@ -261,9 +263,9 @@ export function AccountPortalScreen({
                       placeholder={
                         mode === 'login' ? 'Enter password' : 'At least 8 characters'
                       }
-                      placeholderTextColor="#A1A1AA"
+                      placeholderTextColor={colors.muted}
                       secureTextEntry={!showPassword}
-                      style={s.input}
+                      style={[s.input, isDark && { color: colors.ink }]}
                       autoCapitalize="none"
                     />
                     <TouchableOpacity
@@ -274,7 +276,7 @@ export function AccountPortalScreen({
                       <Icon
                         name={showPassword ? 'eyeOff' : 'eye'}
                         size={18}
-                        color="#71717A"
+                        color={colors.muted}
                       />
                     </TouchableOpacity>
                   </View>
@@ -291,7 +293,7 @@ export function AccountPortalScreen({
                     }
                     style={s.forgotBtn}
                   >
-                    <Text style={s.forgotText}>Forgot password?</Text>
+                    <Text style={[s.forgotText, isDark && { color: colors.primary }]}>Forgot password?</Text>
                   </TouchableOpacity>
                 )}
 
@@ -299,7 +301,7 @@ export function AccountPortalScreen({
                 <TouchableOpacity
                   activeOpacity={0.88}
                   onPress={handleSubmit}
-                  style={s.submitBtn}
+                  style={[s.submitBtn, isDark && { backgroundColor: colors.primary }]}
                 >
                   <Text style={s.submitBtnText}>
                     {mode === 'login' ? 'Log in' : 'Create account'}
@@ -308,15 +310,15 @@ export function AccountPortalScreen({
 
                 {/* Divider */}
                 <View style={s.divider}>
-                  <View style={s.dividerLine} />
-                  <Text style={s.dividerText}>or</Text>
-                  <View style={s.dividerLine} />
+                  <View style={[s.dividerLine, isDark && { backgroundColor: '#27272A' }]} />
+                  <Text style={[s.dividerText, isDark && { color: colors.muted }]}>or</Text>
+                  <View style={[s.dividerLine, isDark && { backgroundColor: '#27272A' }]} />
                 </View>
 
                 {/* Google Button */}
                 <TouchableOpacity
                   activeOpacity={0.85}
-                  style={s.googleBtn}
+                  style={[s.googleBtn, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}
                   onPress={() => {
                     onToast('Signed in with Google');
                     setTimeout(onClose, 400);
@@ -327,7 +329,7 @@ export function AccountPortalScreen({
                     style={s.googleImage}
                     resizeMode="contain"
                   />
-                  <Text style={s.googleBtnText}>Continue with Google</Text>
+                  <Text style={[s.googleBtnText, isDark && { color: colors.ink }]}>Continue with Google</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -349,7 +351,8 @@ export function AccountPortalScreen({
                     selectTextOnFocus
                     style={[
                       s.otpBox,
-                      digit ? s.otpBoxFilled : null,
+                      isDark && { backgroundColor: '#18181B', borderColor: '#27272A', color: colors.ink },
+                      digit ? (isDark ? { borderColor: colors.primary, backgroundColor: '#2E1065' } : s.otpBoxFilled) : null,
                     ]}
                   />
                 ))}
@@ -357,7 +360,7 @@ export function AccountPortalScreen({
 
               {/* Resend Row */}
               <View style={s.resendRow}>
-                <Text style={s.resendLabel}>Didn't receive the code? </Text>
+                <Text style={[s.resendLabel, isDark && { color: colors.muted }]}>{"Didn't receive the code? "}</Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={handleResendOtp}
@@ -366,6 +369,7 @@ export function AccountPortalScreen({
                   <Text
                     style={[
                       s.resendLink,
+                      isDark && { color: colors.primary },
                       resendTimer > 0 && s.resendLinkDisabled,
                     ]}
                   >
@@ -380,7 +384,7 @@ export function AccountPortalScreen({
               <TouchableOpacity
                 activeOpacity={0.88}
                 onPress={() => handleVerifyOtp()}
-                style={s.submitBtn}
+                style={[s.submitBtn, isDark && { backgroundColor: colors.primary }]}
               >
                 <Text style={s.submitBtnText}>Verify & Continue</Text>
               </TouchableOpacity>
@@ -391,7 +395,7 @@ export function AccountPortalScreen({
                 onPress={() => setStep('form')}
                 style={s.backBtn}
               >
-                <Text style={s.backBtnText}>
+                <Text style={[s.backBtnText, isDark && { color: colors.muted }]}>
                   Back to {mode === 'login' ? 'Log in' : 'Sign up'}
                 </Text>
               </TouchableOpacity>
@@ -399,10 +403,10 @@ export function AccountPortalScreen({
           )}
 
           {/* Footer note */}
-          <Text style={s.footerText}>
-            By continuing, you agree to StayMate's{' '}
-            <Text style={{ color: '#09090B', fontWeight: '600' }}>Terms</Text> and{' '}
-            <Text style={{ color: '#09090B', fontWeight: '600' }}>Privacy</Text>.
+          <Text style={[s.footerText, isDark && { color: colors.muted }]}>
+            {"By continuing, you agree to StayMate's "}
+            <Text style={{ color: isDark ? colors.ink : '#09090B', fontWeight: '600' }}>Terms</Text> and{' '}
+            <Text style={{ color: isDark ? colors.ink : '#09090B', fontWeight: '600' }}>Privacy</Text>.
           </Text>
 
           {/* Devify Developer Attribution */}
@@ -411,8 +415,8 @@ export function AccountPortalScreen({
             onPress={() => Linking.openURL('https://www.devify.co.in')}
             style={s.devifyBadge}
           >
-            <Text style={s.devifyText}>
-              Developed by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+            <Text style={[s.devifyText, isDark && { color: colors.muted }]}>
+              Developed by <Text style={[s.devifyBrand, isDark && { color: colors.ink }]}>Devify</Text> · www.devify.co.in
             </Text>
           </TouchableOpacity>
         </ScrollView>

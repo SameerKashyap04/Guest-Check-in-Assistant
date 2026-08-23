@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import {C, R} from '../theme/tokens';
+import {useTheme} from '../theme/ThemeContext';
 import {Icon} from './Icon';
 
 const MONTHS = [
@@ -40,6 +41,7 @@ export function CalendarPicker({
   placeholder = 'YYYY-MM-DD',
   minDate,
 }: CalendarPickerProps) {
+  const {isDark, colors} = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
 
   // Parse current value or fallback to today
@@ -168,31 +170,34 @@ export function CalendarPicker({
 
   return (
     <View style={{marginBottom: 14}}>
-      {label && <Text style={s.fieldLabel}>{label}</Text>}
+      {label && <Text style={[s.fieldLabel, {color: colors.muted}]}>{label}</Text>}
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={handleOpenModal}
-        style={s.fieldTrigger}
+        style={[
+          s.fieldTrigger,
+          isDark && {backgroundColor: colors.inputBg, borderColor: colors.inputBorder},
+        ]}
       >
-        <Text style={[s.triggerText, !value && s.triggerPlaceholder]} numberOfLines={1}>
+        <Text style={[s.triggerText, {color: colors.ink}, !value && s.triggerPlaceholder]} numberOfLines={1}>
           {formatDisplay(value)}
         </Text>
-        <Icon name="calendar" size={15} color="#94A3B8" />
+        <Icon name="calendar" size={15} color={colors.muted} />
       </TouchableOpacity>
 
       {/* Calendar Modal */}
       <Modal visible={modalVisible} transparent animationType="slide">
         <View style={s.scrim}>
-          <View style={s.sheet}>
+          <View style={[s.sheet, isDark && {backgroundColor: '#18181B'}]}>
             {/* Sheet Handle */}
             <View style={s.handleRow}>
-              <View style={s.handle} />
+              <View style={[s.handle, isDark && {backgroundColor: '#3F3F46'}]} />
             </View>
 
             {/* Header with Title & Formatted Preview */}
-            <View style={s.sheetHeader}>
+            <View style={[s.sheetHeader, isDark && {borderBottomColor: '#27272A'}]}>
               <View>
-                <Text style={s.sheetTitle}>{label || 'Select Date'}</Text>
+                <Text style={[s.sheetTitle, {color: colors.ink}]}>{label || 'Select Date'}</Text>
                 <Text style={s.sheetSubtitle}>
                   {formatDisplay(currentFormattedDate)}
                 </Text>
@@ -202,28 +207,29 @@ export function CalendarPicker({
                   setModalVisible(false);
                   setFlowStep(3);
                 }}
-                style={s.closeBtn}
+                style={[s.closeBtn, isDark && {backgroundColor: '#27272A'}]}
                 activeOpacity={0.7}
               >
-                <Icon name="x" size={18} color={C.ink} />
+                <Icon name="x" size={18} color={colors.ink} />
               </TouchableOpacity>
             </View>
 
             {/* QUICK PRESETS for Stay mode when on Step 3 */}
             {mode === 'stay' && flowStep === 3 && (
               <View style={s.presetRow}>
-                <TouchableOpacity onPress={() => handlePreset(0)} style={s.presetBtn} activeOpacity={0.75}>
-                  <Text style={s.presetText}>Today</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handlePreset(1)} style={s.presetBtn} activeOpacity={0.75}>
-                  <Text style={s.presetText}>Tomorrow</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handlePreset(2)} style={s.presetBtn} activeOpacity={0.75}>
-                  <Text style={s.presetText}>+2 Nights</Text>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={() => handlePreset(7)} style={s.presetBtn} activeOpacity={0.75}>
-                  <Text style={s.presetText}>+1 Week</Text>
-                </TouchableOpacity>
+                {['Today', 'Tomorrow', '+2 Nights', '+1 Week'].map((label, idx) => {
+                  const offsets = [0, 1, 2, 7];
+                  return (
+                    <TouchableOpacity
+                      key={label}
+                      onPress={() => handlePreset(offsets[idx])}
+                      style={[s.presetBtn, isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'}]}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={[s.presetText, isDark && {color: colors.ink}]}>{label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             )}
 
@@ -233,7 +239,7 @@ export function CalendarPicker({
             {flowStep === 1 && (
               <View style={s.stepContainer}>
                 <View style={s.stepBanner}>
-                  <Text style={s.stepBannerTitle}>SELECT YEAR</Text>
+                  <Text style={[s.stepBannerTitle, isDark && {color: colors.muted}]}>SELECT YEAR</Text>
                   <Text style={s.stepBannerSub}>Tap a year to choose month next</Text>
                 </View>
                 <ScrollView
@@ -247,10 +253,18 @@ export function CalendarPicker({
                       <TouchableOpacity
                         key={yr}
                         onPress={() => handleSelectYear(yr)}
-                        style={[s.yearChip, active && s.yearChipActive]}
+                        style={[
+                          s.yearChip,
+                          isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
+                          active && (isDark ? {backgroundColor: colors.primary, borderColor: colors.primary} : s.yearChipActive),
+                        ]}
                         activeOpacity={0.75}
                       >
-                        <Text style={[s.yearChipText, active && s.yearChipTextActive]}>
+                        <Text style={[
+                          s.yearChipText,
+                          isDark && {color: colors.ink},
+                          active && (isDark ? {color: '#ffffff', fontWeight: '700'} : s.yearChipTextActive),
+                        ]}>
                           {yr}
                         </Text>
                       </TouchableOpacity>
@@ -266,7 +280,7 @@ export function CalendarPicker({
             {flowStep === 2 && (
               <View style={s.stepContainer}>
                 <View style={s.stepBanner}>
-                  <Text style={s.stepBannerTitle}>SELECT MONTH IN {selectedYear}</Text>
+                  <Text style={[s.stepBannerTitle, isDark && {color: colors.muted}]}>SELECT MONTH IN {selectedYear}</Text>
                   <Text style={s.stepBannerSub}>Choose month to view calendar</Text>
                 </View>
                 <View style={s.monthsGrid}>
@@ -276,13 +290,25 @@ export function CalendarPicker({
                       <TouchableOpacity
                         key={mName}
                         onPress={() => handleSelectMonth(idx)}
-                        style={[s.monthCard, active && s.monthCardActive]}
+                        style={[
+                          s.monthCard,
+                          isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
+                          active && (isDark ? {backgroundColor: colors.primary, borderColor: colors.primary} : s.monthCardActive),
+                        ]}
                         activeOpacity={0.75}
                       >
-                        <Text style={[s.monthCardShort, active && s.monthCardShortActive]}>
+                        <Text style={[
+                          s.monthCardShort,
+                          isDark && {color: colors.ink},
+                          active && (isDark ? {color: '#ffffff'} : s.monthCardShortActive),
+                        ]}>
                           {SHORT_MONTHS[idx]}
                         </Text>
-                        <Text style={[s.monthCardFull, active && s.monthCardFullActive]}>
+                        <Text style={[
+                          s.monthCardFull,
+                          isDark && {color: colors.muted},
+                          active && (isDark ? {color: '#ffffff'} : s.monthCardFullActive),
+                        ]}>
                           {mName}
                         </Text>
                       </TouchableOpacity>
@@ -301,33 +327,33 @@ export function CalendarPicker({
                 <View style={s.monthNavRow}>
                   <TouchableOpacity
                     onPress={() => setFlowStep(1)}
-                    style={s.monthYearBtn}
+                    style={[s.monthYearBtn, isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'}]}
                     activeOpacity={0.75}
                   >
-                    <Text style={s.monthYearText}>
+                    <Text style={[s.monthYearText, isDark && {color: colors.ink}]}>
                       {MONTHS[selectedMonth]} {selectedYear}
                     </Text>
-                    <Icon name="edit" size={13} color={C.primary} />
+                    <Icon name="edit" size={13} color={colors.primary} />
                   </TouchableOpacity>
 
                   <View style={{flexDirection: 'row', gap: 6}}>
-                    <TouchableOpacity onPress={handlePrevMonth} style={s.navArrow} activeOpacity={0.75}>
-                      <Icon name="chevronLeft" size={16} color={C.ink} />
+                    <TouchableOpacity onPress={handlePrevMonth} style={[s.navArrow, isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'}]} activeOpacity={0.75}>
+                      <Icon name="chevronLeft" size={16} color={colors.ink} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={handleNextMonth} style={s.navArrow} activeOpacity={0.75}>
-                      <Icon name="chevronRight" size={16} color={C.ink} />
+                    <TouchableOpacity onPress={handleNextMonth} style={[s.navArrow, isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'}]} activeOpacity={0.75}>
+                      <Icon name="chevronRight" size={16} color={colors.ink} />
                     </TouchableOpacity>
                   </View>
                 </View>
 
                 {/* 7-Column Weekdays Header */}
-                <View style={s.weekDaysRow}>
+                <View style={[s.weekDaysRow, isDark && {borderBottomColor: '#27272A'}]}>
                   {SHORT_DAYS.map((d, i) => (
                     <Text
                       key={d}
                       style={[
                         s.weekDayText,
-                        (i === 0 || i === 6) && {color: '#94A3B8'},
+                        isDark ? {color: colors.muted} : ((i === 0 || i === 6) && {color: '#94A3B8'}),
                       ]}
                     >
                       {d}
@@ -358,12 +384,13 @@ export function CalendarPicker({
                         <View
                           style={[
                             s.dayCircle,
-                            isSelected && s.dayCircleSelected,
+                            isSelected && (isDark ? {backgroundColor: colors.primary} : s.dayCircleSelected),
                           ]}
                         >
                           <Text
                             style={[
                               s.dayText,
+                              isDark && {color: colors.ink},
                               isSelected && s.dayTextSelected,
                               isToday && !isSelected && s.dayTextToday,
                             ]}
@@ -386,36 +413,36 @@ export function CalendarPicker({
                   onPress={() => {
                     setModalVisible(false);
                   }}
-                  style={s.cancelBtn}
+                  style={[s.cancelBtn, isDark && {backgroundColor: '#27272A'}]}
                   activeOpacity={0.75}
                 >
-                  <Text style={s.cancelBtnText}>Cancel</Text>
+                  <Text style={[s.cancelBtnText, isDark && {color: colors.muted}]}>Cancel</Text>
                 </TouchableOpacity>
               )}
 
               {flowStep === 2 && (
                 <TouchableOpacity
                   onPress={() => setFlowStep(1)}
-                  style={s.cancelBtn}
+                  style={[s.cancelBtn, isDark && {backgroundColor: '#27272A'}]}
                   activeOpacity={0.75}
                 >
-                  <Text style={s.cancelBtnText}>← Back to Year</Text>
+                  <Text style={[s.cancelBtnText, isDark && {color: colors.muted}]}>← Back to Year</Text>
                 </TouchableOpacity>
               )}
 
               {flowStep === 1 && (
                 <TouchableOpacity
                   onPress={() => setFlowStep(3)}
-                  style={s.cancelBtn}
+                  style={[s.cancelBtn, isDark && {backgroundColor: '#27272A'}]}
                   activeOpacity={0.75}
                 >
-                  <Text style={s.cancelBtnText}>← Back to Calendar</Text>
+                  <Text style={[s.cancelBtnText, isDark && {color: colors.muted}]}>← Back to Calendar</Text>
                 </TouchableOpacity>
               )}
 
               <TouchableOpacity
                 onPress={handleConfirm}
-                style={s.confirmBtn}
+                style={[s.confirmBtn, {backgroundColor: colors.primary}]}
                 activeOpacity={0.85}
               >
                 <Icon name="check" size={16} color="#ffffff" />

@@ -428,19 +428,19 @@ export function SettingsScreen({
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={onLock}
-          style={s.lockBtn}
+          style={[s.lockBtn, isDark && { backgroundColor: '#27272A' }]}
         >
-          <Icon name="lock" size={16} color={C.ink}/>
-          <Text style={s.lockBtnText}>Lock app</Text>
+          <Icon name="lock" size={16} color={colors.ink}/>
+          <Text style={[s.lockBtnText, isDark && { color: colors.ink }]}>Lock app</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={onLogout}
-          style={s.logoutBtn}
+          style={[s.logoutBtn, isDark && { backgroundColor: '#18181B', borderColor: colors.primary }]}
         >
-          <Icon name="logout" size={16} color={C.primary}/>
-          <Text style={s.logoutBtnText}>Log out</Text>
+          <Icon name="logout" size={16} color={colors.primary}/>
+          <Text style={[s.logoutBtnText, { color: colors.primary }]}>Log out</Text>
         </TouchableOpacity>
       </View>
 
@@ -457,7 +457,7 @@ export function SettingsScreen({
             resizeMode="contain"
           />
           <Text style={s.devifyText}>
-            Engineered by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+            Engineered by <Text style={[s.devifyBrand, isDark && { color: colors.ink }]}>Devify</Text> · www.devify.co.in
           </Text>
         </View>
       </TouchableOpacity>
@@ -471,23 +471,23 @@ export function SettingsScreen({
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={ms.sheetScrim}
           >
-            <View style={ms.sheet}>
-              <View style={ms.handle}/>
-              <View style={ms.sheetHeaderBar}>
+            <View style={[ms.sheet, isDark && { backgroundColor: '#18181B' }]}>
+              <View style={[ms.handle, isDark && { backgroundColor: '#3F3F46' }]}/>
+              <View style={[ms.sheetHeaderBar, isDark && { borderBottomColor: '#27272A' }]}>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => setActiveModal(null)}
-                  style={ms.sheetBackBtn}
+                  style={[ms.sheetBackBtn, isDark && { backgroundColor: '#27272A' }]}
                 >
-                  <Icon name="chevronLeft" size={18} color={C.ink}/>
+                  <Icon name="chevronLeft" size={18} color={colors.ink}/>
                 </TouchableOpacity>
-                <Text style={ms.sheetHeaderTitle}>Property Profile</Text>
+                <Text style={[ms.sheetHeaderTitle, isDark && { color: colors.ink }]}>Property Profile</Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => setActiveModal(null)}
-                  style={ms.sheetCloseBtnRelative}
+                  style={[ms.sheetCloseBtnRelative, isDark && { backgroundColor: '#27272A' }]}
                 >
-                  <Icon name="x" size={16} color={C.ink}/>
+                  <Icon name="x" size={16} color={colors.ink}/>
                 </TouchableOpacity>
               </View>
 
@@ -497,59 +497,58 @@ export function SettingsScreen({
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"
               >
-                <Text style={[ms.bodySm, {marginBottom: 16}]}>
+                <Text style={[ms.bodySm, {marginBottom: 16}, isDark && { color: colors.muted }]}>
                   Update your property details, address and contact information.
                 </Text>
 
                 <View style={ms.inputGroup}>
-                  <Text style={ms.inputLabel}>PROPERTY NAME *</Text>
+                  <Text style={[ms.inputLabel, isDark && { color: colors.muted }]}>PROPERTY NAME *</Text>
                   <TextInput
                     value={editProfile.name}
                     onChangeText={(t) => setEditProfile({...editProfile, name: t})}
                     placeholder="e.g. Sunrise Homestay"
                     placeholderTextColor="#94A3B8"
-                    style={ms.inputField}
+                    style={[ms.inputField, isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46', color: colors.ink }]}
                   />
                 </View>
 
-
                 <View style={ms.inputGroup}>
-                  <Text style={ms.inputLabel}>OWNER / MANAGER NAME</Text>
+                  <Text style={[ms.inputLabel, isDark && { color: colors.muted }]}>OWNER / MANAGER NAME</Text>
                   <TextInput
                     value={editProfile.owner}
                     onChangeText={(t) => setEditProfile({...editProfile, owner: t})}
                     placeholder="e.g. Homestay Owner"
                     placeholderTextColor="#94A3B8"
-                    style={ms.inputField}
+                    style={[ms.inputField, isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46', color: colors.ink }]}
                   />
                 </View>
 
                 <View style={ms.inputGroup}>
-                  <Text style={ms.inputLabel}>FULL ADDRESS</Text>
+                  <Text style={[ms.inputLabel, isDark && { color: colors.muted }]}>FULL ADDRESS</Text>
                   <TextInput
                     value={editProfile.address}
                     onChangeText={(t) => setEditProfile({...editProfile, address: t})}
                     placeholder="Enter complete address"
                     placeholderTextColor="#94A3B8"
                     multiline
-                    style={[ms.inputField, {height: 68, textAlignVertical: 'top', paddingTop: 10}]}
+                    style={[ms.inputField, {height: 68, textAlignVertical: 'top', paddingTop: 10}, isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46', color: colors.ink }]}
                   />
                 </View>
 
                 <View style={ms.inputGroup}>
-                  <Text style={ms.inputLabel}>CONTACT PHONE</Text>
+                  <Text style={[ms.inputLabel, isDark && { color: colors.muted }]}>CONTACT PHONE</Text>
                   <TextInput
                     value={editProfile.phone}
                     onChangeText={(t) => setEditProfile({...editProfile, phone: t})}
                     placeholder="+91 98765 43210"
                     placeholderTextColor="#94A3B8"
                     keyboardType="phone-pad"
-                    style={ms.inputField}
+                    style={[ms.inputField, isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46', color: colors.ink }]}
                   />
                 </View>
 
                 <View style={ms.inputGroup}>
-                  <Text style={ms.inputLabel}>EMAIL ADDRESS</Text>
+                  <Text style={[ms.inputLabel, isDark && { color: colors.muted }]}>EMAIL ADDRESS</Text>
                   <TextInput
                     value={editProfile.email}
                     onChangeText={(t) => setEditProfile({...editProfile, email: t})}
@@ -557,7 +556,7 @@ export function SettingsScreen({
                     placeholderTextColor="#94A3B8"
                     keyboardType="email-address"
                     autoCapitalize="none"
-                    style={ms.inputField}
+                    style={[ms.inputField, isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46', color: colors.ink }]}
                   />
                 </View>
 
@@ -585,23 +584,23 @@ export function SettingsScreen({
       {activeModal === 'language' && (
         <Modal visible transparent animationType="slide">
           <View style={ms.sheetScrim}>
-            <View style={ms.sheet}>
-              <View style={ms.handle}/>
-              <View style={ms.sheetHeaderBar}>
+            <View style={[ms.sheet, isDark && { backgroundColor: '#18181B' }]}>
+              <View style={[ms.handle, isDark && { backgroundColor: '#3F3F46' }]}/>
+              <View style={[ms.sheetHeaderBar, isDark && { borderBottomColor: '#27272A' }]}>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => setActiveModal(null)}
-                  style={ms.sheetBackBtn}
+                  style={[ms.sheetBackBtn, isDark && { backgroundColor: '#27272A' }]}
                 >
-                  <Icon name="chevronLeft" size={18} color={C.ink}/>
+                  <Icon name="chevronLeft" size={18} color={colors.ink}/>
                 </TouchableOpacity>
-                <Text style={ms.sheetHeaderTitle}>Select Language</Text>
+                <Text style={[ms.sheetHeaderTitle, isDark && { color: colors.ink }]}>Select Language</Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => setActiveModal(null)}
-                  style={ms.sheetCloseBtnRelative}
+                  style={[ms.sheetCloseBtnRelative, isDark && { backgroundColor: '#27272A' }]}
                 >
-                  <Icon name="x" size={16} color={C.ink}/>
+                  <Icon name="x" size={16} color={colors.ink}/>
                 </TouchableOpacity>
               </View>
 
@@ -609,7 +608,7 @@ export function SettingsScreen({
                 contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 32}}
                 showsVerticalScrollIndicator={false}
               >
-                <Text style={[ms.bodySm, {marginBottom: 14}]}>
+                <Text style={[ms.bodySm, {marginBottom: 14}, isDark && { color: colors.muted }]}>
                   Choose your preferred interface language.
                 </Text>
 
@@ -624,20 +623,31 @@ export function SettingsScreen({
                         setActiveModal(null);
                         notify(`✓ Language set to ${item.name}`);
                       }}
-                      style={[ms.optionRow, isSelected && ms.optionRowActive]}
+                      style={[
+                        ms.optionRow,
+                        isSelected && ms.optionRowActive,
+                        isDark && {
+                          backgroundColor: isSelected ? '#2E1065' : '#27272A',
+                          borderColor: isSelected ? colors.primary : '#3F3F46',
+                        },
+                      ]}
                     >
                       <View style={{flex: 1}}>
-                        <Text style={[ms.optionTitle, isSelected && ms.optionTitleActive]}>
+                        <Text style={[
+                          ms.optionTitle,
+                          isSelected && ms.optionTitleActive,
+                          isDark && { color: isSelected ? colors.primary : colors.ink },
+                        ]}>
                           {item.name}
                         </Text>
-                        <Text style={ms.optionDesc}>{item.native}</Text>
+                        <Text style={[ms.optionDesc, isDark && { color: colors.muted }]}>{item.native}</Text>
                       </View>
                       {isSelected ? (
-                        <View style={ms.checkCircle}>
+                        <View style={[ms.checkCircle, { backgroundColor: colors.primary }]}>
                           <Icon name="check" size={14} color="#fff"/>
                         </View>
                       ) : (
-                        <View style={ms.uncheckCircle}/>
+                        <View style={[ms.uncheckCircle, isDark && { borderColor: '#52525B', backgroundColor: '#18181B' }]}/>
                       )}
                     </TouchableOpacity>
                   );
@@ -926,23 +936,23 @@ export function SettingsScreen({
       {activeModal === 'autolock' && (
         <Modal visible transparent animationType="slide">
           <View style={ms.sheetScrim}>
-            <View style={ms.sheet}>
-              <View style={ms.handle}/>
-              <View style={ms.sheetHeaderBar}>
+            <View style={[ms.sheet, isDark && { backgroundColor: '#18181B' }]}>
+              <View style={[ms.handle, isDark && { backgroundColor: '#3F3F46' }]}/>
+              <View style={[ms.sheetHeaderBar, isDark && { borderBottomColor: '#27272A' }]}>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => setActiveModal(null)}
-                  style={ms.sheetBackBtn}
+                  style={[ms.sheetBackBtn, isDark && { backgroundColor: '#27272A' }]}
                 >
-                  <Icon name="chevronLeft" size={18} color={C.ink}/>
+                  <Icon name="chevronLeft" size={18} color={colors.ink}/>
                 </TouchableOpacity>
-                <Text style={ms.sheetHeaderTitle}>Auto-Lock Duration</Text>
+                <Text style={[ms.sheetHeaderTitle, isDark && { color: colors.ink }]}>Auto-Lock Duration</Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => setActiveModal(null)}
-                  style={ms.sheetCloseBtnRelative}
+                  style={[ms.sheetCloseBtnRelative, isDark && { backgroundColor: '#27272A' }]}
                 >
-                  <Icon name="x" size={16} color={C.ink}/>
+                  <Icon name="x" size={16} color={colors.ink}/>
                 </TouchableOpacity>
               </View>
 
@@ -950,7 +960,7 @@ export function SettingsScreen({
                 contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 32}}
                 showsVerticalScrollIndicator={false}
               >
-                <Text style={[ms.bodySm, {marginBottom: 14}]}>
+                <Text style={[ms.bodySm, {marginBottom: 14}, isDark && { color: colors.muted }]}>
                   Automatically require PIN / Biometric unlock when inactive.
                 </Text>
 
@@ -967,17 +977,28 @@ export function SettingsScreen({
                         await securityService.setAutoLockMinutes(mins);
                         notify(`Auto-lock set to ${opt.label}`);
                       }}
-                      style={[ms.optionRow, isSelected && ms.optionRowActive]}
+                      style={[
+                        ms.optionRow,
+                        isSelected && ms.optionRowActive,
+                        isDark && {
+                          backgroundColor: isSelected ? '#2E1065' : '#27272A',
+                          borderColor: isSelected ? colors.primary : '#3F3F46',
+                        },
+                      ]}
                     >
-                      <Text style={[ms.optionTitle, isSelected && ms.optionTitleActive]}>
+                      <Text style={[
+                        ms.optionTitle,
+                        isSelected && ms.optionTitleActive,
+                        isDark && { color: isSelected ? colors.primary : colors.ink },
+                      ]}>
                         {opt.label}
                       </Text>
                       {isSelected ? (
-                        <View style={ms.checkCircle}>
+                        <View style={[ms.checkCircle, { backgroundColor: colors.primary }]}>
                           <Icon name="check" size={14} color="#fff"/>
                         </View>
                       ) : (
-                        <View style={ms.uncheckCircle}/>
+                        <View style={[ms.uncheckCircle, isDark && { borderColor: '#52525B', backgroundColor: '#18181B' }]}/>
                       )}
                     </TouchableOpacity>
                   );
@@ -994,23 +1015,23 @@ export function SettingsScreen({
       {activeModal === 'help' && (
         <Modal visible transparent animationType="slide">
           <View style={ms.sheetScrim}>
-            <View style={ms.sheet}>
-              <View style={ms.handle}/>
-              <View style={ms.sheetHeaderBar}>
+            <View style={[ms.sheet, isDark && { backgroundColor: '#18181B' }]}>
+              <View style={[ms.handle, isDark && { backgroundColor: '#3F3F46' }]}/>
+              <View style={[ms.sheetHeaderBar, isDark && { borderBottomColor: '#27272A' }]}>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => setActiveModal(null)}
-                  style={ms.sheetBackBtn}
+                  style={[ms.sheetBackBtn, isDark && { backgroundColor: '#27272A' }]}
                 >
-                  <Icon name="chevronLeft" size={18} color={C.ink}/>
+                  <Icon name="chevronLeft" size={18} color={colors.ink}/>
                 </TouchableOpacity>
-                <Text style={ms.sheetHeaderTitle}>Help & Support</Text>
+                <Text style={[ms.sheetHeaderTitle, isDark && { color: colors.ink }]}>Help & Support</Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => setActiveModal(null)}
-                  style={ms.sheetCloseBtnRelative}
+                  style={[ms.sheetCloseBtnRelative, isDark && { backgroundColor: '#27272A' }]}
                 >
-                  <Icon name="x" size={16} color={C.ink}/>
+                  <Icon name="x" size={16} color={colors.ink}/>
                 </TouchableOpacity>
               </View>
 
@@ -1018,36 +1039,36 @@ export function SettingsScreen({
                 contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 36}}
                 showsVerticalScrollIndicator={false}
               >
-                <Text style={[ms.bodySm, {marginBottom: 16}]}>
+                <Text style={[ms.bodySm, {marginBottom: 16}, isDark && { color: colors.muted }]}>
                   Find quick answers to common questions or reach out directly to the Devify team.
                 </Text>
 
                 {/* FAQ 1 */}
-                <View style={{backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0'}}>
-                  <Text style={{fontFamily: 'Inter', fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4}}>
+                <View style={[{backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0'}, isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46' }]}>
+                  <Text style={[{fontFamily: 'Inter', fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4}, isDark && { color: colors.ink }]}>
                     How do I scan guest IDs?
                   </Text>
-                  <Text style={{fontFamily: 'Inter', fontSize: 13, color: '#475569', lineHeight: 18}}>
+                  <Text style={[{fontFamily: 'Inter', fontSize: 13, color: '#475569', lineHeight: 18}, isDark && { color: colors.muted }]}>
                     Tap the purple Camera button at the bottom navigation, select the document type (Aadhaar, Passport, DL, etc.), and align the ID in the frame.
                   </Text>
                 </View>
 
                 {/* FAQ 2 */}
-                <View style={{backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0'}}>
-                  <Text style={{fontFamily: 'Inter', fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4}}>
+                <View style={[{backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0'}, isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46' }]}>
+                  <Text style={[{fontFamily: 'Inter', fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4}, isDark && { color: colors.ink }]}>
                     Does live sync work offline?
                   </Text>
-                  <Text style={{fontFamily: 'Inter', fontSize: 13, color: '#475569', lineHeight: 18}}>
+                  <Text style={[{fontFamily: 'Inter', fontSize: 13, color: '#475569', lineHeight: 18}, isDark && { color: colors.muted }]}>
                     Yes! You can check in guests offline. Records are stored locally and automatically synchronized across devices once internet is restored.
                   </Text>
                 </View>
 
                 {/* FAQ 3 */}
-                <View style={{backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0'}}>
-                  <Text style={{fontFamily: 'Inter', fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4}}>
+                <View style={[{backgroundColor: '#F8FAFC', borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0'}, isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46' }]}>
+                  <Text style={[{fontFamily: 'Inter', fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 4}, isDark && { color: colors.ink }]}>
                     How do guests self check-in?
                   </Text>
-                  <Text style={{fontFamily: 'Inter', fontSize: 13, color: '#475569', lineHeight: 18}}>
+                  <Text style={[{fontFamily: 'Inter', fontSize: 13, color: '#475569', lineHeight: 18}, isDark && { color: colors.muted }]}>
                     From the Dashboard, tap "Share" on the Self check-in card to send a WhatsApp or SMS link to guests prior to their arrival.
                   </Text>
                 </View>

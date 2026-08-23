@@ -13,6 +13,7 @@ import {
 import {CameraView, useCameraPermissions} from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import {C, R} from '../theme/tokens';
+import {useTheme} from '../theme/ThemeContext';
 import {Icon, IconName} from '../components/Icon';
 import {PrimaryButton, SecondaryButton} from '../components/Ui';
 
@@ -41,6 +42,7 @@ export function ScannerScreen({
   onWeb: () => void;
   onScanned?: (guestData: any) => void;
 }) {
+  const {isDark, colors} = useTheme();
   const [doc, setDoc] = useState<DocId>('auto');
   const [flashOn, setFlashOn] = useState(false);
   const [facing, setFacing] = useState<'back' | 'front'>('back');
@@ -117,16 +119,24 @@ export function ScannerScreen({
         key={t.id}
         activeOpacity={0.75}
         onPress={() => setDoc(t.id)}
-        style={[s.docCard, active && s.docCardActive]}
+        style={[
+          s.docCard,
+          isDark && {backgroundColor: '#18181B', borderColor: '#27272A'},
+          active && (isDark ? {borderColor: colors.primary, backgroundColor: '#2E1065'} : s.docCardActive),
+        ]}
       >
         <Icon
           name={t.icon}
           size={21}
-          color={active ? C.ink : '#6a6a6a'}
+          color={active ? (isDark ? colors.primary : C.ink) : (isDark ? colors.muted : '#6a6a6a')}
           strokeWidth={1.8}
         />
         <Text
-          style={[s.docLabel, active && s.docLabelActive]}
+          style={[
+            s.docLabel,
+            isDark && {color: colors.muted},
+            active && (isDark ? {color: '#FFFFFF', fontWeight: '700'} : s.docLabelActive),
+          ]}
           numberOfLines={2}
         >
           {t.label}
@@ -137,18 +147,18 @@ export function ScannerScreen({
 
   return (
     <ScrollView
-      style={{flex: 1, backgroundColor: '#fff'}}
+      style={{flex: 1, backgroundColor: colors.canvas}}
       contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 126}}
       showsVerticalScrollIndicator={false}
     >
       {/* Page header */}
       <View style={{paddingTop: 18}}>
-        <Text style={s.h1}>Check-in</Text>
-        <Text style={s.sub}>Scan an ID to auto-fill guest details, or enter manually</Text>
+        <Text style={[s.h1, {color: colors.ink}]}>Check-in</Text>
+        <Text style={[s.sub, {color: colors.muted}]}>Scan an ID to auto-fill guest details, or enter manually</Text>
       </View>
 
       {/* DOCUMENT TYPE section header */}
-      <Text style={s.sectionLabel}>DOCUMENT TYPE</Text>
+      <Text style={[s.sectionLabel, {color: colors.muted}]}>DOCUMENT TYPE</Text>
 
       {/* Document Type Cards — 2 rows of 3 equal sized cards matching web view & ss */}
       <View style={s.docGridContainer}>
@@ -161,7 +171,7 @@ export function ScannerScreen({
       </View>
 
       {/* SCAN DOCUMENT label */}
-      <Text style={[s.sectionLabel, {marginTop: 22}]}>SCAN DOCUMENT</Text>
+      <Text style={[s.sectionLabel, {marginTop: 22, color: colors.muted}]}>SCAN DOCUMENT</Text>
 
       {/* Viewfinder — Exact match to screenshot */}
       <View style={s.viewfinder}>
@@ -245,26 +255,32 @@ export function ScannerScreen({
 
       {/* OR divider */}
       <View style={s.orRow}>
-        <View style={s.orLine}/>
-        <Text style={s.orText}>OR</Text>
-        <View style={s.orLine}/>
+        <View style={[s.orLine, isDark && {backgroundColor: '#27272A'}]}/>
+        <Text style={[s.orText, {color: colors.muted}]}>OR</Text>
+        <View style={[s.orLine, isDark && {backgroundColor: '#27272A'}]}/>
       </View>
 
       <SecondaryButton label="Enter details manually" icon="edit" onPress={onManual}/>
 
       {/* Web self check-ins card */}
-      <TouchableOpacity style={s.webCard} activeOpacity={0.8} onPress={onWeb}>
+      <TouchableOpacity
+        style={[s.webCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}
+        activeOpacity={0.8}
+        onPress={onWeb}
+      >
         <View style={s.webCardRow}>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0}}>
-            <View style={s.webIcon}><Icon name="qr" size={17} color={C.ink}/></View>
+            <View style={[s.webIcon, isDark && {backgroundColor: '#27272A'}]}>
+              <Icon name="qr" size={17} color={colors.ink}/>
+            </View>
             <View style={{flex: 1}}>
-              <Text style={s.webTitle}>Web self check-ins</Text>
-              <Text style={s.webSub}>2 pending · share QR or link with guests</Text>
+              <Text style={[s.webTitle, {color: colors.ink}]}>Web self check-ins</Text>
+              <Text style={[s.webSub, {color: colors.muted}]}>2 pending · share QR or link with guests</Text>
             </View>
           </View>
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-            <Icon name="share" size={16} color={C.muted}/>
-            <Icon name="chevronRight" size={18} color={C.muted}/>
+            <Icon name="share" size={16} color={colors.muted}/>
+            <Icon name="chevronRight" size={18} color={colors.muted}/>
           </View>
         </View>
       </TouchableOpacity>

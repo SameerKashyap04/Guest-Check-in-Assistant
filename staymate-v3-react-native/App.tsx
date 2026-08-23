@@ -556,12 +556,12 @@ function MainApp() {
       {modal && (
         <Modal visible transparent animationType="fade">
           <View style={ms.scrim}>
-            <View style={ms.modalCard}>
-              <View style={ms.modalIcon}>
-                <Icon name="shield" size={23} color={C.primary}/>
+            <View style={[ms.modalCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A', borderWidth: 1 }]}>
+              <View style={[ms.modalIcon, isDark && { backgroundColor: '#2E1065' }]}>
+                <Icon name="shield" size={23} color={colors.primary}/>
               </View>
-              <Text style={ms.modalTitle}>{modal.title}</Text>
-              <Text style={ms.modalText}>{modal.text}</Text>
+              <Text style={[ms.modalTitle, isDark && { color: colors.ink }]}>{modal.title}</Text>
+              <Text style={[ms.modalText, isDark && { color: colors.muted }]}>{modal.text}</Text>
               <View style={{flexDirection: 'row', gap: 10}}>
                 <SecondaryButton
                   label="Cancel"
@@ -667,6 +667,7 @@ function RoomSheet({
   onCheckin: () => void;
   onViewGuest: (id: any, guest?: any) => void;
 }) {
+  const { isDark, colors } = useTheme();
   const activeGuest = guests.find((g) => g.room === room.num && (g.status === 'active' || (!g.status && !g.checkedOut)));
   const lastGuest = guests.find((g) => g.room === room.num && (g.status === 'checked_out' || g.checkedOut));
   const m = STATUS_META[room.status as RoomStatus] || STATUS_META.available;
@@ -679,29 +680,29 @@ function RoomSheet({
       {/* Header */}
       <View style={[ms.guestHeaderRow, {justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10}]}>
         <View style={{flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1}}>
-          <View style={[ms.roomSheetBed, {backgroundColor: '#F7F3FF'}]}>
-            <Icon name="bed" size={26} color={C.primary}/>
+          <View style={[ms.roomSheetBed, {backgroundColor: isDark ? '#2E1065' : '#F7F3FF'}]}>
+            <Icon name="bed" size={26} color={colors.primary}/>
           </View>
           <View style={{flex: 1}}>
             <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingRight: 8}}>
-              <Text style={ms.roomSheetTitle}>Room {room.num}</Text>
+              <Text style={[ms.roomSheetTitle, {color: colors.ink}]}>Room {room.num}</Text>
               <View style={[ms.statusPillBadge, {backgroundColor: m.bg, borderColor: m.color}]}>
                 <Icon name={room.status === 'available' ? 'check' : 'info'} size={10} color={m.color}/>
                 <Text style={[ms.statusPillBadgeText, {color: m.color}]}>{m.label}</Text>
               </View>
             </View>
-            <Text style={ms.bodySm}>
+            <Text style={[ms.bodySm, {color: colors.muted}]}>
               {room.type} · ₹{room.price.toLocaleString('en-IN')}/night{room.floor ? ` · ${room.floor}` : ''}
             </Text>
           </View>
         </View>
-        <TouchableOpacity activeOpacity={0.8} onPress={onClose} style={ms.sheetBackBtn}>
-          <Icon name="x" size={16} color={C.ink}/>
+        <TouchableOpacity activeOpacity={0.8} onPress={onClose} style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}>
+          <Icon name="x" size={16} color={colors.ink}/>
         </TouchableOpacity>
       </View>
 
       {/* Quick status switcher */}
-      <Text style={[ms.sectionCaption, {marginTop: 14, marginBottom: 8}]}>CHANGE STATUS</Text>
+      <Text style={[ms.sectionCaption, {marginTop: 14, marginBottom: 8, color: colors.muted}]}>CHANGE STATUS</Text>
       <View style={{flexDirection: 'row', gap: 6, flexWrap: 'wrap'}}>
         {(['available', 'occupied', 'cleaning', 'maintenance'] as const).map((st) => {
           const meta = STATUS_META[st];
@@ -713,6 +714,7 @@ function RoomSheet({
               onPress={() => onUpdateStatus(st)}
               style={[
                 ms.statusOptionBtn,
+                isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
                 isSelected && {backgroundColor: meta.bg, borderColor: meta.color, borderWidth: 1.5},
               ]}
             >
@@ -728,59 +730,59 @@ function RoomSheet({
       {/* Status-specific banners and Active Guest Info */}
       {room.status === 'occupied' && activeGuest ? (
         <View style={{marginTop: 18}}>
-          <Text style={ms.sectionCaption}>CURRENT OCCUPANT</Text>
-          <View style={ms.occupantCard}>
-            <View style={ms.avatar}>
-              <Text style={ms.avatarText}>
+          <Text style={[ms.sectionCaption, {color: colors.muted}]}>CURRENT OCCUPANT</Text>
+          <View style={[ms.occupantCard, isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'}]}>
+            <View style={[ms.avatar, isDark && {backgroundColor: '#2E1065'}]}>
+              <Text style={[ms.avatarText, isDark && {color: colors.primary}]}>
                 {activeGuest.name.split(' ').map((n: string) => n[0]).join('')}
               </Text>
             </View>
             <View style={{flex: 1, minWidth: 0}}>
-              <Text style={ms.titleSm}>{activeGuest.name}</Text>
-              <Text style={ms.bodySm}>
+              <Text style={[ms.titleSm, {color: colors.ink}]}>{activeGuest.name}</Text>
+              <Text style={[ms.bodySm, {color: colors.muted}]}>
                 {activeGuest.type} · Checked in {activeGuest.time}
               </Text>
-              <Text style={[ms.bodySm, {color: '#222222', marginTop: 2}]}>{activeGuest.phone}</Text>
+              <Text style={[ms.bodySm, {color: colors.ink, marginTop: 2}]}>{activeGuest.phone}</Text>
             </View>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => onViewGuest(activeGuest.id, activeGuest)}
-              style={ms.viewGuestPill}
+              style={[ms.viewGuestPill, isDark && {backgroundColor: '#2E1065'}]}
             >
-              <Text style={ms.viewGuestPillText}>Profile</Text>
+              <Text style={[ms.viewGuestPillText, isDark && {color: colors.primary}]}>Profile</Text>
             </TouchableOpacity>
           </View>
         </View>
       ) : room.status === 'cleaning' ? (
         <View style={{marginTop: 18}}>
-          <Text style={ms.sectionCaption}>HOUSEKEEPING</Text>
-          <View style={[ms.readyCard, {backgroundColor: '#FFFBEB', borderColor: '#FDE68A'}]}>
+          <Text style={[ms.sectionCaption, {color: colors.muted}]}>HOUSEKEEPING</Text>
+          <View style={[ms.readyCard, {backgroundColor: isDark ? '#451A03' : '#FFFBEB', borderColor: isDark ? '#78350F' : '#FDE68A'}]}>
             <Icon name="info" size={18} color="#D97706"/>
             <View style={{flex: 1}}>
-              <Text style={[ms.readyTitle, {color: '#92400E'}]}>Housekeeping in Progress</Text>
-              <Text style={[ms.readySub, {color: '#B45309'}]}>Room is being cleaned and sanitized for the next guest.</Text>
+              <Text style={[ms.readyTitle, {color: isDark ? '#FDE68A' : '#92400E'}]}>Housekeeping in Progress</Text>
+              <Text style={[ms.readySub, {color: isDark ? '#FCD34D' : '#B45309'}]}>Room is being cleaned and sanitized for the next guest.</Text>
             </View>
           </View>
         </View>
       ) : room.status === 'maintenance' ? (
         <View style={{marginTop: 18}}>
-          <Text style={ms.sectionCaption}>MAINTENANCE NOTICE</Text>
-          <View style={[ms.readyCard, {backgroundColor: '#FEF2F2', borderColor: '#FECACA'}]}>
+          <Text style={[ms.sectionCaption, {color: colors.muted}]}>MAINTENANCE NOTICE</Text>
+          <View style={[ms.readyCard, {backgroundColor: isDark ? '#450A0A' : '#FEF2F2', borderColor: isDark ? '#7F1D1D' : '#FECACA'}]}>
             <Icon name="info" size={18} color="#DC2626"/>
             <View style={{flex: 1}}>
-              <Text style={[ms.readyTitle, {color: '#991B1B'}]}>Under Maintenance</Text>
-              <Text style={[ms.readySub, {color: '#B91C1C'}]}>Inspection or repair required before assigning to guests.</Text>
+              <Text style={[ms.readyTitle, {color: isDark ? '#FECACA' : '#991B1B'}]}>Under Maintenance</Text>
+              <Text style={[ms.readySub, {color: isDark ? '#FCA5A5' : '#B91C1C'}]}>Inspection or repair required before assigning to guests.</Text>
             </View>
           </View>
         </View>
       ) : (
         <View style={{marginTop: 18}}>
-          <Text style={ms.sectionCaption}>ROOM STATUS</Text>
-          <View style={ms.readyCard}>
-            <Icon name="check" size={18} color="#059669"/>
+          <Text style={[ms.sectionCaption, {color: colors.muted}]}>ROOM STATUS</Text>
+          <View style={[ms.readyCard, isDark && {backgroundColor: '#064E3B', borderColor: '#047857'}]}>
+            <Icon name="check" size={18} color="#10B981"/>
             <View style={{flex: 1}}>
-              <Text style={ms.readyTitle}>Ready for Check-in</Text>
-              <Text style={ms.readySub}>Cleaned, inspected and available for guest assignment.</Text>
+              <Text style={[ms.readyTitle, isDark && {color: '#A7F3D0'}]}>Ready for Check-in</Text>
+              <Text style={[ms.readySub, isDark && {color: '#6EE7B7'}]}>Cleaned, inspected and available for guest assignment.</Text>
             </View>
           </View>
         </View>
@@ -789,33 +791,33 @@ function RoomSheet({
       {/* Previous Occupant Record (if room is not occupied and has previous guest) */}
       {room.status !== 'occupied' && lastGuest ? (
         <View style={{marginTop: 14}}>
-          <Text style={ms.sectionCaption}>LAST CHECKED-OUT OCCUPANT</Text>
-          <View style={[ms.occupantCard, {backgroundColor: '#F8FAFC', borderColor: '#E2E8F0'}]}>
-            <View style={[ms.avatar, {backgroundColor: '#E2E8F0'}]}>
-              <Text style={[ms.avatarText, {color: '#475569'}]}>
+          <Text style={[ms.sectionCaption, {color: colors.muted}]}>LAST CHECKED-OUT OCCUPANT</Text>
+          <View style={[ms.occupantCard, {backgroundColor: isDark ? '#27272A' : '#F8FAFC', borderColor: isDark ? '#3F3F46' : '#E2E8F0'}]}>
+            <View style={[ms.avatar, {backgroundColor: isDark ? '#3F3F46' : '#E2E8F0'}]}>
+              <Text style={[ms.avatarText, {color: colors.muted}]}>
                 {lastGuest.name.split(' ').map((n: string) => n[0]).join('')}
               </Text>
             </View>
             <View style={{flex: 1, minWidth: 0}}>
-              <Text style={ms.titleSm}>{lastGuest.name}</Text>
-              <Text style={ms.bodySm}>
+              <Text style={[ms.titleSm, {color: colors.ink}]}>{lastGuest.name}</Text>
+              <Text style={[ms.bodySm, {color: colors.muted}]}>
                 Checked out: {lastGuest.checkOut || 'Recently'}
               </Text>
-              <Text style={[ms.bodySm, {color: '#64748B', marginTop: 2}]}>{lastGuest.phone || lastGuest.idNum}</Text>
+              <Text style={[ms.bodySm, {color: colors.muted, marginTop: 2}]}>{lastGuest.phone || lastGuest.idNum}</Text>
             </View>
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => onViewGuest(lastGuest.id)}
-              style={[ms.viewGuestPill, {backgroundColor: '#EDE9FE'}]}
+              style={[ms.viewGuestPill, {backgroundColor: isDark ? '#2E1065' : '#EDE9FE'}]}
             >
-              <Text style={[ms.viewGuestPillText, {color: C.primary}]}>View Profile</Text>
+              <Text style={[ms.viewGuestPillText, {color: colors.primary}]}>View Profile</Text>
             </TouchableOpacity>
           </View>
         </View>
       ) : null}
 
       {/* Room Details Table */}
-      <View style={[ms.metaCard, {marginTop: 16}]}>
+      <View style={[ms.metaCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}, {marginTop: 16}]}>
         {([
           ['Room Category', room.type],
           ['Base Nightly Rate', `₹${room.price.toLocaleString('en-IN')} / night`],
@@ -827,11 +829,12 @@ function RoomSheet({
             key={label}
             style={[
               ms.metaRow,
+              isDark && {borderBottomColor: '#27272A'},
               idx === arr.length - 1 && {borderBottomWidth: 0},
             ]}
           >
-            <Text style={ms.metaLabel}>{label}</Text>
-            <Text style={ms.metaValue}>{val}</Text>
+            <Text style={[ms.metaLabel, isDark && {color: colors.muted}]}>{label}</Text>
+            <Text style={[ms.metaValue, isDark && {color: colors.ink}]}>{val}</Text>
           </View>
         ))}
       </View>
@@ -945,6 +948,7 @@ function GuestSheet({
   onToast: (msg: string) => void;
   onClose: () => void;
 }) {
+  const { isDark, colors } = useTheme();
   const g = guestObj 
     || guests.find((x) => String(x.id) === String(id)) 
     || GUESTS.find((x) => String(x.id) === String(id)) 
@@ -1032,47 +1036,47 @@ function GuestSheet({
         showsVerticalScrollIndicator={false}
       >
         {/* Navigation Header */}
-        <View style={ms.sheetHeaderBar}>
+        <View style={[ms.sheetHeaderBar, isDark && {borderBottomColor: '#27272A'}]}>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => setShowFullDetails(false)}
-            style={ms.sheetBackBtn}
+            style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}
           >
-            <Icon name="chevronLeft" size={18} color={C.ink}/>
+            <Icon name="chevronLeft" size={18} color={colors.ink}/>
           </TouchableOpacity>
-          <Text style={ms.sheetHeaderTitle}>Full Guest Details</Text>
+          <Text style={[ms.sheetHeaderTitle, isDark && {color: colors.ink}]}>Full Guest Details</Text>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={onClose}
-            style={ms.sheetBackBtn}
+            style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}
           >
-            <Icon name="x" size={16} color={C.ink}/>
+            <Icon name="x" size={16} color={colors.ink}/>
           </TouchableOpacity>
         </View>
 
         {/* Guest Name & Status Card */}
-        <View style={[ms.card, {padding: 14, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 12}]}>
-          <View style={ms.avatarLarge}>
-            <Text style={ms.avatarLargeText}>
+        <View style={[ms.card, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}, {padding: 14, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 12}]}>
+          <View style={[ms.avatarLarge, isDark && {backgroundColor: '#2E1065'}]}>
+            <Text style={[ms.avatarLargeText, isDark && {color: colors.primary}]}>
               {g.name ? g.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'GS'}
             </Text>
           </View>
           <View style={{flex: 1}}>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-              <Text style={[ms.titleMd, {fontSize: 16, fontWeight: '700'}]}>{g.name}</Text>
+              <Text style={[ms.titleMd, isDark && {color: colors.ink}, {fontSize: 16, fontWeight: '700'}]}>{g.name}</Text>
               {g.verified ? <Icon name="check" size={15} color={C.emerald}/> : null}
             </View>
-            <Text style={[ms.bodySm, {marginTop: 2, color: C.primary, fontWeight: '600'}]}>
+            <Text style={[ms.bodySm, {marginTop: 2, color: colors.primary, fontWeight: '600'}]}>
               Room {g.room} · {g.roomType || 'Standard'}
             </Text>
-            <Text style={[ms.bodySm, {marginTop: 1}]}>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}, {marginTop: 1}]}>
               {g.verified ? 'Verified Registration' : 'Pending Verification'}
             </Text>
           </View>
         </View>
 
         {/* ALL DOCUMENT IMAGES SECTION */}
-        <Text style={[ms.sectionCaption, {marginTop: 16, marginBottom: 8}]}>
+        <Text style={[ms.sectionCaption, isDark && {color: colors.muted}, {marginTop: 16, marginBottom: 8}]}>
           {'DOCUMENT & VERIFICATION IMAGES'}
         </Text>
         
@@ -1083,11 +1087,12 @@ function GuestSheet({
             onPress={() => setPhotoTab('front')}
             style={[
               ms.chipLight,
+              isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
               {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6},
-              photoTab === 'front' && {backgroundColor: C.primary, borderColor: C.primary},
+              photoTab === 'front' && {backgroundColor: colors.primary, borderColor: colors.primary},
             ]}
           >
-            <Text style={photoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+            <Text style={photoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : [ms.chipLightText, isDark && {color: colors.muted}]}>
               Front ID
             </Text>
           </TouchableOpacity>
@@ -1096,11 +1101,12 @@ function GuestSheet({
             onPress={() => setPhotoTab('back')}
             style={[
               ms.chipLight,
+              isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
               {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6},
-              photoTab === 'back' && {backgroundColor: C.primary, borderColor: C.primary},
+              photoTab === 'back' && {backgroundColor: colors.primary, borderColor: colors.primary},
             ]}
           >
-            <Text style={photoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+            <Text style={photoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : [ms.chipLightText, isDark && {color: colors.muted}]}>
               Back ID
             </Text>
           </TouchableOpacity>
@@ -1109,11 +1115,12 @@ function GuestSheet({
             onPress={() => setPhotoTab('selfie')}
             style={[
               ms.chipLight,
+              isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
               {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6},
-              photoTab === 'selfie' && {backgroundColor: C.primary, borderColor: C.primary},
+              photoTab === 'selfie' && {backgroundColor: colors.primary, borderColor: colors.primary},
             ]}
           >
-            <Text style={photoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+            <Text style={photoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : [ms.chipLightText, isDark && {color: colors.muted}]}>
               Live Selfie
             </Text>
           </TouchableOpacity>
@@ -1121,7 +1128,7 @@ function GuestSheet({
 
         {/* Active Photo Container */}
         {currentPhoto ? (
-          <View style={{borderRadius: 14, overflow: 'hidden', height: 200, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+          <View style={[{borderRadius: 14, overflow: 'hidden', height: 200, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
             <Image source={{ uri: currentPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
             <View style={{position: 'absolute', bottom: 6, left: 8, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5}}>
               <Text style={{color: '#FFFFFF', fontSize: 10, fontWeight: '700'}}>
@@ -1130,108 +1137,108 @@ function GuestSheet({
             </View>
           </View>
         ) : (
-          <View style={{padding: 24, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center', minHeight: 160}}>
-            <Icon name="image" size={24} color="#94A3B8" />
-            <Text style={[ms.titleSm, {marginTop: 6, color: '#475569'}]}>
+          <View style={[{padding: 24, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center', minHeight: 160}, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
+            <Icon name="image" size={24} color={colors.muted} />
+            <Text style={[ms.titleSm, isDark && {color: colors.ink}, {marginTop: 6}]}>
               {photoTab === 'front' ? 'No Front ID Photo' : photoTab === 'back' ? 'No Back ID Photo' : 'No Live Selfie Photo'}
             </Text>
-            <Text style={[ms.bodySm, {color: '#94A3B8', marginTop: 2, textAlign: 'center'}]}>
+            <Text style={[ms.bodySm, {color: colors.muted, marginTop: 2, textAlign: 'center'}]}>
               {photoTab === 'back' ? 'Back side ID not attached' : photoTab === 'selfie' ? 'Live selfie photo not attached' : 'Front ID not attached'}
             </Text>
           </View>
         )}
 
         {/* Complete Identification Card */}
-        <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
+        <Text style={[ms.sectionCaption, isDark && {color: colors.muted}, {marginTop: 18, marginBottom: 8}]}>
           PRIMARY IDENTITY DETAILS
         </Text>
-        <View style={[ms.card, {padding: 12, gap: 8}]}>
+        <View style={[ms.card, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}, {padding: 12, gap: 8}]}>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Full Legal Name</Text>
-            <Text style={[ms.titleSm, {fontWeight: '700'}]}>{g.name}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Full Legal Name</Text>
+            <Text style={[ms.titleSm, isDark && {color: colors.ink}, {fontWeight: '700'}]}>{g.name}</Text>
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Document Type</Text>
-            <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>{g.type || 'Aadhaar Card'}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Document Type</Text>
+            <Text style={[ms.titleSm, {color: colors.primary, fontWeight: '700'}]}>{g.type || 'Aadhaar Card'}</Text>
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Document ID Number</Text>
-            <Text style={[ms.titleSm, {fontFamily: 'monospace', fontWeight: '700', color: '#0F172A'}]}>{g.idNum || '4821 9012 3456'}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Document ID Number</Text>
+            <Text style={[ms.titleSm, {fontFamily: 'monospace', fontWeight: '700', color: colors.ink}]}>{g.idNum || '4821 9012 3456'}</Text>
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Nationality</Text>
-            <Text style={ms.titleSm}>{g.nat || 'Indian'}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Nationality</Text>
+            <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{g.nat || 'Indian'}</Text>
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Gender</Text>
-            <Text style={ms.titleSm}>{g.gender || '—'}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Gender</Text>
+            <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{g.gender || '—'}</Text>
           </View>
           {g.dob ? (
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Date of Birth</Text>
-              <Text style={ms.titleSm}>{g.dob}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Date of Birth</Text>
+              <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{g.dob}</Text>
             </View>
           ) : null}
         </View>
 
         {/* Contact & Address Card */}
-        <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
+        <Text style={[ms.sectionCaption, isDark && {color: colors.muted}, {marginTop: 18, marginBottom: 8}]}>
           CONTACT & RESIDENTIAL ADDRESS
         </Text>
-        <View style={[ms.card, {padding: 12, gap: 8}]}>
+        <View style={[ms.card, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}, {padding: 12, gap: 8}]}>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Mobile Phone</Text>
-            <Text style={[ms.titleSm, {fontWeight: '700', color: C.primary}]}>{g.phone || '—'}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Mobile Phone</Text>
+            <Text style={[ms.titleSm, {fontWeight: '700', color: colors.primary}]}>{g.phone || '—'}</Text>
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Email Address</Text>
-            <Text style={ms.titleSm}>{g.email || '—'}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Email Address</Text>
+            <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{g.email || '—'}</Text>
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Permanent Address</Text>
-            <Text style={[ms.titleSm, {flex: 1, textAlign: 'right', marginLeft: 16}]}>{g.address || '—'}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Permanent Address</Text>
+            <Text style={[ms.titleSm, isDark && {color: colors.ink}, {flex: 1, textAlign: 'right', marginLeft: 16}]}>{g.address || '—'}</Text>
           </View>
         </View>
 
         {/* Stay & Room Card */}
-        <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
+        <Text style={[ms.sectionCaption, isDark && {color: colors.muted}, {marginTop: 18, marginBottom: 8}]}>
           STAY & ROOM ACCOMMODATION
         </Text>
-        <View style={[ms.card, {padding: 12, gap: 8}]}>
+        <View style={[ms.card, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}, {padding: 12, gap: 8}]}>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Assigned Room</Text>
-            <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>Room {g.room}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Assigned Room</Text>
+            <Text style={[ms.titleSm, {color: colors.primary, fontWeight: '700'}]}>Room {g.room}</Text>
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Room Category</Text>
-            <Text style={ms.titleSm}>{g.roomType || 'Standard'}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Room Category</Text>
+            <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{g.roomType || 'Standard'}</Text>
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Check-in Date & Time</Text>
-            <Text style={[ms.titleSm, {color: '#059669', fontWeight: '700'}]}>{g.checkIn || (g.time ? `20 Aug 2026, ${g.time}` : '20 Aug 2026, 09:42 AM')}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Check-in Date & Time</Text>
+            <Text style={[ms.titleSm, {color: '#10B981', fontWeight: '700'}]}>{g.checkIn || (g.time ? `20 Aug 2026, ${g.time}` : '20 Aug 2026, 09:42 AM')}</Text>
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Check-out Date & Time</Text>
-            <Text style={[ms.titleSm, {color: '#64748B', fontWeight: '700'}]}>{g.checkOut || 'Active Stay'}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Check-out Date & Time</Text>
+            <Text style={[ms.titleSm, isDark && {color: colors.muted}, {fontWeight: '700'}]}>{g.checkOut || 'Active Stay'}</Text>
           </View>
         </View>
 
         {/* Co-Guests Section */}
         {g.additionalGuests && g.additionalGuests.length > 0 && (
           <View style={{marginTop: 16}}>
-            <Text style={[ms.sectionCaption, {marginBottom: 8}]}>
+            <Text style={[ms.sectionCaption, isDark && {color: colors.muted}, {marginBottom: 8}]}>
               ACCOMPANYING CO-GUESTS ({g.additionalGuests.length})
             </Text>
             {g.additionalGuests.map((cg: any, idx: number) => (
-              <View key={idx} style={[ms.card, {marginBottom: 8, padding: 12}]}>
+              <View key={idx} style={[ms.card, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}, {marginBottom: 8, padding: 12}]}>
                 <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                  <Text style={[ms.titleSm, {fontWeight: '700'}]}>{cg.full_name || cg.name || cg.fullName}</Text>
-                  <View style={ms.badgeSoft}>
-                    <Text style={ms.badgeSoftText}>{cg.relation || 'Co-Guest'}</Text>
+                  <Text style={[ms.titleSm, isDark && {color: colors.ink}, {fontWeight: '700'}]}>{cg.full_name || cg.name || cg.fullName}</Text>
+                  <View style={[ms.badgeSoft, isDark && {backgroundColor: '#2E1065'}]}>
+                    <Text style={[ms.badgeSoftText, isDark && {color: colors.primary}]}>{cg.relation || 'Co-Guest'}</Text>
                   </View>
                 </View>
-                <Text style={[ms.bodySm, {marginTop: 4}]}>
-                  {cg.id_type || cg.idType || 'ID'}: <Text style={{fontFamily: 'monospace', fontWeight: '600'}}>{cg.id_number || cg.idNumber || '—'}</Text>
+                <Text style={[ms.bodySm, isDark && {color: colors.muted}, {marginTop: 4}]}>
+                  {cg.id_type || cg.idType || 'ID'}: <Text style={[{fontFamily: 'monospace', fontWeight: '600'}, isDark && {color: colors.ink}]}>{cg.id_number || cg.idNumber || '—'}</Text>
                 </Text>
               </View>
             ))}
@@ -1266,23 +1273,23 @@ function GuestSheet({
       {/* Guest header with integrated Close button */}
       <View style={[ms.guestHeaderRow, {justifyContent: 'space-between', marginBottom: 10}]}>
         <View style={{flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1}}>
-          <View style={ms.avatarLarge}>
-            <Text style={ms.avatarLargeText}>
+          <View style={[ms.avatarLarge, isDark && {backgroundColor: '#2E1065'}]}>
+            <Text style={[ms.avatarLargeText, isDark && {color: colors.primary}]}>
               {g.name ? g.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'GS'}
             </Text>
           </View>
           <View style={{flex: 1}}>
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-              <Text style={ms.titleMd}>{g.name}</Text>
+              <Text style={[ms.titleMd, isDark && {color: colors.ink}]}>{g.name}</Text>
               {g.verified ? <Icon name="check" size={15} color={C.emerald}/> : null}
             </View>
-            <Text style={ms.bodySm}>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>
               {g.verified ? 'Verified registration' : 'Awaiting verification'} · Room {g.room}
             </Text>
           </View>
         </View>
-        <TouchableOpacity activeOpacity={0.8} onPress={onClose} style={ms.sheetBackBtn}>
-          <Icon name="x" size={16} color={C.ink}/>
+        <TouchableOpacity activeOpacity={0.8} onPress={onClose} style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}>
+          <Icon name="x" size={16} color={colors.ink}/>
         </TouchableOpacity>
       </View>
 
@@ -1294,11 +1301,12 @@ function GuestSheet({
             onPress={() => setPhotoTab('front')}
             style={[
               ms.chipLight,
+              isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
               {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5},
-              photoTab === 'front' && {backgroundColor: C.primary, borderColor: C.primary},
+              photoTab === 'front' && {backgroundColor: colors.primary, borderColor: colors.primary},
             ]}
           >
-            <Text style={photoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : ms.chipLightText}>
+            <Text style={photoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : [ms.chipLightText, isDark && {color: colors.muted}]}>
               Front ID
             </Text>
           </TouchableOpacity>
@@ -1307,11 +1315,12 @@ function GuestSheet({
             onPress={() => setPhotoTab('back')}
             style={[
               ms.chipLight,
+              isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
               {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5},
-              photoTab === 'back' && {backgroundColor: C.primary, borderColor: C.primary},
+              photoTab === 'back' && {backgroundColor: colors.primary, borderColor: colors.primary},
             ]}
           >
-            <Text style={photoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : ms.chipLightText}>
+            <Text style={photoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : [ms.chipLightText, isDark && {color: colors.muted}]}>
               Back ID
             </Text>
           </TouchableOpacity>
@@ -1320,11 +1329,12 @@ function GuestSheet({
             onPress={() => setPhotoTab('selfie')}
             style={[
               ms.chipLight,
+              isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
               {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5},
-              photoTab === 'selfie' && {backgroundColor: C.primary, borderColor: C.primary},
+              photoTab === 'selfie' && {backgroundColor: colors.primary, borderColor: colors.primary},
             ]}
           >
-            <Text style={photoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : ms.chipLightText}>
+            <Text style={photoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : [ms.chipLightText, isDark && {color: colors.muted}]}>
               Live Photo
             </Text>
           </TouchableOpacity>
@@ -1333,7 +1343,7 @@ function GuestSheet({
 
       {/* Photo / ID Section (Compact height 135) */}
       {currentPhoto ? (
-        <View style={{borderRadius: 14, overflow: 'hidden', height: 135, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+        <View style={[{borderRadius: 14, overflow: 'hidden', height: 135, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
           <Image source={{ uri: currentPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
           <View style={{position: 'absolute', bottom: 6, left: 8, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5}}>
             <Text style={{color: '#FFFFFF', fontSize: 10, fontWeight: '700'}}>
@@ -1342,13 +1352,13 @@ function GuestSheet({
           </View>
         </View>
       ) : (
-        <View style={{marginVertical: 6, padding: 10, backgroundColor: '#FAF8FD', borderRadius: 12, borderWidth: 1, borderColor: '#ECEAF0', flexDirection: 'row', alignItems: 'center', gap: 10}}>
-          <View style={{width: 34, height: 34, borderRadius: 17, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center'}}>
-            <Icon name="shield" size={16} color={C.primary} />
+        <View style={[{marginVertical: 6, padding: 10, backgroundColor: '#FAF8FD', borderRadius: 12, borderWidth: 1, borderColor: '#ECEAF0', flexDirection: 'row', alignItems: 'center', gap: 10}, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
+          <View style={[{width: 34, height: 34, borderRadius: 17, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center'}, isDark && {backgroundColor: '#2E1065'}]}>
+            <Icon name="shield" size={16} color={colors.primary} />
           </View>
           <View style={{flex: 1}}>
-            <Text style={[ms.titleSm, {fontSize: 13}]}>{g.type || 'ID Card'} Verified</Text>
-            <Text style={ms.bodySm}>{g.idNum || 'Verified on Registration'}</Text>
+            <Text style={[ms.titleSm, isDark && {color: colors.ink}, {fontSize: 13}]}>{g.type || 'ID Card'} Verified</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>{g.idNum || 'Verified on Registration'}</Text>
           </View>
         </View>
       )}
@@ -1363,25 +1373,25 @@ function GuestSheet({
           paddingVertical: 10,
           paddingHorizontal: 12,
           borderRadius: 10,
-          backgroundColor: '#F3E8FF',
+          backgroundColor: isDark ? '#2E1065' : '#F3E8FF',
           borderWidth: 1,
-          borderColor: '#E9D5FF',
+          borderColor: isDark ? '#4C1D95' : '#E9D5FF',
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'space-between',
         }}
       >
         <View style={{flexDirection: 'row', alignItems: 'center', gap: 7}}>
-          <Icon name="file" size={15} color={C.primary} />
-          <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '700', color: C.primary}}>
+          <Icon name="file" size={15} color={colors.primary} />
+          <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '700', color: colors.primary}}>
             {'View Full Guest & Document Details'}
           </Text>
         </View>
-        <Icon name="chevronRight" size={15} color={C.primary} />
+        <Icon name="chevronRight" size={15} color={colors.primary} />
       </TouchableOpacity>
 
       {/* Details table */}
-      <View style={ms.metaCard}>
+      <View style={[ms.metaCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
         {([
           ['Stay Status', (g.status === 'checked_out' || g.checkedOut) ? 'Checked Out (Saved in Ledger)' : 'Active Stay'],
           ['Room', `${g.room} · ${g.roomType || 'Standard'}`],
@@ -1395,13 +1405,15 @@ function GuestSheet({
             key={label}
             style={[
               ms.metaRow,
+              isDark && {borderBottomColor: '#27272A'},
               idx === arr.length - 1 && {borderBottomWidth: 0},
             ]}
           >
-            <Text style={ms.metaLabel}>{label}</Text>
+            <Text style={[ms.metaLabel, isDark && {color: colors.muted}]}>{label}</Text>
             <Text style={[
               ms.metaValue,
-              label === 'Stay Status' && ((g.status === 'checked_out' || g.checkedOut) ? {color: '#64748B', fontWeight: '700'} : {color: '#059669', fontWeight: '700'}),
+              isDark && {color: colors.ink},
+              label === 'Stay Status' && ((g.status === 'checked_out' || g.checkedOut) ? {color: colors.muted, fontWeight: '700'} : {color: '#10B981', fontWeight: '700'}),
             ]}>{val}</Text>
           </View>
         ))}
@@ -1418,11 +1430,11 @@ function GuestSheet({
             onToast('Opening guest editor');
           }}
         />
-        <PrimaryButton
-          label="Contact"
-          icon="phone"
+        <SecondaryButton
+          label="Share ID"
+          icon="share"
           style={{flex: 1}}
-          onPress={handleContact}
+          onPress={() => onToast('Guest document link copied')}
         />
       </View>
     </ScrollView>
@@ -1444,6 +1456,7 @@ function SelfCheckins({
   onToast: (msg: string) => void;
   onClose?: () => void;
 }) {
+  const { isDark, colors } = useTheme();
   const [reviewGuest, setReviewGuest] = useState<any | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -1756,15 +1769,15 @@ function SelfCheckins({
           showsVerticalScrollIndicator={false}
         >
           {/* Navigation Header */}
-          <View style={ms.sheetHeaderBar}>
+          <View style={[ms.sheetHeaderBar, isDark && {borderBottomColor: '#27272A'}]}>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => setShowReviewFullDetails(false)}
-              style={ms.sheetBackBtn}
+              style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}
             >
-              <Icon name="chevronLeft" size={18} color={C.ink}/>
+              <Icon name="chevronLeft" size={18} color={colors.ink}/>
             </TouchableOpacity>
-            <Text style={ms.sheetHeaderTitle}>Full Submission Details</Text>
+            <Text style={[ms.sheetHeaderTitle, isDark && {color: colors.ink}]}>Full Submission Details</Text>
             <TouchableOpacity
               activeOpacity={0.7}
               onPress={() => {
@@ -1772,32 +1785,32 @@ function SelfCheckins({
                 setReviewGuest(null);
                 if (onClose) onClose();
               }}
-              style={ms.sheetBackBtn}
+              style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}
             >
-              <Icon name="x" size={16} color={C.ink}/>
+              <Icon name="x" size={16} color={colors.ink}/>
             </TouchableOpacity>
           </View>
 
           {/* Guest Name & Status Card */}
-          <View style={[ms.card, {padding: 14, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 12}]}>
-            <View style={ms.avatarLarge}>
-              <Text style={ms.avatarLargeText}>
+          <View style={[ms.card, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}, {padding: 14, marginTop: 4, flexDirection: 'row', alignItems: 'center', gap: 12}]}>
+            <View style={[ms.avatarLarge, isDark && {backgroundColor: '#2E1065'}]}>
+              <Text style={[ms.avatarLargeText, isDark && {color: colors.primary}]}>
                 {reviewGuest.name ? reviewGuest.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'GS'}
               </Text>
             </View>
             <View style={{flex: 1}}>
-              <Text style={[ms.titleMd, {fontSize: 16, fontWeight: '700'}]}>{reviewGuest.name}</Text>
-              <Text style={[ms.bodySm, {marginTop: 2, color: C.primary, fontWeight: '600'}]}>
+              <Text style={[ms.titleMd, isDark && {color: colors.ink}, {fontSize: 16, fontWeight: '700'}]}>{reviewGuest.name}</Text>
+              <Text style={[ms.bodySm, {marginTop: 2, color: colors.primary, fontWeight: '600'}]}>
                 Assigned Room {reviewGuest.room}
               </Text>
-              <Text style={[ms.bodySm, {marginTop: 1}]}>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}, {marginTop: 1}]}>
                 Submitted online · {reviewGuest.submitted || 'Just now'}
               </Text>
             </View>
           </View>
 
           {/* ALL DOCUMENT IMAGES SECTION */}
-          <Text style={[ms.sectionCaption, {marginTop: 16, marginBottom: 8}]}>
+          <Text style={[ms.sectionCaption, isDark && {color: colors.muted}, {marginTop: 16, marginBottom: 8}]}>
             {'DOCUMENT & VERIFICATION IMAGES'}
           </Text>
           
@@ -1808,11 +1821,12 @@ function SelfCheckins({
               onPress={() => setReviewPhotoTab('front')}
               style={[
                 ms.chipLight,
+                isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
                 {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6},
-                reviewPhotoTab === 'front' && {backgroundColor: C.primary, borderColor: C.primary},
+                reviewPhotoTab === 'front' && {backgroundColor: colors.primary, borderColor: colors.primary},
               ]}
             >
-              <Text style={reviewPhotoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+              <Text style={reviewPhotoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : [ms.chipLightText, isDark && {color: colors.muted}]}>
                 Front ID
               </Text>
             </TouchableOpacity>
@@ -1821,11 +1835,12 @@ function SelfCheckins({
               onPress={() => setReviewPhotoTab('back')}
               style={[
                 ms.chipLight,
+                isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
                 {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6},
-                reviewPhotoTab === 'back' && {backgroundColor: C.primary, borderColor: C.primary},
+                reviewPhotoTab === 'back' && {backgroundColor: colors.primary, borderColor: colors.primary},
               ]}
             >
-              <Text style={reviewPhotoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+              <Text style={reviewPhotoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : [ms.chipLightText, isDark && {color: colors.muted}]}>
                 Back ID
               </Text>
             </TouchableOpacity>
@@ -1834,11 +1849,12 @@ function SelfCheckins({
               onPress={() => setReviewPhotoTab('selfie')}
               style={[
                 ms.chipLight,
+                isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
                 {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 6},
-                reviewPhotoTab === 'selfie' && {backgroundColor: C.primary, borderColor: C.primary},
+                reviewPhotoTab === 'selfie' && {backgroundColor: colors.primary, borderColor: colors.primary},
               ]}
             >
-              <Text style={reviewPhotoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : ms.chipLightText}>
+              <Text style={reviewPhotoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11.5} : [ms.chipLightText, isDark && {color: colors.muted}]}>
                 Live Selfie
               </Text>
             </TouchableOpacity>
@@ -1846,7 +1862,7 @@ function SelfCheckins({
 
           {/* Active Photo Container */}
           {currentReviewPhoto ? (
-            <View style={{borderRadius: 14, overflow: 'hidden', height: 200, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+            <View style={[{borderRadius: 14, overflow: 'hidden', height: 200, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
               <Image source={{ uri: currentReviewPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
               <View style={{position: 'absolute', bottom: 6, left: 8, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5}}>
                 <Text style={{color: '#FFFFFF', fontSize: 10, fontWeight: '700'}}>
@@ -1855,104 +1871,104 @@ function SelfCheckins({
               </View>
             </View>
           ) : (
-            <View style={{padding: 24, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center', minHeight: 180}}>
-              <Icon name="image" size={24} color="#94A3B8" />
-              <Text style={[ms.titleSm, {marginTop: 6, color: '#475569'}]}>
+            <View style={[{padding: 24, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center', minHeight: 180}, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
+              <Icon name="image" size={24} color={colors.muted} />
+              <Text style={[ms.titleSm, isDark && {color: colors.ink}, {marginTop: 6}]}>
                 {reviewPhotoTab === 'front' ? 'No Front ID Photo' : reviewPhotoTab === 'back' ? 'No Back ID Photo' : 'No Live Selfie Photo'}
               </Text>
-              <Text style={[ms.bodySm, {color: '#94A3B8', marginTop: 2, textAlign: 'center'}]}>
+              <Text style={[ms.bodySm, {color: colors.muted, marginTop: 2, textAlign: 'center'}]}>
                 {reviewPhotoTab === 'back' ? 'Guest did not attach a back-side ID image' : reviewPhotoTab === 'selfie' ? 'Guest did not attach a live selfie photo' : 'No ID document attached'}
               </Text>
             </View>
           )}
 
           {/* Primary Identity Details Card */}
-          <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
+          <Text style={[ms.sectionCaption, isDark && {color: colors.muted}, {marginTop: 18, marginBottom: 8}]}>
             PRIMARY IDENTITY DETAILS
           </Text>
-          <View style={[ms.card, {padding: 12, gap: 8}]}>
+          <View style={[ms.card, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}, {padding: 12, gap: 8}]}>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Full Legal Name</Text>
-              <Text style={[ms.titleSm, {fontWeight: '700'}]}>{reviewGuest.name}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Full Legal Name</Text>
+              <Text style={[ms.titleSm, isDark && {color: colors.ink}, {fontWeight: '700'}]}>{reviewGuest.name}</Text>
             </View>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Document Details</Text>
-              <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>{reviewGuest.doc || reviewGuest.idType || 'Aadhaar'}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Document Details</Text>
+              <Text style={[ms.titleSm, {color: colors.primary, fontWeight: '700'}]}>{reviewGuest.doc || reviewGuest.idType || 'Aadhaar'}</Text>
             </View>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Document ID Number</Text>
-              <Text style={[ms.titleSm, {fontFamily: 'monospace', fontWeight: '700', color: '#0F172A'}]}>{reviewGuest.idNum || reviewGuest.idNumber || reviewGuest.doc || '4821 9012 3456'}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Document ID Number</Text>
+              <Text style={[ms.titleSm, {fontFamily: 'monospace', fontWeight: '700', color: colors.ink}]}>{reviewGuest.idNum || reviewGuest.idNumber || reviewGuest.doc || '4821 9012 3456'}</Text>
             </View>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Nationality</Text>
-              <Text style={ms.titleSm}>{reviewGuest.nationality || reviewGuest.nat || 'Indian'}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Nationality</Text>
+              <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{reviewGuest.nationality || reviewGuest.nat || 'Indian'}</Text>
             </View>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Gender</Text>
-              <Text style={ms.titleSm}>{reviewGuest.gender || '—'}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Gender</Text>
+              <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{reviewGuest.gender || '—'}</Text>
             </View>
             {reviewGuest.dob ? (
               <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-                <Text style={ms.bodySm}>Date of Birth</Text>
-                <Text style={ms.titleSm}>{reviewGuest.dob}</Text>
+                <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Date of Birth</Text>
+                <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{reviewGuest.dob}</Text>
               </View>
             ) : null}
           </View>
 
           {/* Contact & Address Card */}
-          <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
+          <Text style={[ms.sectionCaption, isDark && {color: colors.muted}, {marginTop: 18, marginBottom: 8}]}>
             CONTACT & RESIDENTIAL ADDRESS
           </Text>
-          <View style={[ms.card, {padding: 12, gap: 8}]}>
+          <View style={[ms.card, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}, {padding: 12, gap: 8}]}>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Mobile Phone</Text>
-              <Text style={[ms.titleSm, {fontWeight: '700', color: C.primary}]}>{reviewGuest.phone || '—'}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Mobile Phone</Text>
+              <Text style={[ms.titleSm, {fontWeight: '700', color: colors.primary}]}>{reviewGuest.phone || '—'}</Text>
             </View>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Email Address</Text>
-              <Text style={ms.titleSm}>{reviewGuest.email || '—'}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Email Address</Text>
+              <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{reviewGuest.email || '—'}</Text>
             </View>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Permanent Address</Text>
-              <Text style={[ms.titleSm, {flex: 1, textAlign: 'right', marginLeft: 16}]}>{reviewGuest.address || '—'}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Permanent Address</Text>
+              <Text style={[ms.titleSm, isDark && {color: colors.ink}, {flex: 1, textAlign: 'right', marginLeft: 16}]}>{reviewGuest.address || '—'}</Text>
             </View>
           </View>
 
           {/* Stay & Room Card */}
-          <Text style={[ms.sectionCaption, {marginTop: 18, marginBottom: 8}]}>
+          <Text style={[ms.sectionCaption, isDark && {color: colors.muted}, {marginTop: 18, marginBottom: 8}]}>
             STAY & ROOM SELECTION
           </Text>
-          <View style={[ms.card, {padding: 12, gap: 8}]}>
+          <View style={[ms.card, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}, {padding: 12, gap: 8}]}>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Selected Room</Text>
-              <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>Room {reviewGuest.room}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Selected Room</Text>
+              <Text style={[ms.titleSm, {color: colors.primary, fontWeight: '700'}]}>Room {reviewGuest.room}</Text>
             </View>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Check-in Date</Text>
-              <Text style={[ms.titleSm, {color: '#059669', fontWeight: '700'}]}>{reviewGuest.checkInDate || '20 Aug 2026'}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Check-in Date</Text>
+              <Text style={[ms.titleSm, {color: '#10B981', fontWeight: '700'}]}>{reviewGuest.checkInDate || '20 Aug 2026'}</Text>
             </View>
             <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-              <Text style={ms.bodySm}>Check-out Date</Text>
-              <Text style={[ms.titleSm, {color: '#64748B', fontWeight: '700'}]}>{reviewGuest.checkOutDate || '23 Aug 2026'}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Check-out Date</Text>
+              <Text style={[ms.titleSm, isDark && {color: colors.muted}, {fontWeight: '700'}]}>{reviewGuest.checkOutDate || '23 Aug 2026'}</Text>
             </View>
           </View>
 
           {/* Co-Guests Section */}
           {reviewGuest.additionalGuests && reviewGuest.additionalGuests.length > 0 && (
             <View style={{marginTop: 16}}>
-              <Text style={[ms.sectionCaption, {marginBottom: 8}]}>
+              <Text style={[ms.sectionCaption, isDark && {color: colors.muted}, {marginBottom: 8}]}>
                 ACCOMPANYING CO-GUESTS ({reviewGuest.additionalGuests.length})
               </Text>
               {reviewGuest.additionalGuests.map((cg: any, idx: number) => (
-                <View key={idx} style={[ms.card, {marginBottom: 8, padding: 12}]}>
+                <View key={idx} style={[ms.card, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}, {marginBottom: 8, padding: 12}]}>
                   <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
-                    <Text style={[ms.titleSm, {fontWeight: '700'}]}>{cg.full_name || cg.name || cg.fullName}</Text>
-                    <View style={ms.badgeSoft}>
-                      <Text style={ms.badgeSoftText}>{cg.relation || 'Co-Guest'}</Text>
+                    <Text style={[ms.titleSm, isDark && {color: colors.ink}, {fontWeight: '700'}]}>{cg.full_name || cg.name || cg.fullName}</Text>
+                    <View style={[ms.badgeSoft, isDark && {backgroundColor: '#2E1065'}]}>
+                      <Text style={[ms.badgeSoftText, isDark && {color: colors.primary}]}>{cg.relation || 'Co-Guest'}</Text>
                     </View>
                   </View>
-                  <Text style={[ms.bodySm, {marginTop: 4}]}>
-                    {cg.id_type || cg.idType || 'ID'}: <Text style={{fontFamily: 'monospace', fontWeight: '600'}}>{cg.id_number || cg.idNumber || '—'}</Text>
+                  <Text style={[ms.bodySm, isDark && {color: colors.muted}, {marginTop: 4}]}>
+                    {cg.id_type || cg.idType || 'ID'}: <Text style={[{fontFamily: 'monospace', fontWeight: '600'}, isDark && {color: colors.ink}]}>{cg.id_number || cg.idNumber || '—'}</Text>
                   </Text>
                 </View>
               ))}
@@ -1990,21 +2006,21 @@ function SelfCheckins({
         showsVerticalScrollIndicator={false}
       >
         {/* Navigation Header */}
-        <View style={ms.sheetHeaderBar}>
+        <View style={[ms.sheetHeaderBar, isDark && {borderBottomColor: '#27272A'}]}>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => setReviewGuest(null)}
-            style={ms.sheetBackBtn}
+            style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}
           >
-            <Icon name="chevronLeft" size={18} color={C.ink}/>
+            <Icon name="chevronLeft" size={18} color={colors.ink}/>
           </TouchableOpacity>
-          <Text style={ms.sheetHeaderTitle}>Review Submission</Text>
+          <Text style={[ms.sheetHeaderTitle, isDark && {color: colors.ink}]}>Review Submission</Text>
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={onClose || (() => setReviewGuest(null))}
-            style={ms.sheetBackBtn}
+            style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}
           >
-            <Icon name="x" size={16} color={C.ink}/>
+            <Icon name="x" size={16} color={colors.ink}/>
           </TouchableOpacity>
         </View>
 
@@ -2016,11 +2032,12 @@ function SelfCheckins({
               onPress={() => setReviewPhotoTab('front')}
               style={[
                 ms.chipLight,
+                isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
                 {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5},
-                reviewPhotoTab === 'front' && {backgroundColor: C.primary, borderColor: C.primary},
+                reviewPhotoTab === 'front' && {backgroundColor: colors.primary, borderColor: colors.primary},
               ]}
             >
-              <Text style={reviewPhotoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : ms.chipLightText}>
+              <Text style={reviewPhotoTab === 'front' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : [ms.chipLightText, isDark && {color: colors.muted}]}>
                 Front ID
               </Text>
             </TouchableOpacity>
@@ -2029,11 +2046,12 @@ function SelfCheckins({
               onPress={() => setReviewPhotoTab('back')}
               style={[
                 ms.chipLight,
+                isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
                 {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5},
-                reviewPhotoTab === 'back' && {backgroundColor: C.primary, borderColor: C.primary},
+                reviewPhotoTab === 'back' && {backgroundColor: colors.primary, borderColor: colors.primary},
               ]}
             >
-              <Text style={reviewPhotoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : ms.chipLightText}>
+              <Text style={reviewPhotoTab === 'back' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : [ms.chipLightText, isDark && {color: colors.muted}]}>
                 Back ID
               </Text>
             </TouchableOpacity>
@@ -2042,11 +2060,12 @@ function SelfCheckins({
               onPress={() => setReviewPhotoTab('selfie')}
               style={[
                 ms.chipLight,
+                isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
                 {flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 5},
-                reviewPhotoTab === 'selfie' && {backgroundColor: C.primary, borderColor: C.primary},
+                reviewPhotoTab === 'selfie' && {backgroundColor: colors.primary, borderColor: colors.primary},
               ]}
             >
-              <Text style={reviewPhotoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : ms.chipLightText}>
+              <Text style={reviewPhotoTab === 'selfie' ? {color: '#FFFFFF', fontWeight: '700', fontSize: 11} : [ms.chipLightText, isDark && {color: colors.muted}]}>
                 Live Selfie
               </Text>
             </TouchableOpacity>
@@ -2055,7 +2074,7 @@ function SelfCheckins({
 
         {/* Photo Display with proper framing (Compact 135px height) */}
         {currentReviewPhoto ? (
-          <View style={{borderRadius: 14, overflow: 'hidden', height: 135, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
+          <View style={[{borderRadius: 14, overflow: 'hidden', height: 135, backgroundColor: '#FAF8FD', borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
             <Image source={{ uri: currentReviewPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
             <View style={{position: 'absolute', bottom: 6, left: 8, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5}}>
               <Text style={{color: '#FFFFFF', fontSize: 10, fontWeight: '700'}}>
@@ -2064,9 +2083,9 @@ function SelfCheckins({
             </View>
           </View>
         ) : (
-          <View style={{padding: 16, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center', height: 135}}>
-            <Icon name="image" size={20} color="#94A3B8" />
-            <Text style={[ms.bodySm, {color: '#64748B', marginTop: 4, fontWeight: '600'}]}>
+          <View style={[{padding: 16, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center', height: 135}, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
+            <Icon name="image" size={20} color={colors.muted} />
+            <Text style={[ms.bodySm, {color: colors.muted, marginTop: 4, fontWeight: '600'}]}>
               {reviewPhotoTab === 'front' ? 'No Front ID Photo' : reviewPhotoTab === 'back' ? 'No Back ID Photo' : 'No Live Selfie Photo'}
             </Text>
           </View>
@@ -2082,40 +2101,40 @@ function SelfCheckins({
             paddingVertical: 10,
             paddingHorizontal: 12,
             borderRadius: 10,
-            backgroundColor: '#F3E8FF',
+            backgroundColor: isDark ? '#2E1065' : '#F3E8FF',
             borderWidth: 1,
-            borderColor: '#E9D5FF',
+            borderColor: isDark ? '#4C1D95' : '#E9D5FF',
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}
         >
           <View style={{flexDirection: 'row', alignItems: 'center', gap: 7}}>
-            <Icon name="file" size={15} color={C.primary} />
-            <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '700', color: C.primary}}>
+            <Icon name="file" size={15} color={colors.primary} />
+            <Text style={{fontFamily: 'Inter', fontSize: 12.5, fontWeight: '700', color: colors.primary}}>
               {'View Full Guest & Document Details'}
             </Text>
           </View>
-          <Icon name="chevronRight" size={15} color={C.primary} />
+          <Icon name="chevronRight" size={15} color={colors.primary} />
         </TouchableOpacity>
 
         {/* Quick Details Card */}
-        <View style={[ms.card, {padding: 12, gap: 8}]}>
+        <View style={[ms.card, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}, {padding: 12, gap: 8}]}>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Full Name</Text>
-            <Text style={[ms.titleSm, {fontWeight: '700'}]}>{reviewGuest.name}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Full Name</Text>
+            <Text style={[ms.titleSm, isDark && {color: colors.ink}, {fontWeight: '700'}]}>{reviewGuest.name}</Text>
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Assigned Room</Text>
-            <Text style={[ms.titleSm, {color: C.primary, fontWeight: '700'}]}>Room {reviewGuest.room}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Assigned Room</Text>
+            <Text style={[ms.titleSm, {color: colors.primary, fontWeight: '700'}]}>Room {reviewGuest.room}</Text>
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Document</Text>
-            <Text style={ms.titleSm}>{reviewGuest.doc}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Document</Text>
+            <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{reviewGuest.doc}</Text>
           </View>
           <View style={{flexDirection: 'row', justifyContent: 'space-between'}}>
-            <Text style={ms.bodySm}>Phone</Text>
-            <Text style={ms.titleSm}>{reviewGuest.phone} {reviewGuest.additionalGuests?.length ? `· +${reviewGuest.additionalGuests.length} Co-Guest` : ''}</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Phone</Text>
+            <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{reviewGuest.phone} {reviewGuest.additionalGuests?.length ? `· +${reviewGuest.additionalGuests.length} Co-Guest` : ''}</Text>
           </View>
         </View>
 
@@ -2191,91 +2210,40 @@ function SelfCheckins({
         <Text
           style={{
             fontFamily: 'Inter',
-            fontSize: 13,
+            fontSize: 13.5,
             color: '#64748B',
-            marginBottom: 18,
+            marginBottom: 20,
             textAlign: 'center',
           }}
         >
-          Scan with your phone camera to register & check in online
+          Scan with your phone camera for instant digital registration
         </Text>
 
         <View
           style={{
-            padding: 14,
-            backgroundColor: '#FAF5FF',
+            backgroundColor: '#FFFFFF',
             borderWidth: 2,
-            borderStyle: 'dashed',
-            borderColor: '#7C3AED',
+            borderColor: '#E9D5FF',
             borderRadius: 20,
+            padding: 16,
             alignItems: 'center',
-            marginBottom: 16,
+            justifyContent: 'center',
+            marginBottom: 20,
+            shadowColor: '#7C3AED',
+            shadowOpacity: 0.15,
+            shadowRadius: 20,
+            shadowOffset: { width: 0, height: 6 },
+            elevation: 4,
           }}
         >
           <Image
             source={{ uri: qrImageUrl }}
-            style={{ width: 200, height: 200, borderRadius: 10 }}
+            style={{ width: 220, height: 220, borderRadius: 12 }}
             resizeMode="contain"
           />
-          <Text
-            style={{
-              fontFamily: 'Inter',
-              fontSize: 12,
-              fontWeight: '800',
-              color: '#7C3AED',
-              marginTop: 8,
-              letterSpacing: 1,
-            }}
-          >
-            PROPERTY ID: HS-4821
-          </Text>
         </View>
 
-        <View
-          style={{
-            backgroundColor: '#F1F5F9',
-            padding: 10,
-            borderRadius: 10,
-            width: '100%',
-            marginBottom: 18,
-            alignItems: 'center',
-          }}
-        >
-          <Text
-            style={{
-              fontFamily: 'Inter',
-              fontSize: 10,
-              fontWeight: '800',
-              color: '#475569',
-              marginBottom: 2,
-            }}
-          >
-            CHECK-IN LINK:
-          </Text>
-          <Text
-            style={{
-              fontFamily: 'Inter',
-              fontSize: 11,
-              fontWeight: '700',
-              color: '#7C3AED',
-              textAlign: 'center',
-            }}
-            numberOfLines={2}
-          >
-            {shareUrl}
-          </Text>
-        </View>
-
-        <View
-          style={{
-            flexDirection: 'row',
-            width: '100%',
-            borderTopWidth: 1,
-            borderTopColor: '#E2E8F0',
-            paddingTop: 16,
-            justifyContent: 'space-around',
-          }}
-        >
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', paddingHorizontal: 10 }}>
           <View style={{ alignItems: 'center', flex: 1 }}>
             <View
               style={{
@@ -2333,10 +2301,6 @@ function SelfCheckins({
             </Text>
           </View>
         </View>
-
-        <Text style={{ fontSize: 10, color: '#94A3B8', marginTop: 16 }}>
-          Powered by StayMate · Fast & Secure Digital Check-in
-        </Text>
       </View>
 
       <ScrollView
@@ -2346,31 +2310,31 @@ function SelfCheckins({
         {/* Header with Close Button */}
         <View style={{flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12}}>
           <View style={{flex: 1, paddingRight: 8}}>
-            <Text style={ms.displayMd}>Web self check-ins</Text>
-            <Text style={[ms.bodySm, {marginTop: 3}]}>
+            <Text style={[ms.displayMd, isDark && {color: colors.ink}]}>Web self check-ins</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}, {marginTop: 3}]}>
               Share the QR or link, then review and approve guest details in real time.
             </Text>
           </View>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={onClose}
-            style={ms.sheetBackBtn}
+            style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}
           >
-            <Icon name="x" size={16} color={C.ink}/>
+            <Icon name="x" size={16} color={colors.ink}/>
           </TouchableOpacity>
         </View>
 
         {/* QR Card */}
-        <View style={ms.qrCard}>
-          <View style={[ms.qrBox, {backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: '#E9D5FF', padding: 8}]}>
+        <View style={[ms.qrCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
+          <View style={[ms.qrBox, {backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: isDark ? '#4C1D95' : '#E9D5FF', padding: 8}]}>
             <Image
               source={{ uri: qrImageUrl }}
               style={{ width: 140, height: 140, borderRadius: 8 }}
               resizeMode="contain"
             />
           </View>
-          <Text style={ms.titleSm}>Guest self check-in link</Text>
-          <Text style={[ms.bodySm, {marginTop: 4, textAlign: 'center', fontSize: 12, color: C.primary}]} numberOfLines={2}>
+          <Text style={[ms.titleSm, isDark && {color: colors.ink}, {marginTop: 8}]}>Guest self check-in link</Text>
+          <Text style={[ms.bodySm, {marginTop: 4, textAlign: 'center', fontSize: 12, color: colors.primary}]} numberOfLines={2}>
             {shareUrl}
           </Text>
 
@@ -2395,9 +2359,9 @@ function SelfCheckins({
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handleShareWhatsApp}
-              style={{paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#ECFDF5', borderRadius: 8}}
+              style={{paddingVertical: 6, paddingHorizontal: 10, backgroundColor: isDark ? '#064E3B' : '#ECFDF5', borderRadius: 8}}
             >
-              <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: '#059669'}}>
+              <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: isDark ? '#34D399' : '#059669'}}>
                 WhatsApp Invite →
               </Text>
             </TouchableOpacity>
@@ -2405,9 +2369,9 @@ function SelfCheckins({
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handleOpenBrowser}
-              style={{paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#FAF5FF', borderRadius: 8}}
+              style={{paddingVertical: 6, paddingHorizontal: 10, backgroundColor: isDark ? '#2E1065' : '#FAF5FF', borderRadius: 8}}
             >
-              <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: C.primary}}>
+              <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: colors.primary}}>
                 Open Web Form →
               </Text>
             </TouchableOpacity>
@@ -2415,9 +2379,9 @@ function SelfCheckins({
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handlePrintStandee}
-              style={{paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#F3F4F6', borderRadius: 8}}
+              style={{paddingVertical: 6, paddingHorizontal: 10, backgroundColor: isDark ? '#27272A' : '#F3F4F6', borderRadius: 8}}
             >
-              <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: '#4B5563'}}>
+              <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: isDark ? '#D1D5DB' : '#4B5563'}}>
                 Print Reception PDF
               </Text>
             </TouchableOpacity>
@@ -2427,39 +2391,39 @@ function SelfCheckins({
         {/* Pending approvals */}
         <View style={ms.pendingHead}>
           <View>
-            <Text style={ms.titleMd}>Pending approvals</Text>
-            <Text style={ms.bodySm}>Review guest information before check-in.</Text>
+            <Text style={[ms.titleMd, isDark && {color: colors.ink}]}>Pending approvals</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>Review guest information before check-in.</Text>
           </View>
-          <View style={ms.badgePurple}>
-            <Text style={ms.badgePurpleText}>{pendingList.length} pending</Text>
+          <View style={[ms.badgePurple, isDark && {backgroundColor: '#2E1065'}]}>
+            <Text style={[ms.badgePurpleText, isDark && {color: colors.primary}]}>{pendingList.length} pending</Text>
           </View>
         </View>
 
         {pendingList.length === 0 ? (
           <View style={{ paddingVertical: 24, alignItems: 'center' }}>
             <Icon name="check" size={28} color={C.emerald} />
-            <Text style={[ms.titleSm, { marginTop: 8 }]}>All check-ins processed!</Text>
-            <Text style={[ms.bodySm, { marginTop: 2 }]}>Share your QR code with new arriving guests.</Text>
+            <Text style={[ms.titleSm, isDark && {color: colors.ink}, { marginTop: 8 }]}>All check-ins processed!</Text>
+            <Text style={[ms.bodySm, isDark && {color: colors.muted}, { marginTop: 2 }]}>Share your QR code with new arriving guests.</Text>
           </View>
         ) : (
           pendingList.map((g) => (
-            <View key={g.id} style={ms.pendingCard}>
+            <View key={g.id} style={[ms.pendingCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
               <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center'}}>
                 <View style={{minWidth: 0}}>
-                  <Text style={ms.titleSm}>{g.name}</Text>
-                  <Text style={ms.bodySm}>
+                  <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{g.name}</Text>
+                  <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>
                     Room {g.room} · {g.submitted}
                   </Text>
                 </View>
-                <View style={ms.badgeSoft}>
-                  <Text style={ms.badgeSoftText}>Pending</Text>
+                <View style={[ms.badgeSoft, isDark && {backgroundColor: '#2E1065'}]}>
+                  <Text style={[ms.badgeSoftText, isDark && {color: colors.primary}]}>Pending</Text>
                 </View>
               </View>
-              <View style={ms.cardDivider}/>
-              <Text style={ms.bodySm}>{g.doc}</Text>
-              <Text style={[ms.bodySm, {marginTop: 3}]}>{g.phone}</Text>
+              <View style={[ms.cardDivider, isDark && {backgroundColor: '#27272A'}]}/>
+              <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>{g.doc}</Text>
+              <Text style={[ms.bodySm, isDark && {color: colors.ink}, {marginTop: 3}]}>{g.phone}</Text>
               {g.additionalGuests && g.additionalGuests.length > 0 && (
-                <Text style={[ms.bodySm, {marginTop: 2, color: C.primary, fontWeight: '600'}]}>
+                <Text style={[ms.bodySm, {marginTop: 2, color: colors.primary, fontWeight: '600'}]}>
                   + {g.additionalGuests.length} Co-Guest(s)
                 </Text>
               )}
@@ -2493,6 +2457,7 @@ function SearchOverlay({
   onClose: () => void;
   onGuest: (id: number) => void;
 }) {
+  const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
 
@@ -2509,23 +2474,23 @@ function SearchOverlay({
   });
 
   return (
-    <View style={[ms.overlayContainer, {paddingTop: insets.top}]}>
-      <View style={ms.overlayHeader}>
+    <View style={[ms.overlayContainer, isDark && {backgroundColor: colors.canvas}, {paddingTop: insets.top}]}>
+      <View style={[ms.overlayHeader, isDark && {borderBottomColor: colors.cardBorder}]}>
         <IconButton name="chevronLeft" size={18} onPress={onClose}/>
-        <View style={ms.searchPill}>
-          <Icon name="search" size={17} color={C.muted}/>
+        <View style={[ms.searchPill, isDark && {backgroundColor: colors.surfaceSoft, borderColor: colors.cardBorder}]}>
+          <Icon name="search" size={17} color={colors.muted}/>
           <TextInput
             autoFocus
             value={query}
             onChangeText={setQuery}
             placeholder="Name, phone, room, ID…"
-            placeholderTextColor="#9CA3AF"
-            style={ms.searchInput}
+            placeholderTextColor={colors.muted}
+            style={[ms.searchInput, isDark && {color: colors.ink}]}
           />
         </View>
       </View>
       <ScrollView contentContainerStyle={{padding: 20, paddingBottom: Math.max(20, insets.bottom + 10)}} showsVerticalScrollIndicator={false}>
-        <Text style={ms.sectionCaption}>
+        <Text style={[ms.sectionCaption, isDark && {color: colors.muted}]}>
           {query.trim() ? `SEARCH RESULTS (${filteredGuests.length})` : 'ALL GUESTS & STAYS'}
         </Text>
         {filteredGuests.map((g) => (
@@ -2535,27 +2500,27 @@ function SearchOverlay({
               onPress={() => onGuest(g.id)}
               style={ms.guestItemRow}
             >
-              <View style={ms.avatar}>
-                <Text style={ms.avatarText}>
+              <View style={[ms.avatar, isDark && {backgroundColor: '#2E1065'}]}>
+                <Text style={[ms.avatarText, isDark && {color: colors.primary}]}>
                   {g.name ? g.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() : 'G'}
                 </Text>
               </View>
               <View style={{flex: 1, minWidth: 0}}>
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-                  <Text style={ms.titleSm}>{g.name}</Text>
+                  <Text style={[ms.titleSm, isDark && {color: colors.ink}]}>{g.name}</Text>
                   {(g.status === 'checked_out' || g.checkedOut) ? (
-                    <View style={{backgroundColor: '#F1F5F9', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4}}>
-                      <Text style={{fontSize: 9.5, fontWeight: '700', color: '#64748B'}}>CHECKED OUT</Text>
+                    <View style={{backgroundColor: isDark ? '#27272A' : '#F1F5F9', paddingHorizontal: 5, paddingVertical: 1, borderRadius: 4}}>
+                      <Text style={{fontSize: 9.5, fontWeight: '700', color: isDark ? '#9CA3AF' : '#64748B'}}>CHECKED OUT</Text>
                     </View>
                   ) : null}
                 </View>
-                <Text style={ms.bodySm}>
+                <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>
                   Room {g.room} · {g.phone || g.idNum || 'Verified'}
                 </Text>
               </View>
-              <Icon name="chevronRight" size={17} color={C.mutedSoft}/>
+              <Icon name="chevronRight" size={17} color={colors.muted}/>
             </TouchableOpacity>
-            <View style={ms.cardDivider}/>
+            <View style={[ms.cardDivider, isDark && {backgroundColor: colors.cardBorder}]}/>
           </View>
         ))}
       </ScrollView>
@@ -2574,6 +2539,7 @@ function ReportsOverlay({
   onClose: () => void;
   onToast: (msg: string) => void;
 }) {
+  const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<'month' | 'range' | 'room'>('month');
   const [selectedRoomNum, setSelectedRoomNum] = useState<string | null>(null);
@@ -2841,10 +2807,10 @@ function ReportsOverlay({
   };
 
   return (
-    <View style={[ms.overlayContainer, {paddingTop: insets.top}]}>
-      <View style={ms.overlayHeader}>
+    <View style={[ms.overlayContainer, isDark && {backgroundColor: colors.canvas}, {paddingTop: insets.top}]}>
+      <View style={[ms.overlayHeader, isDark && {borderBottomColor: colors.cardBorder}]}>
         <IconButton name="chevronLeft" size={18} onPress={onClose}/>
-        <Text style={ms.titleMd}>Compliance reports</Text>
+        <Text style={[ms.titleMd, isDark && {color: colors.ink}]}>Compliance reports</Text>
       </View>
       <ScrollView contentContainerStyle={{padding: 20, paddingBottom: Math.max(20, insets.bottom + 10)}} showsVerticalScrollIndicator={false}>
         <ScrollView
@@ -2858,9 +2824,12 @@ function ReportsOverlay({
               setFilter('month');
               setSelectedRoomNum(null);
             }}
-            style={filter === 'month' ? ms.chipDark : ms.chipLight}
+            style={[
+              filter === 'month' ? ms.chipDark : ms.chipLight,
+              filter === 'month' ? {backgroundColor: colors.primary} : isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'}
+            ]}
           >
-            <Text style={filter === 'month' ? ms.chipDarkText : ms.chipLightText}>This month</Text>
+            <Text style={filter === 'month' ? ms.chipDarkText : [ms.chipLightText, isDark && {color: colors.muted}]}>This month</Text>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.8}
@@ -2868,18 +2837,24 @@ function ReportsOverlay({
               setFilter('range');
               setSelectedRoomNum(null);
             }}
-            style={filter === 'range' ? ms.chipDark : ms.chipLight}
+            style={[
+              filter === 'range' ? ms.chipDark : ms.chipLight,
+              filter === 'range' ? {backgroundColor: colors.primary} : isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'}
+            ]}
           >
-            <Text style={filter === 'range' ? ms.chipDarkText : ms.chipLightText}>All registrations</Text>
+            <Text style={filter === 'range' ? ms.chipDarkText : [ms.chipLightText, isDark && {color: colors.muted}]}>All registrations</Text>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => {
               setFilter('room');
             }}
-            style={filter === 'room' ? ms.chipDark : ms.chipLight}
+            style={[
+              filter === 'room' ? ms.chipDark : ms.chipLight,
+              filter === 'room' ? {backgroundColor: colors.primary} : isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'}
+            ]}
           >
-            <Text style={filter === 'room' ? ms.chipDarkText : ms.chipLightText}>By room</Text>
+            <Text style={filter === 'room' ? ms.chipDarkText : [ms.chipLightText, isDark && {color: colors.muted}]}>By room</Text>
           </TouchableOpacity>
         </ScrollView>
 
@@ -2895,10 +2870,11 @@ function ReportsOverlay({
               onPress={() => setSelectedRoomNum(null)}
               style={[
                 ms.chipLight,
-                !selectedRoomNum && { backgroundColor: C.primary, borderColor: C.primary },
+                isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
+                !selectedRoomNum && { backgroundColor: colors.primary, borderColor: colors.primary },
               ]}
             >
-              <Text style={!selectedRoomNum ? { color: '#FFFFFF', fontWeight: '700', fontSize: 12 } : ms.chipLightText}>
+              <Text style={!selectedRoomNum ? { color: '#FFFFFF', fontWeight: '700', fontSize: 12 } : [ms.chipLightText, isDark && {color: colors.muted}]}>
                 All Rooms
               </Text>
             </TouchableOpacity>
@@ -2911,10 +2887,11 @@ function ReportsOverlay({
                   onPress={() => setSelectedRoomNum(r.num)}
                   style={[
                     ms.chipLight,
-                    isSel && { backgroundColor: C.primary, borderColor: C.primary },
+                    isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
+                    isSel && { backgroundColor: colors.primary, borderColor: colors.primary },
                   ]}
                 >
-                  <Text style={isSel ? { color: '#FFFFFF', fontWeight: '700', fontSize: 12 } : ms.chipLightText}>
+                  <Text style={isSel ? { color: '#FFFFFF', fontWeight: '700', fontSize: 12 } : [ms.chipLightText, isDark && {color: colors.muted}]}>
                     Room {r.num}
                   </Text>
                 </TouchableOpacity>
@@ -2924,12 +2901,12 @@ function ReportsOverlay({
         )}
 
         {/* Police Form C card */}
-        <View style={ms.formCCard}>
-          <View style={ms.formCIcon}>
-            <Icon name="shield" size={20} color={C.ink}/>
+        <View style={[ms.formCCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
+          <View style={[ms.formCIcon, isDark && {backgroundColor: '#2E1065'}]}>
+            <Icon name="shield" size={20} color={colors.primary}/>
           </View>
-          <Text style={ms.titleMd}>Police Form C</Text>
-          <Text style={[ms.bodySm, {marginTop: 4, textAlign: 'center'}]}>
+          <Text style={[ms.titleMd, isDark && {color: colors.ink}]}>Police Form C</Text>
+          <Text style={[ms.bodySm, isDark && {color: colors.muted}, {marginTop: 4, textAlign: 'center'}]}>
             {filteredGuests.length} registrations logged ({getPeriodLabel()}), ready for official export
           </Text>
           <View style={{flexDirection: 'row', gap: 8, marginTop: 16, width: '100%'}}>
@@ -2948,7 +2925,7 @@ function ReportsOverlay({
           </View>
         </View>
 
-        <Text style={[ms.sectionCaption, {marginTop: 20, marginBottom: 8}]}>
+        <Text style={[ms.sectionCaption, isDark && {color: colors.muted}, {marginTop: 20, marginBottom: 8}]}>
           EXPORT HISTORY
         </Text>
         {['August 2026', 'July 2026', 'June 2026'].map((m) => (
@@ -2956,15 +2933,15 @@ function ReportsOverlay({
             key={m}
             activeOpacity={0.7}
             onPress={() => handleExportPdf(m, activeGuestList)}
-            style={ms.historyRow}
+            style={[ms.historyRow, isDark && {borderBottomColor: '#27272A'}]}
           >
             <View style={{flexDirection: 'row', alignItems: 'center', gap: 10}}>
-              <View style={ms.historyIcon}>
-                <Icon name="calendar" size={15} color={C.ink}/>
+              <View style={[ms.historyIcon, isDark && {backgroundColor: '#27272A'}]}>
+                <Icon name="calendar" size={15} color={colors.ink}/>
               </View>
-              <Text style={ms.bodyMd}>{m}</Text>
+              <Text style={[ms.bodyMd, isDark && {color: colors.ink}]}>{m}</Text>
             </View>
-            <Icon name="download" size={16} color={C.mutedSoft}/>
+            <Icon name="download" size={16} color={colors.muted}/>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -2983,6 +2960,7 @@ function PricingOverlay({
   onClose: () => void;
   onSelectPlan: (plan: string) => void;
 }) {
+  const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [activeCheckout, setActiveCheckout] = useState<DevifyCheckoutResult | null>(null);
@@ -3187,29 +3165,29 @@ function PricingOverlay({
   };
 
   return (
-    <View style={[ms.overlayContainer, {paddingTop: insets.top}]}>
-      <View style={ms.overlayHeader}>
+    <View style={[ms.overlayContainer, isDark && {backgroundColor: colors.canvas}, {paddingTop: insets.top}]}>
+      <View style={[ms.overlayHeader, isDark && {borderBottomColor: colors.cardBorder}]}>
         <IconButton name="x" size={17} onPress={onClose}/>
-        <Text style={ms.titleMd}>Plans & pricing</Text>
+        <Text style={[ms.titleMd, isDark && {color: colors.ink}]}>Plans & pricing</Text>
       </View>
       <ScrollView contentContainerStyle={{padding: 20, paddingBottom: Math.max(30, insets.bottom + 16)}} showsVerticalScrollIndicator={false}>
         {/* Toggle track */}
-        <View style={ms.toggleTrack}>
+        <View style={[ms.toggleTrack, isDark && {backgroundColor: '#27272A'}]}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setBilling(false)}
-            style={[ms.toggleOpt, !billing && ms.toggleOptActive]}
+            style={[ms.toggleOpt, !billing && (isDark ? {backgroundColor: colors.primary} : ms.toggleOptActive)]}
           >
-            <Text style={[ms.toggleOptText, !billing && ms.toggleOptTextActive]}>
+            <Text style={[ms.toggleOptText, isDark && {color: colors.muted}, !billing && ms.toggleOptTextActive]}>
               Monthly
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => setBilling(true)}
-            style={[ms.toggleOpt, billing && ms.toggleOptActive]}
+            style={[ms.toggleOpt, billing && (isDark ? {backgroundColor: colors.primary} : ms.toggleOptActive)]}
           >
-            <Text style={[ms.toggleOptText, billing && ms.toggleOptTextActive]}>
+            <Text style={[ms.toggleOptText, isDark && {color: colors.muted}, billing && ms.toggleOptTextActive]}>
               Annual · save 15%
             </Text>
           </TouchableOpacity>
@@ -3228,7 +3206,11 @@ function PricingOverlay({
             return (
               <View
                 key={p.name}
-                style={[ms.planCard, isFeatured && ms.planCardFeatured]}
+                style={[
+                  ms.planCard,
+                  isDark && {backgroundColor: '#18181B', borderColor: '#27272A'},
+                  isFeatured && (isDark ? {borderColor: colors.primary} : ms.planCardFeatured),
+                ]}
               >
                 {p.tag ? (
                   <View style={ms.featuredBadge}>
@@ -3236,19 +3218,19 @@ function PricingOverlay({
                   </View>
                 ) : null}
                 <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'}}>
-                  <Text style={ms.titleMd}>{p.name}</Text>
-                  <Text style={ms.planPriceText}>
+                  <Text style={[ms.titleMd, isDark && {color: colors.ink}]}>{p.name}</Text>
+                  <Text style={[ms.planPriceText, isDark && {color: colors.ink}]}>
                     {priceDisplay}
                     {p.priceM !== null && p.priceM > 0 ? (
-                      <Text style={ms.perMoText}>/mo</Text>
+                      <Text style={[ms.perMoText, isDark && {color: colors.muted}]}>/mo</Text>
                     ) : null}
                   </Text>
                 </View>
-                <Text style={[ms.bodySm, {marginTop: 8}]}>{p.rooms}</Text>
-                <Text style={ms.bodySm}>{p.checkins}</Text>
+                <Text style={[ms.bodySm, isDark && {color: colors.muted}, {marginTop: 8}]}>{p.rooms}</Text>
+                <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>{p.checkins}</Text>
                 <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8}}>
-                  <Icon name="check" size={15} color={C.ink}/>
-                  <Text style={[ms.bodySm, {color: C.ink}]}>
+                  <Icon name="check" size={15} color={colors.ink}/>
+                  <Text style={[ms.bodySm, {color: colors.ink}]}>
                     {p.ocr ? 'AI Document OCR included' : 'OCR not included'}
                   </Text>
                 </View>
@@ -3288,28 +3270,28 @@ function PricingOverlay({
       {/* Devify Pay In-App WebView Checkout Modal */}
       {activeCheckout && selectedPlanDetails && (
         <Modal visible animationType="slide" onRequestClose={() => setActiveCheckout(null)}>
-          <View style={{flex: 1, backgroundColor: '#FAF8FD'}}>
+          <View style={[{flex: 1, backgroundColor: '#FAF8FD'}, isDark && {backgroundColor: colors.canvas}]}>
             {/* Header Bar with Safe Notch Offset */}
             <View style={{
               paddingTop: Math.max(20, insets.top + 8),
               paddingBottom: 14,
               paddingHorizontal: 16,
-              backgroundColor: '#fff',
+              backgroundColor: isDark ? '#18181B' : '#fff',
               borderBottomWidth: 1,
-              borderBottomColor: '#ECEAF0',
+              borderBottomColor: isDark ? '#27272A' : '#ECEAF0',
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
             }}>
               <View style={{flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1}}>
-                <View style={{width: 36, height: 36, borderRadius: 18, backgroundColor: '#EDE9FE', alignItems: 'center', justifyContent: 'center'}}>
-                  <Icon name="shield" size={19} color={C.primary}/>
+                <View style={{width: 36, height: 36, borderRadius: 18, backgroundColor: isDark ? '#2E1065' : '#EDE9FE', alignItems: 'center', justifyContent: 'center'}}>
+                  <Icon name="shield" size={19} color={colors.primary}/>
                 </View>
                 <View style={{flex: 1}}>
-                  <Text style={{fontFamily: 'Inter', fontSize: 15.5, fontWeight: '700', color: '#1E293B'}}>
+                  <Text style={{fontFamily: 'Inter', fontSize: 15.5, fontWeight: '700', color: colors.ink}}>
                     Devify Pay Checkout
                   </Text>
-                  <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '500', color: '#64748B', marginTop: 1}}>
+                  <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '500', color: colors.muted, marginTop: 1}}>
                     {selectedPlanDetails.name} Plan · ₹{selectedPlanDetails.amount.toLocaleString('en-IN')} ({selectedPlanDetails.cycle === 'yearly' ? 'Annual' : 'Monthly'})
                   </Text>
                 </View>
@@ -3317,9 +3299,9 @@ function PricingOverlay({
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => setActiveCheckout(null)}
-                style={{width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9', alignItems: 'center', justifyContent: 'center', marginLeft: 10}}
+                style={{width: 36, height: 36, borderRadius: 18, backgroundColor: isDark ? '#27272A' : '#F1F5F9', alignItems: 'center', justifyContent: 'center', marginLeft: 10}}
               >
-                <Icon name="x" size={17} color={C.ink}/>
+                <Icon name="x" size={17} color={colors.ink}/>
               </TouchableOpacity>
             </View>
 

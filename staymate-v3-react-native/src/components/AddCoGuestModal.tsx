@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import {C, R} from '../theme/tokens';
+import {useTheme} from '../theme/ThemeContext';
 import {Icon} from './Icon';
 import {PrimaryButton, SecondaryButton} from './Ui';
 import {CalendarPicker} from './CalendarPicker';
@@ -47,6 +48,7 @@ export function AddCoGuestModal({
   onSave: (guest: CoGuestItem) => void;
   initialData?: CoGuestItem | null;
 }) {
+  const {isDark, colors} = useTheme();
   const [name, setName] = useState(initialData?.name || '');
   const [relation, setRelation] = useState(initialData?.relation || 'Spouse');
   const [docType, setDocType] = useState(initialData?.docType || 'Aadhaar');
@@ -152,20 +154,20 @@ export function AddCoGuestModal({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={s.scrim}
       >
-        <View style={s.sheet}>
+        <View style={[s.sheet, isDark && {backgroundColor: '#18181B'}]}>
           {/* Top handle */}
           <View style={s.handleRow}>
-            <View style={s.handle} />
+            <View style={[s.handle, isDark && {backgroundColor: '#3F3F46'}]} />
           </View>
 
           {/* Header */}
           <View style={s.header}>
             <View>
-              <Text style={s.title}>{initialData ? 'Edit Co-Guest' : 'Add Co-Guest'}</Text>
-              <Text style={s.subtitle}>Enter details for accompanying guest</Text>
+              <Text style={[s.title, {color: colors.ink}]}>{initialData ? 'Edit Co-Guest' : 'Add Co-Guest'}</Text>
+              <Text style={[s.subtitle, {color: colors.muted}]}>Enter details for accompanying guest</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7}>
-              <Icon name="x" size={18} color={C.ink} />
+            <TouchableOpacity onPress={onClose} style={[s.closeBtn, isDark && {backgroundColor: '#27272A'}]} activeOpacity={0.7}>
+              <Icon name="x" size={18} color={colors.ink} />
             </TouchableOpacity>
           </View>
 
@@ -181,11 +183,11 @@ export function AddCoGuestModal({
             ) : null}
 
             {/* Front & Back ID Upload Cards */}
-            <Text style={s.label}>ID CARD PHOTOS (FRONT & BACK)</Text>
+            <Text style={[s.label, {color: colors.muted}]}>ID CARD PHOTOS (FRONT & BACK)</Text>
             <View style={{flexDirection: 'row', gap: 10, marginBottom: 14}}>
               {/* Front Photo */}
-              <View style={{flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E2E8F0'}}>
-                <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6}}>Front Side</Text>
+              <View style={{flex: 1, backgroundColor: isDark ? '#27272A' : '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: isDark ? '#3F3F46' : '#E2E8F0'}}>
+                <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: colors.muted, marginBottom: 6}}>Front Side</Text>
                 {photoUri ? (
                   <View style={{position: 'relative', borderRadius: 8, overflow: 'hidden', height: 80}}>
                     <Image source={{uri: photoUri}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
@@ -201,26 +203,26 @@ export function AddCoGuestModal({
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => handlePickDocument('front', true)}
-                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#EDE9FE', paddingVertical: 6, borderRadius: 6}}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: isDark ? '#2E1065' : '#EDE9FE', paddingVertical: 6, borderRadius: 6}}
                     >
-                      <Icon name="camera" size={12} color="#7C3AED" />
-                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#7C3AED'}}>Camera</Text>
+                      <Icon name="camera" size={12} color={colors.primary} />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: colors.primary}}>Camera</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => handlePickDocument('front', false)}
-                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1', paddingVertical: 6, borderRadius: 6}}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderWidth: 1, borderColor: isDark ? '#3F3F46' : '#CBD5E1', paddingVertical: 6, borderRadius: 6}}
                     >
-                      <Icon name="upload" size={12} color="#475569" />
-                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: '#475569'}}>Gallery</Text>
+                      <Icon name="upload" size={12} color={colors.muted} />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: colors.muted}}>Gallery</Text>
                     </TouchableOpacity>
                   </View>
                 )}
               </View>
 
               {/* Back Photo */}
-              <View style={{flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E2E8F0'}}>
-                <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6}}>Back Side</Text>
+              <View style={{flex: 1, backgroundColor: isDark ? '#27272A' : '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: isDark ? '#3F3F46' : '#E2E8F0'}}>
+                <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: colors.muted, marginBottom: 6}}>Back Side</Text>
                 {backPhotoUri ? (
                   <View style={{position: 'relative', borderRadius: 8, overflow: 'hidden', height: 80}}>
                     <Image source={{uri: backPhotoUri}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
@@ -236,18 +238,18 @@ export function AddCoGuestModal({
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => handlePickDocument('back', true)}
-                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#EDE9FE', paddingVertical: 6, borderRadius: 6}}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: isDark ? '#2E1065' : '#EDE9FE', paddingVertical: 6, borderRadius: 6}}
                     >
-                      <Icon name="camera" size={12} color="#7C3AED" />
-                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#7C3AED'}}>Camera</Text>
+                      <Icon name="camera" size={12} color={colors.primary} />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: colors.primary}}>Camera</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => handlePickDocument('back', false)}
-                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1', paddingVertical: 6, borderRadius: 6}}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: isDark ? '#18181B' : '#FFFFFF', borderWidth: 1, borderColor: isDark ? '#3F3F46' : '#CBD5E1', paddingVertical: 6, borderRadius: 6}}
                     >
-                      <Icon name="upload" size={12} color="#475569" />
-                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: '#475569'}}>Gallery</Text>
+                      <Icon name="upload" size={12} color={colors.muted} />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: colors.muted}}>Gallery</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -255,7 +257,7 @@ export function AddCoGuestModal({
             </View>
 
             {/* Full Name */}
-            <Text style={s.label}>FULL NAME *</Text>
+            <Text style={[s.label, {color: colors.muted}]}>FULL NAME *</Text>
             <TextInput
               value={name}
               onChangeText={(t) => {
@@ -264,11 +266,14 @@ export function AddCoGuestModal({
               }}
               placeholder="e.g. Sneha Sharma"
               placeholderTextColor="#9CA3AF"
-              style={s.input}
+              style={[
+                s.input,
+                isDark && {backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.ink},
+              ]}
             />
 
             {/* Relationship to Primary Guest */}
-            <Text style={[s.label, {marginTop: 14}]}>RELATIONSHIP TO PRIMARY GUEST</Text>
+            <Text style={[s.label, {marginTop: 14, color: colors.muted}]}>RELATIONSHIP TO PRIMARY GUEST</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -281,16 +286,24 @@ export function AddCoGuestModal({
                     key={r}
                     onPress={() => setRelation(r)}
                     activeOpacity={0.75}
-                    style={[s.chip, active && s.chipActive]}
+                    style={[
+                      s.chip,
+                      isDark && {backgroundColor: '#27272A'},
+                      active && (isDark ? {backgroundColor: colors.primary} : s.chipActive),
+                    ]}
                   >
-                    <Text style={[s.chipText, active && s.chipTextActive]}>{r}</Text>
+                    <Text style={[
+                      s.chipText,
+                      isDark && {color: colors.muted},
+                      active && (isDark ? {color: '#ffffff', fontWeight: '700'} : s.chipTextActive),
+                    ]}>{r}</Text>
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
 
             {/* Document Type */}
-            <Text style={[s.label, {marginTop: 14}]}>DOCUMENT TYPE</Text>
+            <Text style={[s.label, {marginTop: 14, color: colors.muted}]}>DOCUMENT TYPE</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -303,38 +316,57 @@ export function AddCoGuestModal({
                     key={dt}
                     onPress={() => setDocType(dt)}
                     activeOpacity={0.75}
-                    style={[s.chip, active && s.chipActive]}
+                    style={[
+                      s.chip,
+                      isDark && {backgroundColor: '#27272A'},
+                      active && (isDark ? {backgroundColor: colors.primary} : s.chipActive),
+                    ]}
                   >
-                    <Text style={[s.chipText, active && s.chipTextActive]}>{dt}</Text>
+                    <Text style={[
+                      s.chipText,
+                      isDark && {color: colors.muted},
+                      active && (isDark ? {color: '#ffffff', fontWeight: '700'} : s.chipTextActive),
+                    ]}>{dt}</Text>
                   </TouchableOpacity>
                 );
               })}
             </ScrollView>
 
             {/* ID Number */}
-            <Text style={[s.label, {marginTop: 14}]}>DOCUMENT ID NUMBER</Text>
+            <Text style={[s.label, {marginTop: 14, color: colors.muted}]}>DOCUMENT ID NUMBER</Text>
             <TextInput
               value={idNum}
               onChangeText={setIdNum}
               placeholder="e.g. 5521 8840 1923"
               placeholderTextColor="#9CA3AF"
-              style={s.input}
+              style={[
+                s.input,
+                isDark && {backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.ink},
+              ]}
               autoCapitalize="characters"
             />
 
             {/* Gender and DOB Row */}
             <View style={s.row}>
               <View style={{flex: 1}}>
-                <Text style={s.label}>GENDER</Text>
+                <Text style={[s.label, {color: colors.muted}]}>GENDER</Text>
                 <View style={s.genderRow}>
                   {GENDERS.map((g) => (
                     <TouchableOpacity
                       key={g}
                       onPress={() => setGender(g)}
                       activeOpacity={0.75}
-                      style={[s.genderBtn, gender === g && s.genderBtnActive]}
+                      style={[
+                        s.genderBtn,
+                        isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
+                        gender === g && (isDark ? {backgroundColor: '#2E1065', borderColor: colors.primary} : s.genderBtnActive),
+                      ]}
                     >
-                      <Text style={[s.genderText, gender === g && s.genderTextActive]}>
+                      <Text style={[
+                        s.genderText,
+                        isDark && {color: colors.muted},
+                        gender === g && (isDark ? {color: colors.primary, fontWeight: '700'} : s.genderTextActive),
+                      ]}>
                         {g}
                       </Text>
                     </TouchableOpacity>
@@ -354,14 +386,17 @@ export function AddCoGuestModal({
             </View>
 
             {/* Phone */}
-            <Text style={[s.label, {marginTop: 14}]}>PHONE NUMBER (OPTIONAL)</Text>
+            <Text style={[s.label, {marginTop: 14, color: colors.muted}]}>PHONE NUMBER (OPTIONAL)</Text>
             <TextInput
               value={phone}
               onChangeText={setPhone}
               placeholder="+91 98765 00000"
               placeholderTextColor="#9CA3AF"
               keyboardType="phone-pad"
-              style={s.input}
+              style={[
+                s.input,
+                isDark && {backgroundColor: colors.inputBg, borderColor: colors.inputBorder, color: colors.ink},
+              ]}
             />
 
             {/* Action Buttons */}

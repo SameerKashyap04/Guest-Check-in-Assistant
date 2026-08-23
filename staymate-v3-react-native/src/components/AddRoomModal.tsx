@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import {C, R} from '../theme/tokens';
+import {useTheme} from '../theme/ThemeContext';
 import {Icon} from './Icon';
 import {PrimaryButton, SecondaryButton} from './Ui';
 import {RoomStatus, STATUS_META} from '../data';
@@ -44,6 +45,7 @@ export function AddRoomModal({
   }) => void;
   existingRoomNums?: string[];
 }) {
+  const { isDark, colors } = useTheme();
   const [num, setNum] = useState('');
   const [type, setType] = useState('Standard');
   const [price, setPrice] = useState('1800');
@@ -96,19 +98,19 @@ export function AddRoomModal({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={s.scrim}
       >
-        <View style={s.sheet}>
+        <View style={[s.sheet, isDark && { backgroundColor: '#18181B' }]}>
           {/* Header handle */}
           <View style={s.handleRow}>
-            <View style={s.handle} />
+            <View style={[s.handle, isDark && { backgroundColor: '#3F3F46' }]} />
           </View>
 
-          <View style={s.header}>
+          <View style={[s.header, isDark && { borderBottomColor: '#27272A' }]}>
             <View>
-              <Text style={s.title}>Add New Room</Text>
-              <Text style={s.subtitle}>Configure room number, category & nightly rate</Text>
+              <Text style={[s.title, isDark && { color: colors.ink }]}>Add New Room</Text>
+              <Text style={[s.subtitle, isDark && { color: colors.muted }]}>Configure room number, category & nightly rate</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={s.closeBtn} activeOpacity={0.7}>
-              <Icon name="x" size={18} color={C.ink} />
+            <TouchableOpacity onPress={onClose} style={[s.closeBtn, isDark && { backgroundColor: '#27272A' }]} activeOpacity={0.7}>
+              <Icon name="x" size={18} color={colors.ink} />
             </TouchableOpacity>
           </View>
 
@@ -124,7 +126,7 @@ export function AddRoomModal({
             ) : null}
 
             {/* Room Number */}
-            <Text style={s.label}>ROOM NUMBER / NAME *</Text>
+            <Text style={[s.label, isDark && { color: colors.muted }]}>ROOM NUMBER / NAME *</Text>
             <TextInput
               value={num}
               onChangeText={(t) => {
@@ -132,13 +134,13 @@ export function AddRoomModal({
                 setError('');
               }}
               placeholder="e.g. 104, 206, Villa 2"
-              placeholderTextColor="#9CA3AF"
-              style={s.input}
+              placeholderTextColor={colors.muted}
+              style={[s.input, isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46', color: colors.ink }]}
               autoCapitalize="characters"
             />
 
             {/* Category Selector */}
-            <Text style={[s.label, {marginTop: 16}]}>ROOM CATEGORY</Text>
+            <Text style={[s.label, isDark && { color: colors.muted }, {marginTop: 16}]}>ROOM CATEGORY</Text>
             <View style={s.catGrid}>
               {ROOM_CATEGORIES.map((cat) => {
                 const active = type === cat.id;
@@ -147,61 +149,69 @@ export function AddRoomModal({
                     key={cat.id}
                     onPress={() => handleSelectCategory(cat)}
                     activeOpacity={0.8}
-                    style={[s.catCard, active && s.catCardActive]}
+                    style={[
+                      s.catCard,
+                      isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46' },
+                      active && (isDark ? { backgroundColor: '#2E1065', borderColor: colors.primary, borderWidth: 1.6 } : s.catCardActive),
+                    ]}
                   >
                     <Icon
                       name={cat.icon as any}
                       size={18}
-                      color={active ? C.primary : '#64748B'}
+                      color={active ? colors.primary : colors.muted}
                     />
-                    <Text style={[s.catLabel, active && s.catLabelActive]}>
+                    <Text style={[s.catLabel, isDark && { color: colors.body }, active && { color: colors.primary, fontWeight: '700' }]}>
                       {cat.label}
                     </Text>
-                    <Text style={s.catPrice}>₹{cat.defaultPrice}/night</Text>
+                    <Text style={[s.catPrice, isDark && { color: colors.muted }]}>₹{cat.defaultPrice}/night</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
 
             {/* Nightly Rate */}
-            <Text style={[s.label, {marginTop: 16}]}>BASE NIGHTLY RATE (₹) *</Text>
-            <View style={s.priceInputWrap}>
-              <Text style={s.currencyPrefix}>₹</Text>
+            <Text style={[s.label, isDark && { color: colors.muted }, {marginTop: 16}]}>BASE NIGHTLY RATE (₹) *</Text>
+            <View style={[s.priceInputWrap, isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46' }]}>
+              <Text style={[s.currencyPrefix, isDark && { color: colors.ink }]}>₹</Text>
               <TextInput
                 value={price}
                 onChangeText={setPrice}
                 keyboardType="numeric"
                 placeholder="1800"
-                placeholderTextColor="#9CA3AF"
-                style={s.priceInput}
+                placeholderTextColor={colors.muted}
+                style={[s.priceInput, isDark && { color: colors.ink }]}
               />
-              <Text style={s.priceSuffix}>/ night</Text>
+              <Text style={[s.priceSuffix, isDark && { color: colors.muted }]}>/ night</Text>
             </View>
 
             {/* Floor / Wing & Capacity Row */}
             <View style={s.row}>
               <View style={{flex: 1}}>
-                <Text style={s.label}>FLOOR / BLOCK</Text>
+                <Text style={[s.label, isDark && { color: colors.muted }]}>FLOOR / BLOCK</Text>
                 <TextInput
                   value={floor}
                   onChangeText={setFloor}
                   placeholder="e.g. 1st Floor, Garden"
-                  placeholderTextColor="#9CA3AF"
-                  style={s.input}
+                  placeholderTextColor={colors.muted}
+                  style={[s.input, isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46', color: colors.ink }]}
                 />
               </View>
               <View style={{width: 14}} />
               <View style={{flex: 1}}>
-                <Text style={s.label}>MAX GUESTS</Text>
+                <Text style={[s.label, isDark && { color: colors.muted }]}>MAX GUESTS</Text>
                 <View style={s.occupancyRow}>
                   {OCCUPANCIES.map((occ) => (
                     <TouchableOpacity
                       key={occ}
                       onPress={() => setCapacity(occ)}
                       activeOpacity={0.7}
-                      style={[s.occBtn, capacity === occ && s.occBtnActive]}
+                      style={[
+                        s.occBtn,
+                        isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46' },
+                        capacity === occ && (isDark ? { backgroundColor: '#2E1065', borderColor: colors.primary, borderWidth: 1.5 } : s.occBtnActive),
+                      ]}
                     >
-                      <Text style={[s.occText, capacity === occ && s.occTextActive]}>
+                      <Text style={[s.occText, isDark && { color: colors.muted }, capacity === occ && { color: colors.primary, fontWeight: '700' }]}>
                         {occ}{occ === 6 ? '+' : ''}
                       </Text>
                     </TouchableOpacity>
@@ -211,7 +221,7 @@ export function AddRoomModal({
             </View>
 
             {/* Initial Status */}
-            <Text style={[s.label, {marginTop: 16}]}>INITIAL STATUS</Text>
+            <Text style={[s.label, isDark && { color: colors.muted }, {marginTop: 16}]}>INITIAL STATUS</Text>
             <View style={s.statusRow}>
               {(['available', 'cleaning', 'maintenance'] as const).map((st) => {
                 const meta = STATUS_META[st];
@@ -223,17 +233,19 @@ export function AddRoomModal({
                     activeOpacity={0.8}
                     style={[
                       s.statusBtn,
+                      isDark && { backgroundColor: '#27272A', borderColor: '#3F3F46' },
                       active && {borderColor: meta.color, backgroundColor: meta.bg},
                     ]}
                   >
                     <Icon
                       name={st === 'available' ? 'check' : 'info'}
                       size={13}
-                      color={active ? meta.color : '#64748B'}
+                      color={active ? meta.color : colors.muted}
                     />
                     <Text
                       style={[
                         s.statusBtnText,
+                        isDark && { color: colors.muted },
                         active && {color: meta.color, fontWeight: '700'},
                       ]}
                     >

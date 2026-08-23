@@ -15,6 +15,7 @@ import {
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import {C, R} from '../theme/tokens';
+import {useTheme} from '../theme/ThemeContext';
 import {ROOMS, STATUS_META} from '../data';
 import {Icon} from '../components/Icon';
 import {Field, PrimaryButton, SecondaryButton} from '../components/Ui';
@@ -32,6 +33,7 @@ export function ManualEntryScreen({
   onClose: () => void;
   initialData?: any;
 }) {
+  const {isDark, colors} = useTheme();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState(initialData?.name || '');
@@ -175,22 +177,22 @@ export function ManualEntryScreen({
   ];
 
   return (
-    <View style={[s.container, {paddingTop: insets.top}]}>
+    <View style={[s.container, {paddingTop: insets.top, backgroundColor: colors.canvas}]}>
       <KeyboardAvoidingView
         style={{flex: 1}}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         {/* Top Header */}
-        <View style={s.header}>
+        <View style={[s.header, isDark && {borderBottomColor: '#27272A'}]}>
           <TouchableOpacity
             onPress={step > 1 ? () => setStep((step - 1) as 1 | 2 | 3) : onClose}
             activeOpacity={0.8}
-            style={s.backBtn}
+            style={[s.backBtn, isDark && {backgroundColor: '#27272A'}]}
           >
-            <Icon name="chevronLeft" size={19} color={C.ink} />
+            <Icon name="chevronLeft" size={19} color={colors.ink} />
           </TouchableOpacity>
-          <Text style={s.headerTitle}>{stepTitles[step - 1]}</Text>
+          <Text style={[s.headerTitle, {color: colors.ink}]}>{stepTitles[step - 1]}</Text>
         </View>
 
         {/* Stepper */}
@@ -201,18 +203,20 @@ export function ManualEntryScreen({
                 <View
                   style={[
                     s.stepDot,
-                    step === n && s.stepDotActive,
-                    step > n && s.stepDotDone,
+                    isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
+                    step === n && (isDark ? {backgroundColor: colors.primary, borderColor: colors.primary} : s.stepDotActive),
+                    step > n && (isDark ? {backgroundColor: '#2E1065', borderColor: colors.primary} : s.stepDotDone),
                   ]}
                 >
                   {step > n ? (
-                    <Icon name="check" size={13} color={C.primary} />
+                    <Icon name="check" size={13} color={colors.primary} />
                   ) : (
                     <Text
                       style={[
                         s.stepDotText,
-                        step === n && s.stepDotTextActive,
-                        step > n && s.stepDotTextDone,
+                        isDark && {color: colors.muted},
+                        step === n && (isDark ? {color: '#ffffff'} : s.stepDotTextActive),
+                        step > n && (isDark ? {color: colors.primary} : s.stepDotTextDone),
                       ]}
                     >
                       {n}
@@ -222,7 +226,8 @@ export function ManualEntryScreen({
                 <Text
                   style={[
                     s.stepLabel,
-                    step === n && s.stepLabelActive,
+                    isDark && {color: colors.muted},
+                    step === n && (isDark ? {color: colors.ink, fontWeight: '700'} : s.stepLabelActive),
                   ]}
                   numberOfLines={1}
                 >
@@ -230,7 +235,11 @@ export function ManualEntryScreen({
                 </Text>
               </View>
               {i < 2 && (
-                <View style={[s.stepLine, step > n && s.stepLineActive]} />
+                <View style={[
+                  s.stepLine,
+                  isDark && {backgroundColor: '#27272A'},
+                  step > n && (isDark ? {backgroundColor: colors.primary} : s.stepLineActive),
+                ]} />
               )}
             </React.Fragment>
           ))}
@@ -247,13 +256,13 @@ export function ManualEntryScreen({
           {/* Step 1: Guest details */}
           {step === 1 && (
             <View>
-              <Text style={s.sectionHeader}>PRIMARY GUEST DETAILS</Text>
+              <Text style={[s.sectionHeader, {color: colors.muted}]}>PRIMARY GUEST DETAILS</Text>
 
             {/* Front & Back ID card photos */}
             <View style={{flexDirection: 'row', gap: 10, marginBottom: 14}}>
               {/* Front Photo */}
-              <View style={{flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E2E8F0'}}>
-                <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6}}>Front Side ID</Text>
+              <View style={{flex: 1, backgroundColor: isDark ? '#18181B' : '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: isDark ? '#27272A' : '#E2E8F0'}}>
+                <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: colors.muted, marginBottom: 6}}>Front Side ID</Text>
                 {photoUri ? (
                   <View style={{position: 'relative', borderRadius: 8, overflow: 'hidden', height: 80}}>
                     <Image source={{uri: photoUri}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
@@ -269,26 +278,26 @@ export function ManualEntryScreen({
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => handleUploadPhoto('front', true)}
-                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#EDE9FE', paddingVertical: 6, borderRadius: 6}}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: isDark ? '#2E1065' : '#EDE9FE', paddingVertical: 6, borderRadius: 6}}
                     >
-                      <Icon name="camera" size={12} color="#7C3AED" />
-                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#7C3AED'}}>Camera</Text>
+                      <Icon name="camera" size={12} color={colors.primary} />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: colors.primary}}>Camera</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => handleUploadPhoto('front', false)}
-                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1', paddingVertical: 6, borderRadius: 6}}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: isDark ? '#27272A' : '#FFFFFF', borderWidth: 1, borderColor: isDark ? '#3F3F46' : '#CBD5E1', paddingVertical: 6, borderRadius: 6}}
                     >
-                      <Icon name="upload" size={12} color="#475569" />
-                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: '#475569'}}>Gallery</Text>
+                      <Icon name="upload" size={12} color={colors.muted} />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: colors.muted}}>Gallery</Text>
                     </TouchableOpacity>
                   </View>
                 )}
               </View>
 
               {/* Back Photo */}
-              <View style={{flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E2E8F0'}}>
-                <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6}}>Back Side ID</Text>
+              <View style={{flex: 1, backgroundColor: isDark ? '#18181B' : '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: isDark ? '#27272A' : '#E2E8F0'}}>
+                <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: colors.muted, marginBottom: 6}}>Back Side ID</Text>
                 {backPhotoUri ? (
                   <View style={{position: 'relative', borderRadius: 8, overflow: 'hidden', height: 80}}>
                     <Image source={{uri: backPhotoUri}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
@@ -304,18 +313,18 @@ export function ManualEntryScreen({
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => handleUploadPhoto('back', true)}
-                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#EDE9FE', paddingVertical: 6, borderRadius: 6}}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: isDark ? '#2E1065' : '#EDE9FE', paddingVertical: 6, borderRadius: 6}}
                     >
-                      <Icon name="camera" size={12} color="#7C3AED" />
-                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#7C3AED'}}>Camera</Text>
+                      <Icon name="camera" size={12} color={colors.primary} />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: colors.primary}}>Camera</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       activeOpacity={0.8}
                       onPress={() => handleUploadPhoto('back', false)}
-                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1', paddingVertical: 6, borderRadius: 6}}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: isDark ? '#27272A' : '#FFFFFF', borderWidth: 1, borderColor: isDark ? '#3F3F46' : '#CBD5E1', paddingVertical: 6, borderRadius: 6}}
                     >
-                      <Icon name="upload" size={12} color="#475569" />
-                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: '#475569'}}>Gallery</Text>
+                      <Icon name="upload" size={12} color={colors.muted} />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: colors.muted}}>Gallery</Text>
                     </TouchableOpacity>
                   </View>
                 )}
@@ -331,7 +340,7 @@ export function ManualEntryScreen({
 
             {/* Document type chips */}
             <View style={{marginTop: 12}}>
-              <Text style={s.fieldLabel}>Document type</Text>
+              <Text style={[s.fieldLabel, {color: colors.muted}]}>Document type</Text>
               <View style={s.docsGrid}>
                 {['Aadhaar', 'PAN', 'Passport', 'Driving Licence', 'Voter ID'].map((v) => {
                   const active = docType === v;
@@ -340,9 +349,17 @@ export function ManualEntryScreen({
                       key={v}
                       activeOpacity={0.75}
                       onPress={() => setDocType(v)}
-                      style={[s.docChip, active && s.docChipActive]}
+                      style={[
+                        s.docChip,
+                        isDark && {backgroundColor: '#27272A'},
+                        active && (isDark ? {backgroundColor: colors.primary} : s.docChipActive),
+                      ]}
                     >
-                      <Text style={[s.docChipText, active && s.docChipTextActive]}>
+                      <Text style={[
+                        s.docChipText,
+                        isDark && {color: colors.muted},
+                        active && (isDark ? {color: '#ffffff', fontWeight: '700'} : s.docChipTextActive),
+                      ]}>
                         {v}
                       </Text>
                     </TouchableOpacity>
@@ -370,7 +387,7 @@ export function ManualEntryScreen({
                 />
               </View>
               <View style={{flex: 1.15}}>
-                <Text style={s.fieldLabel}>Gender</Text>
+                <Text style={[s.fieldLabel, {color: colors.muted}]}>Gender</Text>
                 <View style={s.genderRow}>
                   {['Male', 'Female', 'Other'].map((g) => {
                     const active = gender.toLowerCase() === g.toLowerCase();
@@ -379,9 +396,17 @@ export function ManualEntryScreen({
                         key={g}
                         onPress={() => setGender(g)}
                         activeOpacity={0.75}
-                        style={[s.genderBtn, active && s.genderBtnActive]}
+                        style={[
+                          s.genderBtn,
+                          isDark && {backgroundColor: '#27272A', borderColor: '#3F3F46'},
+                          active && (isDark ? {backgroundColor: '#2E1065', borderColor: colors.primary} : s.genderBtnActive),
+                        ]}
                       >
-                        <Text style={[s.genderText, active && s.genderTextActive]}>
+                        <Text style={[
+                          s.genderText,
+                          isDark && {color: colors.muted},
+                          active && (isDark ? {color: colors.primary, fontWeight: '700'} : s.genderTextActive),
+                        ]}>
                           {g}
                         </Text>
                       </TouchableOpacity>
@@ -407,7 +432,7 @@ export function ManualEntryScreen({
             {/* Co-Guests Section in Step 1 */}
             <View style={{marginTop: 20}}>
               <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8}}>
-                <Text style={s.sectionHeader}>ACCOMPANYING CO-GUESTS ({coGuests.length})</Text>
+                <Text style={[s.sectionHeader, {color: colors.muted}]}>ACCOMPANYING CO-GUESTS ({coGuests.length})</Text>
                 {coGuests.length > 0 && (
                   <TouchableOpacity onPress={handleOpenAddCoGuest} activeOpacity={0.7}>
                     <Text style={s.addMoreLink}>+ Add Another</Text>
@@ -416,7 +441,7 @@ export function ManualEntryScreen({
               </View>
 
               {coGuests.map((cg, idx) => (
-                <View key={cg.id} style={s.coGuestCard}>
+                <View key={cg.id} style={[s.coGuestCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
                   <View style={s.coGuestAvatar}>
                     <Text style={s.coGuestAvatarText}>
                       {cg.name.split(' ').map((n) => n[0]).join('') || `G${idx + 2}`}
@@ -424,12 +449,12 @@ export function ManualEntryScreen({
                   </View>
                   <View style={{flex: 1, minWidth: 0}}>
                     <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-                      <Text style={s.coGuestName}>{cg.name}</Text>
+                      <Text style={[s.coGuestName, {color: colors.ink}]}>{cg.name}</Text>
                       <View style={s.relationBadge}>
                         <Text style={s.relationBadgeText}>{cg.relation}</Text>
                       </View>
                     </View>
-                    <Text style={s.coGuestMeta}>
+                    <Text style={[s.coGuestMeta, {color: colors.muted}]}>
                       {cg.docType}: {cg.idNum}
                       {cg.gender ? ` · ${cg.gender}` : ''}
                     </Text>
@@ -437,10 +462,10 @@ export function ManualEntryScreen({
                   <View style={{flexDirection: 'row', alignItems: 'center', gap: 8}}>
                     <TouchableOpacity
                       onPress={() => handleOpenEditCoGuest(cg)}
-                      style={s.actionIconBtn}
+                      style={[s.actionIconBtn, isDark && {backgroundColor: '#27272A'}]}
                       activeOpacity={0.7}
                     >
-                      <Icon name="edit" size={14} color={C.ink} />
+                      <Icon name="edit" size={14} color={colors.ink} />
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={() => handleDeleteCoGuest(cg.id)}
@@ -456,16 +481,16 @@ export function ManualEntryScreen({
               <TouchableOpacity
                 activeOpacity={0.8}
                 onPress={handleOpenAddCoGuest}
-                style={s.addGuestCard}
+                style={[s.addGuestCard, isDark && {backgroundColor: '#18181B', borderColor: '#3F3F46'}]}
               >
-                <View style={s.addGuestIcon}>
-                  <Icon name="users" size={19} color={C.primary} />
+                <View style={[s.addGuestIcon, isDark && {backgroundColor: '#2E1065'}]}>
+                  <Icon name="users" size={19} color={colors.primary} />
                 </View>
                 <View style={{flex: 1}}>
-                  <Text style={s.addGuestTitle}>Add more guest</Text>
-                  <Text style={s.addGuestSub}>Scan or enter co-guest details</Text>
+                  <Text style={[s.addGuestTitle, {color: colors.ink}]}>Add more guest</Text>
+                  <Text style={[s.addGuestSub, {color: colors.muted}]}>Scan or enter co-guest details</Text>
                 </View>
-                <Icon name="plus" size={18} color={C.ink} />
+                <Icon name="plus" size={18} color={colors.ink} />
               </TouchableOpacity>
             </View>
           </View>
@@ -474,7 +499,7 @@ export function ManualEntryScreen({
         {/* Step 2: Stay details */}
         {step === 2 && (
           <View>
-            <Text style={s.sectionHeader}>SELECT ROOM</Text>
+            <Text style={[s.sectionHeader, {color: colors.muted}]}>SELECT ROOM</Text>
             <View style={s.stayRoomGrid}>
               {ROOMS.filter((r) => r.status === 'available' || r.num === room)
                 .slice(0, 6)
@@ -490,8 +515,8 @@ export function ManualEntryScreen({
                 ))}
             </View>
 
-            <View style={s.datesCard}>
-              <Text style={s.cardSectionTitle}>DATES & RATE</Text>
+            <View style={[s.datesCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
+              <Text style={[s.cardSectionTitle, {color: colors.muted}]}>DATES & RATE</Text>
               <View style={{flexDirection: 'row', gap: 10, marginTop: 12}}>
                 <View style={{flex: 1}}>
                   <CalendarPicker
@@ -512,8 +537,8 @@ export function ManualEntryScreen({
               </View>
 
               <View style={{marginTop: 4}}>
-                <Text style={s.fieldLabel}>Nightly rate</Text>
-                <Text style={s.rateValue}>
+                <Text style={[s.fieldLabel, {color: colors.muted}]}>Nightly rate</Text>
+                <Text style={[s.rateValue, {color: colors.ink}]}>
                   ₹
                   {Number(
                     ROOMS.find((r) => r.num === room)?.price || 1800
@@ -528,31 +553,31 @@ export function ManualEntryScreen({
         {/* Step 3: Review & confirm */}
         {step === 3 && (
           <View>
-            <Text style={s.sectionHeader}>PRIMARY GUEST</Text>
-            <View style={s.reviewCard}>
+            <Text style={[s.sectionHeader, {color: colors.muted}]}>PRIMARY GUEST</Text>
+            <View style={[s.reviewCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
               <View style={s.reviewTop}>
-                <Text style={s.reviewTitle}>{name || 'Primary Guest'}</Text>
+                <Text style={[s.reviewTitle, {color: colors.ink}]}>{name || 'Primary Guest'}</Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={() => setStep(1)}
                   style={{flexDirection: 'row', alignItems: 'center', gap: 4}}
                 >
-                  <Icon name="edit" size={14} color={C.ink} />
-                  <Text style={s.editBtnText}>Edit</Text>
+                  <Icon name="edit" size={14} color={colors.ink} />
+                  <Text style={[s.editBtnText, {color: colors.ink}]}>Edit</Text>
                 </TouchableOpacity>
               </View>
-              <View style={s.divider} />
+              <View style={[s.divider, isDark && {backgroundColor: '#27272A'}]} />
               {(photoUri || backPhotoUri) && (
                 <View style={{flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6}}>
                   {photoUri ? (
                     <View style={{flex: 1}}>
-                      <Text style={{fontFamily: 'Inter', fontSize: 10, fontWeight: '700', color: '#64748B', marginBottom: 4}}>Front Side ID</Text>
+                      <Text style={{fontFamily: 'Inter', fontSize: 10, fontWeight: '700', color: colors.muted, marginBottom: 4}}>Front Side ID</Text>
                       <Image source={{uri: photoUri}} style={{width: '100%', height: 75, borderRadius: 8}} resizeMode="cover" />
                     </View>
                   ) : null}
                   {backPhotoUri ? (
                     <View style={{flex: 1}}>
-                      <Text style={{fontFamily: 'Inter', fontSize: 10, fontWeight: '700', color: '#64748B', marginBottom: 4}}>Back Side ID</Text>
+                      <Text style={{fontFamily: 'Inter', fontSize: 10, fontWeight: '700', color: colors.muted, marginBottom: 4}}>Back Side ID</Text>
                       <Image source={{uri: backPhotoUri}} style={{width: '100%', height: 75, borderRadius: 8}} resizeMode="cover" />
                     </View>
                   ) : null}
@@ -560,30 +585,30 @@ export function ManualEntryScreen({
               )}
               <View style={s.reviewGrid}>
                 <View style={s.kvCol}>
-                  <Text style={s.kvLabel}>Full name</Text>
-                  <Text style={s.kvValue}>{name || 'Ananya Patel'}</Text>
+                  <Text style={[s.kvLabel, {color: colors.muted}]}>Full name</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{name || 'Ananya Patel'}</Text>
                 </View>
                 <View style={s.kvCol}>
-                  <Text style={s.kvLabel}>Document</Text>
-                  <Text style={s.kvValue}>
+                  <Text style={[s.kvLabel, {color: colors.muted}]}>Document</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>
                     {docType} · {idNum || '9821 4452 1092'}
                   </Text>
                 </View>
                 <View style={s.kvCol}>
-                  <Text style={s.kvLabel}>DOB</Text>
-                  <Text style={s.kvValue}>{dob || '1994-06-12'}</Text>
+                  <Text style={[s.kvLabel, {color: colors.muted}]}>DOB</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{dob || '1994-06-12'}</Text>
                 </View>
                 <View style={s.kvCol}>
-                  <Text style={s.kvLabel}>Gender</Text>
-                  <Text style={s.kvValue}>{gender || 'Female'}</Text>
+                  <Text style={[s.kvLabel, {color: colors.muted}]}>Gender</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{gender || 'Female'}</Text>
                 </View>
                 <View style={s.kvCol}>
-                  <Text style={s.kvLabel}>Phone</Text>
-                  <Text style={s.kvValue}>{phone || '+91 98765 43210'}</Text>
+                  <Text style={[s.kvLabel, {color: colors.muted}]}>Phone</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{phone || '+91 98765 43210'}</Text>
                 </View>
                 <View style={s.kvCol}>
-                  <Text style={s.kvLabel}>Address</Text>
-                  <Text style={s.kvValue}>{address || 'Bandra West, Mumbai'}</Text>
+                  <Text style={[s.kvLabel, {color: colors.muted}]}>Address</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{address || 'Bandra West, Mumbai'}</Text>
                 </View>
               </View>
             </View>
@@ -592,13 +617,13 @@ export function ManualEntryScreen({
             {coGuests.length > 0 && (
               <View style={{marginTop: 18}}>
                 <View style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8}}>
-                  <Text style={s.sectionHeader}>CO-GUESTS ({coGuests.length})</Text>
+                  <Text style={[s.sectionHeader, {color: colors.muted}]}>CO-GUESTS ({coGuests.length})</Text>
                   <TouchableOpacity onPress={handleOpenAddCoGuest} activeOpacity={0.7}>
                     <Text style={s.addMoreLink}>+ Add Another</Text>
                   </TouchableOpacity>
                 </View>
                 {coGuests.map((cg) => (
-                  <View key={cg.id} style={s.coGuestSummaryCard}>
+                  <View key={cg.id} style={[s.coGuestSummaryCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
                     <View style={s.coGuestAvatar}>
                       <Text style={s.coGuestAvatarText}>
                         {cg.name.split(' ').map((n) => n[0]).join('')}
@@ -606,12 +631,12 @@ export function ManualEntryScreen({
                     </View>
                     <View style={{flex: 1}}>
                       <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
-                        <Text style={s.coGuestName}>{cg.name}</Text>
+                        <Text style={[s.coGuestName, {color: colors.ink}]}>{cg.name}</Text>
                         <View style={s.relationBadge}>
                           <Text style={s.relationBadgeText}>{cg.relation}</Text>
                         </View>
                       </View>
-                      <Text style={s.coGuestMeta}>
+                      <Text style={[s.coGuestMeta, {color: colors.muted}]}>
                         {cg.docType} · {cg.idNum}
                         {cg.gender ? ` · ${cg.gender}` : ''}
                       </Text>
@@ -628,26 +653,26 @@ export function ManualEntryScreen({
                     </View>
                     <TouchableOpacity
                       onPress={() => handleOpenEditCoGuest(cg)}
-                      style={s.actionIconBtn}
+                      style={[s.actionIconBtn, isDark && {backgroundColor: '#27272A'}]}
                       activeOpacity={0.7}
                     >
-                      <Icon name="edit" size={14} color={C.ink} />
+                      <Icon name="edit" size={14} color={colors.ink} />
                     </TouchableOpacity>
                   </View>
                 ))}
               </View>
             )}
 
-            <Text style={[s.sectionHeader, {marginTop: 18}]}>STAY DETAILS</Text>
-            <View style={s.reviewCard}>
+            <Text style={[s.sectionHeader, {marginTop: 18, color: colors.muted}]}>STAY DETAILS</Text>
+            <View style={[s.reviewCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
               <View style={s.reviewGrid}>
                 <View style={s.kvCol}>
-                  <Text style={s.kvLabel}>Room</Text>
-                  <Text style={s.kvValue}>Room {room}</Text>
+                  <Text style={[s.kvLabel, {color: colors.muted}]}>Room</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>Room {room}</Text>
                 </View>
                 <View style={s.kvCol}>
-                  <Text style={s.kvLabel}>Rate</Text>
-                  <Text style={s.kvValue}>
+                  <Text style={[s.kvLabel, {color: colors.muted}]}>Rate</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>
                     ₹
                     {Number(
                       ROOMS.find((r) => r.num === room)?.price || 1800
@@ -656,16 +681,16 @@ export function ManualEntryScreen({
                   </Text>
                 </View>
                 <View style={s.kvCol}>
-                  <Text style={s.kvLabel}>Check-in</Text>
-                  <Text style={s.kvValue}>{checkin}</Text>
+                  <Text style={[s.kvLabel, {color: colors.muted}]}>Check-in</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{checkin}</Text>
                 </View>
                 <View style={s.kvCol}>
-                  <Text style={s.kvLabel}>Check-out</Text>
-                  <Text style={s.kvValue}>{checkout}</Text>
+                  <Text style={[s.kvLabel, {color: colors.muted}]}>Check-out</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{checkout}</Text>
                 </View>
                 <View style={s.kvCol}>
-                  <Text style={s.kvLabel}>Total Occupants</Text>
-                  <Text style={s.kvValue}>{1 + coGuests.length} Guests</Text>
+                  <Text style={[s.kvLabel, {color: colors.muted}]}>Total Occupants</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{1 + coGuests.length} Guests</Text>
                 </View>
               </View>
             </View>
@@ -674,16 +699,16 @@ export function ManualEntryScreen({
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={handleOpenAddCoGuest}
-              style={s.addGuestCard}
+              style={[s.addGuestCard, isDark && {backgroundColor: '#18181B', borderColor: '#3F3F46'}]}
             >
-              <View style={s.addGuestIcon}>
-                <Icon name="users" size={19} color={C.primary} />
+              <View style={[s.addGuestIcon, isDark && {backgroundColor: '#2E1065'}]}>
+                <Icon name="users" size={19} color={colors.primary} />
               </View>
               <View style={{flex: 1}}>
-                <Text style={s.addGuestTitle}>Add more guest</Text>
-                <Text style={s.addGuestSub}>Scan or enter co-guest details</Text>
+                <Text style={[s.addGuestTitle, {color: colors.ink}]}>Add more guest</Text>
+                <Text style={[s.addGuestSub, {color: colors.muted}]}>Scan or enter co-guest details</Text>
               </View>
-              <Icon name="plus" size={18} color={C.ink} />
+              <Icon name="plus" size={18} color={colors.ink} />
             </TouchableOpacity>
           </View>
         )}
@@ -698,7 +723,7 @@ export function ManualEntryScreen({
       />
 
       {/* Sticky Bottom Action Bar with Safe Area Inset */}
-      <View style={[s.bottomBar, {paddingBottom: Math.max(16, insets.bottom + 8)}]}>
+      <View style={[s.bottomBar, isDark && {backgroundColor: colors.canvas, borderTopColor: '#27272A'}, {paddingBottom: Math.max(16, insets.bottom + 8)}]}>
         {step === 1 && (
           <PrimaryButton
             label="Continue to Stay details →"
@@ -719,8 +744,8 @@ export function ManualEntryScreen({
               onPress={() => setStep(1)}
             />
             <PrimaryButton
-              label="Review & Confirm →"
-              style={{flex: 1.5}}
+              label="Continue to Review →"
+              style={{flex: 1}}
               onPress={() => setStep(3)}
             />
           </View>
@@ -733,8 +758,8 @@ export function ManualEntryScreen({
               onPress={() => setStep(2)}
             />
             <PrimaryButton
-              label="Confirm & Check-in"
-              style={{flex: 1.8}}
+              label="Confirm Check-in"
+              style={{flex: 1.4}}
               onPress={handleConfirm}
             />
           </View>
