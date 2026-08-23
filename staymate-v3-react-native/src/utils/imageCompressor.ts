@@ -1,5 +1,4 @@
 import { Platform } from 'react-native';
-import * as ImageManipulator from 'expo-image-manipulator';
 
 export interface CompressOptions {
   maxWidth?: number;
@@ -22,6 +21,14 @@ const DEFAULT_SELFIE_OPTIONS: CompressOptions = {
   returnBase64: false,
 };
 
+// Safely resolve ImageManipulator if present without crashing Metro bundler
+let ImageManipulator: any = null;
+try {
+  ImageManipulator = require('expo-image-manipulator');
+} catch (_) {
+  ImageManipulator = null;
+}
+
 export async function compressImage(
   uri: string,
   options: CompressOptions = DEFAULT_DOC_OPTIONS
@@ -33,6 +40,7 @@ export async function compressImage(
   const quality = options.quality ?? 0.55;
   const returnBase64 = options.returnBase64 ?? false;
 
+  // Web / Browser canvas compression
   if (Platform.OS === 'web' && typeof window !== 'undefined') {
     return new Promise((resolve) => {
       try {
@@ -83,33 +91,39 @@ export async function compressImage(
     });
   }
 
-  try {
-    const actions: ImageManipulator.Action[] = [
-      {
-        resize: {
-          width: maxWidth,
+  // Native compression if module available
+  if (ImageManipulator && ImageManipulator.manipulateAsync) {
+    try {
+      const actions = [
+        {
+          resize: {
+            width: maxWidth,
+          },
         },
-      },
-    ];
+      ];
 
-    const result = await ImageManipulator.manipulateAsync(
-      uri,
-      actions,
-      {
-        compress: quality,
-        format: ImageManipulator.SaveFormat.JPEG,
-        base64: returnBase64,
-      }
-    );
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
+        actions,
+        {
+          compress: quality,
+          format: ImageManipulator.SaveFormat?.JPEG || 'jpeg',
+          base64: returnBase64,
+        }
+      );
 
-    return {
-      uri: result.uri,
-      base64: result.base64,
-    };
-  } catch (e) {
-    console.warn('Native image compression notice, using original URI:', e);
-    return { uri };
+      return {
+        uri: result.uri,
+        base64: result.base64,
+      };
+    } catch (e) {
+      console.warn('Native image compression fallback:', e);
+      return { uri };
+    }
   }
+
+  // Fallback: return original URI
+  return { uri };
 }
 
 export async function compressToBase64DataUrl(
