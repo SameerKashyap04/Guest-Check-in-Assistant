@@ -15,8 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { C, R, shadow } from '../theme/tokens';
 import { Icon } from '../components/Icon';
 
-const StayMateLogo = require('../../../assets/images/staymate-logo.png');
-const GoogleLogo = require('../../../assets/images/google-logo.png');
+const StayMateLogo = require('../../assets/staymate-logo.png');
+const GoogleLogo = require('../../assets/google-logo.png');
 
 export function LoginScreen({
   onLoginSuccess,
