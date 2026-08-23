@@ -356,7 +356,7 @@ export default function DashboardScreen() {
               </Text>
             </View>
           ) : (
-            recentGuests.map((g, index) => {
+            recentGuests.slice(0, 3).map((g, index) => {
               const initials = (g.full_name || 'Guest')
                 .split(' ')
                 .map((n: string) => n[0])
@@ -392,7 +392,7 @@ export default function DashboardScreen() {
                     </View>
                     <Icon name="chevronRight" size={18} color={C.mutedSoft} />
                   </TouchableOpacity>
-                  {index < recentGuests.length - 1 && <View style={s.divider} />}
+                  {index < Math.min(recentGuests.length, 3) - 1 && <View style={s.divider} />}
                 </View>
               );
             })

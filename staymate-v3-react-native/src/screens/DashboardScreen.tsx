@@ -103,7 +103,7 @@ export function DashboardScreen({
       </View>
 
       <View>
-        {guests.map((g) => {
+        {guests.slice(0, 3).map((g, idx) => {
           const isCheckedOut = g.status === 'checked_out' || g.checkedOut;
           return (
             <View key={g.id}>
@@ -139,7 +139,7 @@ export function DashboardScreen({
                 </View>
                 <Icon name="chevronRight" size={18} color={C.mutedSoft}/>
               </TouchableOpacity>
-              <View style={s.divider}/>
+              {idx < Math.min(guests.length, 3) - 1 && <View style={s.divider}/>}
             </View>
           );
         })}
