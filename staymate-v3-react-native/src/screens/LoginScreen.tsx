@@ -153,7 +153,7 @@ export function LoginScreen({
       >
         <ScrollView
           contentContainerStyle={{
-            paddingTop: insets.top + 32,
+            paddingTop: Math.max(72, insets.top + 56),
             paddingHorizontal: 24,
             paddingBottom: Math.max(32, insets.bottom + 16),
           }}
