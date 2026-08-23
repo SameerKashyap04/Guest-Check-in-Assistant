@@ -1,46 +1,65 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
+  ScrollView,
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   StyleSheet,
+  TextInput,
   Image,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  Linking,
   Alert,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { C, R, shadow } from '../theme/tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../components/Icon';
 
-const StayMateLogo = require('../../assets/staymate-logo.png');
 const GoogleLogo = require('../../assets/google-logo.png');
+const StayMateLogo = require('../../assets/staymate-logo.png');
 
 export function LoginScreen({
+  initial = 'login',
   onLoginSuccess,
+  onClose,
+  showClose = false,
 }: {
+  initial?: 'login' | 'signup';
   onLoginSuccess: (userData?: any) => void;
+  onClose?: () => void;
+  showClose?: boolean;
 }) {
-  const [tab, setTab] = useState<'login' | 'signup'>('login');
+  const insets = useSafeAreaInsets();
+  const [step, setStep] = useState<'form' | 'otp'>('form');
+  const [mode, setMode] = useState(initial);
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [businessName, setBusinessName] = useState('');
+  const [pw, setPw] = useState('');
+  const [property, setProperty] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // OTP state
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
+  const [resendTimer, setResendTimer] = useState<number>(30);
+  const otpInputsRef = useRef<(TextInput | null)[]>([]);
+
+  useEffect(() => {
+    let interval: any;
+    if (step === 'otp' && resendTimer > 0) {
+      interval = setInterval(() => {
+        setResendTimer((prev) => Math.max(0, prev - 1));
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [step, resendTimer]);
+
   const handleSubmit = () => {
-    if (!email.trim()) {
-      Alert.alert('Required', 'Please enter your email address.');
+    if (!email.trim() || !pw.trim()) {
+      Alert.alert('Required Fields', 'Please enter your email and password.');
       return;
     }
-    if (!password.trim()) {
-      Alert.alert('Required', 'Please enter your password.');
-      return;
-    }
-    if (tab === 'signup' && !businessName.trim()) {
-      Alert.alert('Required', 'Please enter your homestay / property name.');
+    if (mode === 'signup' && !property.trim()) {
+      Alert.alert('Required Fields', 'Please enter your property name.');
       return;
     }
 
@@ -49,9 +68,9 @@ export function LoginScreen({
       setIsLoading(false);
       onLoginSuccess({
         email: email.trim(),
-        businessName: businessName.trim() || 'My Homestay',
+        businessName: property.trim() || 'Highland Homestay',
       });
-    }, 400);
+    }, 250);
   };
 
   const handleGoogleLogin = () => {
@@ -59,363 +78,646 @@ export function LoginScreen({
     setTimeout(() => {
       setIsLoading(false);
       onLoginSuccess({
-        email: 'host@staymate.in',
+        email: 'owner@staymate.in',
         businessName: 'Highland Homestay',
       });
-    }, 400);
+    }, 250);
   };
 
-  const handleDemoLogin = () => {
+  const handleResendOtp = () => {
+    if (resendTimer > 0) return;
+    setResendTimer(30);
+  };
+
+  const handleOtpChange = (text: string, index: number) => {
+    const cleaned = text.replace(/[^0-9]/g, '');
+
+    if (cleaned.length === 6) {
+      const newDigits = cleaned.split('');
+      setOtpDigits(newDigits);
+      otpInputsRef.current[5]?.focus();
+      handleVerifyOtp(cleaned);
+      return;
+    }
+
+    const digit = cleaned.slice(-1);
+    const updated = [...otpDigits];
+    updated[index] = digit;
+    setOtpDigits(updated);
+
+    if (digit && index < 5) {
+      otpInputsRef.current[index + 1]?.focus();
+    }
+
+    const completeCode = updated.join('');
+    if (completeCode.length === 6 && !updated.includes('')) {
+      handleVerifyOtp(completeCode);
+    }
+  };
+
+  const handleOtpKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputsRef.current[index - 1]?.focus();
+    }
+  };
+
+  const handleVerifyOtp = (codeToVerify?: string) => {
+    const code = codeToVerify || otpDigits.join('');
+    if (code.length !== 6) {
+      Alert.alert('Incomplete Code', 'Please enter all 6 digits.');
+      return;
+    }
+
     onLoginSuccess({
-      email: 'demo.owner@staymate.in',
-      businessName: 'Highland Homestay',
+      email: email.trim(),
+      businessName: property.trim() || 'Highland Homestay',
     });
   };
 
   return (
-    <SafeAreaView style={s.container} edges={['top', 'bottom', 'left', 'right']}>
+    <View style={s.container}>
+      {/* Optional close button if presented inside a modal */}
+      {showClose && onClose && (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={onClose}
+          style={[s.closeBtn, { top: insets.top + 16 }]}
+        >
+          <Icon name="x" size={16} color="#64748B" />
+        </TouchableOpacity>
+      )}
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={s.scrollWrap}
+          contentContainerStyle={{
+            paddingTop: insets.top + 32,
+            paddingHorizontal: 24,
+            paddingBottom: Math.max(32, insets.bottom + 16),
+          }}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
         >
-          {/* Header Brand */}
-          <View style={s.brandWrap}>
+          {/* Header */}
+          <View style={s.header}>
             <Image
               source={StayMateLogo}
-              style={s.logo}
+              style={s.brandLogo}
               resizeMode="contain"
             />
-            <Text style={s.tagline}>Smart Homestay Guest Management</Text>
+            {step === 'form' ? (
+              <>
+                <Text style={s.title}>
+                  {mode === 'login' ? 'Welcome back' : 'Create account'}
+                </Text>
+                <Text style={s.subtitle}>
+                  {mode === 'login'
+                    ? 'Sign in to access your property'
+                    : 'Start managing your check-ins'}
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={s.title}>Verify your email</Text>
+                <Text style={s.subtitle}>
+                  Enter the 6-digit code sent to
+                </Text>
+                <View style={s.emailChip}>
+                  <Text style={s.emailChipText}>{email.trim()}</Text>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => setStep('form')}
+                    style={s.editEmailBtn}
+                  >
+                    <Text style={s.editEmailText}>Edit</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
 
-          {/* Card */}
-          <View style={s.card}>
-            {/* Tab switch */}
-            <View style={s.tabRow}>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setTab('login')}
-                style={[s.tabBtn, tab === 'login' && s.tabBtnActive]}
-              >
-                <Text style={[s.tabText, tab === 'login' && s.tabTextActive]}>
-                  Sign In
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => setTab('signup')}
-                style={[s.tabBtn, tab === 'signup' && s.tabBtnActive]}
-              >
-                <Text style={[s.tabText, tab === 'signup' && s.tabTextActive]}>
-                  Create Account
-                </Text>
-              </TouchableOpacity>
-            </View>
+          {step === 'form' ? (
+            <>
+              {/* Segmented Control */}
+              <View style={s.tabs}>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setMode('login')}
+                  style={[s.tab, mode === 'login' && s.activeTab]}
+                >
+                  <Text style={[s.tabText, mode === 'login' && s.activeTabText]}>
+                    Log in
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setMode('signup')}
+                  style={[s.tab, mode === 'signup' && s.activeTab]}
+                >
+                  <Text style={[s.tabText, mode === 'signup' && s.activeTabText]}>
+                    Sign up
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-            {/* Subtitle info */}
-            <Text style={s.formTitle}>
-              {tab === 'login' ? 'Welcome back, Host' : 'Start Managing Your Homestay'}
-            </Text>
-            <Text style={s.formSub}>
-              {tab === 'login'
-                ? 'Sign in to access your dashboard, room status & guest check-ins.'
-                : 'Register your property to streamline self check-ins and compliance.'}
-            </Text>
+              {/* Inputs */}
+              <View style={s.form}>
+                {mode === 'signup' && (
+                  <View style={s.inputGroup}>
+                    <Text style={s.label}>Property name</Text>
+                    <View style={s.inputWrapper}>
+                      <View style={s.inputIcon}>
+                        <Icon name="home" size={18} color="#71717A" />
+                      </View>
+                      <TextInput
+                        value={property}
+                        onChangeText={setProperty}
+                        placeholder="e.g. Sunrise Homestay"
+                        placeholderTextColor="#A1A1AA"
+                        style={s.input}
+                        autoCapitalize="words"
+                      />
+                    </View>
+                  </View>
+                )}
 
-            {/* Inputs */}
-            <View style={{ gap: 14, marginTop: 14 }}>
-              {tab === 'signup' && (
-                <View>
-                  <Text style={s.label}>HOMESTAY / PROPERTY NAME</Text>
-                  <View style={s.inputBox}>
-                    <Icon name="home" size={18} color="#6a6a6a" />
+                <View style={s.inputGroup}>
+                  <Text style={s.label}>Email address</Text>
+                  <View style={s.inputWrapper}>
+                    <View style={s.inputIcon}>
+                      <Icon name="mail" size={18} color="#71717A" />
+                    </View>
                     <TextInput
+                      value={email}
+                      onChangeText={setEmail}
+                      placeholder="owner@property.com"
+                      placeholderTextColor="#A1A1AA"
                       style={s.input}
-                      placeholder="e.g. Pine View Heritage Villa"
-                      placeholderTextColor="#94A3B8"
-                      value={businessName}
-                      onChangeText={setBusinessName}
+                      keyboardType="email-address"
+                      autoCapitalize="none"
+                      autoCorrect={false}
                     />
                   </View>
                 </View>
-              )}
 
-              <View>
-                <Text style={s.label}>EMAIL ADDRESS</Text>
-                <View style={s.inputBox}>
-                  <Icon name="mail" size={18} color="#6a6a6a" />
-                  <TextInput
-                    style={s.input}
-                    placeholder="name@homestay.com"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={email}
-                    onChangeText={setEmail}
-                  />
-                </View>
-              </View>
-
-              <View>
-                <Text style={s.label}>PASSWORD</Text>
-                <View style={s.inputBox}>
-                  <Icon name="lock" size={18} color="#6a6a6a" />
-                  <TextInput
-                    style={s.input}
-                    placeholder="Enter your password"
-                    placeholderTextColor="#94A3B8"
-                    secureTextEntry={!showPassword}
-                    value={password}
-                    onChangeText={setPassword}
-                  />
-                  <TouchableOpacity
-                    onPress={() => setShowPassword((p) => !p)}
-                    style={{ padding: 4 }}
-                  >
-                    <Icon
-                      name={showPassword ? 'eyeOff' : 'eye'}
-                      size={18}
-                      color="#6a6a6a"
+                <View style={s.inputGroup}>
+                  <Text style={s.label}>Password</Text>
+                  <View style={s.inputWrapper}>
+                    <View style={s.inputIcon}>
+                      <Icon name="lock" size={18} color="#71717A" />
+                    </View>
+                    <TextInput
+                      value={pw}
+                      onChangeText={setPw}
+                      placeholder={
+                        mode === 'login' ? 'Enter password' : 'At least 8 characters'
+                      }
+                      placeholderTextColor="#A1A1AA"
+                      secureTextEntry={!showPassword}
+                      style={s.input}
+                      autoCapitalize="none"
                     />
-                  </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={() => setShowPassword(!showPassword)}
+                      style={s.eyeBtn}
+                    >
+                      <Icon
+                        name={showPassword ? 'eyeOff' : 'eye'}
+                        size={18}
+                        color="#71717A"
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
+
+                {mode === 'login' && (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() =>
+                      Alert.alert(
+                        'Password Reset',
+                        'Password reset instructions have been sent to your email.'
+                      )
+                    }
+                    style={s.forgotBtn}
+                  >
+                    <Text style={s.forgotText}>Forgot password?</Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* Submit Button */}
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={handleSubmit}
+                  disabled={isLoading}
+                  style={s.submitBtn}
+                >
+                  <Text style={s.submitBtnText}>
+                    {isLoading
+                      ? 'Signing in...'
+                      : mode === 'login'
+                      ? 'Log in'
+                      : 'Create account'}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Divider */}
+                <View style={s.divider}>
+                  <View style={s.dividerLine} />
+                  <Text style={s.dividerText}>or</Text>
+                  <View style={s.dividerLine} />
+                </View>
+
+                {/* Google Button */}
+                <TouchableOpacity
+                  activeOpacity={0.85}
+                  style={s.googleBtn}
+                  onPress={handleGoogleLogin}
+                >
+                  <Image
+                    source={GoogleLogo}
+                    style={s.googleImage}
+                    resizeMode="contain"
+                  />
+                  <Text style={s.googleBtnText}>Continue with Google</Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            /* OTP Verification Screen */
+            <View style={s.otpContainer}>
+              <View style={s.otpRow}>
+                {otpDigits.map((digit, index) => (
+                  <TextInput
+                    key={index}
+                    ref={(ref) => {
+                      otpInputsRef.current[index] = ref;
+                    }}
+                    value={digit}
+                    onChangeText={(val) => handleOtpChange(val, index)}
+                    onKeyPress={(e) => handleOtpKeyPress(e, index)}
+                    keyboardType="number-pad"
+                    maxLength={1}
+                    selectTextOnFocus
+                    style={[
+                      s.otpBox,
+                      digit ? s.otpBoxFilled : null,
+                    ]}
+                  />
+                ))}
               </View>
 
-              {/* Submit Button */}
+              {/* Resend Row */}
+              <View style={s.resendRow}>
+                <Text style={s.resendLabel}>Didn't receive the code? </Text>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={handleResendOtp}
+                  disabled={resendTimer > 0}
+                >
+                  <Text
+                    style={[
+                      s.resendLink,
+                      resendTimer > 0 && s.resendLinkDisabled,
+                    ]}
+                  >
+                    {resendTimer > 0
+                      ? `Resend in 0:${resendTimer < 10 ? '0' : ''}${resendTimer}`
+                      : 'Resend code'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Verify Button */}
               <TouchableOpacity
-                activeOpacity={0.85}
-                onPress={handleSubmit}
-                disabled={isLoading}
-                style={s.primaryBtn}
+                activeOpacity={0.88}
+                onPress={() => handleVerifyOtp()}
+                style={s.submitBtn}
               >
-                <Text style={s.primaryBtnText}>
-                  {isLoading
-                    ? 'Processing...'
-                    : tab === 'login'
-                    ? 'Sign In to Dashboard →'
-                    : 'Create Property Account →'}
+                <Text style={s.submitBtnText}>Verify & Continue</Text>
+              </TouchableOpacity>
+
+              {/* Back button */}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setStep('form')}
+                style={s.backBtn}
+              >
+                <Text style={s.backBtnText}>
+                  Back to {mode === 'login' ? 'Log in' : 'Sign up'}
                 </Text>
               </TouchableOpacity>
-
-              {/* Divider */}
-              <View style={s.dividerRow}>
-                <View style={s.dividerLine} />
-                <Text style={s.dividerText}>OR</Text>
-                <View style={s.dividerLine} />
-              </View>
-
-              {/* Google Sign-in */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={handleGoogleLogin}
-                style={s.googleBtn}
-              >
-                <Image
-                  source={GoogleLogo}
-                  style={s.googleIcon}
-                  resizeMode="contain"
-                />
-                <Text style={s.googleBtnText}>Continue with Google</Text>
-              </TouchableOpacity>
-
-              {/* Quick Demo Login */}
-              <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={handleDemoLogin}
-                style={s.demoBtn}
-              >
-                <Text style={s.demoBtnText}>⚡ 1-Click Quick Demo Sign In</Text>
-              </TouchableOpacity>
             </View>
-          </View>
+          )}
 
           {/* Footer note */}
-          <Text style={s.footerNote}>
-            🔒 256-Bit Encrypted & Compliant with Form C / Local Regulations
+          <Text style={s.footerText}>
+            By continuing, you agree to StayMate's{' '}
+            <Text style={{ color: '#09090B', fontWeight: '600' }}>Terms</Text> and{' '}
+            <Text style={{ color: '#09090B', fontWeight: '600' }}>Privacy</Text>.
           </Text>
+
+          {/* Devify Developer Attribution */}
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => Linking.openURL('https://www.devify.co.in')}
+            style={s.devifyBadge}
+          >
+            <Text style={s.devifyText}>
+              Developed by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF8FD',
+    backgroundColor: '#FFFFFF',
   },
-  scrollWrap: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 40,
+  closeBtn: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 10,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#F4F4F5',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  brandWrap: {
+  header: {
     alignItems: 'center',
     marginBottom: 24,
   },
-  logo: {
-    width: 170,
-    height: 52,
+  brandLogo: {
+    width: 190,
+    height: 34,
+    marginBottom: 36,
   },
-  tagline: {
+  title: {
     fontFamily: 'Inter',
-    fontSize: 13,
-    color: '#6A6A6A',
-    fontWeight: '500',
-    marginTop: 6,
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.4,
+    color: '#09090B',
   },
-  card: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: '#ECEAF0',
-    padding: 22,
-    ...shadow,
+  subtitle: {
+    fontFamily: 'Inter',
+    fontSize: 13.5,
+    color: '#71717A',
+    marginTop: 3,
   },
-  tabRow: {
+  emailChip: {
     flexDirection: 'row',
-    backgroundColor: '#F3E8FF',
-    padding: 4,
-    borderRadius: 12,
-    marginBottom: 16,
-  },
-  tabBtn: {
-    flex: 1,
-    paddingVertical: 9,
     alignItems: 'center',
-    borderRadius: 9,
+    backgroundColor: '#F4F4F5',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    marginTop: 8,
+    gap: 8,
   },
-  tabBtnActive: {
-    backgroundColor: '#FFFFFF',
-    ...shadow,
-  },
-  tabText: {
+  emailChipText: {
     fontFamily: 'Inter',
     fontSize: 13,
     fontWeight: '600',
-    color: '#6A6A6A',
+    color: '#09090B',
   },
-  tabTextActive: {
-    color: C.primary,
-    fontWeight: '700',
+  editEmailBtn: {
+    paddingHorizontal: 4,
   },
-  formTitle: {
+  editEmailText: {
     fontFamily: 'Inter',
-    fontSize: 18,
+    fontSize: 12.5,
     fontWeight: '700',
-    color: '#1E1B4B',
+    color: '#7C3AED',
   },
-  formSub: {
+  tabs: {
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#F4F4F5',
+    padding: 3,
+    flexDirection: 'row',
+    marginBottom: 20,
+  },
+  tab: {
+    flex: 1,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  activeTab: {
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000000',
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1.5 },
+    elevation: 2,
+  },
+  tabText: {
     fontFamily: 'Inter',
-    fontSize: 13,
-    color: '#64748B',
-    marginTop: 4,
-    lineHeight: 18,
+    fontSize: 13.5,
+    fontWeight: '600',
+    color: '#71717A',
+  },
+  activeTabText: {
+    fontWeight: '700',
+    color: '#09090B',
+  },
+  form: {
+    width: '100%',
+  },
+  inputGroup: {
+    marginBottom: 13,
   },
   label: {
     fontFamily: 'Inter',
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#475569',
-    letterSpacing: 0.6,
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#18181B',
     marginBottom: 6,
   },
-  inputBox: {
+  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E4E4E7',
     borderRadius: 12,
     paddingHorizontal: 12,
     height: 48,
-    backgroundColor: '#F8FAFC',
-    gap: 10,
+  },
+  inputIcon: {
+    marginRight: 10,
+    width: 20,
+    alignItems: 'center',
   },
   input: {
     flex: 1,
     fontFamily: 'Inter',
     fontSize: 14,
-    color: '#1E293B',
+    fontWeight: '500',
+    color: '#09090B',
+    height: '100%',
   },
-  primaryBtn: {
-    backgroundColor: C.primary,
+  eyeBtn: {
+    padding: 6,
+  },
+  forgotBtn: {
+    alignSelf: 'flex-end',
+    marginTop: 2,
+    marginBottom: 16,
+  },
+  forgotText: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    fontWeight: '600',
+    color: '#7C3AED',
+  },
+  submitBtn: {
     height: 48,
     borderRadius: 12,
+    backgroundColor: '#09090B',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
     marginTop: 4,
   },
-  primaryBtnText: {
+  submitBtnText: {
     fontFamily: 'Inter',
-    color: '#FFFFFF',
     fontSize: 14.5,
     fontWeight: '700',
+    color: '#FFFFFF',
   },
-  dividerRow: {
+  divider: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    marginVertical: 4,
+    marginVertical: 18,
   },
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: '#E4E4E7',
   },
   dividerText: {
     fontFamily: 'Inter',
-    fontSize: 11.5,
-    color: '#94A3B8',
-    fontWeight: '600',
+    fontSize: 12,
+    fontWeight: '500',
+    color: '#A1A1AA',
   },
   googleBtn: {
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E4E4E7',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-    height: 46,
-    borderRadius: 12,
     gap: 10,
+    backgroundColor: '#FFFFFF',
   },
-  googleIcon: {
-    width: 20,
-    height: 20,
+  googleImage: {
+    width: 18,
+    height: 18,
   },
   googleBtnText: {
     fontFamily: 'Inter',
     fontSize: 13.5,
     fontWeight: '600',
-    color: '#334155',
+    color: '#18181B',
   },
-  demoBtn: {
-    backgroundColor: '#EDE9FE',
-    borderWidth: 1,
-    borderColor: '#DDD6FE',
-    height: 44,
+  otpContainer: {
+    width: '100%',
+    paddingTop: 8,
+  },
+  otpRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 20,
+  },
+  otpBox: {
+    width: 44,
+    height: 52,
     borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: '#E4E4E7',
+    backgroundColor: '#FFFFFF',
+    textAlign: 'center',
+    fontFamily: 'Inter',
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#09090B',
+  },
+  otpBoxFilled: {
+    borderColor: '#7C3AED',
+    backgroundColor: '#FAF5FF',
+  },
+  resendRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 20,
   },
-  demoBtnText: {
+  resendLabel: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    color: '#71717A',
+  },
+  resendLink: {
     fontFamily: 'Inter',
     fontSize: 13,
     fontWeight: '700',
-    color: C.primary,
+    color: '#7C3AED',
   },
-  footerNote: {
+  resendLinkDisabled: {
+    color: '#A1A1AA',
+  },
+  backBtn: {
+    alignItems: 'center',
+    marginTop: 14,
+    paddingVertical: 6,
+  },
+  backBtnText: {
+    fontFamily: 'Inter',
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#71717A',
+  },
+  footerText: {
+    fontFamily: 'Inter',
+    fontSize: 12,
+    color: '#71717A',
+    textAlign: 'center',
+    marginTop: 24,
+    lineHeight: 18,
+  },
+  devifyBadge: {
+    alignSelf: 'center',
+    marginTop: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  devifyText: {
     fontFamily: 'Inter',
     fontSize: 11.5,
-    color: '#94A3B8',
+    color: '#71717A',
     textAlign: 'center',
-    marginTop: 20,
+  },
+  devifyBrand: {
+    fontWeight: '700',
+    color: '#09090B',
   },
 });
