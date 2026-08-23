@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -42,6 +43,7 @@ export default function ManualEntryScreen() {
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [backPhotoUri, setBackPhotoUri] = useState<string | null>(null);
   const [isScanning, setIsScanning] = useState(false);
 
   // Step 2: Stay Details
@@ -72,43 +74,55 @@ export default function ManualEntryScreen() {
 
   const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
 
-  const handleUploadPhoto = async () => {
+  const handlePickPhoto = async (side: 'front' | 'back', useCamera = false) => {
     try {
-      const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(
-          'Permission Required',
-          'Gallery access is needed to upload ID card photo.'
-        );
-        return;
+      if (Platform.OS !== 'web') {
+        const permission = useCamera
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert(
+            'Permission Required',
+            `Access is needed to capture or upload ${side === 'front' ? 'Front' : 'Back'} ID card photo.`
+          );
+          return;
+        }
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
+      const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ['images'],
-        quality: 1,
+        quality: 0.9,
         allowsEditing: false,
-      });
+      };
+
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync(options)
+        : await ImagePicker.launchImageLibraryAsync(options);
 
       if (result.canceled || !result.assets || result.assets.length === 0) {
         return;
       }
 
       const imageUri = result.assets[0].uri;
-      setPhotoUri(imageUri);
+      if (side === 'front') {
+        setPhotoUri(imageUri);
+      } else {
+        setBackPhotoUri(imageUri);
+      }
       setIsScanning(true);
 
       const blocks = await OCRPipeline.analyzeFrame(imageUri);
       const initialProfile = {
-        fullName: { value: '', confidence: 0 },
-        idNumber: { value: '', confidence: 0 },
-        address: { value: '', confidence: 0 },
-        dob: { value: '', confidence: 0 },
-        gender: { value: '', confidence: 0 },
+        fullName: { value: name, confidence: 0 },
+        idNumber: { value: idNum, confidence: 0 },
+        address: { value: address, confidence: 0 },
+        dob: { value: dob, confidence: 0 },
+        gender: { value: gender, confidence: 0 },
         pinCode: { value: '', confidence: 0 },
         idType: 'UNKNOWN' as const,
-        isBackScanned: false,
-        photoUri: imageUri,
+        isBackScanned: side === 'back',
+        photoUri: side === 'front' ? imageUri : (photoUri || ''),
+        backPhotoUri: side === 'back' ? imageUri : (backPhotoUri || ''),
       };
 
       const profile = OCRPipeline.processBlocks(
@@ -118,10 +132,11 @@ export default function ManualEntryScreen() {
       );
       setIsScanning(false);
 
-      if (profile.fullName?.value) setName(profile.fullName.value);
-      if (profile.idNumber?.value) setIdNum(profile.idNumber.value);
+      if (profile.fullName?.value && !name) setName(profile.fullName.value);
+      if (profile.idNumber?.value && !idNum) setIdNum(profile.idNumber.value);
       if (profile.address?.value) setAddress(profile.address.value);
-      if (profile.dob?.value) setDob(profile.dob.value);
+      if (profile.dob?.value && !dob) setDob(profile.dob.value);
+      if (profile.gender?.value && !gender) setGender(profile.gender.value);
       if (profile.idType && profile.idType !== 'UNKNOWN') {
         const match = DOC_TYPES.find(
           (d) => d.toLowerCase().replace(/\s/g, '') === profile.idType.toLowerCase()
@@ -131,12 +146,12 @@ export default function ManualEntryScreen() {
 
       Alert.alert(
         'Auto-filled from ID',
-        'Scanned details have been added to the fields below.'
+        `${side === 'front' ? 'Front' : 'Back'} ID details have been scanned and updated.`
       );
     } catch (e) {
       console.error(e);
       setIsScanning(false);
-      Alert.alert('Scan Failed', 'Could not parse text. Enter manually.');
+      Alert.alert('Scan Notice', 'Photo attached. Please verify or fill in the details.');
     }
   };
 
@@ -170,7 +185,7 @@ export default function ManualEntryScreen() {
         address: address.trim(),
         phone: phone.trim(),
         photo_uri: photoUri || '',
-        back_photo_uri: '',
+        back_photo_uri: backPhotoUri || '',
         selfie_uri: '',
         property_id: propertyId || 'HS-DEFAULT',
         id_type: docType,
@@ -287,14 +302,90 @@ export default function ManualEntryScreen() {
           {/* STEP 1: Guest Details */}
           {step === 1 && (
             <View>
-              {/* Upload ID Button */}
+              {/* ID Card Photos (Front & Back) */}
+              <Text style={s.sectionHeader}>ID CARD PHOTOS (FRONT & BACK)</Text>
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 18 }}>
+                {/* Front Photo Card */}
+                <View style={{ flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                  <Text style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6 }}>
+                    Front Side ID
+                  </Text>
+                  {photoUri ? (
+                    <View style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', height: 90 }}>
+                      <Image source={{ uri: photoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      <TouchableOpacity
+                        onPress={() => setPhotoUri(null)}
+                        style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(220,38,38,0.9)', padding: 4, borderRadius: 12 }}
+                      >
+                        <Icon name="x" size={12} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={{ gap: 6 }}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => handlePickPhoto('front', true)}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#EDE9FE', paddingVertical: 8, borderRadius: 8 }}
+                      >
+                        <Icon name="camera" size={14} color="#7C3AED" />
+                        <Text style={{ fontFamily: 'Inter', fontSize: 11.5, fontWeight: '700', color: '#7C3AED' }}>Camera</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => handlePickPhoto('front', false)}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1', paddingVertical: 7, borderRadius: 8 }}
+                      >
+                        <Icon name="upload" size={14} color="#475569" />
+                        <Text style={{ fontFamily: 'Inter', fontSize: 11.5, fontWeight: '600', color: '#475569' }}>Gallery</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
 
-            <Field
-              label="Full Name *"
-              value={name}
-              onChangeText={setName}
-              placeholder="e.g. Rohan Sharma"
-            />
+                {/* Back Photo Card */}
+                <View style={{ flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E2E8F0' }}>
+                  <Text style={{ fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6 }}>
+                    Back Side ID
+                  </Text>
+                  {backPhotoUri ? (
+                    <View style={{ position: 'relative', borderRadius: 10, overflow: 'hidden', height: 90 }}>
+                      <Image source={{ uri: backPhotoUri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                      <TouchableOpacity
+                        onPress={() => setBackPhotoUri(null)}
+                        style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(220,38,38,0.9)', padding: 4, borderRadius: 12 }}
+                      >
+                        <Icon name="x" size={12} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+                  ) : (
+                    <View style={{ gap: 6 }}>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => handlePickPhoto('back', true)}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#EDE9FE', paddingVertical: 8, borderRadius: 8 }}
+                      >
+                        <Icon name="camera" size={14} color="#7C3AED" />
+                        <Text style={{ fontFamily: 'Inter', fontSize: 11.5, fontWeight: '700', color: '#7C3AED' }}>Camera</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        activeOpacity={0.8}
+                        onPress={() => handlePickPhoto('back', false)}
+                        style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1', paddingVertical: 7, borderRadius: 8 }}
+                      >
+                        <Icon name="upload" size={14} color="#475569" />
+                        <Text style={{ fontFamily: 'Inter', fontSize: 11.5, fontWeight: '600', color: '#475569' }}>Gallery</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+              </View>
+
+              <Field
+                label="Full Name *"
+                value={name}
+                onChangeText={setName}
+                placeholder="e.g. Rohan Sharma"
+              />
 
             {/* Document Type Chips */}
             <Text style={s.sectionHeader}>DOCUMENT TYPE</Text>
@@ -431,6 +522,22 @@ export default function ManualEntryScreen() {
                 <Icon name="users" size={18} color={C.primary} />
                 <Text style={s.summaryHeadTitle}>Guest Information</Text>
               </View>
+              {(photoUri || backPhotoUri) && (
+                <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, paddingBottom: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+                  {photoUri ? (
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: '700', color: '#64748B', marginBottom: 4 }}>Front Side ID</Text>
+                      <Image source={{ uri: photoUri }} style={{ width: '100%', height: 75, borderRadius: 8 }} resizeMode="cover" />
+                    </View>
+                  ) : null}
+                  {backPhotoUri ? (
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: '700', color: '#64748B', marginBottom: 4 }}>Back Side ID</Text>
+                      <Image source={{ uri: backPhotoUri }} style={{ width: '100%', height: 75, borderRadius: 8 }} resizeMode="cover" />
+                    </View>
+                  ) : null}
+                </View>
+              )}
               <View style={s.summaryRow}>
                 <Text style={s.summaryLabel}>Full Name</Text>
                 <Text style={s.summaryVal}>{name}</Text>

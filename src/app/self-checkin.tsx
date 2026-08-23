@@ -61,6 +61,7 @@ export interface AdditionalGuest {
   idType: string;
   idNumber: string;
   frontPhotoUri: string | null;
+  backPhotoUri?: string | null;
 }
 
 const DOC_TYPES = ['Aadhaar', 'PAN', 'Passport', 'Driving Licence', 'Voter ID'];
@@ -194,6 +195,7 @@ export default function SelfCheckinScreen() {
         idType: 'Aadhaar',
         idNumber: '',
         frontPhotoUri: null,
+        backPhotoUri: null,
       },
     ]);
   };
@@ -262,7 +264,8 @@ export default function SelfCheckinScreen() {
   const pickImage = async (
     target: 'front' | 'back' | 'selfie',
     useCamera = false,
-    additionalGuestId?: string
+    additionalGuestId?: string,
+    coGuestSide: 'front' | 'back' = 'front'
   ) => {
     try {
       if (Platform.OS !== 'web') {
@@ -291,7 +294,8 @@ export default function SelfCheckinScreen() {
         const compressedUri = await compressAndGetBase64(asset);
 
         if (additionalGuestId) {
-          updateAdditionalPerson(additionalGuestId, 'frontPhotoUri', compressedUri);
+          const field = coGuestSide === 'back' ? 'backPhotoUri' : 'frontPhotoUri';
+          updateAdditionalPerson(additionalGuestId, field, compressedUri);
           return;
         }
 
@@ -437,6 +441,19 @@ export default function SelfCheckinScreen() {
                 <Text style={s.kvLabel}>ID Document</Text>
                 <Text style={s.kvVal}>{idType} · {idNumber}</Text>
               </View>
+              {(frontPhotoUri || backPhotoUri) && (
+                <View style={{ marginTop: 6, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F1F5F9' }}>
+                  <Text style={[s.kvLabel, { marginBottom: 6 }]}>Attached ID Photos (Front & Back)</Text>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    {frontPhotoUri ? (
+                      <Image source={{ uri: frontPhotoUri }} style={{ flex: 1, height: 70, borderRadius: 8 }} resizeMode="cover" />
+                    ) : null}
+                    {backPhotoUri ? (
+                      <Image source={{ uri: backPhotoUri }} style={{ flex: 1, height: 70, borderRadius: 8 }} resizeMode="cover" />
+                    ) : null}
+                  </View>
+                </View>
+              )}
               <View style={s.kvRow}>
                 <Text style={s.kvLabel}>Total Occupants</Text>
                 <Text style={s.kvVal}>{adultsCount} Adults, {childrenCount} Children</Text>
@@ -1171,17 +1188,82 @@ export default function SelfCheckinScreen() {
                       />
                     </View>
 
-                    {/* Co-guest Photo Button */}
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => pickImage('front', false, cg.id)}
-                      style={[s.uploadActionBtn, { marginTop: 8, alignSelf: 'flex-start' }]}
-                    >
-                      <Camera size={13} color="#0F172A" />
-                      <Text style={s.uploadActionText}>
-                        {cg.frontPhotoUri ? 'Co-Guest ID Attached ✓' : 'Attach Co-Guest ID Photo'}
-                      </Text>
-                    </TouchableOpacity>
+                    {/* Co-guest Both Sides ID Photo (Front & Back) */}
+                    <Text style={{ fontFamily: 'Inter', fontSize: 10.5, fontWeight: '700', color: '#64748B', marginTop: 10, marginBottom: 6 }}>
+                      CO-GUEST ID CARD PHOTOS (FRONT & BACK)
+                    </Text>
+
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      {/* Front Photo */}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: '600', color: '#94A3B8', marginBottom: 4 }}>Front Side</Text>
+                        {cg.frontPhotoUri ? (
+                          <View style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#CBD5E1' }}>
+                            <Image source={{ uri: cg.frontPhotoUri }} style={{ width: '100%', height: 75 }} resizeMode="cover" />
+                            <TouchableOpacity
+                              onPress={() => updateAdditionalPerson(cg.id, 'frontPhotoUri', null)}
+                              style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(220,38,38,0.85)', padding: 3, borderRadius: 10 }}
+                            >
+                              <X size={12} color="#FFFFFF" />
+                            </TouchableOpacity>
+                          </View>
+                        ) : (
+                          <View style={{ flexDirection: 'row', gap: 4 }}>
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              onPress={() => pickImage('front', true, cg.id, 'front')}
+                              style={[s.uploadActionBtn, { flex: 1, paddingVertical: 6, paddingHorizontal: 4, justifyContent: 'center' }]}
+                            >
+                              <Camera size={12} color="#0F172A" />
+                              <Text style={[s.uploadActionText, { fontSize: 10.5 }]}>Camera</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              onPress={() => pickImage('front', false, cg.id, 'front')}
+                              style={[s.uploadActionBtn, { flex: 1, paddingVertical: 6, paddingHorizontal: 4, justifyContent: 'center' }]}
+                            >
+                              <Upload size={12} color="#0F172A" />
+                              <Text style={[s.uploadActionText, { fontSize: 10.5 }]}>Gallery</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+
+                      {/* Back Photo */}
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ fontFamily: 'Inter', fontSize: 10, fontWeight: '600', color: '#94A3B8', marginBottom: 4 }}>Back Side</Text>
+                        {cg.backPhotoUri ? (
+                          <View style={{ position: 'relative', borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: '#CBD5E1' }}>
+                            <Image source={{ uri: cg.backPhotoUri }} style={{ width: '100%', height: 75 }} resizeMode="cover" />
+                            <TouchableOpacity
+                              onPress={() => updateAdditionalPerson(cg.id, 'backPhotoUri', null)}
+                              style={{ position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(220,38,38,0.85)', padding: 3, borderRadius: 10 }}
+                            >
+                              <X size={12} color="#FFFFFF" />
+                            </TouchableOpacity>
+                          </View>
+                        ) : (
+                          <View style={{ flexDirection: 'row', gap: 4 }}>
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              onPress={() => pickImage('back', true, cg.id, 'back')}
+                              style={[s.uploadActionBtn, { flex: 1, paddingVertical: 6, paddingHorizontal: 4, justifyContent: 'center' }]}
+                            >
+                              <Camera size={12} color="#0F172A" />
+                              <Text style={[s.uploadActionText, { fontSize: 10.5 }]}>Camera</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              activeOpacity={0.8}
+                              onPress={() => pickImage('back', false, cg.id, 'back')}
+                              style={[s.uploadActionBtn, { flex: 1, paddingVertical: 6, paddingHorizontal: 4, justifyContent: 'center' }]}
+                            >
+                              <Upload size={12} color="#0F172A" />
+                              <Text style={[s.uploadActionText, { fontSize: 10.5 }]}>Gallery</Text>
+                            </TouchableOpacity>
+                          </View>
+                        )}
+                      </View>
+                    </View>
                   </View>
                 ))}
               </View>

@@ -75,12 +75,90 @@ export default function CameraScannerScreen() {
     }, [params.idType])
   );
 
-  const handleCapturePress = () => {
-    // Manually finalize the scan using whatever data has been accumulated in the background
-    useAutoCaptureStore.getState().setCaptured(true);
-    
-    const profile = useAutoCaptureStore.getState().extractedData;
-    
+  // Target scanning side: 'front' or 'back'
+  const initialSide = (params.targetSide === 'back' ? 'back' : 'front') as 'front' | 'back';
+  const [scanSide, setScanSide] = useState<'front' | 'back'>(initialSide);
+  const [frontCapturedUri, setFrontCapturedUri] = useState<string | null>(null);
+  const [backCapturedUri, setBackCapturedUri] = useState<string | null>(null);
+
+  const handleCapturePress = async () => {
+    let capturedUri = '';
+    if (cameraRef.current) {
+      try {
+        const photo = await cameraRef.current.takePictureAsync({
+          quality: 0.85,
+          skipProcessing: false,
+        });
+        if (photo?.uri) {
+          capturedUri = photo.uri;
+        }
+      } catch (e) {
+        console.warn('Take picture error', e);
+      }
+    }
+
+    const profile = { ...useAutoCaptureStore.getState().extractedData };
+    if (scanSide === 'front') {
+      const uri = capturedUri || profile.photoUri || '';
+      profile.photoUri = uri;
+      setFrontCapturedUri(uri);
+      useAutoCaptureStore.getState().updateExtractedData({ photoUri: uri });
+
+      // If targeted to just front side from Review screen, return immediately
+      if (params.targetSide === 'front' && params.guestIndex !== undefined) {
+        returnToReviewWithPhoto('photoUri', uri, profile);
+        return;
+      }
+
+      // Transition to Back side scan
+      setScanSide('back');
+      useAutoCaptureStore.getState().setStatus('FLIP_DOCUMENT');
+      setTimeout(() => {
+        useAutoCaptureStore.getState().setStatus('PROCESSING_BACK');
+      }, 1500);
+    } else {
+      const uri = capturedUri || profile.backPhotoUri || '';
+      profile.backPhotoUri = uri;
+      setBackCapturedUri(uri);
+      useAutoCaptureStore.getState().updateExtractedData({ backPhotoUri: uri });
+      useAutoCaptureStore.getState().setCaptured(true);
+
+      if (params.targetSide === 'back' && params.guestIndex !== undefined) {
+        returnToReviewWithPhoto('backPhotoUri', uri, profile);
+        return;
+      }
+
+      navigateToReview(profile);
+    }
+  };
+
+  const returnToReviewWithPhoto = (field: 'photoUri' | 'backPhotoUri', uri: string, profile: any) => {
+    let existing: any[] = [];
+    if (params.existingGuests) {
+      try {
+        const str = Array.isArray(params.existingGuests) ? params.existingGuests[0] : params.existingGuests;
+        existing = JSON.parse(str);
+      } catch (e) {
+        console.warn('Failed to parse existingGuests', e);
+      }
+    }
+    const idx = Number(params.guestIndex || 0);
+    if (existing[idx]) {
+      existing[idx][field] = uri;
+      if (profile.fullName?.value && !existing[idx].name) existing[idx].name = profile.fullName.value;
+      if (profile.idNumber?.value && !existing[idx].idNumber) existing[idx].idNumber = profile.idNumber.value;
+      if (profile.address?.value && !existing[idx].address) existing[idx].address = profile.address.value;
+    }
+    router.push({
+      pathname: '/checkin/review',
+      params: {
+        guestList: JSON.stringify(existing),
+        selectedRoomId: params.selectedRoomId || '',
+      },
+    });
+  };
+
+  const navigateToReview = (profile: any) => {
     if (params.returnToReview === 'true') {
       let existing: any[] = [];
       if (params.existingGuests) {
@@ -100,8 +178,8 @@ export default function CameraScannerScreen() {
         dob: profile?.dob?.value || '',
         gender: profile?.gender?.value || '',
         pinCode: profile?.pinCode?.value || '',
-        photoUri: profile?.photoUri || '',
-        backPhotoUri: profile?.backPhotoUri || ''
+        photoUri: profile?.photoUri || frontCapturedUri || '',
+        backPhotoUri: profile?.backPhotoUri || backCapturedUri || ''
       };
       existing.push(newGuest);
       router.push({
@@ -115,7 +193,11 @@ export default function CameraScannerScreen() {
       router.push({
         pathname: '/checkin/review',
         params: {
-          guestProfile: JSON.stringify(profile),
+          guestProfile: JSON.stringify({
+            ...profile,
+            photoUri: profile?.photoUri || frontCapturedUri || '',
+            backPhotoUri: profile?.backPhotoUri || backCapturedUri || ''
+          }),
         },
       });
     }
@@ -161,7 +243,27 @@ export default function CameraScannerScreen() {
         <TouchableOpacity style={styles.closeBtn} onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}>
           <Text style={styles.closeTxt}>✕</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Scan ID Card</Text>
+        
+        {/* Side Selector Tabs */}
+        <View style={styles.sideSelector}>
+          <TouchableOpacity
+            onPress={() => setScanSide('front')}
+            style={[styles.sideTab, scanSide === 'front' && styles.sideTabActive]}
+          >
+            <Text style={[styles.sideTabText, scanSide === 'front' && styles.sideTabTextActive]}>
+              Front Side {frontCapturedUri ? '✓' : ''}
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => setScanSide('back')}
+            style={[styles.sideTab, scanSide === 'back' && styles.sideTabActive]}
+          >
+            <Text style={[styles.sideTabText, scanSide === 'back' && styles.sideTabTextActive]}>
+              Back Side {backCapturedUri ? '✓' : ''}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
           style={styles.flipBtn}
           onPress={() => setFacing(f => f === 'back' ? 'front' : 'back')}
@@ -172,14 +274,28 @@ export default function CameraScannerScreen() {
 
       <StatusIndicator />
 
-      {/* Capture Button Area */}
+      {/* Capture Button & Skip to Review Area */}
       <View style={[styles.bottomBar, { paddingBottom: insets.bottom + 24 }]}>
-        <TouchableOpacity 
-          style={styles.captureBtnOuter}
-          onPress={handleCapturePress}
-        >
-          <View style={styles.captureBtnInner} />
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', paddingHorizontal: 30 }}>
+          <TouchableOpacity 
+            style={styles.captureBtnOuter}
+            onPress={handleCapturePress}
+          >
+            <View style={styles.captureBtnInner} />
+          </TouchableOpacity>
+
+          {(frontCapturedUri || backCapturedUri) && (
+            <TouchableOpacity
+              onPress={() => navigateToReview(useAutoCaptureStore.getState().extractedData)}
+              style={styles.doneBtn}
+            >
+              <Text style={styles.doneBtnText}>Review →</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        <Text style={styles.hint}>
+          {scanSide === 'front' ? 'Hold front side steady or tap button to capture' : 'Hold back side steady or tap button to capture'}
+        </Text>
       </View>
     </View>
   );
@@ -227,10 +343,42 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
-  title: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  sideSelector: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 20,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  sideTab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  sideTabActive: {
+    backgroundColor: '#7C3AED',
+  },
+  sideTabText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  sideTabTextActive: {
+    color: '#FFFFFF',
+  },
+  doneBtn: {
+    position: 'absolute',
+    right: 24,
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  doneBtnText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
   },
   bottomBar: {
     position: 'absolute',

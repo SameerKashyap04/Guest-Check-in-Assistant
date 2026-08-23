@@ -40,7 +40,8 @@ export function ManualEntryScreen({
   const [gender, setGender] = useState(initialData?.gender || '');
   const [phone, setPhone] = useState(initialData?.phone || '');
   const [address, setAddress] = useState(initialData?.address || '');
-  const [photoUri, setPhotoUri] = useState<string | null>(initialData?.photoUri || null);
+  const [photoUri, setPhotoUri] = useState<string | null>(initialData?.photoUri || initialData?.photo_uri || null);
+  const [backPhotoUri, setBackPhotoUri] = useState<string | null>(initialData?.backPhotoUri || initialData?.back_photo_uri || null);
   const [room, setRoom] = useState(initialData?.room || '101');
   const [checkin, setCheckin] = useState('2026-08-20');
   const [checkout, setCheckout] = useState('2026-08-22');
@@ -57,37 +58,44 @@ export function ManualEntryScreen({
       if (initialData.gender) setGender(initialData.gender);
       if (initialData.phone) setPhone(initialData.phone);
       if (initialData.address) setAddress(initialData.address);
-      if (initialData.photoUri) setPhotoUri(initialData.photoUri);
+      if (initialData.photoUri || initialData.photo_uri) setPhotoUri(initialData.photoUri || initialData.photo_uri);
+      if (initialData.backPhotoUri || initialData.back_photo_uri) setBackPhotoUri(initialData.backPhotoUri || initialData.back_photo_uri);
       if (initialData.room) setRoom(initialData.room);
     }
   }, [initialData]);
 
   // Launch photo picker / camera for ID document upload
-  const handleUploadPhoto = async () => {
+  const handleUploadPhoto = async (side: 'front' | 'back', useCamera = false) => {
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        // Mock auto-fill fallback
-        setName(name || 'Ananya Patel');
-        setIdNum(idNum || '9821 4452 1092');
-        setDob(dob || '1994-06-12');
-        setGender(gender || 'Female');
-        setPhone(phone || '+91 98765 43210');
-        setAddress(address || '742 Silver Oak, Bandra West, Mumbai');
-        setPhotoUri(
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'
-        );
-        return;
+      if (Platform.OS !== 'web') {
+        const permission = useCamera
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Permission Required', `Please grant access to upload ${side === 'front' ? 'Front' : 'Back'} ID photo.`);
+          return;
+        }
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.9,
-      });
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            allowsEditing: false,
+            quality: 0.9,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            allowsEditing: false,
+            quality: 0.9,
+          });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        setPhotoUri(result.assets[0].uri);
+        const uri = result.assets[0].uri;
+        if (side === 'front') {
+          setPhotoUri(uri);
+        } else {
+          setBackPhotoUri(uri);
+        }
         if (!name) setName('Ananya Patel');
         if (!idNum) setIdNum('9821 4452 1092');
         if (!dob) setDob('1994-06-12');
@@ -96,15 +104,7 @@ export function ManualEntryScreen({
         setAddress(address || '742 Silver Oak, Bandra West, Mumbai');
       }
     } catch (e) {
-      setName(name || 'Ananya Patel');
-      setIdNum(idNum || '9821 4452 1092');
-      setDob(dob || '1994-06-12');
-      setGender(gender || 'Female');
-      setPhone(phone || '+91 98765 43210');
-      setAddress(address || '742 Silver Oak, Bandra West, Mumbai');
-      setPhotoUri(
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80'
-      );
+      console.log('Upload error', e);
     }
   };
 
@@ -148,6 +148,7 @@ export function ManualEntryScreen({
       verified: true,
       roomType: ROOMS.find((r) => r.num === room)?.type || 'Standard',
       photoUri: photoUri || undefined,
+      backPhotoUri: backPhotoUri || undefined,
       guestCount: 1 + coGuests.length,
       coGuests,
       checkin,
@@ -242,33 +243,77 @@ export function ManualEntryScreen({
             <View>
               <Text style={s.sectionHeader}>PRIMARY GUEST DETAILS</Text>
 
-            {/* Upload ID card */}
-            <View style={s.uploadCard}>
-              {photoUri ? (
-                <Image
-                  source={{uri: photoUri}}
-                  style={{width: 44, height: 44, borderRadius: 10, backgroundColor: '#E2E8F0'}}
-                  resizeMode="cover"
-                />
-              ) : null}
-              <View style={{flex: 1}}>
-                <Text style={s.uploadTitle}>
-                  {photoUri ? 'ID Document Attached ✓' : 'Upload ID card photo'}
-                </Text>
-                <Text style={s.uploadSub}>
-                  {photoUri ? 'Auto-filled from document' : 'Pick an image or auto-fill supported fields.'}
-                </Text>
+            {/* Front & Back ID card photos */}
+            <View style={{flexDirection: 'row', gap: 10, marginBottom: 14}}>
+              {/* Front Photo */}
+              <View style={{flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E2E8F0'}}>
+                <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6}}>Front Side ID</Text>
+                {photoUri ? (
+                  <View style={{position: 'relative', borderRadius: 8, overflow: 'hidden', height: 80}}>
+                    <Image source={{uri: photoUri}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
+                    <TouchableOpacity
+                      onPress={() => setPhotoUri(null)}
+                      style={{position: 'absolute', top: 3, right: 3, backgroundColor: 'rgba(220,38,38,0.9)', padding: 3, borderRadius: 10}}
+                    >
+                      <Icon name="x" size={12} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{gap: 5}}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handleUploadPhoto('front', true)}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#EDE9FE', paddingVertical: 6, borderRadius: 6}}
+                    >
+                      <Icon name="camera" size={12} color="#7C3AED" />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#7C3AED'}}>Camera</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handleUploadPhoto('front', false)}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1', paddingVertical: 6, borderRadius: 6}}
+                    >
+                      <Icon name="upload" size={12} color="#475569" />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: '#475569'}}>Gallery</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
-              <TouchableOpacity
-                activeOpacity={0.8}
-                style={[s.uploadBtn, photoUri && {backgroundColor: '#EDE9FE'}]}
-                onPress={handleUploadPhoto}
-              >
-                <Icon name={photoUri ? 'check' : 'upload'} size={15} color={photoUri ? C.primary : C.ink} />
-                <Text style={[s.uploadBtnText, photoUri && {color: C.primary}]}>
-                  {photoUri ? 'Replace' : 'Upload'}
-                </Text>
-              </TouchableOpacity>
+
+              {/* Back Photo */}
+              <View style={{flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E2E8F0'}}>
+                <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6}}>Back Side ID</Text>
+                {backPhotoUri ? (
+                  <View style={{position: 'relative', borderRadius: 8, overflow: 'hidden', height: 80}}>
+                    <Image source={{uri: backPhotoUri}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
+                    <TouchableOpacity
+                      onPress={() => setBackPhotoUri(null)}
+                      style={{position: 'absolute', top: 3, right: 3, backgroundColor: 'rgba(220,38,38,0.9)', padding: 3, borderRadius: 10}}
+                    >
+                      <Icon name="x" size={12} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{gap: 5}}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handleUploadPhoto('back', true)}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#EDE9FE', paddingVertical: 6, borderRadius: 6}}
+                    >
+                      <Icon name="camera" size={12} color="#7C3AED" />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#7C3AED'}}>Camera</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handleUploadPhoto('back', false)}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1', paddingVertical: 6, borderRadius: 6}}
+                    >
+                      <Icon name="upload" size={12} color="#475569" />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: '#475569'}}>Gallery</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
             </View>
 
             <Field
@@ -491,6 +536,22 @@ export function ManualEntryScreen({
                 </TouchableOpacity>
               </View>
               <View style={s.divider} />
+              {(photoUri || backPhotoUri) && (
+                <View style={{flexDirection: 'row', gap: 10, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6}}>
+                  {photoUri ? (
+                    <View style={{flex: 1}}>
+                      <Text style={{fontFamily: 'Inter', fontSize: 10, fontWeight: '700', color: '#64748B', marginBottom: 4}}>Front Side ID</Text>
+                      <Image source={{uri: photoUri}} style={{width: '100%', height: 75, borderRadius: 8}} resizeMode="cover" />
+                    </View>
+                  ) : null}
+                  {backPhotoUri ? (
+                    <View style={{flex: 1}}>
+                      <Text style={{fontFamily: 'Inter', fontSize: 10, fontWeight: '700', color: '#64748B', marginBottom: 4}}>Back Side ID</Text>
+                      <Image source={{uri: backPhotoUri}} style={{width: '100%', height: 75, borderRadius: 8}} resizeMode="cover" />
+                    </View>
+                  ) : null}
+                </View>
+              )}
               <View style={s.reviewGrid}>
                 <View style={s.kvCol}>
                   <Text style={s.kvLabel}>Full name</Text>
@@ -548,6 +609,16 @@ export function ManualEntryScreen({
                         {cg.docType} · {cg.idNum}
                         {cg.gender ? ` · ${cg.gender}` : ''}
                       </Text>
+                      {(cg.photoUri || cg.backPhotoUri) && (
+                        <View style={{flexDirection: 'row', gap: 6, marginTop: 4}}>
+                          {cg.photoUri ? (
+                            <Image source={{uri: cg.photoUri}} style={{width: 38, height: 28, borderRadius: 4}} resizeMode="cover" />
+                          ) : null}
+                          {cg.backPhotoUri ? (
+                            <Image source={{uri: cg.backPhotoUri}} style={{width: 38, height: 28, borderRadius: 4}} resizeMode="cover" />
+                          ) : null}
+                        </View>
+                      )}
                     </View>
                     <TouchableOpacity
                       onPress={() => handleOpenEditCoGuest(cg)}

@@ -11,6 +11,7 @@ import {
   Platform,
   Alert,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import {C, R} from '../theme/tokens';
@@ -32,6 +33,7 @@ export interface CoGuestItem {
   dob?: string;
   phone?: string;
   photoUri?: string;
+  backPhotoUri?: string;
 }
 
 export function AddCoGuestModal({
@@ -53,6 +55,7 @@ export function AddCoGuestModal({
   const [dob, setDob] = useState(initialData?.dob || '');
   const [phone, setPhone] = useState(initialData?.phone || '');
   const [photoUri, setPhotoUri] = useState<string | null>(initialData?.photoUri || null);
+  const [backPhotoUri, setBackPhotoUri] = useState<string | null>(initialData?.backPhotoUri || null);
   const [error, setError] = useState('');
   const [isScanning, setIsScanning] = useState(false);
 
@@ -66,6 +69,7 @@ export function AddCoGuestModal({
       setDob(initialData.dob || '');
       setPhone(initialData.phone || '');
       setPhotoUri(initialData.photoUri || null);
+      setBackPhotoUri(initialData.backPhotoUri || null);
     } else {
       setName('');
       setRelation('Spouse');
@@ -75,28 +79,42 @@ export function AddCoGuestModal({
       setDob('');
       setPhone('');
       setPhotoUri(null);
+      setBackPhotoUri(null);
     }
     setError('');
   }, [initialData, visible]);
 
-  const handlePickDocument = async () => {
+  const handlePickDocument = async (side: 'front' | 'back', useCamera = false) => {
     try {
-      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!perm.granted) {
-        Alert.alert('Permission Required', 'Please grant media access to upload ID photo.');
-        return;
+      if (Platform.OS !== 'web') {
+        const perm = useCamera
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          Alert.alert('Permission Required', `Please grant access to upload ${side === 'front' ? 'Front' : 'Back'} ID photo.`);
+          return;
+        }
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        quality: 0.9,
-        allowsEditing: false,
-      });
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            quality: 0.9,
+            allowsEditing: false,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            quality: 0.9,
+            allowsEditing: false,
+          });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const uri = result.assets[0].uri;
-        setPhotoUri(uri);
-        // Auto-fill sample for co-guest if name is empty
+        if (side === 'front') {
+          setPhotoUri(uri);
+        } else {
+          setBackPhotoUri(uri);
+        }
         if (!name) setName('Sneha Sharma');
         if (!idNum) setIdNum('5521 8840 1923');
         if (!dob) setDob('1996-08-14');
@@ -118,11 +136,12 @@ export function AddCoGuestModal({
       name: trimmedName,
       relation,
       docType,
-      idNum: idNum.trim() || 'Pending verification',
+      idNum: idNum.trim(),
       gender,
-      dob: dob.trim(),
+      dob,
       phone: phone.trim(),
       photoUri: photoUri || undefined,
+      backPhotoUri: backPhotoUri || undefined,
     });
     onClose();
   };
@@ -161,25 +180,79 @@ export function AddCoGuestModal({
               </View>
             ) : null}
 
-            {/* Upload ID Option */}
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={handlePickDocument}
-              style={s.uploadCard}
-            >
-              <View style={s.uploadIcon}>
-                <Icon name="camera" size={18} color={C.primary} />
+            {/* Front & Back ID Upload Cards */}
+            <Text style={s.label}>ID CARD PHOTOS (FRONT & BACK)</Text>
+            <View style={{flexDirection: 'row', gap: 10, marginBottom: 14}}>
+              {/* Front Photo */}
+              <View style={{flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E2E8F0'}}>
+                <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6}}>Front Side</Text>
+                {photoUri ? (
+                  <View style={{position: 'relative', borderRadius: 8, overflow: 'hidden', height: 80}}>
+                    <Image source={{uri: photoUri}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
+                    <TouchableOpacity
+                      onPress={() => setPhotoUri(null)}
+                      style={{position: 'absolute', top: 3, right: 3, backgroundColor: 'rgba(220,38,38,0.9)', padding: 3, borderRadius: 10}}
+                    >
+                      <Icon name="x" size={12} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{gap: 5}}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handlePickDocument('front', true)}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#EDE9FE', paddingVertical: 6, borderRadius: 6}}
+                    >
+                      <Icon name="camera" size={12} color="#7C3AED" />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#7C3AED'}}>Camera</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handlePickDocument('front', false)}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1', paddingVertical: 6, borderRadius: 6}}
+                    >
+                      <Icon name="upload" size={12} color="#475569" />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: '#475569'}}>Gallery</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
-              <View style={{flex: 1}}>
-                <Text style={s.uploadTitle}>
-                  {photoUri ? 'ID Photo Attached ✓' : 'Upload Co-Guest ID Photo'}
-                </Text>
-                <Text style={s.uploadSub}>
-                  {photoUri ? 'Tap to change photo' : 'Auto-fill details from ID card'}
-                </Text>
+
+              {/* Back Photo */}
+              <View style={{flex: 1, backgroundColor: '#F8FAFC', borderRadius: 14, padding: 10, borderWidth: 1, borderColor: '#E2E8F0'}}>
+                <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#475569', marginBottom: 6}}>Back Side</Text>
+                {backPhotoUri ? (
+                  <View style={{position: 'relative', borderRadius: 8, overflow: 'hidden', height: 80}}>
+                    <Image source={{uri: backPhotoUri}} style={{width: '100%', height: '100%'}} resizeMode="cover" />
+                    <TouchableOpacity
+                      onPress={() => setBackPhotoUri(null)}
+                      style={{position: 'absolute', top: 3, right: 3, backgroundColor: 'rgba(220,38,38,0.9)', padding: 3, borderRadius: 10}}
+                    >
+                      <Icon name="x" size={12} color="#FFFFFF" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View style={{gap: 5}}>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handlePickDocument('back', true)}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#EDE9FE', paddingVertical: 6, borderRadius: 6}}
+                    >
+                      <Icon name="camera" size={12} color="#7C3AED" />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '700', color: '#7C3AED'}}>Camera</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      activeOpacity={0.8}
+                      onPress={() => handlePickDocument('back', false)}
+                      style={{flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#CBD5E1', paddingVertical: 6, borderRadius: 6}}
+                    >
+                      <Icon name="upload" size={12} color="#475569" />
+                      <Text style={{fontFamily: 'Inter', fontSize: 11, fontWeight: '600', color: '#475569'}}>Gallery</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
-              <Icon name="plus" size={16} color={C.ink} />
-            </TouchableOpacity>
+            </View>
 
             {/* Full Name */}
             <Text style={s.label}>FULL NAME *</Text>

@@ -59,6 +59,12 @@ export function useAutoCapture({
 
             const mergedProfile = OCRPipeline.processBlocks(blocks, currentProfile, currentDocType);
             
+            if (currentStatus === 'PROCESSING_BACK') {
+              mergedProfile.backPhotoUri = photo.uri;
+            } else if (!mergedProfile.photoUri || currentStatus === 'PROCESSING_FRONT' || currentStatus === 'IDLE') {
+              mergedProfile.photoUri = photo.uri;
+            }
+
             store.setDocumentType(mergedProfile.idType);
             store.updateExtractedData(mergedProfile);
 

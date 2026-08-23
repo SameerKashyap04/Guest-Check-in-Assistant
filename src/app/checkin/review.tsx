@@ -212,6 +212,123 @@ export default function ReviewScreen() {
     }
   };
 
+  const handleAddOrReplacePhoto = async (guestIndex: number, side: 'front' | 'back', useCamera = false) => {
+    if (useCamera) {
+      router.push({
+        pathname: '/checkin/camera',
+        params: {
+          targetSide: side,
+          guestIndex: String(guestIndex),
+          existingGuests: JSON.stringify(guestsData),
+          selectedRoomId: selectedRoomId ? String(selectedRoomId) : '',
+        }
+      });
+      return;
+    }
+
+    try {
+      const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permissionResult.granted) {
+        Alert.alert('Permission Required', 'Permission to access gallery is required.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        quality: 0.9,
+        allowsEditing: false,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
+
+      const imageUri = result.assets[0].uri;
+      const field = side === 'back' ? 'backPhotoUri' : 'photoUri';
+
+      // Update photo immediately
+      setGuestsData(prev => {
+        const next = [...prev];
+        next[guestIndex] = {
+          ...next[guestIndex],
+          [field]: imageUri,
+        };
+        return next;
+      });
+
+      // Run background OCR to fill in any missing data
+      try {
+        const blocks = await OCRPipeline.analyzeFrame(imageUri);
+        if (blocks.length > 0) {
+          const initialProfile = {
+            fullName: { value: guestsData[guestIndex]?.name || '', confidence: 0 },
+            idNumber: { value: guestsData[guestIndex]?.idNumber || '', confidence: 0 },
+            address: { value: guestsData[guestIndex]?.address || '', confidence: 0 },
+            dob: { value: guestsData[guestIndex]?.dob || '', confidence: 0 },
+            gender: { value: guestsData[guestIndex]?.gender || '', confidence: 0 },
+            pinCode: { value: guestsData[guestIndex]?.pinCode || '', confidence: 0 },
+            idType: (guestsData[guestIndex]?.docType as any) || 'UNKNOWN',
+            isBackScanned: side === 'back',
+            photoUri: side === 'front' ? imageUri : (guestsData[guestIndex]?.photoUri || ''),
+            backPhotoUri: side === 'back' ? imageUri : (guestsData[guestIndex]?.backPhotoUri || ''),
+          };
+          const profile = OCRPipeline.processBlocks(blocks, initialProfile, 'UNKNOWN');
+          setGuestsData(prev => {
+            const next = [...prev];
+            const g = next[guestIndex];
+            if (g) {
+              if (!g.name && profile.fullName?.value) g.name = profile.fullName.value;
+              if (!g.idNumber && profile.idNumber?.value) g.idNumber = profile.idNumber.value;
+              if (!g.address && profile.address?.value) g.address = profile.address.value;
+              if (!g.dob && profile.dob?.value) g.dob = profile.dob.value;
+              if (!g.gender && profile.gender?.value) g.gender = profile.gender.value;
+              if (profile.idType && profile.idType !== 'UNKNOWN' && (!g.docType || g.docType === 'OTHER' || g.docType === 'UNKNOWN')) g.docType = profile.idType;
+            }
+            return next;
+          });
+        }
+      } catch (e) {
+        console.warn('OCR error on photo update', e);
+      }
+    } catch (err) {
+      console.warn('Photo picker error', err);
+    }
+  };
+
+  const handlePickFormPhoto = async (side: 'front' | 'back', useCamera = false) => {
+    try {
+      if (Platform.OS !== 'web') {
+        const permissionResult = useCamera
+          ? await ImagePicker.requestCameraPermissionsAsync()
+          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permissionResult.granted) {
+          Alert.alert('Permission Required', `Permission to access ${useCamera ? 'camera' : 'gallery'} is required.`);
+          return;
+        }
+      }
+
+      const result = useCamera
+        ? await ImagePicker.launchCameraAsync({
+            mediaTypes: ['images'],
+            quality: 0.9,
+            allowsEditing: false,
+          })
+        : await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ['images'],
+            quality: 0.9,
+            allowsEditing: false,
+          });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) return;
+
+      const imageUri = result.assets[0].uri;
+      setGuestForm(prev => ({
+        ...prev,
+        [side === 'back' ? 'backPhotoUri' : 'photoUri']: imageUri,
+      }));
+    } catch (e) {
+      console.warn('Form photo picker error', e);
+    }
+  };
+
   const handleOpenManualModal = () => {
     setAddOptionsModalVisible(false);
     setGuestForm({
@@ -224,7 +341,8 @@ export default function ReviewScreen() {
       dob: '',
       gender: '',
       pinCode: '',
-      photoUri: ''
+      photoUri: '',
+      backPhotoUri: '',
     });
     setManualModalVisible(true);
   };
@@ -498,41 +616,133 @@ export default function ReviewScreen() {
               </View>
             </View>
 
-            {/* Guest ID Photos (Front & Back) */}
-            {(guest.photoUri || guest.backPhotoUri) ? (
-              <View className="mb-5">
-                <Text className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2 ml-1">
-                  ID Card Photos ({guest.photoUri && guest.backPhotoUri ? 'Front & Back' : 'Scanned ID'})
-                </Text>
-                <View className="flex-row gap-3">
+            {/* Guest ID Photos (Front & Back) with interactive Camera/Gallery upload */}
+            <View className="mb-5">
+              <Text className="text-[10px] font-bold text-muted uppercase tracking-wider mb-2 ml-1">
+                ID Photos (Front & Back)
+              </Text>
+              <View className="flex-row gap-3">
+                {/* Front Side */}
+                <View className="flex-1 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-2xl border border-gray-200 dark:border-gray-700">
+                  <View className="flex-row justify-between items-center mb-2">
+                    <Text className="text-[11px] font-bold text-foreground">Front Side</Text>
+                    {guest.photoUri ? (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setGuestsData(prev => {
+                            const next = [...prev];
+                            next[index] = { ...next[index], photoUri: '' };
+                            return next;
+                          });
+                        }}
+                      >
+                        <Trash2 size={13} color="#EF4444" />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
                   {guest.photoUri ? (
-                    <View className="flex-1">
-                      <View className="bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-t-xl align-self-start">
-                        <Text className="text-[10px] font-bold text-foreground">Front Side</Text>
-                      </View>
+                    <View>
                       <Image 
                         source={{ uri: guest.photoUri }} 
-                        style={{ width: '100%', height: 140, borderRadius: 12, borderTopLeftRadius: 0 }}
+                        style={{ width: '100%', height: 100, borderRadius: 10 }}
                         resizeMode="cover"
                       />
-                    </View>
-                  ) : null}
-
-                  {guest.backPhotoUri ? (
-                    <View className="flex-1">
-                      <View className="bg-gray-100 dark:bg-gray-800 px-2.5 py-1 rounded-t-xl align-self-start">
-                        <Text className="text-[10px] font-bold text-foreground">Back Side</Text>
+                      <View className="flex-row gap-1 mt-2">
+                        <TouchableOpacity
+                          onPress={() => handleAddOrReplacePhoto(index, 'front', true)}
+                          className="flex-1 bg-primary/10 py-1.5 rounded-lg items-center"
+                        >
+                          <Text className="text-[10px] font-bold text-primary">Camera</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleAddOrReplacePhoto(index, 'front', false)}
+                          className="flex-1 bg-gray-200 dark:bg-gray-700 py-1.5 rounded-lg items-center"
+                        >
+                          <Text className="text-[10px] font-bold text-foreground">Gallery</Text>
+                        </TouchableOpacity>
                       </View>
+                    </View>
+                  ) : (
+                    <View className="gap-2 py-2">
+                      <TouchableOpacity
+                        onPress={() => handleAddOrReplacePhoto(index, 'front', true)}
+                        className="bg-primary py-2 rounded-xl flex-row items-center justify-center gap-1.5"
+                      >
+                        <Camera size={13} color="#FFFFFF" />
+                        <Text className="text-[11px] font-bold text-white">Camera</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleAddOrReplacePhoto(index, 'front', false)}
+                        className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 py-1.5 rounded-xl flex-row items-center justify-center gap-1.5"
+                      >
+                        <Upload size={13} color="#64748B" />
+                        <Text className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">Gallery</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
+                </View>
+
+                {/* Back Side */}
+                <View className="flex-1 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-2xl border border-gray-200 dark:border-gray-700">
+                  <View className="flex-row justify-between items-center mb-2">
+                    <Text className="text-[11px] font-bold text-foreground">Back Side</Text>
+                    {guest.backPhotoUri ? (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setGuestsData(prev => {
+                            const next = [...prev];
+                            next[index] = { ...next[index], backPhotoUri: '' };
+                            return next;
+                          });
+                        }}
+                      >
+                        <Trash2 size={13} color="#EF4444" />
+                      </TouchableOpacity>
+                    ) : null}
+                  </View>
+                  {guest.backPhotoUri ? (
+                    <View>
                       <Image 
                         source={{ uri: guest.backPhotoUri }} 
-                        style={{ width: '100%', height: 140, borderRadius: 12, borderTopLeftRadius: 0 }}
+                        style={{ width: '100%', height: 100, borderRadius: 10 }}
                         resizeMode="cover"
                       />
+                      <View className="flex-row gap-1 mt-2">
+                        <TouchableOpacity
+                          onPress={() => handleAddOrReplacePhoto(index, 'back', true)}
+                          className="flex-1 bg-primary/10 py-1.5 rounded-lg items-center"
+                        >
+                          <Text className="text-[10px] font-bold text-primary">Camera</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          onPress={() => handleAddOrReplacePhoto(index, 'back', false)}
+                          className="flex-1 bg-gray-200 dark:bg-gray-700 py-1.5 rounded-lg items-center"
+                        >
+                          <Text className="text-[10px] font-bold text-foreground">Gallery</Text>
+                        </TouchableOpacity>
+                      </View>
                     </View>
-                  ) : null}
+                  ) : (
+                    <View className="gap-2 py-2">
+                      <TouchableOpacity
+                        onPress={() => handleAddOrReplacePhoto(index, 'back', true)}
+                        className="bg-primary py-2 rounded-xl flex-row items-center justify-center gap-1.5"
+                      >
+                        <Camera size={13} color="#FFFFFF" />
+                        <Text className="text-[11px] font-bold text-white">Camera</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => handleAddOrReplacePhoto(index, 'back', false)}
+                        className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 py-1.5 rounded-xl flex-row items-center justify-center gap-1.5"
+                      >
+                        <Upload size={13} color="#64748B" />
+                        <Text className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">Gallery</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               </View>
-            ) : null}
+            </View>
 
             {/* Guest Details Summary */}
             <View className="gap-4">
@@ -708,6 +918,61 @@ export default function ReviewScreen() {
               </View>
 
               <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 20 }}>
+                {/* ID Card Photos (Front & Back) */}
+                <View className="mb-3">
+                  <Text className="text-xs font-semibold text-foreground mb-2 ml-1">ID Photos (Front & Back)</Text>
+                  <View className="flex-row gap-3">
+                    {/* Front */}
+                    <View className="flex-1 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-2xl border border-gray-200 dark:border-gray-700">
+                      <Text className="text-[11px] font-bold text-foreground mb-1.5">Front Side</Text>
+                      {guestForm.photoUri ? (
+                        <View className="relative">
+                          <Image source={{ uri: guestForm.photoUri }} style={{ width: '100%', height: 75, borderRadius: 8 }} resizeMode="cover" />
+                          <TouchableOpacity 
+                            onPress={() => setGuestForm(prev => ({ ...prev, photoUri: '' }))}
+                            className="absolute top-1 right-1 bg-red-600 p-1 rounded-full"
+                          >
+                            <X size={10} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View className="gap-1.5">
+                          <TouchableOpacity onPress={() => handlePickFormPhoto('front', true)} className="bg-primary py-1.5 rounded-lg items-center">
+                            <Text className="text-[11px] font-bold text-white">Camera</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handlePickFormPhoto('front', false)} className="bg-white dark:bg-gray-700 border border-gray-200 py-1.5 rounded-lg items-center">
+                            <Text className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">Gallery</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                    {/* Back */}
+                    <View className="flex-1 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-2xl border border-gray-200 dark:border-gray-700">
+                      <Text className="text-[11px] font-bold text-foreground mb-1.5">Back Side</Text>
+                      {guestForm.backPhotoUri ? (
+                        <View className="relative">
+                          <Image source={{ uri: guestForm.backPhotoUri }} style={{ width: '100%', height: 75, borderRadius: 8 }} resizeMode="cover" />
+                          <TouchableOpacity 
+                            onPress={() => setGuestForm(prev => ({ ...prev, backPhotoUri: '' }))}
+                            className="absolute top-1 right-1 bg-red-600 p-1 rounded-full"
+                          >
+                            <X size={10} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View className="gap-1.5">
+                          <TouchableOpacity onPress={() => handlePickFormPhoto('back', true)} className="bg-primary py-1.5 rounded-lg items-center">
+                            <Text className="text-[11px] font-bold text-white">Camera</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handlePickFormPhoto('back', false)} className="bg-white dark:bg-gray-700 border border-gray-200 py-1.5 rounded-lg items-center">
+                            <Text className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">Gallery</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </View>
+
                 <View className="gap-3">
                   <Input
                     label="Full Name *"
@@ -818,6 +1083,61 @@ export default function ReviewScreen() {
               </View>
 
               <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 20 }}>
+                {/* ID Card Photos (Front & Back) */}
+                <View className="mb-3">
+                  <Text className="text-xs font-semibold text-foreground mb-2 ml-1">ID Photos (Front & Back)</Text>
+                  <View className="flex-row gap-3">
+                    {/* Front */}
+                    <View className="flex-1 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-2xl border border-gray-200 dark:border-gray-700">
+                      <Text className="text-[11px] font-bold text-foreground mb-1.5">Front Side</Text>
+                      {guestForm.photoUri ? (
+                        <View className="relative">
+                          <Image source={{ uri: guestForm.photoUri }} style={{ width: '100%', height: 75, borderRadius: 8 }} resizeMode="cover" />
+                          <TouchableOpacity 
+                            onPress={() => setGuestForm(prev => ({ ...prev, photoUri: '' }))}
+                            className="absolute top-1 right-1 bg-red-600 p-1 rounded-full"
+                          >
+                            <X size={10} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View className="gap-1.5">
+                          <TouchableOpacity onPress={() => handlePickFormPhoto('front', true)} className="bg-primary py-1.5 rounded-lg items-center">
+                            <Text className="text-[11px] font-bold text-white">Camera</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handlePickFormPhoto('front', false)} className="bg-white dark:bg-gray-700 border border-gray-200 py-1.5 rounded-lg items-center">
+                            <Text className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">Gallery</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                    {/* Back */}
+                    <View className="flex-1 bg-gray-50 dark:bg-gray-800/60 p-2.5 rounded-2xl border border-gray-200 dark:border-gray-700">
+                      <Text className="text-[11px] font-bold text-foreground mb-1.5">Back Side</Text>
+                      {guestForm.backPhotoUri ? (
+                        <View className="relative">
+                          <Image source={{ uri: guestForm.backPhotoUri }} style={{ width: '100%', height: 75, borderRadius: 8 }} resizeMode="cover" />
+                          <TouchableOpacity 
+                            onPress={() => setGuestForm(prev => ({ ...prev, backPhotoUri: '' }))}
+                            className="absolute top-1 right-1 bg-red-600 p-1 rounded-full"
+                          >
+                            <X size={10} color="#FFFFFF" />
+                          </TouchableOpacity>
+                        </View>
+                      ) : (
+                        <View className="gap-1.5">
+                          <TouchableOpacity onPress={() => handlePickFormPhoto('back', true)} className="bg-primary py-1.5 rounded-lg items-center">
+                            <Text className="text-[11px] font-bold text-white">Camera</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => handlePickFormPhoto('back', false)} className="bg-white dark:bg-gray-700 border border-gray-200 py-1.5 rounded-lg items-center">
+                            <Text className="text-[11px] font-semibold text-gray-700 dark:text-gray-200">Gallery</Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </View>
+
                 <View className="gap-3">
                   <Input
                     label="Full Name"
@@ -902,6 +1222,7 @@ export default function ReviewScreen() {
                   size="lg"
                   variant="primary"
                   className="mt-6"
+                  icon={<CheckCircle2 size={18} color="#FFFFFF" />}
                   onPress={handleSaveEditedGuest}
                 />
               </ScrollView>
