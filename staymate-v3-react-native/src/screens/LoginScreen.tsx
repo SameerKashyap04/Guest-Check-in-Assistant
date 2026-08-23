@@ -10,9 +10,9 @@ import {
   KeyboardAvoidingView,
   Platform,
   Linking,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { C } from '../theme/tokens';
 import { Icon } from '../components/Icon';
 
 const GoogleLogo = require('../../assets/google-logo.png');
@@ -36,7 +36,6 @@ export function LoginScreen({
   const [pw, setPw] = useState('');
   const [property, setProperty] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   // OTP state
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
@@ -55,33 +54,18 @@ export function LoginScreen({
 
   const handleSubmit = () => {
     if (!email.trim() || !pw.trim()) {
-      Alert.alert('Required Fields', 'Please enter your email and password.');
       return;
     }
     if (mode === 'signup' && !property.trim()) {
-      Alert.alert('Required Fields', 'Please enter your property name.');
       return;
     }
 
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      onLoginSuccess({
-        email: email.trim(),
-        businessName: property.trim() || 'Highland Homestay',
-      });
-    }, 250);
-  };
-
-  const handleGoogleLogin = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      onLoginSuccess({
-        email: 'owner@staymate.in',
-        businessName: 'Highland Homestay',
-      });
-    }, 250);
+    setOtpDigits(['', '', '', '', '', '']);
+    setResendTimer(30);
+    onLoginSuccess({
+      email: email.trim(),
+      businessName: property.trim() || 'Sunrise Homestay',
+    });
   };
 
   const handleResendOtp = () => {
@@ -124,19 +108,18 @@ export function LoginScreen({
   const handleVerifyOtp = (codeToVerify?: string) => {
     const code = codeToVerify || otpDigits.join('');
     if (code.length !== 6) {
-      Alert.alert('Incomplete Code', 'Please enter all 6 digits.');
       return;
     }
 
     onLoginSuccess({
       email: email.trim(),
-      businessName: property.trim() || 'Highland Homestay',
+      businessName: property.trim() || 'Sunrise Homestay',
     });
   };
 
   return (
     <View style={s.container}>
-      {/* Optional close button if presented inside a modal */}
+      {/* Subtle close button on top right if enabled */}
       {showClose && onClose && (
         <TouchableOpacity
           activeOpacity={0.8}
@@ -153,7 +136,7 @@ export function LoginScreen({
       >
         <ScrollView
           contentContainerStyle={{
-            paddingTop: Math.max(72, insets.top + 56),
+            paddingTop: 143,
             paddingHorizontal: 24,
             paddingBottom: Math.max(32, insets.bottom + 16),
           }}
@@ -297,12 +280,7 @@ export function LoginScreen({
                 {mode === 'login' && (
                   <TouchableOpacity
                     activeOpacity={0.7}
-                    onPress={() =>
-                      Alert.alert(
-                        'Password Reset',
-                        'Password reset instructions have been sent to your email.'
-                      )
-                    }
+                    onPress={() => {}}
                     style={s.forgotBtn}
                   >
                     <Text style={s.forgotText}>Forgot password?</Text>
@@ -313,15 +291,10 @@ export function LoginScreen({
                 <TouchableOpacity
                   activeOpacity={0.88}
                   onPress={handleSubmit}
-                  disabled={isLoading}
                   style={s.submitBtn}
                 >
                   <Text style={s.submitBtnText}>
-                    {isLoading
-                      ? 'Signing in...'
-                      : mode === 'login'
-                      ? 'Log in'
-                      : 'Create account'}
+                    {mode === 'login' ? 'Log in' : 'Create account'}
                   </Text>
                 </TouchableOpacity>
 
@@ -336,7 +309,12 @@ export function LoginScreen({
                 <TouchableOpacity
                   activeOpacity={0.85}
                   style={s.googleBtn}
-                  onPress={handleGoogleLogin}
+                  onPress={() => {
+                    onLoginSuccess({
+                      email: 'owner@staymate.in',
+                      businessName: 'Sunrise Homestay',
+                    });
+                  }}
                 >
                   <Image
                     source={GoogleLogo}
@@ -667,9 +645,9 @@ const s = StyleSheet.create({
   },
   resendRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    alignItems: 'center',
+    marginBottom: 24,
   },
   resendLabel: {
     fontFamily: 'Inter',
@@ -684,37 +662,38 @@ const s = StyleSheet.create({
   },
   resendLinkDisabled: {
     color: '#A1A1AA',
+    fontWeight: '600',
   },
   backBtn: {
     alignItems: 'center',
-    marginTop: 14,
-    paddingVertical: 6,
+    justifyContent: 'center',
+    paddingVertical: 14,
+    marginTop: 8,
   },
   backBtnText: {
     fontFamily: 'Inter',
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '600',
     color: '#71717A',
   },
   footerText: {
     fontFamily: 'Inter',
-    fontSize: 12,
-    color: '#71717A',
+    fontSize: 11.5,
+    color: '#A1A1AA',
     textAlign: 'center',
-    marginTop: 24,
-    lineHeight: 18,
+    marginTop: 14,
+    lineHeight: 17,
   },
   devifyBadge: {
-    alignSelf: 'center',
-    marginTop: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 4,
-    paddingHorizontal: 8,
+    marginTop: 2,
   },
   devifyText: {
     fontFamily: 'Inter',
-    fontSize: 11.5,
+    fontSize: 12,
     color: '#71717A',
-    textAlign: 'center',
   },
   devifyBrand: {
     fontWeight: '700',

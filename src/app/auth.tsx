@@ -278,7 +278,7 @@ export default function AuthScreen() {
       >
         <ScrollView
           contentContainerStyle={{
-            paddingTop: Math.max(72, insets.top + 56),
+            paddingTop: 143,
             paddingHorizontal: 24,
             paddingBottom: Math.max(32, insets.bottom + 16),
           }}
