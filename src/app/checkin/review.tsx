@@ -15,6 +15,7 @@ import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { isAtLimit, getRemainingUsage } from '@/services/entitlementService';
 import * as ImagePicker from 'expo-image-picker';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
+import { compressImage } from '@/utils/imageCompressor';
 
 export interface GuestItem {
   id: string;
@@ -200,7 +201,7 @@ export default function ReviewScreen() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        quality: 1,
+        quality: 0.8,
         allowsEditing: false,
       });
 
@@ -208,7 +209,12 @@ export default function ReviewScreen() {
         return;
       }
 
-      const imageUri = result.assets[0].uri;
+      const compressed = await compressImage(result.assets[0].uri, {
+        maxWidth: 1000,
+        maxHeight: 1000,
+        quality: 0.55,
+      });
+      const imageUri = compressed.uri || result.assets[0].uri;
       setIsProcessingUpload(true);
 
       const blocks = await OCRPipeline.analyzeFrame(imageUri);
@@ -257,6 +263,7 @@ export default function ReviewScreen() {
         params: {
           targetSide: side,
           guestIndex: String(guestIndex),
+          idType: guestsData[guestIndex]?.docType || 'UNKNOWN',
           existingGuests: JSON.stringify(guestsData),
           selectedRoomId: selectedRoomId ? String(selectedRoomId) : '',
         }
@@ -273,13 +280,18 @@ export default function ReviewScreen() {
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ['images'],
-        quality: 0.9,
+        quality: 0.8,
         allowsEditing: false,
       });
 
       if (result.canceled || !result.assets || result.assets.length === 0) return;
 
-      const imageUri = result.assets[0].uri;
+      const compressed = await compressImage(result.assets[0].uri, {
+        maxWidth: 1000,
+        maxHeight: 1000,
+        quality: 0.55,
+      });
+      const imageUri = compressed.uri || result.assets[0].uri;
       const field = side === 'back' ? 'backPhotoUri' : 'photoUri';
 
       // Update photo immediately
@@ -346,18 +358,23 @@ export default function ReviewScreen() {
       const result = useCamera
         ? await ImagePicker.launchCameraAsync({
             mediaTypes: ['images'],
-            quality: 0.9,
+            quality: 0.8,
             allowsEditing: false,
           })
         : await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
-            quality: 0.9,
+            quality: 0.8,
             allowsEditing: false,
           });
 
       if (result.canceled || !result.assets || result.assets.length === 0) return;
 
-      const imageUri = result.assets[0].uri;
+      const compressed = await compressImage(result.assets[0].uri, {
+        maxWidth: 1000,
+        maxHeight: 1000,
+        quality: 0.55,
+      });
+      const imageUri = compressed.uri || result.assets[0].uri;
       setGuestForm(prev => ({
         ...prev,
         [side === 'back' ? 'backPhotoUri' : 'photoUri']: imageUri,

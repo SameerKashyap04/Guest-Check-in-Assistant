@@ -23,6 +23,7 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 import { createMultipleGuestsAndStay } from '@/database/stays';
 import { OCRPipeline } from '@/features/checkin/camera/OCRPipeline';
+import { compressImage } from '@/utils/imageCompressor';
 
 const DOC_TYPES = ['Aadhaar', 'PAN', 'Voter ID', 'Driving Licence', 'Passport'];
 
@@ -103,7 +104,12 @@ export default function ManualEntryScreen() {
         return;
       }
 
-      const imageUri = result.assets[0].uri;
+      const compressed = await compressImage(result.assets[0].uri, {
+        maxWidth: 1000,
+        maxHeight: 1000,
+        quality: 0.55,
+      });
+      const imageUri = compressed.uri || result.assets[0].uri;
       if (side === 'front') {
         setPhotoUri(imageUri);
       } else {

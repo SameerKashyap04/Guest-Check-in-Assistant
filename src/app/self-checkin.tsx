@@ -37,12 +37,15 @@ import {
   Compass,
   FileText,
   Users,
+  ChevronDown,
+  Info,
 } from 'lucide-react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { pushGuestCheckinToCloud, subscribeToPropertyRooms } from '@/services/firebaseSync';
 import { SelfCheckinDatePicker } from '@/components/SelfCheckinDatePicker';
+import { compressToBase64DataUrl } from '@/utils/imageCompressor';
 
 export interface Room {
   id: number;
@@ -249,55 +252,8 @@ export default function SelfCheckinScreen() {
     );
   };
 
-  const compressAndGetBase64 = async (asset: ImagePicker.ImagePickerAsset): Promise<string> => {
-    const rawUri = asset.uri;
-
-    if (Platform.OS === 'web' && typeof window !== 'undefined' && rawUri) {
-      return new Promise<string>((resolve) => {
-        const img = new window.Image();
-        img.crossOrigin = 'Anonymous';
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 480;
-          const MAX_HEIGHT = 480;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > height) {
-            if (width > MAX_WIDTH) {
-              height *= MAX_WIDTH / width;
-              width = MAX_WIDTH;
-            }
-          } else {
-            if (height > MAX_HEIGHT) {
-              width *= MAX_HEIGHT / height;
-              height = MAX_HEIGHT;
-            }
-          }
-
-          canvas.width = Math.round(width);
-          canvas.height = Math.round(height);
-          const ctx = canvas.getContext('2d');
-          if (ctx) {
-            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.35);
-            resolve(compressedDataUrl);
-          } else {
-            resolve(rawUri);
-          }
-        };
-        img.onerror = () => {
-          if (asset.base64) resolve(`data:image/jpeg;base64,${asset.base64}`);
-          else resolve(rawUri);
-        };
-        img.src = rawUri;
-      });
-    }
-
-    if (asset.base64) {
-      return `data:image/jpeg;base64,${asset.base64}`;
-    }
-    return rawUri;
+  const compressAndGetBase64 = async (asset: ImagePicker.ImagePickerAsset, isSelfie = false): Promise<string> => {
+    return compressToBase64DataUrl(asset.uri, isSelfie);
   };
 
   const pickImage = async (
@@ -320,8 +276,7 @@ export default function SelfCheckinScreen() {
       const options: ImagePicker.ImagePickerOptions = {
         mediaTypes: ['images'],
         allowsEditing: false,
-        quality: 0.8,
-        base64: true,
+        quality: 0.6,
       };
 
       const result = useCamera
@@ -330,7 +285,7 @@ export default function SelfCheckinScreen() {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        const compressedUri = await compressAndGetBase64(asset);
+        const compressedUri = await compressAndGetBase64(asset, target === 'selfie');
 
         if (additionalGuestId) {
           const field = coGuestSide === 'back' ? 'backPhotoUri' : 'frontPhotoUri';

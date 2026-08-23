@@ -21,6 +21,7 @@ import {Field, PrimaryButton, SecondaryButton} from '../components/Ui';
 import {RoomCard} from '../components/RoomCard';
 import {AddCoGuestModal, CoGuestItem} from '../components/AddCoGuestModal';
 import {CalendarPicker} from '../components/CalendarPicker';
+import {compressImage} from '../utils/imageCompressor';
 
 export function ManualEntryScreen({
   onDone,
@@ -81,16 +82,21 @@ export function ManualEntryScreen({
         ? await ImagePicker.launchCameraAsync({
             mediaTypes: ['images'],
             allowsEditing: false,
-            quality: 0.9,
+            quality: 0.8,
           })
         : await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsEditing: false,
-            quality: 0.9,
+            quality: 0.8,
           });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const uri = result.assets[0].uri;
+        const compressed = await compressImage(result.assets[0].uri, {
+          maxWidth: 1000,
+          maxHeight: 1000,
+          quality: 0.55,
+        });
+        const uri = compressed.uri || result.assets[0].uri;
         if (side === 'front') {
           setPhotoUri(uri);
         } else {

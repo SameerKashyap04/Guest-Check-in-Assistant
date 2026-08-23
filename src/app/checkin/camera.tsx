@@ -16,6 +16,7 @@ import { StatusIndicator } from '@/features/checkin/components/StatusIndicator';
 import { useAutoCapture } from '@/features/checkin/hooks/useAutoCapture';
 import { useAutoCaptureStore } from '@/features/checkin/camera/AutoCaptureState';
 import { GuestProfile } from '@/utils/scanner';
+import { compressImage } from '@/utils/imageCompressor';
 
 const { width: W } = Dimensions.get('window');
 const VF_W = W - 48;
@@ -101,11 +102,16 @@ export default function CameraScannerScreen() {
     if (cameraRef.current) {
       try {
         const photo = await cameraRef.current.takePictureAsync({
-          quality: 0.85,
+          quality: 0.8,
           skipProcessing: false,
         });
         if (photo?.uri) {
-          capturedUri = photo.uri;
+          const compressed = await compressImage(photo.uri, {
+            maxWidth: 1000,
+            maxHeight: 1000,
+            quality: 0.55,
+          });
+          capturedUri = compressed.uri || photo.uri;
         }
       } catch (e) {
         console.warn('Take picture error', e);
