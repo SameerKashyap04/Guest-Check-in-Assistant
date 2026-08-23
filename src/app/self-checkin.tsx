@@ -480,18 +480,11 @@ export default function SelfCheckinScreen() {
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => Linking.openURL('https://www.devify.co.in')}
-            style={s.devifyFooter}
+            style={s.devifyBadge}
           >
-            <View style={s.footerContentRow}>
-              <Image
-                source={StayMateLogo}
-                style={s.footerLogo}
-                resizeMode="contain"
-              />
-              <Text style={s.devifyText}>
-                Engineered by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
-              </Text>
-            </View>
+            <Text style={s.devifyText}>
+              Developed by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </SafeAreaView>
@@ -1300,18 +1293,11 @@ export default function SelfCheckinScreen() {
           <TouchableOpacity
             activeOpacity={0.7}
             onPress={() => Linking.openURL('https://www.devify.co.in')}
-            style={s.devifyFooter}
+            style={s.devifyBadge}
           >
-            <View style={s.footerContentRow}>
-              <Image
-                source={StayMateLogo}
-                style={s.footerLogo}
-                resizeMode="contain"
-              />
-              <Text style={s.devifyText}>
-                Engineered by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
-              </Text>
-            </View>
+            <Text style={s.devifyText}>
+              Developed by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+            </Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -1344,34 +1330,21 @@ const s = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 20,
   },
-  devifyFooter: {
-    marginTop: 28,
+  devifyBadge: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    marginTop: 20,
     marginBottom: 24,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  footerContentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-  },
-  footerLogo: {
-    width: 80,
-    height: 14,
   },
   devifyText: {
     fontFamily: 'Inter',
-    fontSize: 12,
-    color: '#94A3B8',
-    lineHeight: 16,
-    includeFontPadding: false,
-    textAlignVertical: 'center',
-    paddingTop: 2,
+    fontSize: 12.5,
+    color: '#71717A',
   },
   devifyBrand: {
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#09090B',
   },
   headerBar: {
     flexDirection: 'row',
