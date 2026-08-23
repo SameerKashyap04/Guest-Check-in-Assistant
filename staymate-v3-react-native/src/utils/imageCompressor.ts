@@ -21,14 +21,6 @@ const DEFAULT_SELFIE_OPTIONS: CompressOptions = {
   returnBase64: false,
 };
 
-// Safely resolve ImageManipulator if present without crashing Metro bundler
-let ImageManipulator: any = null;
-try {
-  ImageManipulator = require('expo-image-manipulator');
-} catch (_) {
-  ImageManipulator = null;
-}
-
 export async function compressImage(
   uri: string,
   options: CompressOptions = DEFAULT_DOC_OPTIONS
@@ -91,38 +83,7 @@ export async function compressImage(
     });
   }
 
-  // Native compression if module available
-  if (ImageManipulator && ImageManipulator.manipulateAsync) {
-    try {
-      const actions = [
-        {
-          resize: {
-            width: maxWidth,
-          },
-        },
-      ];
-
-      const result = await ImageManipulator.manipulateAsync(
-        uri,
-        actions,
-        {
-          compress: quality,
-          format: ImageManipulator.SaveFormat?.JPEG || 'jpeg',
-          base64: returnBase64,
-        }
-      );
-
-      return {
-        uri: result.uri,
-        base64: result.base64,
-      };
-    } catch (e) {
-      console.warn('Native image compression fallback:', e);
-      return { uri };
-    }
-  }
-
-  // Fallback: return original URI
+  // Native / Fallback
   return { uri };
 }
 
