@@ -13,6 +13,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { C, R } from '@/theme/tokens';
+import { useTheme } from '@/theme/ThemeContext';
 import { Icon } from '@/components/v3/Icon';
 
 interface PinScreenProps {
@@ -21,6 +22,7 @@ interface PinScreenProps {
 }
 
 export function PinScreen({ onSuccess, initialMode }: PinScreenProps = {}) {
+  const { isDark, colors } = useTheme();
   const { t } = useTranslation();
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
@@ -140,21 +142,21 @@ export function PinScreen({ onSuccess, initialMode }: PinScreenProps = {}) {
   };
 
   return (
-    <SafeAreaView style={s.wrap}>
+    <SafeAreaView style={[s.wrap, isDark && { backgroundColor: colors.canvas }]}>
       {/* Icon */}
       <View style={s.lock}>
         <Icon name="lock" size={28} color="#fff" />
       </View>
 
       {/* Headline & Subtitle */}
-      <Text style={s.title}>
+      <Text style={[s.title, isDark && { color: colors.ink }]}>
         {step === 'enter'
           ? 'Welcome back'
           : step === 'setup'
           ? 'Set your PIN'
           : 'Confirm your PIN'}
       </Text>
-      <Text style={s.sub}>
+      <Text style={[s.sub, isDark && { color: colors.muted }]}>
         {step === 'enter'
           ? 'Enter your 4-digit PIN to unlock StayMate'
           : step === 'setup'
@@ -167,7 +169,11 @@ export function PinScreen({ onSuccess, initialMode }: PinScreenProps = {}) {
         {[0, 1, 2, 3].map((i) => (
           <View
             key={i}
-            style={[s.dot, pin.length > i && s.filled]}
+            style={[
+              s.dot,
+              isDark && { borderColor: '#3F3F46' },
+              pin.length > i && (isDark ? { backgroundColor: colors.primary, borderColor: colors.primary } : s.filled),
+            ]}
           />
         ))}
       </View>
@@ -186,31 +192,31 @@ export function PinScreen({ onSuccess, initialMode }: PinScreenProps = {}) {
             key={n}
             activeOpacity={0.7}
             onPress={() => handleKeyPress(String(n))}
-            style={s.key}
+            style={[s.key, isDark && { backgroundColor: '#18181B', borderWidth: 1, borderColor: '#27272A' }]}
           >
-            <Text style={s.keyText}>{n}</Text>
+            <Text style={[s.keyText, isDark && { color: colors.ink }]}>{n}</Text>
           </TouchableOpacity>
         ))}
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={handleBiometric}
-          style={s.key}
+          style={[s.key, isDark && { backgroundColor: '#18181B', borderWidth: 1, borderColor: '#27272A' }]}
         >
-          <Icon name="fingerprint" size={24} color={C.primary} />
+          <Icon name="fingerprint" size={24} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={() => handleKeyPress('0')}
-          style={s.key}
+          style={[s.key, isDark && { backgroundColor: '#18181B', borderWidth: 1, borderColor: '#27272A' }]}
         >
-          <Text style={s.keyText}>0</Text>
+          <Text style={[s.keyText, isDark && { color: colors.ink }]}>0</Text>
         </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.7}
           onPress={handleDelete}
-          style={s.key}
+          style={[s.key, isDark && { backgroundColor: '#18181B', borderWidth: 1, borderColor: '#27272A' }]}
         >
-          <Icon name="chevronLeft" size={20} color={C.ink} />
+          <Icon name="chevronLeft" size={20} color={colors.ink} />
         </TouchableOpacity>
       </View>
 
@@ -218,10 +224,10 @@ export function PinScreen({ onSuccess, initialMode }: PinScreenProps = {}) {
       <TouchableOpacity
         onPress={handleLogout}
         activeOpacity={0.7}
-        style={s.logoutBtn}
+        style={[s.logoutBtn, isDark && { backgroundColor: '#18181B', borderWidth: 1, borderColor: '#27272A' }]}
       >
-        <Icon name="logout" size={14} color={C.muted} />
-        <Text style={s.logoutText}>{t('logoutSwitchAccount') || 'Log out'}</Text>
+        <Icon name="logout" size={14} color={colors.muted} />
+        <Text style={[s.logoutText, isDark && { color: colors.muted }]}>{t('logoutSwitchAccount') || 'Log out'}</Text>
       </TouchableOpacity>
     </SafeAreaView>
   );

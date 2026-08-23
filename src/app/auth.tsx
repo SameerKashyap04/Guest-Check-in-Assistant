@@ -272,7 +272,7 @@ export default function AuthScreen() {
   };
 
   return (
-    <View style={s.container}>
+    <View style={[s.container, isDark && { backgroundColor: colors.canvas }]}>
       <Stack.Screen options={{ headerShown: false }} />
 
       <KeyboardAvoidingView
@@ -299,10 +299,10 @@ export default function AuthScreen() {
 
             {step === 'form' ? (
               <>
-                <Text style={s.title}>
+                <Text style={[s.title, isDark && { color: colors.ink }]}>
                   {tab === 'login' ? 'Welcome back' : 'Create account'}
                 </Text>
-                <Text style={s.subtitle}>
+                <Text style={[s.subtitle, isDark && { color: colors.muted }]}>
                   {tab === 'login'
                     ? 'Sign in to access your property'
                     : 'Start managing your check-ins'}
@@ -310,18 +310,18 @@ export default function AuthScreen() {
               </>
             ) : (
               <>
-                <Text style={s.title}>Verify your email</Text>
-                <Text style={s.subtitle}>
+                <Text style={[s.title, isDark && { color: colors.ink }]}>Verify your email</Text>
+                <Text style={[s.subtitle, isDark && { color: colors.muted }]}>
                   Enter the 6-digit code sent to
                 </Text>
-                <View style={s.emailChip}>
-                  <Text style={s.emailChipText}>{email.trim()}</Text>
+                <View style={[s.emailChip, isDark && { backgroundColor: '#27272A' }]}>
+                  <Text style={[s.emailChipText, isDark && { color: colors.ink }]}>{email.trim()}</Text>
                   <TouchableOpacity
                     activeOpacity={0.7}
                     onPress={() => setStep('form')}
                     style={s.editEmailBtn}
                   >
-                    <Text style={s.editEmailText}>Edit</Text>
+                    <Text style={[s.editEmailText, isDark && { color: colors.primary }]}>Edit</Text>
                   </TouchableOpacity>
                 </View>
               </>
@@ -331,22 +331,22 @@ export default function AuthScreen() {
           {step === 'form' ? (
             <>
               {/* Segmented Control */}
-              <View style={s.tabs}>
+              <View style={[s.tabs, isDark && { backgroundColor: '#27272A' }]}>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setTab('login')}
-                  style={[s.tab, tab === 'login' && s.activeTab]}
+                  style={[s.tab, tab === 'login' && [s.activeTab, isDark && { backgroundColor: '#18181B' }]]}
                 >
-                  <Text style={[s.tabText, tab === 'login' && s.activeTabText]}>
+                  <Text style={[s.tabText, isDark && { color: colors.muted }, tab === 'login' && [s.activeTabText, isDark && { color: colors.ink }]]}>
                     Log in
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   activeOpacity={0.8}
                   onPress={() => setTab('signup')}
-                  style={[s.tab, tab === 'signup' && s.activeTab]}
+                  style={[s.tab, tab === 'signup' && [s.activeTab, isDark && { backgroundColor: '#18181B' }]]}
                 >
-                  <Text style={[s.tabText, tab === 'signup' && s.activeTabText]}>
+                  <Text style={[s.tabText, isDark && { color: colors.muted }, tab === 'signup' && [s.activeTabText, isDark && { color: colors.ink }]]}>
                     Sign up
                   </Text>
                 </TouchableOpacity>
@@ -356,17 +356,17 @@ export default function AuthScreen() {
               <View style={s.form}>
                 {tab === 'signup' && (
                   <View style={s.inputGroup}>
-                    <Text style={s.label}>Property name</Text>
-                    <View style={s.inputWrapper}>
+                    <Text style={[s.label, isDark && { color: colors.muted }]}>Property name</Text>
+                    <View style={[s.inputWrapper, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
                       <View style={s.inputIcon}>
-                        <Icon name="home" size={18} color="#71717A" />
+                        <Icon name="home" size={18} color={colors.muted} />
                       </View>
                       <TextInput
                         value={businessName}
                         onChangeText={setBusinessName}
                         placeholder="e.g. Sunrise Homestay"
-                        placeholderTextColor="#A1A1AA"
-                        style={s.input}
+                        placeholderTextColor={colors.muted}
+                        style={[s.input, isDark && { color: colors.ink }]}
                         autoCapitalize="words"
                       />
                     </View>
@@ -374,17 +374,17 @@ export default function AuthScreen() {
                 )}
 
                 <View style={s.inputGroup}>
-                  <Text style={s.label}>Email address</Text>
-                  <View style={s.inputWrapper}>
+                  <Text style={[s.label, isDark && { color: colors.muted }]}>Email address</Text>
+                  <View style={[s.inputWrapper, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
                     <View style={s.inputIcon}>
-                      <Icon name="mail" size={18} color="#71717A" />
+                      <Icon name="mail" size={18} color={colors.muted} />
                     </View>
                     <TextInput
                       value={email}
                       onChangeText={setEmail}
                       placeholder="owner@property.com"
-                      placeholderTextColor="#A1A1AA"
-                      style={s.input}
+                      placeholderTextColor={colors.muted}
+                      style={[s.input, isDark && { color: colors.ink }]}
                       keyboardType="email-address"
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -393,10 +393,10 @@ export default function AuthScreen() {
                 </View>
 
                 <View style={s.inputGroup}>
-                  <Text style={s.label}>Password</Text>
-                  <View style={s.inputWrapper}>
+                  <Text style={[s.label, isDark && { color: colors.muted }]}>Password</Text>
+                  <View style={[s.inputWrapper, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
                     <View style={s.inputIcon}>
-                      <Icon name="lock" size={18} color="#71717A" />
+                      <Icon name="lock" size={18} color={colors.muted} />
                     </View>
                     <TextInput
                       value={password}
@@ -404,9 +404,9 @@ export default function AuthScreen() {
                       placeholder={
                         tab === 'login' ? 'Enter password' : 'At least 8 characters'
                       }
-                      placeholderTextColor="#A1A1AA"
+                      placeholderTextColor={colors.muted}
                       secureTextEntry={!showPassword}
-                      style={s.input}
+                      style={[s.input, isDark && { color: colors.ink }]}
                       autoCapitalize="none"
                     />
                     <TouchableOpacity
@@ -417,7 +417,7 @@ export default function AuthScreen() {
                       <Icon
                         name={showPassword ? 'eyeOff' : 'eye'}
                         size={18}
-                        color="#71717A"
+                        color={colors.muted}
                       />
                     </TouchableOpacity>
                   </View>
@@ -429,7 +429,7 @@ export default function AuthScreen() {
                     onPress={handleForgotPassword}
                     style={s.forgotBtn}
                   >
-                    <Text style={s.forgotText}>Forgot password?</Text>
+                    <Text style={[s.forgotText, isDark && { color: colors.primary }]}>Forgot password?</Text>
                   </TouchableOpacity>
                 )}
 
@@ -438,7 +438,7 @@ export default function AuthScreen() {
                   activeOpacity={0.88}
                   onPress={handleInitiateAuth}
                   disabled={isLoading}
-                  style={[s.submitBtn, isLoading && { opacity: 0.8 }]}
+                  style={[s.submitBtn, isDark && { backgroundColor: colors.primary }, isLoading && { opacity: 0.8 }]}
                 >
                   {isLoading ? (
                     <ActivityIndicator color="#FFFFFF" size="small" />
@@ -451,15 +451,15 @@ export default function AuthScreen() {
 
                 {/* Divider */}
                 <View style={s.divider}>
-                  <View style={s.dividerLine} />
-                  <Text style={s.dividerText}>or</Text>
-                  <View style={s.dividerLine} />
+                  <View style={[s.dividerLine, isDark && { backgroundColor: '#27272A' }]} />
+                  <Text style={[s.dividerText, isDark && { color: colors.muted }]}>or</Text>
+                  <View style={[s.dividerLine, isDark && { backgroundColor: '#27272A' }]} />
                 </View>
 
                 {/* Google Button */}
                 <TouchableOpacity
                   activeOpacity={0.85}
-                  style={s.googleBtn}
+                  style={[s.googleBtn, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}
                   onPress={handleGoogleAuth}
                   disabled={isLoading}
                 >
@@ -468,7 +468,7 @@ export default function AuthScreen() {
                     style={s.googleImage}
                     resizeMode="contain"
                   />
-                  <Text style={s.googleBtnText}>Continue with Google</Text>
+                  <Text style={[s.googleBtnText, isDark && { color: colors.ink }]}>Continue with Google</Text>
                 </TouchableOpacity>
               </View>
             </>
@@ -491,7 +491,8 @@ export default function AuthScreen() {
                     selectTextOnFocus
                     style={[
                       s.otpBox,
-                      digit ? s.otpBoxFilled : null,
+                      isDark && { backgroundColor: '#18181B', borderColor: '#27272A', color: colors.ink },
+                      digit ? (isDark ? { borderColor: colors.primary, backgroundColor: '#2E1065' } : s.otpBoxFilled) : null,
                     ]}
                   />
                 ))}
@@ -499,7 +500,7 @@ export default function AuthScreen() {
 
               {/* Resend Timer */}
               <View style={s.resendRow}>
-                <Text style={s.resendLabel}>Didn't receive the code? </Text>
+                <Text style={[s.resendLabel, isDark && { color: colors.muted }]}>{"Didn't receive the code? "}</Text>
                 <TouchableOpacity
                   activeOpacity={0.7}
                   onPress={handleResendOtp}
@@ -508,6 +509,7 @@ export default function AuthScreen() {
                   <Text
                     style={[
                       s.resendLink,
+                      isDark && { color: colors.primary },
                       resendTimer > 0 && s.resendLinkDisabled,
                     ]}
                   >
@@ -523,7 +525,7 @@ export default function AuthScreen() {
                 activeOpacity={0.88}
                 onPress={() => handleVerifyOtp()}
                 disabled={isLoading}
-                style={[s.submitBtn, isLoading && { opacity: 0.8 }]}
+                style={[s.submitBtn, isDark && { backgroundColor: colors.primary }, isLoading && { opacity: 0.8 }]}
               >
                 {isLoading ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
@@ -538,7 +540,7 @@ export default function AuthScreen() {
                 onPress={() => setStep('form')}
                 style={s.backBtn}
               >
-                <Text style={s.backBtnText}>
+                <Text style={[s.backBtnText, isDark && { color: colors.muted }]}>
                   Back to {tab === 'login' ? 'Log in' : 'Sign up'}
                 </Text>
               </TouchableOpacity>
@@ -546,10 +548,10 @@ export default function AuthScreen() {
           )}
 
           {/* Footer note */}
-          <Text style={s.footerText}>
-            By continuing, you agree to StayMate's{' '}
-            <Text style={{ color: '#09090B', fontWeight: '600' }}>Terms</Text> and{' '}
-            <Text style={{ color: '#09090B', fontWeight: '600' }}>Privacy</Text>.
+          <Text style={[s.footerText, isDark && { color: colors.muted }]}>
+            {"By continuing, you agree to StayMate's "}
+            <Text style={{ color: isDark ? colors.ink : '#09090B', fontWeight: '600' }}>Terms</Text> and{' '}
+            <Text style={{ color: isDark ? colors.ink : '#09090B', fontWeight: '600' }}>Privacy</Text>.
           </Text>
 
           {/* Devify Developer Attribution */}
@@ -558,8 +560,8 @@ export default function AuthScreen() {
             onPress={() => Linking.openURL('https://www.devify.co.in')}
             style={s.devifyBadge}
           >
-            <Text style={s.devifyText}>
-              Developed by <Text style={s.devifyBrand}>Devify</Text> · www.devify.co.in
+            <Text style={[s.devifyText, isDark && { color: colors.muted }]}>
+              Developed by <Text style={[s.devifyBrand, isDark && { color: colors.ink }]}>Devify</Text> · www.devify.co.in
             </Text>
           </TouchableOpacity>
         </ScrollView>

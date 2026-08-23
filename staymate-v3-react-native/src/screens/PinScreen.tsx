@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { C, R } from '../theme/tokens';
+import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../components/Icon';
 import { securityService } from '../services/securityService';
 
@@ -21,6 +22,7 @@ export function PinScreen({
   mode?: 'setup' | 'enter';
   onPinSet?: (pin: string) => void;
 }) {
+  const { isDark, colors } = useTheme();
   const [currentStep, setCurrentStep] = useState<'setup' | 'confirm' | 'enter'>(mode);
   const [pin, setPin] = useState('');
   const [setupPinFirst, setSetupPinFirst] = useState('');
@@ -155,18 +157,18 @@ export function PinScreen({
   };
 
   return (
-    <View style={s.wrap}>
+    <View style={[s.wrap, isDark && { backgroundColor: colors.canvas }]}>
       <View style={s.lock}>
         <Icon name="lock" size={28} color="#fff" />
       </View>
-      <Text style={s.title}>
+      <Text style={[s.title, isDark && { color: colors.ink }]}>
         {currentStep === 'enter'
           ? 'Welcome back'
           : currentStep === 'setup'
           ? 'Set your PIN'
           : 'Confirm your PIN'}
       </Text>
-      <Text style={s.sub}>
+      <Text style={[s.sub, isDark && { color: colors.muted }]}>
         {error
           ? error
           : lockoutSeconds > 0
@@ -184,7 +186,8 @@ export function PinScreen({
             key={i}
             style={[
               s.dot,
-              i < pin.length && s.filled,
+              isDark && { borderColor: '#3F3F46' },
+              i < pin.length && (isDark ? { backgroundColor: colors.primary, borderColor: colors.primary } : s.filled),
               error ? s.dotError : null,
             ]}
           />
@@ -198,43 +201,43 @@ export function PinScreen({
             activeOpacity={0.7}
             disabled={lockoutSeconds > 0}
             onPress={() => press(String(n))}
-            style={s.key}
+            style={[s.key, isDark && { backgroundColor: '#18181B', borderWidth: 1, borderColor: '#27272A' }]}
           >
-            <Text style={s.keyText}>{n}</Text>
+            <Text style={[s.keyText, isDark && { color: colors.ink }]}>{n}</Text>
           </TouchableOpacity>
         ))}
         <TouchableOpacity
           activeOpacity={0.7}
           disabled={lockoutSeconds > 0 || currentStep !== 'enter'}
           onPress={handleBiometricPress}
-          style={[s.key, currentStep !== 'enter' && { opacity: 0.3 }]}
+          style={[s.key, isDark && { backgroundColor: '#18181B', borderWidth: 1, borderColor: '#27272A' }, currentStep !== 'enter' && { opacity: 0.3 }]}
         >
-          <Icon name="fingerprint" size={22} color={C.primary} />
+          <Icon name="fingerprint" size={22} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.7}
           disabled={lockoutSeconds > 0}
           onPress={() => press('0')}
-          style={s.key}
+          style={[s.key, isDark && { backgroundColor: '#18181B', borderWidth: 1, borderColor: '#27272A' }]}
         >
-          <Text style={s.keyText}>0</Text>
+          <Text style={[s.keyText, isDark && { color: colors.ink }]}>0</Text>
         </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.7}
           disabled={lockoutSeconds > 0}
           onPress={handleDelete}
-          style={s.key}
+          style={[s.key, isDark && { backgroundColor: '#18181B', borderWidth: 1, borderColor: '#27272A' }]}
         >
-          <Icon name="chevronLeft" size={20} color={C.ink} />
+          <Icon name="chevronLeft" size={20} color={colors.ink} />
         </TouchableOpacity>
       </View>
 
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={handleQuickUnlock}
-        style={s.quickUnlock}
+        style={[s.quickUnlock, isDark && { backgroundColor: '#2E1065' }]}
       >
-        <Text style={s.quickUnlockText}>
+        <Text style={[s.quickUnlockText, isDark && { color: colors.primary }]}>
           {currentStep !== 'enter' ? 'Skip (Use 1234) →' : 'Quick Unlock (Demo) →'}
         </Text>
       </TouchableOpacity>
