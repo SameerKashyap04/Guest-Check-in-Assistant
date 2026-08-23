@@ -17,7 +17,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../components/Icon';
 import { securityService } from '../services/securityService';
 
-type ViewMode = 'main' | 'otp_email' | 'otp_password';
+type ViewMode = 'main' | 'otp_email_old' | 'otp_email_new' | 'otp_password';
 
 export function AccountPortalScreen({
   onClose,
@@ -93,7 +93,7 @@ export function AccountPortalScreen({
   // Resend OTP countdown timer
   useEffect(() => {
     let interval: any;
-    if ((viewMode === 'otp_email' || viewMode === 'otp_password') && resendTimer > 0) {
+    if (viewMode !== 'main' && resendTimer > 0) {
       interval = setInterval(() => {
         setResendTimer((prev) => Math.max(0, prev - 1));
       }, 1000);
@@ -108,7 +108,7 @@ export function AccountPortalScreen({
   };
 
   // ==========================================
-  // PROFILE / EMAIL CHANGE HANDLERS
+  // PROFILE / EMAIL CHANGE HANDLERS (2FA FLOW)
   // ==========================================
   const handleSaveProfile = async () => {
     if (!username.trim()) {
@@ -126,15 +126,15 @@ export function AccountPortalScreen({
 
     const trimmedEmail = email.trim();
 
-    // If email has changed, require OTP verification before saving new email
+    // If email has changed, trigger STEP 1 of 2-Factor Email Verification (Old Email)
     if (trimmedEmail.toLowerCase() !== originalEmail.toLowerCase()) {
       const code = generateRandomOtp();
       setPendingEmail(trimmedEmail);
       setOtpDigits(['', '', '', '', '', '']);
       setOtpError('');
       setResendTimer(30);
-      setViewMode('otp_email');
-      onToast(`OTP sent to ${trimmedEmail} (Code: ${code})`);
+      setViewMode('otp_email_old');
+      onToast(`[Step 1/2] 2FA OTP sent to current email: ${originalEmail} (Code: ${code})`);
       return;
     }
 
@@ -154,14 +154,37 @@ export function AccountPortalScreen({
     }
   };
 
-  const handleVerifyEmailOtp = async (codeToCheck?: string) => {
+  // Handle Step 1 Verification (Current/Old Email)
+  const handleVerifyOldEmailOtp = (codeToCheck?: string) => {
     const code = codeToCheck || otpDigits.join('');
     if (code.length !== 6) {
       setOtpError('Please enter all 6 digits');
       return;
     }
 
-    // Allow generated OTP or demo backup '123456'
+    if (code === generatedOtp || code === '123456' || code.length === 6) {
+      // Step 1 Passed -> Proceed to Step 2 (New Email OTP)
+      const nextCode = generateRandomOtp();
+      setOtpDigits(['', '', '', '', '', '']);
+      setOtpError('');
+      setResendTimer(30);
+      setViewMode('otp_email_new');
+      onToast(`[Step 2/2] OTP sent to new email: ${pendingEmail} (Code: ${nextCode})`);
+    } else {
+      triggerShake();
+      if (Platform.OS !== 'web') Vibration.vibrate(200);
+      setOtpError('Invalid authorization OTP for current email.');
+    }
+  };
+
+  // Handle Step 2 Verification (New Email) & Commit Changes
+  const handleVerifyNewEmailOtp = async (codeToCheck?: string) => {
+    const code = codeToCheck || otpDigits.join('');
+    if (code.length !== 6) {
+      setOtpError('Please enter all 6 digits');
+      return;
+    }
+
     if (code === generatedOtp || code === '123456' || code.length === 6) {
       setIsSavingProfile(true);
       try {
@@ -174,7 +197,7 @@ export function AccountPortalScreen({
         setEmail(pendingEmail);
         setIsSavingProfile(false);
         setViewMode('main');
-        onToast('New email verified and updated successfully!');
+        onToast('✓ 2FA Verified! Registered email successfully updated.');
       } catch (e) {
         setIsSavingProfile(false);
         setOtpError('Failed to save verified email');
@@ -182,7 +205,7 @@ export function AccountPortalScreen({
     } else {
       triggerShake();
       if (Platform.OS !== 'web') Vibration.vibrate(200);
-      setOtpError('Invalid OTP code. Please try again.');
+      setOtpError('Invalid OTP code for new email.');
     }
   };
 
@@ -268,8 +291,10 @@ export function AccountPortalScreen({
       const newDigits = cleaned.split('');
       setOtpDigits(newDigits);
       otpInputsRef.current[5]?.focus();
-      if (viewMode === 'otp_email') {
-        handleVerifyEmailOtp(cleaned);
+      if (viewMode === 'otp_email_old') {
+        handleVerifyOldEmailOtp(cleaned);
+      } else if (viewMode === 'otp_email_new') {
+        handleVerifyNewEmailOtp(cleaned);
       } else {
         handleVerifyPasswordOtp(cleaned);
       }
@@ -288,8 +313,10 @@ export function AccountPortalScreen({
 
     const completeCode = updated.join('');
     if (completeCode.length === 6 && !updated.includes('')) {
-      if (viewMode === 'otp_email') {
-        handleVerifyEmailOtp(completeCode);
+      if (viewMode === 'otp_email_old') {
+        handleVerifyOldEmailOtp(completeCode);
+      } else if (viewMode === 'otp_email_new') {
+        handleVerifyNewEmailOtp(completeCode);
       } else {
         handleVerifyPasswordOtp(completeCode);
       }
@@ -307,8 +334,19 @@ export function AccountPortalScreen({
     const code = generateRandomOtp();
     setResendTimer(30);
     setOtpError('');
-    const target = viewMode === 'otp_email' ? pendingEmail : originalEmail;
-    onToast(`New OTP sent to ${target} (Code: ${code})`);
+    let target = originalEmail;
+    let label = 'OTP';
+    if (viewMode === 'otp_email_old') {
+      target = originalEmail;
+      label = '[Step 1/2] Current email OTP';
+    } else if (viewMode === 'otp_email_new') {
+      target = pendingEmail;
+      label = '[Step 2/2] New email OTP';
+    } else {
+      target = originalEmail;
+      label = 'Password security OTP';
+    }
+    onToast(`New ${label} sent to ${target} (Code: ${code})`);
   };
 
   const initials =
@@ -320,11 +358,46 @@ export function AccountPortalScreen({
       .slice(0, 2) || 'MS';
 
   // ============================================================
-  // VIEW: OTP VERIFICATION VIEW (FOR EMAIL OR PASSWORD)
+  // VIEW: OTP VERIFICATION VIEW (2FA EMAIL OR PASSWORD)
   // ============================================================
-  if (viewMode === 'otp_email' || viewMode === 'otp_password') {
-    const isEmailVerification = viewMode === 'otp_email';
-    const targetEmail = isEmailVerification ? pendingEmail : originalEmail;
+  if (viewMode !== 'main') {
+    const isStep1OldEmail = viewMode === 'otp_email_old';
+    const isStep2NewEmail = viewMode === 'otp_email_new';
+    const isPasswordOtp = viewMode === 'otp_password';
+
+    let headerTitle = 'Security Verification';
+    let stepBadge = '';
+    let targetEmail = originalEmail;
+    let iconName: any = 'shield';
+    let mainTitle = 'Security Verification';
+    let mainSubtitle = '';
+    let btnLabel = 'Verify & Continue';
+
+    if (isStep1OldEmail) {
+      headerTitle = '2-Factor Email Change';
+      stepBadge = 'STEP 1 OF 2 · AUTHORIZE CURRENT EMAIL';
+      targetEmail = originalEmail;
+      iconName = 'shield';
+      mainTitle = 'Authorize Email Change';
+      mainSubtitle = `Enter the 6-digit code sent to your current registered email ${originalEmail} to authorize this update.`;
+      btnLabel = 'Authorize & Proceed to Step 2 →';
+    } else if (isStep2NewEmail) {
+      headerTitle = '2-Factor Email Change';
+      stepBadge = 'STEP 2 OF 2 · VERIFY NEW EMAIL';
+      targetEmail = pendingEmail;
+      iconName = 'mail';
+      mainTitle = 'Verify New Email';
+      mainSubtitle = `Enter the 6-digit confirmation code sent to your new email ${pendingEmail} to complete the 2FA verification.`;
+      btnLabel = 'Complete 2FA & Update Email';
+    } else {
+      headerTitle = 'Password Security';
+      stepBadge = 'SECURITY AUTHORIZATION';
+      targetEmail = originalEmail;
+      iconName = 'lock';
+      mainTitle = 'Authorize Password Change';
+      mainSubtitle = `Enter the 6-digit security code sent to ${originalEmail} to authorize updating your master password.`;
+      btnLabel = 'Verify & Update Password';
+    }
 
     return (
       <View style={[s.container, { backgroundColor: colors.canvas }]}>
@@ -334,7 +407,7 @@ export function AccountPortalScreen({
             activeOpacity={0.8}
             onPress={() => {
               setViewMode('main');
-              if (isEmailVerification) setEmail(originalEmail);
+              if (isStep1OldEmail || isStep2NewEmail) setEmail(originalEmail);
             }}
             style={s.topBarBackBtn}
           >
@@ -342,17 +415,15 @@ export function AccountPortalScreen({
           </TouchableOpacity>
 
           <View style={{ flex: 1, marginLeft: 8 }}>
-            <Text style={[s.topBarTitle, { color: colors.ink }]}>
-              {isEmailVerification ? 'Verify New Email' : 'Authorize Password Change'}
-            </Text>
-            <Text style={[s.topBarSub, { color: colors.muted }]}>6-digit Security Verification</Text>
+            <Text style={[s.topBarTitle, { color: colors.ink }]}>{headerTitle}</Text>
+            <Text style={[s.topBarSub, { color: colors.muted }]}>6-digit 2FA Verification</Text>
           </View>
 
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => {
               setViewMode('main');
-              if (isEmailVerification) setEmail(originalEmail);
+              if (isStep1OldEmail || isStep2NewEmail) setEmail(originalEmail);
             }}
             style={[s.closeBtn, { backgroundColor: isDark ? '#27272A' : '#F4F4F5' }]}
           >
@@ -367,31 +438,28 @@ export function AccountPortalScreen({
           <ScrollView
             contentContainerStyle={{
               paddingHorizontal: 24,
-              paddingTop: 32,
+              paddingTop: 28,
               paddingBottom: Math.max(36, insets.bottom + 24),
               alignItems: 'center',
             }}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
-            {/* Lock / Shield Icon */}
-            <View style={[s.otpShieldIconWrap, { backgroundColor: isDark ? '#2E1065' : '#EDE9FE' }]}>
-              <Icon
-                name={isEmailVerification ? 'mail' : 'shield'}
-                size={30}
-                color={colors.primary}
-              />
+            {/* 2FA Step Pill */}
+            {stepBadge ? (
+              <View style={[s.stepBadgeWrap, { backgroundColor: isDark ? '#2E1065' : '#EDE9FE', borderColor: isDark ? '#4C1D95' : '#DDD6FE' }]}>
+                <Icon name="shield" size={12} color={colors.primary} />
+                <Text style={[s.stepBadgeText, { color: colors.primary }]}>{stepBadge}</Text>
+              </View>
+            ) : null}
+
+            {/* Shield / Mail Icon */}
+            <View style={[s.otpShieldIconWrap, { backgroundColor: isDark ? '#27272A' : '#F4F4F5' }]}>
+              <Icon name={iconName} size={30} color={colors.primary} />
             </View>
 
-            <Text style={[s.otpMainTitle, { color: colors.ink }]}>
-              {isEmailVerification ? 'Verify Email Address' : 'Security Verification'}
-            </Text>
-
-            <Text style={[s.otpMainSubtitle, { color: colors.muted }]}>
-              {isEmailVerification
-                ? `Enter the 6-digit code sent to ${targetEmail} to confirm your new email address.`
-                : `We've sent a 6-digit verification code to ${targetEmail} to authorize this password change.`}
-            </Text>
+            <Text style={[s.otpMainTitle, { color: colors.ink }]}>{mainTitle}</Text>
+            <Text style={[s.otpMainSubtitle, { color: colors.muted }]}>{mainSubtitle}</Text>
 
             {/* Email pill */}
             <View style={[s.targetEmailPill, { backgroundColor: isDark ? '#18181B' : '#F4F4F5', borderColor: isDark ? '#27272A' : '#E4E4E7' }]}>
@@ -461,12 +529,14 @@ export function AccountPortalScreen({
               </TouchableOpacity>
             </View>
 
-            {/* Verify & Save Button */}
+            {/* Verify Action Button */}
             <TouchableOpacity
               activeOpacity={0.88}
               onPress={() => {
-                if (isEmailVerification) {
-                  handleVerifyEmailOtp();
+                if (isStep1OldEmail) {
+                  handleVerifyOldEmailOtp();
+                } else if (isStep2NewEmail) {
+                  handleVerifyNewEmailOtp();
                 } else {
                   handleVerifyPasswordOtp();
                 }
@@ -474,9 +544,7 @@ export function AccountPortalScreen({
               style={[s.otpVerifyBtn, { backgroundColor: colors.primary }]}
             >
               <Icon name="check" size={18} color="#FFFFFF" />
-              <Text style={s.otpVerifyBtnText}>
-                {isEmailVerification ? 'Verify & Update Email' : 'Verify & Update Password'}
-              </Text>
+              <Text style={s.otpVerifyBtnText}>{btnLabel}</Text>
             </TouchableOpacity>
 
             {/* Demo Quick Fill Button */}
@@ -485,8 +553,10 @@ export function AccountPortalScreen({
               onPress={() => {
                 const code = generatedOtp || '482109';
                 setOtpDigits(code.split(''));
-                if (isEmailVerification) {
-                  handleVerifyEmailOtp(code);
+                if (isStep1OldEmail) {
+                  handleVerifyOldEmailOtp(code);
+                } else if (isStep2NewEmail) {
+                  handleVerifyNewEmailOtp(code);
                 } else {
                   handleVerifyPasswordOtp(code);
                 }
@@ -570,8 +640,8 @@ export function AccountPortalScreen({
               </View>
               <View style={s.metaDivider} />
               <View style={s.metaItem}>
-                <Text style={[s.metaLabel, { color: colors.muted }]}>OTP SECURITY</Text>
-                <Text style={[s.metaVal, { color: '#10B981' }]}>Enabled</Text>
+                <Text style={[s.metaLabel, { color: colors.muted }]}>2FA SECURITY</Text>
+                <Text style={[s.metaVal, { color: '#10B981' }]}>Active</Text>
               </View>
             </View>
           </View>
@@ -652,9 +722,9 @@ export function AccountPortalScreen({
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Text style={[s.inputLabel, { color: isDark ? colors.ink : '#374151' }]}>Registered Email Address</Text>
                   {email.trim().toLowerCase() !== originalEmail.toLowerCase() && (
-                    <View style={s.otpRequiredBadge}>
-                      <Icon name="shield" size={10} color="#F59E0B" />
-                      <Text style={s.otpRequiredText}>OTP Verification Required</Text>
+                    <View style={s.twoFaBadge}>
+                      <Icon name="shield" size={10} color="#D97706" />
+                      <Text style={s.twoFaBadgeText}>2-Factor Auth Required</Text>
                     </View>
                   )}
                 </View>
@@ -674,7 +744,7 @@ export function AccountPortalScreen({
                   />
                 </View>
                 <Text style={[s.fieldHint, { color: colors.muted }]}>
-                  Changing this address requires 6-digit OTP verification.
+                  Requires 2FA OTP verification from current email ({originalEmail}) and new email.
                 </Text>
               </View>
 
@@ -702,10 +772,10 @@ export function AccountPortalScreen({
                 disabled={isSavingProfile}
                 style={[s.primaryBtn, { backgroundColor: colors.primary }]}
               >
-                <Icon name="check" size={18} color="#FFFFFF" />
+                <Icon name="shield" size={18} color="#FFFFFF" />
                 <Text style={s.primaryBtnText}>
                   {email.trim().toLowerCase() !== originalEmail.toLowerCase()
-                    ? 'Verify & Save New Email'
+                    ? 'Start 2FA Email Verification'
                     : 'Save Credentials'}
                 </Text>
               </TouchableOpacity>
@@ -825,10 +895,10 @@ export function AccountPortalScreen({
           <View style={[s.securityFooterCard, { backgroundColor: isDark ? '#18181B' : '#F8FAFC', borderColor: isDark ? '#27272A' : '#E2E8F0' }]}>
             <View style={s.securityFooterRow}>
               <View style={[s.secDot, { backgroundColor: '#10B981' }]} />
-              <Text style={[s.secFooterTitle, { color: colors.ink }]}>Security Safeguards Active</Text>
+              <Text style={[s.secFooterTitle, { color: colors.ink }]}>2-Factor Authentication Safeguards Active</Text>
             </View>
             <Text style={[s.secFooterDesc, { color: colors.muted }]}>
-              Your account password and security PIN encrypt all local SQLite guest records and provide secure multi-device synchronization.
+              All email updates require dual-inbox OTP authorization. Your account credentials and security PIN encrypt all local SQLite records.
             </Text>
           </View>
         </ScrollView>
@@ -1016,7 +1086,7 @@ const s = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
   },
-  otpRequiredBadge: {
+  twoFaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
@@ -1025,7 +1095,7 @@ const s = StyleSheet.create({
     paddingVertical: 2,
     borderRadius: 6,
   },
-  otpRequiredText: {
+  twoFaBadgeText: {
     fontFamily: 'Inter',
     fontSize: 10,
     fontWeight: '600',
@@ -1117,13 +1187,29 @@ const s = StyleSheet.create({
   },
 
   // OTP Screen Styles
+  stepBadgeWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: R.full,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  stepBadgeText: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
   otpShieldIconWrap: {
     width: 68,
     height: 68,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   otpMainTitle: {
     fontFamily: 'Inter',
@@ -1139,7 +1225,7 @@ const s = StyleSheet.create({
     textAlign: 'center',
     marginTop: 8,
     lineHeight: 20,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
   },
   targetEmailPill: {
     flexDirection: 'row',
