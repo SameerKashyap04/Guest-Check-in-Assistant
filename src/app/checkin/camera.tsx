@@ -264,7 +264,10 @@ export default function CameraScannerScreen() {
         {/* Side Selector Tabs */}
         <View style={styles.sideSelector}>
           <TouchableOpacity
-            onPress={() => setScanSide('front')}
+            onPress={() => {
+              setScanSide('front');
+              useAutoCaptureStore.getState().setStatus('PROCESSING_FRONT');
+            }}
             style={[styles.sideTab, scanSide === 'front' && styles.sideTabActive]}
           >
             <Text style={[styles.sideTabText, scanSide === 'front' && styles.sideTabTextActive]}>
@@ -272,7 +275,10 @@ export default function CameraScannerScreen() {
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => setScanSide('back')}
+            onPress={() => {
+              setScanSide('back');
+              useAutoCaptureStore.getState().setStatus('PROCESSING_BACK');
+            }}
             style={[styles.sideTab, scanSide === 'back' && styles.sideTabActive]}
           >
             <Text style={[styles.sideTabText, scanSide === 'back' && styles.sideTabTextActive]}>

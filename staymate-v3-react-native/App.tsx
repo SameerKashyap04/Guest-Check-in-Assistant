@@ -155,7 +155,10 @@ function MainApp() {
         address: cloudCheckin.address,
         dob: cloudCheckin.dob,
         gender: cloudCheckin.gender,
-        photoUri: cloudCheckin.photo_uri || cloudCheckin.selfie_uri,
+        photoUri: cloudCheckin.photo_uri || '',
+        frontPhotoUri: cloudCheckin.photo_uri || '',
+        backPhotoUri: cloudCheckin.back_photo_uri || '',
+        selfieUri: cloudCheckin.selfie_uri || '',
         additionalGuests: cloudCheckin.additional_guests || [],
         raw: cloudCheckin,
       };
@@ -895,16 +898,16 @@ function GuestSheet({
   const [photoTab, setPhotoTab] = useState<'front' | 'back' | 'selfie'>('front');
   const [showFullDetails, setShowFullDetails] = useState(false);
 
-  const frontPic = g.frontPhotoUri || g.photoUri || g.photo || null;
-  const backPic = g.backPhotoUri || g.backPhoto || null;
-  const selfiePic = g.selfieUri || g.selfie || null;
+  const frontPic = g.frontPhotoUri || g.photoUri || g.photo_uri || g.photo || null;
+  const backPic = g.backPhotoUri || g.back_photo_uri || g.backPhoto || null;
+  const selfiePic = g.selfieUri || g.selfie_uri || g.selfie || null;
 
   const currentPhoto =
     photoTab === 'front'
-      ? frontPic || backPic || selfiePic
+      ? frontPic
       : photoTab === 'back'
-      ? backPic || frontPic || selfiePic
-      : selfiePic || frontPic || backPic;
+      ? backPic
+      : selfiePic;
 
   const handleContact = async () => {
     if (!g.phone) {
@@ -1028,15 +1031,19 @@ function GuestSheet({
             <Image source={{ uri: currentPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
             <View style={{position: 'absolute', bottom: 6, left: 8, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5}}>
               <Text style={{color: '#FFFFFF', fontSize: 10, fontWeight: '700'}}>
-                {photoTab === 'front' ? 'ID Document (Front Side)' : photoTab === 'back' ? 'ID Document (Back Side)' : 'Live Guest Photo'}
+                {photoTab === 'front' ? 'ID Document (Front Side)' : photoTab === 'back' ? 'ID Document (Back Side)' : 'Live Guest Selfie'}
               </Text>
             </View>
           </View>
         ) : (
-          <View style={{padding: 16, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
-            <Icon name="shield" size={22} color={C.primary} />
-            <Text style={[ms.titleSm, {marginTop: 4}]}>{g.type || 'ID Card'} Verified</Text>
-            <Text style={ms.bodySm}>Digital compliance entry on file</Text>
+          <View style={{padding: 24, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center', minHeight: 160}}>
+            <Icon name="image" size={24} color="#94A3B8" />
+            <Text style={[ms.titleSm, {marginTop: 6, color: '#475569'}]}>
+              {photoTab === 'front' ? 'No Front ID Photo' : photoTab === 'back' ? 'No Back ID Photo' : 'No Live Selfie Photo'}
+            </Text>
+            <Text style={[ms.bodySm, {color: '#94A3B8', marginTop: 2, textAlign: 'center'}]}>
+              {photoTab === 'back' ? 'Back side ID not attached' : photoTab === 'selfie' ? 'Live selfie photo not attached' : 'Front ID not attached'}
+            </Text>
           </View>
         )}
 
@@ -1636,16 +1643,16 @@ function SelfCheckins({
   const [showReviewFullDetails, setShowReviewFullDetails] = useState(false);
 
   if (reviewGuest) {
-    const frontPic = reviewGuest.frontPhotoUri || reviewGuest.photo_uri || reviewGuest.photoUri || null;
-    const backPic = reviewGuest.backPhotoUri || reviewGuest.back_photo_uri || null;
-    const selfiePic = reviewGuest.selfieUri || reviewGuest.selfie_uri || null;
+    const frontPic = reviewGuest.frontPhotoUri || reviewGuest.photo_uri || reviewGuest.photoUri || reviewGuest.raw?.photo_uri || null;
+    const backPic = reviewGuest.backPhotoUri || reviewGuest.back_photo_uri || reviewGuest.raw?.back_photo_uri || null;
+    const selfiePic = reviewGuest.selfieUri || reviewGuest.selfie_uri || reviewGuest.raw?.selfie_uri || null;
 
     const currentReviewPhoto =
       reviewPhotoTab === 'front'
-        ? frontPic || backPic || selfiePic
+        ? frontPic
         : reviewPhotoTab === 'back'
-        ? backPic || frontPic || selfiePic
-        : selfiePic || frontPic || backPic;
+        ? backPic
+        : selfiePic;
 
     // FULL DETAILS COMPREHENSIVE VIEW FOR ONLINE CHECK-IN
     if (showReviewFullDetails) {
@@ -1749,15 +1756,19 @@ function SelfCheckins({
               <Image source={{ uri: currentReviewPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
               <View style={{position: 'absolute', bottom: 6, left: 8, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5}}>
                 <Text style={{color: '#FFFFFF', fontSize: 10, fontWeight: '700'}}>
-                  {reviewPhotoTab === 'front' ? 'ID Document (Front Side)' : reviewPhotoTab === 'back' ? 'ID Document (Back Side)' : 'Live Guest Photo'}
+                  {reviewPhotoTab === 'front' ? 'ID Document (Front Side)' : reviewPhotoTab === 'back' ? 'ID Document (Back Side)' : 'Live Guest Selfie'}
                 </Text>
               </View>
             </View>
           ) : (
-            <View style={{padding: 16, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center'}}>
-              <Icon name="shield" size={22} color={C.primary} />
-              <Text style={[ms.titleSm, {marginTop: 4}]}>{reviewGuest.doc || 'ID Document'}</Text>
-              <Text style={ms.bodySm}>Digital self check-in registration</Text>
+            <View style={{padding: 24, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center', minHeight: 180}}>
+              <Icon name="image" size={24} color="#94A3B8" />
+              <Text style={[ms.titleSm, {marginTop: 6, color: '#475569'}]}>
+                {reviewPhotoTab === 'front' ? 'No Front ID Photo' : reviewPhotoTab === 'back' ? 'No Back ID Photo' : 'No Live Selfie Photo'}
+              </Text>
+              <Text style={[ms.bodySm, {color: '#94A3B8', marginTop: 2, textAlign: 'center'}]}>
+                {reviewPhotoTab === 'back' ? 'Guest did not attach a back-side ID image' : reviewPhotoTab === 'selfie' ? 'Guest did not attach a live selfie photo' : 'No ID document attached'}
+              </Text>
             </View>
           )}
 
@@ -1954,11 +1965,18 @@ function SelfCheckins({
             <Image source={{ uri: currentReviewPhoto }} style={{ width: '100%', height: '100%' }} resizeMode="contain" />
             <View style={{position: 'absolute', bottom: 6, left: 8, backgroundColor: 'rgba(15, 23, 42, 0.75)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5}}>
               <Text style={{color: '#FFFFFF', fontSize: 10, fontWeight: '700'}}>
-                {reviewPhotoTab === 'front' ? 'ID Document (Front Side)' : reviewPhotoTab === 'back' ? 'ID Document (Back Side)' : 'Live Guest Photo'}
+                {reviewPhotoTab === 'front' ? 'ID Document (Front Side)' : reviewPhotoTab === 'back' ? 'ID Document (Back Side)' : 'Live Guest Selfie'}
               </Text>
             </View>
           </View>
-        ) : null}
+        ) : (
+          <View style={{padding: 16, backgroundColor: '#FAF8FD', borderRadius: 14, borderWidth: 1, borderColor: '#ECEAF0', alignItems: 'center', justifyContent: 'center', height: 135}}>
+            <Icon name="image" size={20} color="#94A3B8" />
+            <Text style={[ms.bodySm, {color: '#64748B', marginTop: 4, fontWeight: '600'}]}>
+              {reviewPhotoTab === 'front' ? 'No Front ID Photo' : reviewPhotoTab === 'back' ? 'No Back ID Photo' : 'No Live Selfie Photo'}
+            </Text>
+          </View>
+        )}
 
         {/* View Full Details Button */}
         <TouchableOpacity
