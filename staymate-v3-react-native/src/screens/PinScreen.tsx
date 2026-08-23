@@ -212,7 +212,7 @@ export function PinScreen({
           onPress={handleBiometricPress}
           style={[s.key, isDark && { backgroundColor: '#18181B', borderWidth: 1, borderColor: '#27272A' }, currentStep !== 'enter' && { opacity: 0.3 }]}
         >
-          <Icon name="fingerprint" size={22} color={colors.primary} />
+          <Icon name="fingerprint" size={25} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
           activeOpacity={0.7}
