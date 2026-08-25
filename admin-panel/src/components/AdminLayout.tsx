@@ -12,12 +12,12 @@
 
 import React, { useState, useEffect, createContext, useContext } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, Building2, CreditCard, TrendingUp,
   BarChart3, Sliders, ShieldAlert, Shield, Eye, EyeOff, LogOut,
   ChevronRight, RefreshCw, Bell, CheckCircle2, Building, Tag, Gift,
-  Settings, Phone, MessageCircle, AlertTriangle, AlertCircle
+  Settings, Phone, MessageCircle, AlertTriangle, AlertCircle, Lock
 } from "lucide-react";
 import { adminDataService, AdminProperty } from "@/lib/adminDataService";
 
@@ -41,15 +41,50 @@ interface AdminLayoutProps { children: React.ReactNode; }
 
 export function AdminLayout({ children }: AdminLayoutProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [adminEmail, setAdminEmail]           = useState("dev@company.com");
   const [maskPii, setMaskPii]               = useState(false);
   const [isSyncing, setIsSyncing]           = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [properties, setProperties]         = useState<AdminProperty[]>([]);
 
   useEffect(() => {
-    const unsub = adminDataService.subscribeProperties(setProperties);
-    return () => unsub();
-  }, []);
+    // Strict authentication guard — check if authenticated
+    try {
+      const sessionStr = localStorage.getItem("staymate_super_admin_session");
+      if (sessionStr) {
+        const session = JSON.parse(sessionStr);
+        if (session && session.authenticated) {
+          setIsAuthenticated(true);
+          if (session.email) setAdminEmail(session.email);
+          return;
+        }
+      }
+    } catch (_) {}
+
+    setIsAuthenticated(false);
+    router.replace("/login");
+  }, [router]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const unsub = adminDataService.subscribeProperties(setProperties);
+      return () => unsub();
+    }
+  }, [isAuthenticated]);
+
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "LOGOUT" }),
+      });
+    } catch (_) {}
+    localStorage.removeItem("staymate_super_admin_session");
+    router.replace("/login");
+  };
 
   const dormantProperties = properties.filter((p) => p.isOfflineWeekPlus);
 
@@ -72,6 +107,33 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { label: "Audit Logs",       href: "/audit-logs",    icon: ShieldAlert },
     { label: "Settings",         href: "/settings",      icon: Settings },
   ];
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-[#f8f7fb] flex flex-col items-center justify-center p-4">
+        <div className="bg-white border border-slate-200/90 rounded-3xl p-8 max-w-sm w-full text-center shadow-xl">
+          <img
+            src="/logo-with-text.png"
+            alt="StayMate"
+            className="h-12 mx-auto mb-4 object-contain"
+          />
+          <div className="w-10 h-10 rounded-2xl bg-violet-50 text-violet-600 flex items-center justify-center mx-auto mb-3">
+            <Lock className="w-5 h-5" />
+          </div>
+          <h2 className="text-sm font-black text-slate-900 mb-1">
+            Super-Admin Authentication Required
+          </h2>
+          <p className="text-xs text-slate-500 mb-4">
+            Checking credentials and redirecting to login...
+          </p>
+          <div className="flex items-center justify-center gap-2 text-xs font-semibold text-violet-600">
+            <RefreshCw className="w-4 h-4 animate-spin" />
+            <span>Redirecting...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AdminContext.Provider value={{ maskPii, setMaskPii, isSyncing, refreshData, dormantProperties }}>
@@ -195,20 +257,29 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             className="p-4 flex items-center justify-between"
             style={{ borderTop: "1px solid #dddddd" }}
           >
-            <div>
-              <p style={{ fontSize: 14, fontWeight: 600, color: "#222222" }}>Super Admin</p>
-              <p style={{ fontSize: 12, fontWeight: 400, color: "#6a6a6a", fontFamily: "monospace" }}>
-                dev@company.com
+            <div className="min-w-0 pr-2">
+              <p style={{ fontSize: 13, fontWeight: 700, color: "#222222" }}>Super Admin</p>
+              <p className="truncate text-xs font-mono text-slate-500 font-medium" title={adminEmail}>
+                {adminEmail}
               </p>
             </div>
-            <Link
-              href="/settings"
-              className="p-2 rounded-full hover:bg-[#f8f7fb] transition-colors"
-              style={{ color: "#6a6a6a" }}
-              title="System Settings"
-            >
-              <Settings className="w-4 h-4" />
-            </Link>
+            <div className="flex items-center gap-1 shrink-0">
+              <Link
+                href="/settings"
+                className="p-2 rounded-full hover:bg-slate-100 transition-colors text-slate-500 hover:text-slate-900"
+                title="System Settings"
+              >
+                <Settings className="w-4 h-4" />
+              </Link>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="p-2 rounded-full hover:bg-rose-50 transition-colors text-slate-400 hover:text-rose-600 cursor-pointer"
+                title="Log Out of Super-Admin"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </aside>
 
