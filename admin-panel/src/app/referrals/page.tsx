@@ -156,7 +156,9 @@ export default function ReferralsPage() {
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
               Referrer Reward (StayMate Credits)
             </label>
-            <p className="text-xs text-slate-500 mb-3">Amount credited to the host wallet when their referee subscribes to a paid plan.</p>
+            <p className="text-xs text-slate-500 mb-3">
+              Credits awarded to the referrer ONLY when their referee friend purchases a paid subscription plan (Free signups remain Pending with 0 credits).
+            </p>
             <div className="relative">
               <span className="absolute left-3.5 top-2.5 font-bold text-slate-500">₹</span>
               <input
@@ -174,7 +176,9 @@ export default function ReferralsPage() {
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1">
               Referee Friend Instant Discount
             </label>
-            <p className="text-xs text-slate-500 mb-3">Discount applied on the newly invited friend&apos;s first subscription checkout.</p>
+            <p className="text-xs text-slate-500 mb-3">
+              Instant discount applied on the newly invited friend&apos;s first paid subscription checkout.
+            </p>
             <div className="relative">
               <span className="absolute left-3.5 top-2.5 font-bold text-slate-500">₹</span>
               <input

@@ -10,6 +10,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { completeQualifyingReferral } from '@/lib/referrals';
 
 // ------------------------------------------------------------------
 // CORS headers for cross-origin requests from the Expo app
@@ -98,6 +99,9 @@ export async function GET(request: NextRequest) {
           if (isPaid) {
             const paidTimestamp = gatewayData.paid_at || new Date().toISOString();
             // Update Firestore so subsequent checks are instant
+            const resolvedUserId = orderData?.userId || searchParams.get('userId');
+            const resolvedPlanId = orderData?.planId || searchParams.get('planId') || 'PROFESSIONAL';
+
             try {
               const orderDocRef = doc(db, 'subscription_orders', orderId);
               await setDoc(
@@ -106,12 +110,17 @@ export async function GET(request: NextRequest) {
                   orderId,
                   status: 'PAID',
                   paidAt: paidTimestamp,
-                  planId: orderData?.planId || searchParams.get('planId') || 'PROFESSIONAL',
+                  planId: resolvedPlanId,
                   billingCycle: orderData?.billingCycle || searchParams.get('billingCycle') || 'monthly',
                   updatedAt: new Date().toISOString(),
                 },
                 { merge: true }
               );
+
+              // Complete qualifying referral if referee purchased a paid subscription
+              if (resolvedUserId) {
+                await completeQualifyingReferral(resolvedUserId, orderId, resolvedPlanId);
+              }
             } catch (_) {}
 
             return NextResponse.json(

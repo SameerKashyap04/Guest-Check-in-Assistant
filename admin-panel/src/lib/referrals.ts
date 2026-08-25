@@ -257,15 +257,19 @@ export async function addWalletTransaction(
 
 /**
  * Called upon successful qualifying subscription payment:
- * Qualifies pending referral, awards ₹100 credits to referrer, creates ledger record.
+ * Qualifies pending referral, awards credits to referrer ONLY when the referee friend buys a paid subscription.
  */
 export async function completeQualifyingReferral(
   referredUserId: string,
   orderId: string,
   planId: string
 ): Promise<boolean> {
-  // Free plan is not a qualifying paid subscription
-  if (planId === 'FREE') return false;
+  // STRICT RULE: Free plan, null, or trial is not a qualifying paid subscription
+  const upperPlan = (planId || '').toUpperCase();
+  if (!upperPlan || upperPlan === 'FREE' || upperPlan === 'TRIAL') {
+    console.info(`[Referrals] Plan ${planId} is not a paid subscription. No referrer credits awarded.`);
+    return false;
+  }
 
   const referralId = `ref_${referredUserId}`;
 
@@ -284,28 +288,52 @@ export async function completeQualifyingReferral(
       return false;
     }
 
+    // Check dynamic system configuration for referral program
+    let dynamicReward = referral.rewardAmount || DEFAULT_REWARD_AMOUNT;
+    let isProgramActive = true;
+
+    try {
+      const cfgSnap = await getDoc(doc(db, 'system_config', 'referrals'));
+      if (cfgSnap.exists()) {
+        const cfg = cfgSnap.data();
+        if (cfg.isActive !== undefined) isProgramActive = Boolean(cfg.isActive);
+        if (cfg.referrerReward && typeof cfg.referrerReward === 'number') {
+          dynamicReward = cfg.referrerReward;
+        }
+      }
+    } catch (cfgErr) {
+      console.warn('[Referrals] Config lookup notice:', cfgErr);
+    }
+
+    if (!isProgramActive) {
+      console.info('[Referrals] Referral program is currently PAUSED. Skipping reward credit.');
+      return false;
+    }
+
     const nowIso = new Date().toISOString();
 
-    // 1. Update referral status to SUCCESSFUL
+    // 1. Update referral status to SUCCESSFUL (qualified by paid subscription)
     await updateDoc(refDocRef, {
       status: 'SUCCESSFUL',
       qualifyingTransactionId: orderId,
+      qualifyingPlanId: upperPlan,
+      rewardAmount: dynamicReward,
       completedAt: nowIso,
       updatedAt: serverTimestamp(),
     });
 
-    // 2. Award reward to referrer's wallet
+    // 2. Award reward (StayMate Credits) ONLY now to referrer's wallet
     await addWalletTransaction(
       referral.referrerUserId,
       'CREDIT',
-      referral.rewardAmount || DEFAULT_REWARD_AMOUNT,
+      dynamicReward,
       'REFERRAL_REWARD',
       orderId,
-      `Referral reward for inviting ${referral.referredUserIdentifier || 'a homestay owner'}`
+      `Referral reward: Friend purchased ${upperPlan} paid subscription`
     );
 
     console.info(
-      `[Referrals] ✅ Referral ${referralId} completed. Referrer ${referral.referrerUserId} awarded ₹${referral.rewardAmount} credits.`
+      `[Referrals] ✅ Referral ${referralId} qualified by paid subscription ${upperPlan}. Referrer ${referral.referrerUserId} awarded ₹${dynamicReward} StayMate Credits.`
     );
     return true;
   } catch (err) {
