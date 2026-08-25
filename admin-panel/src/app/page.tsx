@@ -23,12 +23,12 @@ import {
 } from "@/lib/adminDataService";
 
 const C = {
-  primary:  "#ff385c",
+  primary:  "#7c3aed",
   ink:      "#222222",
   body:     "#3f3f3f",
   muted:    "#6a6a6a",
   canvas:   "#ffffff",
-  soft:     "#f7f7f7",
+  soft:     "#f8f7fb",
   hairline: "#dddddd",
   hairlineSoft: "#ebebeb",
 };
@@ -84,7 +84,7 @@ export default function DashboardPage() {
     {
       title: "Annualized Run Rate (ARR)",
       value: `₹${annualRevenue.toLocaleString('en-IN')}`,
-      change: "+18.2%", icon: CreditCard, accent: C.primary, accentBg: "#fff1f2",
+      change: "+18.2%", icon: CreditCard, accent: C.primary, accentBg: "#ede9fe",
     },
     {
       title: "Active Properties",
@@ -132,7 +132,7 @@ export default function DashboardPage() {
   const filtered = planFilter === "ALL" ? activities : activities.filter(a => a.type === planFilter);
 
   const typeStyle: Record<string, { bg: string; text: string; label: string }> = {
-    PROFESSIONAL: { bg: "#fff1f2", text: C.primary,   label: "PROFESSIONAL" },
+    PROFESSIONAL: { bg: "#ede9fe", text: C.primary,   label: "PROFESSIONAL" },
     STARTER:      { bg: "#fefce8", text: "#854d0e",   label: "STARTER" },
     TRIALING:     { bg: "#eff6ff", text: "#1d4ed8",   label: "TRIAL" },
     WARNING:      { bg: "#fff7ed", text: "#c2410c",   label: "WARNING" },
@@ -191,18 +191,19 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* Rausch primary CTA */}
+          {/* Primary CTA */}
           <button
             onClick={() => setShowTrialModal(true)}
             style={{
               display: "flex", alignItems: "center", gap: 6,
-              fontSize: 14, fontWeight: 500,
+              fontSize: 14, fontWeight: 600,
               paddingInline: 18, paddingBlock: 10,
               backgroundColor: C.primary, color: "#ffffff",
               borderRadius: 8, border: "none", cursor: "pointer",
               transition: "background 0.15s",
+              boxShadow: "0 2px 8px rgba(124, 58, 237, 0.25)",
             }}
-            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#e00b41")}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#6d28d9")}
             onMouseLeave={e => (e.currentTarget.style.backgroundColor = C.primary)}
           >
             <Plus className="w-4 h-4" />
@@ -280,7 +281,7 @@ export default function DashboardPage() {
             {/* guest-favorite-badge */}
             <span style={{
               fontSize: 11, fontWeight: 600, color: C.primary,
-              backgroundColor: "#fff1f2",
+              backgroundColor: "#ede9fe",
               borderRadius: 9999, paddingInline: 10, paddingBlock: 4,
             }}>
               {paidCount} PAID
@@ -474,11 +475,12 @@ export default function DashboardPage() {
                   </button>
                   <button type="submit"
                     style={{
-                      flex: 1, paddingBlock: 12, fontSize: 14, fontWeight: 500,
+                      flex: 1, paddingBlock: 12, fontSize: 14, fontWeight: 600,
                       backgroundColor: C.primary, color: "#ffffff",
                       border: "none", borderRadius: 8, cursor: "pointer",
+                      boxShadow: "0 2px 8px rgba(124, 58, 237, 0.25)",
                     }}
-                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#e00b41")}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = "#6d28d9")}
                     onMouseLeave={e => (e.currentTarget.style.backgroundColor = C.primary)}
                   >
                     Activate Trial

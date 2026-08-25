@@ -77,7 +77,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         >
           {/* Brand — top-nav height 80px */}
           <div
-            className="flex items-center gap-3 px-5"
+            className="flex items-center justify-between px-4"
             style={{
               height: 80,
               borderBottom: "1px solid #dddddd",
@@ -88,13 +88,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <img
                 src="/logo-with-text.png"
                 alt="StayMate"
-                className="h-9 w-auto max-w-[160px] object-contain"
+                className="h-12 w-auto max-w-[170px] object-contain"
                 onError={(e) => {
-                  // Fallback to stylized icon if image fails
                   e.currentTarget.style.display = 'none';
                 }}
               />
-              <span className="text-[10px] font-extrabold uppercase tracking-wider bg-violet-50 text-violet-700 px-2 py-0.5 rounded-md border border-violet-200">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full border border-violet-300 flex-shrink-0">
                 Admin
               </span>
             </div>
