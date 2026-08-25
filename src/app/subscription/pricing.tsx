@@ -141,14 +141,14 @@ export default function PricingScreen() {
               : isFree
               ? 0
               : isAnnual
-              ? Math.round(p.basePriceM * 0.85)
-              : p.basePriceM;
+              ? Math.round((p.basePriceM ?? 0) * 0.85)
+              : (p.basePriceM ?? 0);
 
             const priceDisplay = isCustom
               ? 'Custom'
               : isFree
               ? 'Free'
-              : `₹${effectiveMonthly.toLocaleString('en-IN')}`;
+              : `₹${(effectiveMonthly ?? 0).toLocaleString('en-IN')}`;
 
             return (
               <View
@@ -183,7 +183,7 @@ export default function PricingScreen() {
                     </Text>
                     {isAnnual && !isFree && !isCustom && (
                       <Text style={styles.durationTotalNote}>
-                        ₹{Math.round(p.basePriceM * 12 * 0.85).toLocaleString('en-IN')} billed annually
+                        ₹{Math.round((p.basePriceM ?? 0) * 12 * 0.85).toLocaleString('en-IN')} billed annually
                       </Text>
                     )}
                   </View>

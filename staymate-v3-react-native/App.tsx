@@ -51,6 +51,7 @@ import * as Print from 'expo-print';
 import { captureRef } from 'react-native-view-shot';
 import { AddRoomModal } from './src/components/AddRoomModal';
 import { devifyPay, DevifyCheckoutResult } from './src/services/devifyPay';
+import { plansService, DEFAULT_DISPLAY_PLANS, ClientDisplayPlan } from './src/services/plansService';
 import { WebView } from 'react-native-webview';
 import { securityService } from './src/services/securityService';
 import { subscribeToPropertyCheckins, deleteCloudCheckinDoc } from './src/services/firebaseSync';
@@ -3097,6 +3098,19 @@ function PricingOverlay({
   const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [isAnnual, setIsAnnual] = useState(billing);
+  const [plansList, setPlansList] = useState<ClientDisplayPlan[]>(DEFAULT_DISPLAY_PLANS);
+
+  useEffect(() => {
+    let isMounted = true;
+    plansService.fetchLivePlans().then((live) => {
+      if (isMounted && live && live.length > 0) {
+        setPlansList(live);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleToggleBilling = (annual: boolean) => {
     setIsAnnual(annual);
@@ -3186,8 +3200,8 @@ function PricingOverlay({
 
         {/* Plans */}
         <View style={{ gap: 14 }}>
-          {PLANS.map((p) => {
-            const isFeatured = Boolean(p.tag);
+          {plansList.map((p) => {
+            const isFeatured = Boolean(p.isRecommended) || Boolean(p.tag);
             const isFree = p.priceM === 0;
             const isCustom = p.priceM === null;
 
@@ -3214,9 +3228,9 @@ function PricingOverlay({
                   isFeatured && (isDark ? { borderColor: colors.primary } : ms.planCardFeatured),
                 ]}
               >
-                {p.tag ? (
+                {isFeatured ? (
                   <View style={ms.featuredBadge}>
-                    <Text style={ms.featuredBadgeText}>{p.tag}</Text>
+                    <Text style={ms.featuredBadgeText}>{p.tag || 'Most popular'}</Text>
                   </View>
                 ) : null}
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
