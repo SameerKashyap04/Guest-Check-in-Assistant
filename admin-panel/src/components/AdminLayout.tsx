@@ -16,7 +16,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, Building2, CreditCard, TrendingUp,
   BarChart3, Sliders, ShieldAlert, Shield, Eye, EyeOff, LogOut,
-  ChevronRight, RefreshCw, Bell, CheckCircle2, Building,
+  ChevronRight, RefreshCw, Bell, CheckCircle2, Building, Tag, Gift,
 } from "lucide-react";
 
 interface AdminContextType {
@@ -52,6 +52,8 @@ export function AdminLayout({ children }: AdminLayoutProps) {
     { label: "Properties",       href: "/properties",    icon: Building2 },
     { label: "Subscriptions",    href: "/subscriptions", icon: Shield },
     { label: "Payments",         href: "/payments",      icon: CreditCard },
+    { label: "Coupons & Codes",  href: "/coupons",       icon: Tag },
+    { label: "Refer & Earn",     href: "/referrals",     icon: Gift },
     { label: "Revenue",          href: "/revenue",       icon: TrendingUp },
     { label: "Usage Analytics",  href: "/analytics",     icon: BarChart3 },
     { label: "Plan Matrix",      href: "/plans",         icon: Sliders },

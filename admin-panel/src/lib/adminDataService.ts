@@ -2,6 +2,7 @@ import { db } from './firebase';
 import {
   collection,
   doc,
+  getDoc,
   getDocs,
   setDoc,
   updateDoc,
@@ -404,6 +405,100 @@ export const adminDataService = {
       callback([]);
       return () => {};
     }
+  },
+
+  // Coupons Management
+  subscribeCoupons(callback: (coupons: any[]) => void) {
+    try {
+      return onSnapshot(
+        collection(db, 'coupons'),
+        snap => {
+          if (snap.empty) {
+            callback([]);
+          } else {
+            callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+          }
+        },
+        err => {
+          console.warn('Coupons listener error:', err);
+          callback([]);
+        }
+      );
+    } catch {
+      callback([]);
+      return () => {};
+    }
+  },
+
+  async createCoupon(coupon: any) {
+    const docRef = doc(db, 'coupons', coupon.code.toUpperCase());
+    await setDoc(docRef, {
+      ...coupon,
+      code: coupon.code.toUpperCase(),
+      used_count: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  },
+
+  async toggleCoupon(code: string, is_active: boolean) {
+    await updateDoc(doc(db, 'coupons', code.toUpperCase()), {
+      is_active,
+      updated_at: new Date().toISOString(),
+    });
+  },
+
+  async deleteCoupon(code: string) {
+    const { deleteDoc } = await import('firebase/firestore');
+    await deleteDoc(doc(db, 'coupons', code.toUpperCase()));
+  },
+
+  // Referrals Management
+  subscribeReferrals(callback: (referrals: any[]) => void) {
+    try {
+      return onSnapshot(
+        collection(db, 'referrals'),
+        snap => {
+          if (snap.empty) {
+            callback([]);
+          } else {
+            callback(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+          }
+        },
+        err => {
+          console.warn('Referrals listener error:', err);
+          callback([]);
+        }
+      );
+    } catch {
+      callback([]);
+      return () => {};
+    }
+  },
+
+  async getReferralConfig() {
+    try {
+      const snap = await getDoc(doc(db, 'system_config', 'referrals'));
+      if (snap.exists()) return snap.data();
+      return {
+        referrerRewardAmount: 100,
+        friendDiscountAmount: 100,
+        isActive: true,
+      };
+    } catch (e) {
+      return {
+        referrerRewardAmount: 100,
+        friendDiscountAmount: 100,
+        isActive: true,
+      };
+    }
+  },
+
+  async updateReferralConfig(config: any) {
+    await setDoc(doc(db, 'system_config', 'referrals'), {
+      ...config,
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
   },
 
   async logAudit(entry: Omit<AdminAuditLog, 'id' | 'timestamp'>) {
