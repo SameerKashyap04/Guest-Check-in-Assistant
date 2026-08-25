@@ -34,7 +34,7 @@ async function getFirestoreAdminAuth() {
       .split(',')
       .map(e => e.trim().toLowerCase())
       .filter(Boolean),
-    masterOtp: process.env.SUPER_ADMIN_OTP || '123456',
+    masterOtp: process.env.SUPER_ADMIN_OTP || '784144',
     require2fa: true,
   };
 
@@ -127,7 +127,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Master OTP bypass check from Firestore / ENV
-      if (enteredOtp === activeMasterOtp || enteredOtp === '123456') {
+      if (enteredOtp === activeMasterOtp || enteredOtp === '784144') {
         return NextResponse.json(
           {
             success: true,

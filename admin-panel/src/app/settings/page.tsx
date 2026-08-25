@@ -65,9 +65,10 @@ export default function SettingsPage() {
     adminUsername: "superadmin",
     adminPassword: "StayMateAdmin2026!",
     allowedGoogleEmails: ["dev@company.com", "sameerkashyap04@gmail.com", "admin@staymate.co"],
-    masterOtp: "123456",
+    masterOtp: "784144",
     require2fa: true,
   });
+  const [masterOtpInput, setMasterOtpInput] = useState("784144");
 
   useEffect(() => {
     // Load both app config and auth config from Firestore
@@ -82,6 +83,7 @@ export default function SettingsPage() {
       if (authCfg.adminUsername) setUsername(authCfg.adminUsername);
       if (authCfg.adminEmail) setEmail(authCfg.adminEmail);
       if (authCfg.allowedGoogleEmails) setGoogleEmails(authCfg.allowedGoogleEmails);
+      if (authCfg.masterOtp) setMasterOtpInput(authCfg.masterOtp);
     });
   }, []);
 
@@ -235,6 +237,19 @@ export default function SettingsPage() {
     await adminDataService.saveAdminAuth({ require2fa: nextState });
     await adminDataService.saveAppConfig({ require2fa: nextState });
     notifySuccess(`Two-Factor Authentication ${nextState ? "Enabled" : "Disabled"}`);
+  };
+
+  const handleSaveMasterOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const cleanOtp = masterOtpInput.trim();
+    if (!cleanOtp || cleanOtp.length < 6) {
+      alert("Master OTP must be at least 6 digits.");
+      return;
+    }
+
+    setAuthConfig((prev) => ({ ...prev, masterOtp: cleanOtp }));
+    await adminDataService.saveAdminAuth({ masterOtp: cleanOtp });
+    notifySuccess(`Master OTP updated to ${cleanOtp} in Firestore!`);
   };
 
   return (
@@ -479,7 +494,7 @@ export default function SettingsPage() {
 
           {/* 2FA Security Card */}
           <div className="bg-white border border-slate-200/90 rounded-3xl p-6 shadow-sm">
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-4 mb-5">
               <div>
                 <h2 className="text-base font-black text-slate-900 flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-violet-600" />
@@ -501,6 +516,33 @@ export default function SettingsPage() {
               >
                 {authConfig.require2fa ? "✓ 2FA ENABLED" : "2FA DISABLED"}
               </button>
+            </div>
+
+            {/* Master Bypass OTP */}
+            <div className="pt-4 border-t border-slate-100">
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Master Security Bypass OTP (Firestore)
+              </label>
+              <p className="text-[11px] text-slate-500 mb-2">
+                Emergency 6-digit bypass code for Super-Admin access without email delays.
+              </p>
+              <form onSubmit={handleSaveMasterOtp} className="flex gap-2">
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={masterOtpInput}
+                  onChange={(e) => setMasterOtpInput(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="784144"
+                  className="w-40 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-mono text-sm font-bold text-slate-900 focus:outline-none focus:border-violet-600 focus:bg-white"
+                />
+                <button
+                  type="submit"
+                  className="bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs px-4 py-2 rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Save className="w-3.5 h-3.5" />
+                  <span>Save Master OTP</span>
+                </button>
+              </form>
             </div>
           </div>
         </div>

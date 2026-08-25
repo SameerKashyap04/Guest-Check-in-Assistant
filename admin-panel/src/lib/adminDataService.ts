@@ -259,7 +259,7 @@ export const adminDataService = {
       adminUsername: 'superadmin',
       adminPassword: 'StayMateAdmin2026!',
       allowedGoogleEmails: ['dev@company.com', 'sameerkashyap04@gmail.com', 'admin@staymate.co'],
-      masterOtp: '123456',
+      masterOtp: '784144',
       require2fa: true,
     };
 
