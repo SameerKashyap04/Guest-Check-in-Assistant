@@ -43,3 +43,5 @@ example
 /ios
 /android
 .vercel
+.next/
+devify-pay-demo/.next/
