@@ -252,7 +252,77 @@ async function handlePaymentSuccess(payload: any, eventType: string) {
     `Plan: ${orderData.planId}, User: ${orderData.userId}`
   );
 
-  // 5. Post-Payment Actions:
+  // 5. Multi-Collection Sync (subscriptions, owners, audit_logs)
+  try {
+    const resolvedUserId = orderData.userId || 'OWNER_DEFAULT_101';
+    const resolvedPlanId = (orderData.planId || 'STARTER').toUpperCase();
+    const resolvedCycle = orderData.billingCycle || 'monthly';
+    const durationMonths = orderData.durationMonths || (resolvedCycle === 'yearly' ? 12 : 1);
+    const amountRupees = orderData.amountPaise ? orderData.amountPaise / 100 : (orderData.finalAmountRupees || 399);
+
+    const renewalDate = new Date();
+    renewalDate.setMonth(renewalDate.getMonth() + durationMonths);
+    const renewalStr = renewalDate.toISOString().split('T')[0];
+
+    // a) Update/Create subscriptions collection doc
+    const subDocId = `sub_${resolvedUserId.toLowerCase()}`;
+    const { setDoc, addDoc, collection: getCollection } = await import('firebase/firestore');
+    await setDoc(
+      doc(db, 'subscriptions', subDocId),
+      {
+        id: subDocId,
+        property: orderData.userEmail || `Homestay (${resolvedUserId})`,
+        propertyId: resolvedUserId,
+        plan: resolvedPlanId,
+        cycle: resolvedCycle,
+        amount: `₹ ${amountRupees.toLocaleString('en-IN')}`,
+        numericAmount: amountRupees,
+        status: 'active',
+        renewalDate: `${renewalStr} (Renews)`,
+        provider: 'Devify Pay',
+        orderId: orderId,
+        paymentId: paymentId || orderData.paymentId || null,
+        durationMonths,
+        updatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+
+    // b) Update owners & properties collection doc
+    try {
+      await setDoc(
+        doc(db, 'owners', resolvedUserId),
+        {
+          plan: resolvedPlanId,
+          status: 'Active',
+          subscriptionPlan: resolvedPlanId,
+          email: orderData.userEmail || undefined,
+          lastActive: 'Online Now',
+          lastActiveTimestamp: Date.now(),
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    } catch (_) {}
+
+    // c) Emit audit log
+    try {
+      await addDoc(getCollection(db, 'audit_logs'), {
+        actor: orderData.userEmail || resolvedUserId,
+        action: 'SUBSCRIPTION_PURCHASE',
+        target: resolvedPlanId,
+        details: `Subscribed to ${resolvedPlanId} plan (₹${amountRupees}) via Devify Pay Webhook`,
+        category: 'SUBSCRIPTION',
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
+  } catch (syncErr) {
+    console.warn('[Webhook] Multi-collection sync error:', syncErr);
+  }
+
+  // 6. Post-Payment Actions:
   // a) Record coupon redemption if a coupon was used
   if (orderData.couponCode) {
     try {

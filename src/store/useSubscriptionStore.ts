@@ -210,6 +210,52 @@ export const useSubscriptionStore = create<SubscriptionState>()(
             lastVerifiedAt: new Date().toISOString(),
             lastVerifiedPlan: plan,
           });
+
+          // Sync to Firestore in background
+          try {
+            const { doc, setDoc } = require('@firebase/firestore');
+            const { db } = require('@/config/firebase');
+            const { useAuthStore } = require('@/store/useAuthStore');
+            const ownerId = useAuthStore?.getState?.()?.ownerId || 'OWNER_DEFAULT_101';
+            const owner = useAuthStore?.getState?.()?.owner;
+
+            const renewal = new Date();
+            renewal.setMonth(renewal.getMonth() + (billingCycle === 'yearly' ? 12 : 1));
+
+            const subId = `sub_${ownerId.toLowerCase()}`;
+            setDoc(
+              doc(db, 'subscriptions', subId),
+              {
+                id: subId,
+                property: owner?.businessName || owner?.name || owner?.email || `Homestay (${ownerId})`,
+                propertyId: ownerId,
+                plan: plan,
+                cycle: billingCycle,
+                amount: plan === SubscriptionPlan.PROFESSIONAL ? '₹ 799' : '₹ 399',
+                numericAmount: plan === SubscriptionPlan.PROFESSIONAL ? 799 : 399,
+                status: 'active',
+                renewalDate: `${renewal.toISOString().split('T')[0]} (Renews)`,
+                provider: 'Devify Pay',
+                orderId: orderId,
+                updatedAt: new Date().toISOString(),
+                createdAt: new Date().toISOString(),
+              },
+              { merge: true }
+            ).catch(() => {});
+
+            setDoc(
+              doc(db, 'owners', ownerId),
+              {
+                plan: plan,
+                status: 'Active',
+                subscriptionPlan: plan,
+                lastActive: 'Online Now',
+                lastActiveTimestamp: Date.now(),
+                updatedAt: new Date().toISOString(),
+              },
+              { merge: true }
+            ).catch(() => {});
+          } catch (_) {}
         },
 
         // ------------------------------------------------------------------

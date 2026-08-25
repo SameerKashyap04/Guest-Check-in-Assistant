@@ -163,7 +163,10 @@ export async function POST(request: NextRequest) {
     // Live Devify Pay Integration Flow
     // ------------------------------------------------------------------
 
-    // 5. Create Devify Order
+    // 5. Create Devify Order with full customer object
+    const customerPhone = (body as any).userPhone || '9876543210';
+    const customerName = (body as any).userName || userEmail.split('@')[0] || 'StayMate Host';
+
     const orderRes = await fetch(`${devifyApiUrl}/v1/orders`, {
       method: 'POST',
       headers: {
@@ -175,7 +178,12 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         amount: amountPaise,
         currency: 'INR',
-        description: `StayMate ${planName} Plan (${billingCycle})`,
+        description: `StayMate ${planName} Plan (${durationMonths}M)`,
+        customer: {
+          name: customerName,
+          email: userEmail,
+          phone: customerPhone,
+        },
       }),
     });
 
@@ -235,7 +243,7 @@ export async function POST(request: NextRequest) {
 
     const paymentData = await paymentRes.json();
     const paymentId = paymentData.id || paymentData.payment_id;
-    const checkoutUrl =
+    let checkoutUrl =
       paymentData.checkout_url ||
       paymentData.checkoutUrl ||
       (paymentId ? `${devifyApiUrl}/pay/${paymentId}` : null);
@@ -248,9 +256,36 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!checkoutUrl.startsWith('http://') && !checkoutUrl.startsWith('https://')) {
+      checkoutUrl = `https://${checkoutUrl}`;
+    }
+
+    // Attach auto-redirect URL so customer returns to the dedicated success screen
+    const successRedirectUrl = `https://admin-guest-check-in-assistant.vercel.app/subscription/success?order_id=${encodeURIComponent(orderId)}&payment_id=${encodeURIComponent(paymentId || '')}&planId=${encodeURIComponent(planId)}&cycle=${encodeURIComponent(billingCycle)}&amount=${encodeURIComponent(finalAmountRupees)}`;
+    const separator = checkoutUrl.includes('?') ? '&' : '?';
+    checkoutUrl = `${checkoutUrl}${separator}redirect_url=${encodeURIComponent(successRedirectUrl)}`;
+
     // 6.b Register subscription with Devify Pay API (/v1/subscriptions)
     // This populates the Subscriptions tab in Devify Pay Admin Dashboard (Step 4 of Developer Guide)
     try {
+      let devifyPlanId = planId;
+      try {
+        const plansRes = await fetch(`${devifyApiUrl}/v1/plans`, {
+          headers: {
+            'X-Api-Key': devifyApiKey,
+            Authorization: `Bearer ${devifyApiKey}`,
+          },
+        });
+        if (plansRes.ok) {
+          const plansJson = await plansRes.json();
+          const pList = plansJson?.data || plansJson?.plans || (Array.isArray(plansJson) ? plansJson : []);
+          if (pList.length > 0) {
+            const match = pList.find((p: any) => p.name?.toUpperCase()?.includes(planId) || p.id === planId) || pList[0];
+            if (match?.id) devifyPlanId = match.id;
+          }
+        }
+      } catch (_) {}
+
       await fetch(`${devifyApiUrl}/v1/subscriptions`, {
         method: 'POST',
         headers: {
@@ -260,15 +295,19 @@ export async function POST(request: NextRequest) {
           'Idempotency-Key': `${idempotencyKey}_sub`,
         },
         body: JSON.stringify({
-          plan_id: planId,
+          plan_id: devifyPlanId,
           customer: {
-            name: userEmail.split('@')[0],
+            name: customerName,
             email: userEmail,
+            phone: customerPhone,
           },
           metadata: {
             user_id: userId,
             order_id: orderId,
+            payment_id: paymentId,
             billing_cycle: billingCycle,
+            duration_months: durationMonths,
+            amount_rupees: finalAmountRupees,
           },
         }),
       });

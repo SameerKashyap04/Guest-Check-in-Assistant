@@ -67,10 +67,23 @@ export default function PaymentStatusScreen() {
 
         if (result.status === 'PAID') {
           // Activate the plan in the local store
-          const planId = (params.planId || result.planId) as SubscriptionPlan;
-          const billingCycle = (params.billingCycle || result.billingCycle) as BillingCycle;
+          const planId = (params.planId || result.planId || 'STARTER') as SubscriptionPlan;
+          const billingCycle = (params.billingCycle || result.billingCycle || 'monthly') as BillingCycle;
           activateFromPayment(planId, billingCycle, orderId);
           setStatus('success');
+          
+          // Seamless transition to dedicated success celebration screen
+          setTimeout(() => {
+            router.replace({
+              pathname: '/subscription/success' as any,
+              params: {
+                order_id: orderId,
+                planId,
+                cycle: billingCycle,
+                amount: String(result.amountPaise ? result.amountPaise / 100 : 399),
+              },
+            });
+          }, 600);
         } else if (result.status === 'FAILED') {
           setStatus('failed');
         } else {

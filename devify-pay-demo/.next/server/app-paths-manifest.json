@@ -1,0 +1,6 @@
+{
+  "/success/page": "app/success/page.js",
+  "/api/confirm-subscription/route": "app/api/confirm-subscription/route.js",
+  "/api/checkout/route": "app/api/checkout/route.js",
+  "/page": "app/page.js"
+}

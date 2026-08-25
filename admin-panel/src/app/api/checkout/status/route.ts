@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { collection, doc, getDoc, setDoc, addDoc } from 'firebase/firestore';
 import { completeQualifyingReferral } from '@/lib/referrals';
 
 // ------------------------------------------------------------------
@@ -24,6 +24,99 @@ const corsHeaders = {
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders });
+}
+
+async function syncSubscriptionPaid(orderData: any, orderId: string, paidTimestamp: string) {
+  try {
+    const resolvedUserId = orderData?.userId || 'OWNER_DEFAULT_101';
+    const resolvedPlanId = (orderData?.planId || 'STARTER').toUpperCase();
+    const resolvedCycle = orderData?.billingCycle || 'monthly';
+    const durationMonths = orderData?.durationMonths || (resolvedCycle === 'yearly' ? 12 : 1);
+    const amountRupees = orderData?.amountPaise ? orderData.amountPaise / 100 : (orderData?.finalAmountRupees || 399);
+
+    const renewalDate = new Date();
+    renewalDate.setMonth(renewalDate.getMonth() + durationMonths);
+    const renewalStr = renewalDate.toISOString().split('T')[0];
+
+    // 1. Update subscription_orders
+    const orderDocRef = doc(db, 'subscription_orders', orderId);
+    await setDoc(
+      orderDocRef,
+      {
+        orderId,
+        status: 'PAID',
+        paidAt: paidTimestamp,
+        planId: resolvedPlanId,
+        billingCycle: resolvedCycle,
+        durationMonths,
+        amountPaise: Math.round(amountRupees * 100),
+        finalAmountRupees: amountRupees,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+
+    // 2. Update/Create subscriptions document
+    const subDocId = `sub_${resolvedUserId.toLowerCase()}`;
+    await setDoc(
+      doc(db, 'subscriptions', subDocId),
+      {
+        id: subDocId,
+        property: orderData?.userEmail || `Homestay (${resolvedUserId})`,
+        propertyId: resolvedUserId,
+        plan: resolvedPlanId,
+        cycle: resolvedCycle,
+        amount: `₹ ${amountRupees.toLocaleString('en-IN')}`,
+        numericAmount: amountRupees,
+        status: 'active',
+        renewalDate: `${renewalStr} (Renews)`,
+        provider: 'Devify Pay',
+        orderId: orderId,
+        paymentId: orderData?.paymentId || null,
+        durationMonths,
+        updatedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+
+    // 3. Update owners & properties documents
+    try {
+      await setDoc(
+        doc(db, 'owners', resolvedUserId),
+        {
+          plan: resolvedPlanId,
+          status: 'Active',
+          subscriptionPlan: resolvedPlanId,
+          email: orderData?.userEmail || undefined,
+          lastActive: 'Online Now',
+          lastActiveTimestamp: Date.now(),
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    } catch (_) {}
+
+    // 4. Log Audit Event
+    try {
+      await addDoc(collection(db, 'audit_logs'), {
+        actor: orderData?.userEmail || resolvedUserId,
+        action: 'SUBSCRIPTION_PURCHASE',
+        target: resolvedPlanId,
+        details: `Subscribed to ${resolvedPlanId} plan (₹${amountRupees}) via Devify Pay`,
+        category: 'SUBSCRIPTION',
+        timestamp: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      });
+    } catch (_) {}
+
+    // 5. Complete qualifying referral
+    try {
+      await completeQualifyingReferral(resolvedUserId, orderId, resolvedPlanId);
+    } catch (_) {}
+  } catch (err) {
+    console.warn('[SyncSubscriptionPaid] Notice:', err);
+  }
 }
 
 // ------------------------------------------------------------------
@@ -52,6 +145,9 @@ export async function GET(request: NextRequest) {
       if (orderSnap.exists()) {
         orderData = orderSnap.data();
         if (orderData.status === 'PAID') {
+          // Ensure multi-collection sync is updated
+          await syncSubscriptionPaid(orderData, orderId, orderData.paidAt || new Date().toISOString());
+
           return NextResponse.json(
             {
               orderId: orderData.orderId,
@@ -98,38 +194,23 @@ export async function GET(request: NextRequest) {
 
           if (isPaid) {
             const paidTimestamp = gatewayData.paid_at || new Date().toISOString();
-            // Update Firestore so subsequent checks are instant
-            const resolvedUserId = orderData?.userId || searchParams.get('userId');
-            const resolvedPlanId = orderData?.planId || searchParams.get('planId') || 'PROFESSIONAL';
+            const mergedOrderData = {
+              ...orderData,
+              userId: orderData?.userId || searchParams.get('userId') || 'OWNER_DEFAULT_101',
+              planId: orderData?.planId || searchParams.get('planId') || 'STARTER',
+              billingCycle: orderData?.billingCycle || searchParams.get('billingCycle') || 'monthly',
+              amountPaise: orderData?.amountPaise || gatewayData.amount || 39900,
+            };
 
-            try {
-              const orderDocRef = doc(db, 'subscription_orders', orderId);
-              await setDoc(
-                orderDocRef,
-                {
-                  orderId,
-                  status: 'PAID',
-                  paidAt: paidTimestamp,
-                  planId: resolvedPlanId,
-                  billingCycle: orderData?.billingCycle || searchParams.get('billingCycle') || 'monthly',
-                  updatedAt: new Date().toISOString(),
-                },
-                { merge: true }
-              );
-
-              // Complete qualifying referral if referee purchased a paid subscription
-              if (resolvedUserId) {
-                await completeQualifyingReferral(resolvedUserId, orderId, resolvedPlanId);
-              }
-            } catch (_) {}
+            await syncSubscriptionPaid(mergedOrderData, orderId, paidTimestamp);
 
             return NextResponse.json(
               {
                 orderId,
                 status: 'PAID',
-                planId: orderData?.planId || searchParams.get('planId') || 'PROFESSIONAL',
-                billingCycle: orderData?.billingCycle || searchParams.get('billingCycle') || 'monthly',
-                amountPaise: orderData?.amountPaise || 0,
+                planId: mergedOrderData.planId,
+                billingCycle: mergedOrderData.billingCycle,
+                amountPaise: mergedOrderData.amountPaise,
                 paidAt: paidTimestamp,
               },
               { status: 200, headers: corsHeaders }

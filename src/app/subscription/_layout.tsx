@@ -6,6 +6,7 @@ export default function SubscriptionLayout() {
       <Stack.Screen name="pricing" />
       <Stack.Screen name="checkout" />
       <Stack.Screen name="payment-status" />
+      <Stack.Screen name="success" />
     </Stack>
   );
 }
