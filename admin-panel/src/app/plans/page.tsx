@@ -261,7 +261,7 @@ export default function PlansPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
             <span>Plan & Pricing Matrix</span>
-            <span className="text-xs bg-rose-50 text-rose-700 px-2.5 py-0.5 rounded-full font-bold border border-rose-200">
+            <span className="text-xs bg-violet-50 text-violet-700 px-2.5 py-0.5 rounded-full font-bold border border-violet-200">
               FULLY EDITABLE
             </span>
           </h1>
@@ -282,7 +282,7 @@ export default function PlansPage() {
 
           <button
             onClick={handleAddNewPlan}
-            className="px-4 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
+            className="px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add New Tier</span>
@@ -296,14 +296,14 @@ export default function PlansPage() {
           <div
             key={p.id}
             className={`bg-white border rounded-2xl p-6 shadow-sm hover:shadow-md transition-all flex flex-col justify-between relative ${
-              p.isRecommended ? "border-rose-400 ring-2 ring-rose-400/20" : "border-slate-200/90"
+              p.isRecommended ? "border-violet-400 ring-2 ring-violet-400/20" : "border-slate-200/90"
             }`}
           >
             <div>
               {/* Badges Header */}
               <div className="flex items-center justify-between gap-2 mb-3">
                 {p.isRecommended ? (
-                  <span className="text-[10px] font-black text-white bg-rose-500 px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 uppercase tracking-wider">
+                  <span className="text-[10px] font-black text-white bg-violet-600 px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 uppercase tracking-wider">
                     <Star className="w-3 h-3 fill-white" /> Recommended
                   </span>
                 ) : (
@@ -377,11 +377,11 @@ export default function PlansPage() {
                 <button
                   onClick={() => toggleFeatureFlag(p.id, "ocrScanning")}
                   className={`w-full flex items-center justify-between p-2 rounded-xl border text-left transition-all cursor-pointer ${
-                    p.ocrScanning ? "bg-rose-50/80 border-rose-200 text-rose-900" : "bg-slate-50 border-slate-200 text-slate-400"
+                    p.ocrScanning ? "bg-violet-50/80 border-violet-200 text-violet-900" : "bg-slate-50 border-slate-200 text-slate-400"
                   }`}
                 >
                   <span className="font-bold text-[11px]">OCR ID Scanning</span>
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${p.ocrScanning ? "bg-rose-500 text-white" : "bg-slate-200 text-slate-600"}`}>
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${p.ocrScanning ? "bg-violet-600 text-white" : "bg-slate-200 text-slate-600"}`}>
                     {p.ocrScanning ? "ON" : "OFF"}
                   </span>
                 </button>
@@ -389,11 +389,11 @@ export default function PlansPage() {
                 <button
                   onClick={() => toggleFeatureFlag(p.id, "cloudSync")}
                   className={`w-full flex items-center justify-between p-2 rounded-xl border text-left transition-all cursor-pointer ${
-                    p.cloudSync ? "bg-rose-50/80 border-rose-200 text-rose-900" : "bg-slate-50 border-slate-200 text-slate-400"
+                    p.cloudSync ? "bg-violet-50/80 border-violet-200 text-violet-900" : "bg-slate-50 border-slate-200 text-slate-400"
                   }`}
                 >
                   <span className="font-bold text-[11px]">Cloud Mode (Sync)</span>
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${p.cloudSync ? "bg-rose-500 text-white" : "bg-slate-200 text-slate-600"}`}>
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${p.cloudSync ? "bg-violet-600 text-white" : "bg-slate-200 text-slate-600"}`}>
                     {p.cloudSync ? "ON" : "OFF"}
                   </span>
                 </button>
@@ -401,11 +401,11 @@ export default function PlansPage() {
                 <button
                   onClick={() => toggleFeatureFlag(p.id, "backupRestore")}
                   className={`w-full flex items-center justify-between p-2 rounded-xl border text-left transition-all cursor-pointer ${
-                    p.backupRestore ? "bg-rose-50/80 border-rose-200 text-rose-900" : "bg-slate-50 border-slate-200 text-slate-400"
+                    p.backupRestore ? "bg-violet-50/80 border-violet-200 text-violet-900" : "bg-slate-50 border-slate-200 text-slate-400"
                   }`}
                 >
                   <span className="font-bold text-[11px]">Backup & Restore</span>
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${p.backupRestore ? "bg-rose-500 text-white" : "bg-slate-200 text-slate-600"}`}>
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${p.backupRestore ? "bg-violet-600 text-white" : "bg-slate-200 text-slate-600"}`}>
                     {p.backupRestore ? "ON" : "OFF"}
                   </span>
                 </button>
@@ -413,11 +413,11 @@ export default function PlansPage() {
                 <button
                   onClick={() => toggleFeatureFlag(p.id, "prioritySupport")}
                   className={`w-full flex items-center justify-between p-2 rounded-xl border text-left transition-all cursor-pointer ${
-                    p.prioritySupport ? "bg-rose-50/80 border-rose-200 text-rose-900" : "bg-slate-50 border-slate-200 text-slate-400"
+                    p.prioritySupport ? "bg-violet-50/80 border-violet-200 text-violet-900" : "bg-slate-50 border-slate-200 text-slate-400"
                   }`}
                 >
                   <span className="font-bold text-[11px]">Priority Support</span>
-                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${p.prioritySupport ? "bg-rose-500 text-white" : "bg-slate-200 text-slate-600"}`}>
+                  <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${p.prioritySupport ? "bg-violet-600 text-white" : "bg-slate-200 text-slate-600"}`}>
                     {p.prioritySupport ? "ON" : "OFF"}
                   </span>
                 </button>
@@ -445,7 +445,7 @@ export default function PlansPage() {
           <div className="bg-white border border-slate-200 rounded-3xl max-w-xl w-full p-6 sm:p-8 shadow-2xl relative my-8 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 bg-rose-50 rounded-xl flex items-center justify-center text-rose-600">
+                <div className="w-9 h-9 bg-violet-100 rounded-xl flex items-center justify-center text-violet-700">
                   <Sliders className="w-5 h-5" />
                 </div>
                 <div>
@@ -597,7 +597,7 @@ export default function PlansPage() {
                         type="checkbox"
                         checked={editingPlan.ocrScanning}
                         onChange={(e) => setEditingPlan({ ...editingPlan, ocrScanning: e.target.checked })}
-                        className="rounded text-rose-600 focus:ring-rose-500"
+                        className="rounded text-violet-600 focus:ring-violet-500"
                       />
                       <span className="font-bold text-slate-700">OCR ID Scanning</span>
                     </label>
@@ -607,7 +607,7 @@ export default function PlansPage() {
                         type="checkbox"
                         checked={editingPlan.cloudSync}
                         onChange={(e) => setEditingPlan({ ...editingPlan, cloudSync: e.target.checked })}
-                        className="rounded text-rose-600 focus:ring-rose-500"
+                        className="rounded text-violet-600 focus:ring-violet-500"
                       />
                       <span className="font-bold text-slate-700">Cloud Mode (Sync)</span>
                     </label>
@@ -617,7 +617,7 @@ export default function PlansPage() {
                         type="checkbox"
                         checked={editingPlan.backupRestore}
                         onChange={(e) => setEditingPlan({ ...editingPlan, backupRestore: e.target.checked })}
-                        className="rounded text-rose-600 focus:ring-rose-500"
+                        className="rounded text-violet-600 focus:ring-violet-500"
                       />
                       <span className="font-bold text-slate-700">Backup & Restore</span>
                     </label>
@@ -627,7 +627,7 @@ export default function PlansPage() {
                         type="checkbox"
                         checked={editingPlan.prioritySupport}
                         onChange={(e) => setEditingPlan({ ...editingPlan, prioritySupport: e.target.checked })}
-                        className="rounded text-rose-600 focus:ring-rose-500"
+                        className="rounded text-violet-600 focus:ring-violet-500"
                       />
                       <span className="font-bold text-slate-700">Priority Support</span>
                     </label>
@@ -637,19 +637,19 @@ export default function PlansPage() {
                         type="checkbox"
                         checked={editingPlan.centralizedDashboard}
                         onChange={(e) => setEditingPlan({ ...editingPlan, centralizedDashboard: e.target.checked })}
-                        className="rounded text-rose-600 focus:ring-rose-500"
+                        className="rounded text-violet-600 focus:ring-violet-500"
                       />
                       <span className="font-bold text-slate-700">Central Dashboard</span>
                     </label>
 
-                    <label className="flex items-center gap-2 p-2 bg-rose-50 border border-rose-200 rounded-xl cursor-pointer">
+                    <label className="flex items-center gap-2 p-2 bg-violet-50 border border-violet-200 rounded-xl cursor-pointer">
                       <input
                         type="checkbox"
                         checked={editingPlan.isRecommended}
                         onChange={(e) => setEditingPlan({ ...editingPlan, isRecommended: e.target.checked })}
-                        className="rounded text-rose-600 focus:ring-rose-500"
+                        className="rounded text-violet-600 focus:ring-violet-500"
                       />
-                      <span className="font-bold text-rose-900">Recommended Badge</span>
+                      <span className="font-bold text-violet-900">Recommended Badge</span>
                     </label>
 
                     <label className="flex items-center gap-2 p-2 bg-emerald-50 border border-emerald-200 rounded-xl cursor-pointer">
@@ -675,7 +675,7 @@ export default function PlansPage() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2.5 bg-rose-500 text-white font-extrabold rounded-xl hover:bg-rose-600 shadow-md shadow-rose-500/20 flex items-center justify-center gap-1.5"
+                    className="flex-1 py-2.5 bg-violet-600 text-white font-extrabold rounded-xl hover:bg-violet-700 shadow-md shadow-violet-500/20 flex items-center justify-center gap-1.5"
                   >
                     <Save className="w-4 h-4" />
                     <span>Save Plan Configuration</span>

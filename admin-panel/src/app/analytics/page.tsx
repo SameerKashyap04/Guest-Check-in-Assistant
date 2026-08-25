@@ -42,7 +42,7 @@ export default function AnalyticsPage() {
               onClick={() => setSelectedRange(r)}
               className={`px-3 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
                 selectedRange === r
-                  ? "bg-rose-500 text-white shadow-sm"
+                  ? "bg-violet-600 text-white shadow-sm"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >

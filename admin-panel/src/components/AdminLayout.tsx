@@ -77,23 +77,23 @@ export function AdminLayout({ children }: AdminLayoutProps) {
         >
           {/* Brand — top-nav height 80px */}
           <div
-            className="flex items-center justify-between px-4"
+            className="flex items-center justify-between px-3.5"
             style={{
               height: 80,
               borderBottom: "1px solid #dddddd",
             }}
           >
             {/* StayMate Logo with Text */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between w-full">
               <img
                 src="/logo-with-text.png"
                 alt="StayMate"
-                className="h-12 w-auto max-w-[170px] object-contain"
+                className="h-14 w-auto max-w-[175px] object-contain transition-transform duration-150 hover:scale-105"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                 }}
               />
-              <span className="text-[10px] font-black uppercase tracking-wider bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full border border-violet-300 flex-shrink-0">
+              <span className="text-[10px] font-black uppercase tracking-wider bg-violet-100 text-violet-700 px-2 py-0.5 rounded-full border border-violet-300 flex-shrink-0 shadow-xs">
                 Admin
               </span>
             </div>
