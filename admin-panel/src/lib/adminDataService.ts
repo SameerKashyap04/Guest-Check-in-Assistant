@@ -616,12 +616,18 @@ export const adminDataService = {
   subscribeAuditLogs(callback: (logs: AdminAuditLog[]) => void) {
     try {
       return onSnapshot(
-        query(collection(db, 'audit_logs'), limit(50)),
+        query(collection(db, 'audit_logs'), limit(100)),
         snap => {
           if (snap.empty) {
             callback([]);
           } else {
-            callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminAuditLog)));
+            const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminAuditLog));
+            list.sort((a, b) => {
+              const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+              const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+              return timeB - timeA; // Newest 1st, oldest last
+            });
+            callback(list);
           }
         },
         err => {

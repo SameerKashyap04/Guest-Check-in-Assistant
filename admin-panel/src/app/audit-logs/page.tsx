@@ -50,16 +50,22 @@ export default function AuditLogsPage() {
     }
   };
 
-  const filteredLogs = logs.filter((l) => {
-    const matchSearch =
-      (l.action || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (l.actor || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (l.target || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (l.details || "").toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredLogs = logs
+    .filter((l) => {
+      const matchSearch =
+        (l.action || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (l.actor || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (l.target || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (l.details || "").toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchCat = categoryFilter === "ALL" || (l.category || "SYSTEM") === categoryFilter;
-    return matchSearch && matchCat;
-  });
+      const matchCat = categoryFilter === "ALL" || (l.category || "SYSTEM") === categoryFilter;
+      return matchSearch && matchCat;
+    })
+    .sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return timeB - timeA; // Newest 1st, oldest last
+    });
 
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
   const paginatedLogs = filteredLogs.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);

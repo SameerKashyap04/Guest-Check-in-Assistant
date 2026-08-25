@@ -146,14 +146,20 @@ export default function DashboardPage() {
     }
   };
 
-  const activities = auditLogs.map(l => ({
-    id: l.id,
-    title: formatActionTitle(l.action || 'System Event'),
-    desc: l.details,
-    time: formatRelativeTime(l.timestamp),
-    rawTime: l.timestamp,
-    type: l.category === 'SUBSCRIPTION' ? (l.details?.includes('Professional') ? 'PROFESSIONAL' : 'STARTER') : l.category === 'SECURITY' ? 'WARNING' : 'TRIALING',
-  }));
+  const activities = [...auditLogs]
+    .sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return timeB - timeA; // Latest / Newest 1st, oldest last
+    })
+    .map(l => ({
+      id: l.id,
+      title: formatActionTitle(l.action || 'System Event'),
+      desc: l.details,
+      time: formatRelativeTime(l.timestamp),
+      rawTime: l.timestamp,
+      type: l.category === 'SUBSCRIPTION' ? (l.details?.includes('Professional') ? 'PROFESSIONAL' : 'STARTER') : l.category === 'SECURITY' ? 'WARNING' : 'TRIALING',
+    }));
 
   const filtered = planFilter === "ALL" ? activities : activities.filter(a => a.type === planFilter);
   const totalActivityPages = Math.max(1, Math.ceil(filtered.length / ACTIVITY_PAGE_SIZE));
