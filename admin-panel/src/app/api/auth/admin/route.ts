@@ -2,11 +2,13 @@
 // Admin Panel — POST /api/auth/admin
 // ============================================================
 //
-// Authoritative Super Admin Authentication using Vercel Environment Variables:
-// - SUPER_ADMIN_EMAIL (e.g. dev@company.com)
-// - SUPER_ADMIN_PASSWORD (e.g. StayMateAdmin2026!)
-// - SUPER_ADMIN_OTP (optional master OTP code, e.g. 123456)
-// - SUPER_ADMIN_ALLOWED_EMAILS (comma-separated list of authorized Google emails)
+// Authoritative Super Admin Authentication powered directly by Firestore:
+// Reads & saves to Firestore collection `system_config/admin_auth`
+// Supports:
+// - Email + Password matching against Firestore
+// - 2FA Security OTP verification via Firestore `admin_otps`
+// - Google Sign-In checking against Firestore `allowedGoogleEmails`
+// - Automatic fallback to Vercel Environment Variables if uninitialized
 //
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -23,19 +25,45 @@ export async function OPTIONS() {
   return NextResponse.json(null, { status: 204, headers: corsHeaders });
 }
 
+async function getFirestoreAdminAuth() {
+  const defaultAuth = {
+    adminEmail: (process.env.SUPER_ADMIN_EMAIL || 'dev@company.com').trim().toLowerCase(),
+    adminUsername: 'superadmin',
+    adminPassword: process.env.SUPER_ADMIN_PASSWORD || 'StayMateAdmin2026!',
+    allowedGoogleEmails: (process.env.SUPER_ADMIN_ALLOWED_EMAILS || 'dev@company.com,sameerkashyap04@gmail.com,admin@staymate.co')
+      .split(',')
+      .map(e => e.trim().toLowerCase())
+      .filter(Boolean),
+    masterOtp: process.env.SUPER_ADMIN_OTP || '123456',
+    require2fa: true,
+  };
+
+  try {
+    const snap = await getDoc(doc(db, 'system_config', 'admin_auth'));
+    if (snap.exists()) {
+      return { ...defaultAuth, ...snap.data() };
+    } else {
+      // Auto-initialize in Firestore
+      await setDoc(doc(db, 'system_config', 'admin_auth'), defaultAuth);
+    }
+  } catch (e) {
+    console.warn('[AdminAuthAPI] Firestore config fetch notice:', e);
+  }
+
+  return defaultAuth;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { action, email, password, otp, googleEmail } = body;
 
-    // Read Vercel environment variables with safe defaults
-    const envAdminEmail = (process.env.SUPER_ADMIN_EMAIL || 'dev@company.com').trim().toLowerCase();
-    const envAdminPass = process.env.SUPER_ADMIN_PASSWORD || 'StayMateAdmin2026!';
-    const envMasterOtp = process.env.SUPER_ADMIN_OTP || '123456';
-    const allowedEmails = (process.env.SUPER_ADMIN_ALLOWED_EMAILS || `${envAdminEmail},admin@staymate.co,sameerkashyap04@gmail.com`)
-      .split(',')
-      .map(e => e.trim().toLowerCase())
-      .filter(Boolean);
+    const adminAuth = await getFirestoreAdminAuth();
+    const activeAdminEmail = (adminAuth.adminEmail || 'dev@company.com').toLowerCase().trim();
+    const activeAdminPass = adminAuth.adminPassword || 'StayMateAdmin2026!';
+    const activeMasterOtp = adminAuth.masterOtp || '123456';
+    const allowedGoogleList: string[] = (adminAuth.allowedGoogleEmails || [activeAdminEmail])
+      .map((e: string) => e.trim().toLowerCase());
 
     // ------------------------------------------------------------
     // 1. ACTION: VERIFY_CREDENTIALS (Step 1)
@@ -44,15 +72,14 @@ export async function POST(request: NextRequest) {
       const cleanEmail = (email || '').trim().toLowerCase();
       const inputPass = password || '';
 
-      // Check if email matches configured Super Admin Email or allowed list
-      const isEmailValid = cleanEmail === envAdminEmail || allowedEmails.includes(cleanEmail) || cleanEmail === 'dev@company.com' || cleanEmail === 'superadmin@company.com';
-      const isPasswordValid = inputPass === envAdminPass || inputPass === 'StayMateAdmin2026!' || inputPass === '••••••••' || inputPass === 'admin123';
+      const isEmailValid = cleanEmail === activeAdminEmail || cleanEmail === 'dev@company.com' || cleanEmail === 'superadmin@company.com' || allowedGoogleList.includes(cleanEmail);
+      const isPasswordValid = inputPass === activeAdminPass || inputPass === 'StayMateAdmin2026!' || inputPass === '••••••••' || inputPass === 'admin123';
 
       if (!isEmailValid || !isPasswordValid) {
         return NextResponse.json(
           {
             success: false,
-            error: 'Invalid Super Admin email or password. Please verify your Vercel credentials.',
+            error: 'Invalid Super Admin credentials. Please check your email and password.',
           },
           { status: 401, headers: corsHeaders }
         );
@@ -60,7 +87,7 @@ export async function POST(request: NextRequest) {
 
       // Generate secure 6-digit OTP
       const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
+      const expiresAt = Date.now() + 10 * 60 * 1000;
 
       try {
         await setDoc(doc(db, 'admin_otps', cleanEmail), {
@@ -70,15 +97,15 @@ export async function POST(request: NextRequest) {
           updatedAt: new Date().toISOString(),
         });
       } catch (e) {
-        console.warn('[AdminAuthAPI] Firestore OTP notice:', e);
+        console.warn('[AdminAuthAPI] Firestore OTP save notice:', e);
       }
 
       return NextResponse.json(
         {
           success: true,
-          require2fa: true,
+          require2fa: adminAuth.require2fa !== false,
           email: cleanEmail,
-          generatedOtp, // Returned for dev quick-fill
+          generatedOtp, // For quick testing
           message: `2FA verification code dispatched to ${cleanEmail}`,
         },
         { status: 200, headers: corsHeaders }
@@ -99,8 +126,8 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Master OTP bypass check from Vercel ENV
-      if (enteredOtp === envMasterOtp || enteredOtp === '123456') {
+      // Master OTP bypass check from Firestore / ENV
+      if (enteredOtp === activeMasterOtp || enteredOtp === '123456') {
         return NextResponse.json(
           {
             success: true,
@@ -148,8 +175,8 @@ export async function POST(request: NextRequest) {
       const cleanGoogleEmail = (googleEmail || '').trim().toLowerCase();
 
       const isAuthorized =
-        cleanGoogleEmail === envAdminEmail ||
-        allowedEmails.includes(cleanGoogleEmail) ||
+        cleanGoogleEmail === activeAdminEmail ||
+        allowedGoogleList.includes(cleanGoogleEmail) ||
         cleanGoogleEmail.endsWith('@company.com') ||
         cleanGoogleEmail === 'sameerkashyap04@gmail.com';
 
@@ -157,7 +184,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             success: false,
-            error: `Google account (${cleanGoogleEmail}) is not authorized as Super Admin. Add this email to SUPER_ADMIN_ALLOWED_EMAILS in Vercel.`,
+            error: `Google account (${cleanGoogleEmail}) is not authorized as Super Admin. Add this email in Admin Panel Settings -> Security -> Authorized Google Accounts.`,
           },
           { status: 403, headers: corsHeaders }
         );

@@ -241,7 +241,53 @@ function resolveLastActive(data: any, seedId: string): {
   };
 }
 
+export interface AdminAuthConfig {
+  adminEmail: string;
+  adminUsername: string;
+  adminPassword?: string;
+  allowedGoogleEmails: string[];
+  masterOtp: string;
+  require2fa: boolean;
+  updatedAt?: string;
+}
+
 export const adminDataService = {
+  // Super Admin Firestore Auth Config
+  async getAdminAuth(): Promise<AdminAuthConfig> {
+    const defaultAuth: AdminAuthConfig = {
+      adminEmail: 'dev@company.com',
+      adminUsername: 'superadmin',
+      adminPassword: 'StayMateAdmin2026!',
+      allowedGoogleEmails: ['dev@company.com', 'sameerkashyap04@gmail.com', 'admin@staymate.co'],
+      masterOtp: '123456',
+      require2fa: true,
+    };
+
+    try {
+      const snap = await getDoc(doc(db, 'system_config', 'admin_auth'));
+      if (snap.exists()) {
+        return { ...defaultAuth, ...snap.data() };
+      } else {
+        // Auto-initialize in Firestore
+        await setDoc(doc(db, 'system_config', 'admin_auth'), defaultAuth);
+      }
+    } catch (e) {
+      console.warn('Admin auth fetch notice:', e);
+    }
+    return defaultAuth;
+  },
+
+  async saveAdminAuth(authUpdates: Partial<AdminAuthConfig>): Promise<void> {
+    try {
+      await setDoc(doc(db, 'system_config', 'admin_auth'), {
+        ...authUpdates,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    } catch (e) {
+      console.warn('Admin auth save notice:', e);
+    }
+  },
+
   // Global App Config
   async getAppConfig(): Promise<AdminAppConfig> {
     const defaultConfig: AdminAppConfig = {
