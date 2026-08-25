@@ -43,14 +43,6 @@ export default function PaymentsPage() {
   const [realTransactions, setRealTransactions] = useState<any[]>([]);
   const [loadingTx, setLoadingTx] = useState(false);
 
-  // Initial mock data as fallback
-  const mockTransactions = [
-    { txId: "pay_N8a92K102", property: "Coorg Hilltop Homestay", amount: "₹ 7,999", plan: "Professional (Annual)", status: "Captured", date: "2026-01-15 14:22" },
-    { txId: "pay_M3b81J901", property: "Manali Pine Resort", amount: "₹ 299", plan: "Starter (Monthly)", status: "Captured", date: "2026-03-01 10:05" },
-    { txId: "pay_L2a70H800", property: "Goa Beachside Lodge", amount: "₹ 299", plan: "Starter (Monthly)", status: "Failed", date: "2026-03-10 18:40" },
-    { txId: "pay_K1z60G700", property: "Wayanad Forest Lodge", amount: "₹ 799", plan: "Professional (Monthly)", status: "Captured", date: "2026-03-04 11:12" },
-  ];
-
   // Load saved settings & live transactions
   useEffect(() => {
     // 1. Fetch current config directly from server .env.local & Firestore
@@ -107,17 +99,16 @@ export default function PaymentsPage() {
         };
       });
 
-      if (fetched.length > 0) {
-        setRealTransactions(fetched);
-      }
+      setRealTransactions(fetched);
     } catch (e) {
       console.warn("Could not load live transactions from Firestore:", e);
+      setRealTransactions([]);
     } finally {
       setLoadingTx(false);
     }
   };
 
-  const allTx = realTransactions.length > 0 ? realTransactions : mockTransactions;
+  const allTx = realTransactions;
 
   const filteredTx = allTx.filter((tx) => {
     const matchesSearch =

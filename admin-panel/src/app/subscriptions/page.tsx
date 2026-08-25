@@ -129,7 +129,14 @@ export default function SubscriptionsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((sub, i) => {
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: "48px 20px", textAlign: "center", color: C.muted }}>
+                    <p style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4 }}>No subscriptions found</p>
+                    <p style={{ fontSize: 13, color: C.muted }}>Active paid subscriptions will appear here as users upgrade.</p>
+                  </td>
+                </tr>
+              ) : filtered.map((sub, i) => {
                 const sb = STATUS_BADGE[sub.status] ?? STATUS_BADGE.cancelled;
                 return (
                   <tr key={sub.id}

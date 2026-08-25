@@ -76,7 +76,14 @@ export default function PropertiesPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {filtered.map((p) => (
+            {filtered.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-12 text-center text-slate-400">
+                  <p className="font-semibold text-slate-800 text-sm mb-1">No properties registered yet</p>
+                  <p className="text-xs text-slate-400">Properties created in the StayMate mobile app will sync here in real-time.</p>
+                </td>
+              </tr>
+            ) : filtered.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
                 <td className="px-6 py-4 font-mono text-xs font-bold text-violet-700">{p.id}</td>
                 <td className="px-6 py-4 font-extrabold text-slate-900">{p.name}</td>

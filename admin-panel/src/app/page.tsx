@@ -351,9 +351,10 @@ export default function DashboardPage() {
 
           <div>
             {filtered.length === 0 ? (
-              <p style={{ textAlign: "center", fontSize: 13, color: C.muted, padding: "24px 0" }}>
-                No activity for filter: {planFilter}
-              </p>
+              <div style={{ textAlign: "center", padding: "48px 0" }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4 }}>No activity logs yet</p>
+                <p style={{ fontSize: 13, color: C.muted }}>Real-time subscription, property registration, and security events will appear here automatically.</p>
+              </div>
             ) : filtered.map((act, i) => {
               const ts = typeStyle[act.type] ?? typeStyle.WARNING;
               return (

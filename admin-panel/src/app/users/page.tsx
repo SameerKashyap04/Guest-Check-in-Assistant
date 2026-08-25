@@ -49,31 +49,23 @@ export default function UsersPage() {
   const [selected, setSelected]   = useState<OwnerUser | null>(null);
   const [msg, setMsg]             = useState("");
 
-  const [users, setUsers] = useState<OwnerUser[]>([
-    { id: "usr_101", name: "Ramesh Hegde",   businessName: "Coorg Hilltop Homestay",      email: "ramesh.hegde@coorgstay.com",      phone: "+91 98450 12345", propertyId: "HS-8821", plan: "PROFESSIONAL", status: "active",   rooms: 18, checkInsThisMonth: 142, createdAt: "2026-01-15" },
-    { id: "usr_102", name: "Anil Sharma",    businessName: "Manali Pine Resort",           email: "anil.sharma@manaliresort.in",     phone: "+91 98160 54321", propertyId: "HS-4492", plan: "STARTER",      status: "active",   rooms: 12, checkInsThisMonth: 86,  createdAt: "2026-02-01" },
-    { id: "usr_103", name: "Vikram Menon",   businessName: "Wayanad Forest Lodge",         email: "v.menon@wayanadlodge.com",        phone: "+91 94470 99887", propertyId: "HS-3109", plan: "PROFESSIONAL", status: "trialing", rooms: 24, checkInsThisMonth: 65,  createdAt: "2026-03-04" },
-    { id: "usr_104", name: "Priya Nair",     businessName: "Munnar Tea Valley Guesthouse", email: "priya@teavalleyguesthouse.in",    phone: "+91 97440 11223", propertyId: "HS-9012", plan: "FREE",         status: "active",   rooms: 8,  checkInsThisMonth: 18,  createdAt: "2026-02-18" },
-    { id: "usr_105", name: "Sunil D'Souza",  businessName: "Goa Beachside Lodge",          email: "sunil@goabeachside.com",          phone: "+91 98221 33445", propertyId: "HS-7734", plan: "STARTER",      status: "active",   rooms: 15, checkInsThisMonth: 195, createdAt: "2026-01-10" },
-  ]);
+  const [users, setUsers] = useState<OwnerUser[]>([]);
 
   useEffect(() => {
     const unsub = adminDataService.subscribeUsers((adminUsers) => {
-      if (adminUsers.length > 0) {
-        setUsers(adminUsers.map((u, i) => ({
-          id: u.id || `usr_${i}`,
-          name: u.name || 'Owner',
-          businessName: u.property || 'Homestay',
-          email: u.email || 'user@example.com',
-          phone: '+91 98450 12345',
-          propertyId: `HS-${1000 + i}`,
-          plan: (u.plan?.toUpperCase().includes('PRO') ? 'PROFESSIONAL' : u.plan?.toUpperCase().includes('STARTER') ? 'STARTER' : 'FREE') as any,
-          status: (u.status?.toLowerCase() === 'trialing' ? 'trialing' : 'active') as any,
-          rooms: 8,
-          checkInsThisMonth: 42,
-          createdAt: u.joinedDate || '2026-01-15',
-        })));
-      }
+      setUsers(adminUsers.map((u, i) => ({
+        id: u.id || `usr_${i}`,
+        name: u.name || 'Owner',
+        businessName: u.property || 'Homestay',
+        email: u.email || 'user@example.com',
+        phone: u.role || 'Host',
+        propertyId: u.id || `HS-${1000 + i}`,
+        plan: (u.plan?.toUpperCase().includes('PRO') ? 'PROFESSIONAL' : u.plan?.toUpperCase().includes('STARTER') ? 'STARTER' : 'FREE') as any,
+        status: (u.status?.toLowerCase() === 'trialing' ? 'trialing' : 'active') as any,
+        rooms: 8,
+        checkInsThisMonth: 0,
+        createdAt: u.joinedDate || 'Recent',
+      })));
     });
     return () => unsub();
   }, []);
@@ -174,7 +166,14 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredUsers.map((user, i) => {
+              {filteredUsers.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ padding: "48px 20px", textAlign: "center", color: C.muted }}>
+                    <p style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4 }}>No property owners found</p>
+                    <p style={{ fontSize: 13, color: C.muted }}>Real-time host registrations will appear here automatically.</p>
+                  </td>
+                </tr>
+              ) : filteredUsers.map((user, i) => {
                 const pb = PLAN_BADGE[user.plan] ?? PLAN_BADGE.FREE;
                 return (
                   <tr

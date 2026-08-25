@@ -62,48 +62,16 @@ export interface AdminAuditLog {
   category: 'AUTH' | 'SUBSCRIPTION' | 'SECURITY' | 'PROPERTY' | 'SYSTEM';
 }
 
-// Initial seed data for fallback if Firestore collections are empty
-const SEED_PROPERTIES: AdminProperty[] = [
-  { id: 'HS-8821', name: 'Coorg Hilltop Homestay', location: 'Coorg, Karnataka', rooms: 18, checkIns: 142, status: 'Active', plan: 'Professional', ownerEmail: 'coorg.stay@example.com', ownerName: 'Rajesh Hegde' },
-  { id: 'HS-4492', name: 'Manali Pine Resort', location: 'Manali, Himachal Pradesh', rooms: 8, checkIns: 86, status: 'Active', plan: 'Starter', ownerEmail: 'manali.pine@example.com', ownerName: 'Vikram Thakur' },
-  { id: 'HS-3109', name: 'Wayanad Forest Lodge', location: 'Wayanad, Kerala', rooms: 24, checkIns: 65, status: 'Trialing', plan: 'Professional', ownerEmail: 'wayanad.lodge@example.com', ownerName: 'Anand Nair' },
-  { id: 'HS-9012', name: 'Munnar Tea Valley Guesthouse', location: 'Munnar, Kerala', rooms: 2, checkIns: 14, status: 'Active', plan: 'Free', ownerEmail: 'munnar.tea@example.com', ownerName: 'Priya George' },
-  { id: 'HS-7734', name: 'Goa Beachside Lodge', location: 'Calangute, Goa', rooms: 8, checkIns: 92, status: 'Active', plan: 'Starter', ownerEmail: 'goa.beach@example.com', ownerName: 'Sanjay Fernandes' },
-];
-
-const SEED_USERS: AdminUser[] = [
-  { id: 'usr_001', name: 'Rajesh Hegde', email: 'coorg.stay@example.com', role: 'Owner', property: 'Coorg Hilltop Homestay', plan: 'Professional', status: 'Active', lastActive: '5 min ago', joinedDate: '12 Jan 2026', authProvider: 'Google' },
-  { id: 'usr_002', name: 'Vikram Thakur', email: 'manali.pine@example.com', role: 'Owner', property: 'Manali Pine Resort', plan: 'Starter', status: 'Active', lastActive: '2 hr ago', joinedDate: '03 Feb 2026', authProvider: 'Email OTP' },
-  { id: 'usr_003', name: 'Anand Nair', email: 'wayanad.lodge@example.com', role: 'Owner', property: 'Wayanad Forest Lodge', plan: 'Professional (Trial)', status: 'Trialing', lastActive: '1 day ago', joinedDate: '18 Feb 2026', authProvider: 'Google' },
-  { id: 'usr_004', name: 'Priya George', email: 'munnar.tea@example.com', role: 'Owner', property: 'Munnar Tea Valley Guesthouse', plan: 'Free', status: 'Active', lastActive: '3 days ago', joinedDate: '24 Feb 2026', authProvider: 'Email OTP' },
-  { id: 'usr_005', name: 'Sanjay Fernandes', email: 'goa.beach@example.com', role: 'Owner', property: 'Goa Beachside Lodge', plan: 'Starter', status: 'Active', lastActive: 'Just now', joinedDate: '01 Mar 2026', authProvider: 'Google' },
-];
-
-const SEED_SUBSCRIPTIONS: AdminSubscription[] = [
-  { id: 'sub_901', property: 'Coorg Hilltop Homestay', propertyId: 'HS-8821', plan: 'PROFESSIONAL', cycle: 'yearly', amount: '₹7,999', numericAmount: 7999, status: 'active', renewalDate: '2027-01-15', provider: 'Razorpay' },
-  { id: 'sub_902', property: 'Manali Pine Resort', propertyId: 'HS-4492', plan: 'STARTER', cycle: 'monthly', amount: '₹349', numericAmount: 349, status: 'active', renewalDate: '2026-04-01', provider: 'Razorpay' },
-  { id: 'sub_903', property: 'Wayanad Forest Lodge', propertyId: 'HS-3109', plan: 'PROFESSIONAL', cycle: 'monthly', amount: '₹799', numericAmount: 799, status: 'trialing', renewalDate: '2026-04-04 (Trial end)', provider: 'Direct Trial' },
-  { id: 'sub_904', property: 'Goa Beachside Lodge', propertyId: 'HS-7734', plan: 'STARTER', cycle: 'monthly', amount: '₹349', numericAmount: 349, status: 'past_due', renewalDate: '2026-03-10 (Past due)', provider: 'Razorpay' },
-];
-
-const SEED_AUDIT_LOGS: AdminAuditLog[] = [
-  { id: 'log_01', actor: 'Admin (Sameer)', action: 'PLAN_UPGRADE', target: 'HS-8821', details: 'Upgraded Coorg Hilltop to Professional Annual', timestamp: '12 min ago', category: 'SUBSCRIPTION' },
-  { id: 'log_02', actor: 'System', action: 'PROPERTY_REGISTERED', target: 'HS-4492', details: 'New property registered (8 rooms)', timestamp: '45 min ago', category: 'PROPERTY' },
-  { id: 'log_03', actor: 'Admin (Sameer)', action: 'TRIAL_GRANTED', target: 'HS-3109', details: 'Granted 30-day Professional trial to Wayanad Forest Lodge', timestamp: '2 hr ago', category: 'SUBSCRIPTION' },
-  { id: 'log_04', actor: 'Security Sentinel', action: 'LIMIT_WARNING', target: 'HS-7734', details: 'Goa Beachside reached 92% of monthly check-in limit', timestamp: '4 hr ago', category: 'SECURITY' },
-  { id: 'log_05', actor: 'Auth Guard', action: 'SIGNUP_OTP_VERIFIED', target: 'usr_005', details: 'Email OTP verified for goa.beach@example.com', timestamp: '6 hr ago', category: 'AUTH' },
-];
-
 export const adminDataService = {
   // Properties
   async getProperties(): Promise<AdminProperty[]> {
     try {
       const snap = await getDocs(collection(db, 'properties'));
-      if (snap.empty) return SEED_PROPERTIES;
+      if (snap.empty) return [];
       return snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminProperty));
     } catch (e) {
-      console.warn('Using fallback seed properties:', e);
-      return SEED_PROPERTIES;
+      console.warn('Properties query error:', e);
+      return [];
     }
   },
 
@@ -113,18 +81,18 @@ export const adminDataService = {
         collection(db, 'properties'),
         snap => {
           if (snap.empty) {
-            callback(SEED_PROPERTIES);
+            callback([]);
           } else {
             callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminProperty)));
           }
         },
         err => {
-          console.warn('Properties listener error, falling back to seed:', err);
-          callback(SEED_PROPERTIES);
+          console.warn('Properties listener error:', err);
+          callback([]);
         }
       );
     } catch {
-      callback(SEED_PROPERTIES);
+      callback([]);
       return () => {};
     }
   },
@@ -133,11 +101,11 @@ export const adminDataService = {
   async getUsers(): Promise<AdminUser[]> {
     try {
       const snap = await getDocs(collection(db, 'owners'));
-      if (snap.empty) return SEED_USERS;
+      if (snap.empty) return [];
       return snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminUser));
     } catch (e) {
-      console.warn('Using fallback seed users:', e);
-      return SEED_USERS;
+      console.warn('Users query error:', e);
+      return [];
     }
   },
 
@@ -147,18 +115,18 @@ export const adminDataService = {
         collection(db, 'owners'),
         snap => {
           if (snap.empty) {
-            callback(SEED_USERS);
+            callback([]);
           } else {
             callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminUser)));
           }
         },
         err => {
-          console.warn('Users listener error, falling back to seed:', err);
-          callback(SEED_USERS);
+          console.warn('Users listener error:', err);
+          callback([]);
         }
       );
     } catch {
-      callback(SEED_USERS);
+      callback([]);
       return () => {};
     }
   },
@@ -167,11 +135,11 @@ export const adminDataService = {
   async getSubscriptions(): Promise<AdminSubscription[]> {
     try {
       const snap = await getDocs(collection(db, 'subscriptions'));
-      if (snap.empty) return SEED_SUBSCRIPTIONS;
+      if (snap.empty) return [];
       return snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminSubscription));
     } catch (e) {
-      console.warn('Using fallback seed subscriptions:', e);
-      return SEED_SUBSCRIPTIONS;
+      console.warn('Subscriptions query error:', e);
+      return [];
     }
   },
 
@@ -181,18 +149,18 @@ export const adminDataService = {
         collection(db, 'subscriptions'),
         snap => {
           if (snap.empty) {
-            callback(SEED_SUBSCRIPTIONS);
+            callback([]);
           } else {
             callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminSubscription)));
           }
         },
         err => {
-          console.warn('Subscriptions listener error, falling back to seed:', err);
-          callback(SEED_SUBSCRIPTIONS);
+          console.warn('Subscriptions listener error:', err);
+          callback([]);
         }
       );
     } catch {
-      callback(SEED_SUBSCRIPTIONS);
+      callback([]);
       return () => {};
     }
   },
@@ -270,11 +238,11 @@ export const adminDataService = {
   async getAuditLogs(): Promise<AdminAuditLog[]> {
     try {
       const snap = await getDocs(query(collection(db, 'audit_logs'), orderBy('timestamp', 'desc'), limit(50)));
-      if (snap.empty) return SEED_AUDIT_LOGS;
+      if (snap.empty) return [];
       return snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminAuditLog));
     } catch (e) {
-      console.warn('Using fallback seed audit logs:', e);
-      return SEED_AUDIT_LOGS;
+      console.warn('Audit logs query error:', e);
+      return [];
     }
   },
 
@@ -284,18 +252,18 @@ export const adminDataService = {
         query(collection(db, 'audit_logs'), limit(50)),
         snap => {
           if (snap.empty) {
-            callback(SEED_AUDIT_LOGS);
+            callback([]);
           } else {
             callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminAuditLog)));
           }
         },
         err => {
-          console.warn('Audit logs listener error, falling back to seed:', err);
-          callback(SEED_AUDIT_LOGS);
+          console.warn('Audit logs listener error:', err);
+          callback([]);
         }
       );
     } catch {
-      callback(SEED_AUDIT_LOGS);
+      callback([]);
       return () => {};
     }
   },
