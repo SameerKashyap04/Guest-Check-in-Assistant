@@ -202,12 +202,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               </p>
             </div>
             <Link
-              href="/login"
+              href="/settings"
               className="p-2 rounded-full hover:bg-[#f8f7fb] transition-colors"
               style={{ color: "#6a6a6a" }}
-              title="Log Out"
+              title="System Settings"
             >
-              <LogOut className="w-4 h-4" />
+              <Settings className="w-4 h-4" />
             </Link>
           </div>
         </aside>
