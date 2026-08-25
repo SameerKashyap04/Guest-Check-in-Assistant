@@ -10,10 +10,12 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { AdminLayout, useAdminContext } from "@/components/AdminLayout";
 import {
   Users, Building2, TrendingUp, CreditCard, Crown,
-  ArrowUpRight, Sparkles, Plus, CheckCircle2,
+  ArrowUpRight, Sparkles, Plus, CheckCircle2, ArrowRight,
+  ChevronLeft, ChevronRight
 } from "lucide-react";
 import {
   adminDataService,
@@ -41,6 +43,8 @@ const CARD_SHADOW = {
 export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState<"month" | "year">("month");
   const [planFilter, setPlanFilter] = useState("ALL");
+  const [activityPage, setActivityPage] = useState(1);
+  const ACTIVITY_PAGE_SIZE = 3;
   const [showTrialModal, setShowTrialModal] = useState(false);
   const [propId, setPropId] = useState("");
   const [trialDays, setTrialDays] = useState("30");
@@ -121,15 +125,42 @@ export default function DashboardPage() {
       .join(' ');
   };
 
+  const formatRelativeTime = (timeStr: string) => {
+    if (!timeStr) return "Just now";
+    try {
+      const date = new Date(timeStr);
+      if (isNaN(date.getTime())) return timeStr;
+      const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
+      if (diffSec < 60) return "Just now";
+      if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+      if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+      if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`;
+      return date.toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (_) {
+      return timeStr;
+    }
+  };
+
   const activities = auditLogs.map(l => ({
     id: l.id,
     title: formatActionTitle(l.action || 'System Event'),
     desc: l.details,
-    time: l.timestamp,
+    time: formatRelativeTime(l.timestamp),
+    rawTime: l.timestamp,
     type: l.category === 'SUBSCRIPTION' ? (l.details?.includes('Professional') ? 'PROFESSIONAL' : 'STARTER') : l.category === 'SECURITY' ? 'WARNING' : 'TRIALING',
   }));
 
   const filtered = planFilter === "ALL" ? activities : activities.filter(a => a.type === planFilter);
+  const totalActivityPages = Math.max(1, Math.ceil(filtered.length / ACTIVITY_PAGE_SIZE));
+  const paginatedActivities = filtered.slice(
+    (activityPage - 1) * ACTIVITY_PAGE_SIZE,
+    activityPage * ACTIVITY_PAGE_SIZE
+  );
 
   const typeStyle: Record<string, { bg: string; text: string; label: string }> = {
     PROFESSIONAL: { bg: "#ede9fe", text: C.primary,   label: "PROFESSIONAL" },
@@ -332,7 +363,10 @@ export default function DashboardPage() {
               {["ALL", "PROFESSIONAL", "STARTER", "TRIALING"].map(f => (
                 <button
                   key={f}
-                  onClick={() => setPlanFilter(f)}
+                  onClick={() => {
+                    setPlanFilter(f);
+                    setActivityPage(1);
+                  }}
                   style={{
                     fontSize: 11, fontWeight: 600,
                     paddingInline: 10, paddingBlock: 5,
@@ -351,38 +385,94 @@ export default function DashboardPage() {
           </div>
 
           <div>
-            {filtered.length === 0 ? (
+            {paginatedActivities.length === 0 ? (
               <div style={{ textAlign: "center", padding: "48px 0" }}>
                 <p style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4 }}>No activity logs yet</p>
                 <p style={{ fontSize: 13, color: C.muted }}>Real-time subscription, property registration, and security events will appear here automatically.</p>
               </div>
-            ) : filtered.map((act, i) => {
-              const ts = typeStyle[act.type] ?? typeStyle.WARNING;
-              return (
-                <div
-                  key={act.id}
-                  className="flex items-start justify-between py-3"
-                  style={{ borderBottom: i < filtered.length - 1 ? `1px solid ${C.hairlineSoft}` : "none" }}
-                >
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{act.title}</span>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700,
-                        backgroundColor: ts.bg, color: ts.text,
-                        borderRadius: 9999, paddingInline: 7, paddingBlock: 2,
-                      }}>
-                        {ts.label}
+            ) : (
+              <div className="divide-y divide-slate-100">
+                {paginatedActivities.map((act, i) => {
+                  const ts = typeStyle[act.type] ?? typeStyle.WARNING;
+                  return (
+                    <div
+                      key={act.id}
+                      className="flex items-start justify-between py-3"
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span style={{ fontSize: 14, fontWeight: 600, color: C.ink }}>{act.title}</span>
+                          <span style={{
+                            fontSize: 10, fontWeight: 700,
+                            backgroundColor: ts.bg, color: ts.text,
+                            borderRadius: 9999, paddingInline: 7, paddingBlock: 2,
+                          }}>
+                            {ts.label}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: 13, fontWeight: 400, color: C.body }}>{act.desc}</p>
+                      </div>
+                      <span style={{ fontSize: 12, color: C.muted, whiteSpace: "nowrap", marginLeft: 16 }}>
+                        {act.time}
                       </span>
                     </div>
-                    <p style={{ fontSize: 13, fontWeight: 400, color: C.body }}>{act.desc}</p>
-                  </div>
-                  <span style={{ fontSize: 12, color: C.muted, whiteSpace: "nowrap", marginLeft: 16 }}>
-                    {act.time}
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Pagination & View All Links */}
+            {filtered.length > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-4 mt-3 border-t border-slate-100">
+                <div className="flex items-center gap-2">
+                  <Link
+                    href="/audit-logs"
+                    className="text-xs font-bold text-violet-600 hover:text-violet-800 hover:underline flex items-center gap-1"
+                  >
+                    <span>View All Activity Logs</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                  <span className="text-xs text-slate-300">&bull;</span>
+                  <span className="text-xs text-slate-500 font-medium">
+                    Showing {(activityPage - 1) * ACTIVITY_PAGE_SIZE + 1}–{Math.min(activityPage * ACTIVITY_PAGE_SIZE, filtered.length)} of {filtered.length}
                   </span>
                 </div>
-              );
-            })}
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setActivityPage((p) => Math.max(1, p - 1))}
+                    disabled={activityPage === 1}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all border ${
+                      activityPage === 1
+                        ? "border-slate-200 text-slate-300 cursor-not-allowed bg-slate-50"
+                        : "border-slate-300 text-slate-700 hover:bg-slate-100 cursor-pointer"
+                    }`}
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span>Prev</span>
+                  </button>
+
+                  <span className="text-xs font-mono font-bold text-slate-700 px-2 py-0.5 rounded bg-slate-100 border border-slate-200">
+                    {activityPage} / {totalActivityPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setActivityPage((p) => Math.min(totalActivityPages, p + 1))}
+                    disabled={activityPage >= totalActivityPages}
+                    className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold transition-all border ${
+                      activityPage >= totalActivityPages
+                        ? "border-slate-200 text-slate-300 cursor-not-allowed bg-slate-50"
+                        : "border-slate-300 text-slate-700 hover:bg-slate-100 cursor-pointer"
+                    }`}
+                  >
+                    <span>Next</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
