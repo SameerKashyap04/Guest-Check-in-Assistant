@@ -23,9 +23,23 @@ export async function OPTIONS() {
 
 export async function GET(request: NextRequest) {
   try {
+    let freeTierDisabled = false;
+    try {
+      const appCfgSnap = await getDoc(doc(db, 'system_config', 'app_config'));
+      if (appCfgSnap.exists()) {
+        freeTierDisabled = !!appCfgSnap.data()?.freeTierDisabled;
+      }
+    } catch (_) {}
+
     const docRef = doc(db, 'system_config', 'plan_matrix');
     const snap = await getDoc(docRef);
-    const plansData = snap.exists() && snap.data()?.plans ? snap.data().plans : SERVER_PLANS;
+    let plansData = snap.exists() && snap.data()?.plans ? snap.data().plans : SERVER_PLANS;
+
+    if (freeTierDisabled) {
+      plansData = plansData
+        .filter((p: any) => p.id !== 'FREE')
+        .map((p: any) => ({ ...p, disabled: p.id === 'FREE' }));
+    }
 
     let billingPeriodsData = [
       { months: 1, discountPercent: 0, label: '1 Month', badgeText: 'Standard', isActive: true },
@@ -46,6 +60,7 @@ export async function GET(request: NextRequest) {
       {
         plans: plansData,
         billingPeriods: billingPeriodsData,
+        freeTierDisabled,
         source: snap.exists() ? 'firestore' : 'default',
       },
       { status: 200, headers: corsHeaders }

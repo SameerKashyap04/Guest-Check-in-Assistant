@@ -92,6 +92,12 @@ export const DEFAULT_DISPLAY_PLANS: ClientDisplayPlan[] = [
   },
 ];
 
+let _isFreeTierDisabled54 = false;
+
+export function isFreeTierDisabledGlobal(): boolean {
+  return _isFreeTierDisabled54;
+}
+
 class PlansService {
   private candidateUrls = Array.from(
     new Set([
@@ -116,9 +122,11 @@ class PlansService {
 
         if (res.ok) {
           const data = await res.json();
+          _isFreeTierDisabled54 = Boolean(data?.freeTierDisabled);
+
           if (data && Array.isArray(data.plans) && data.plans.length > 0) {
-            const mapped: ClientDisplayPlan[] = data.plans
-              .filter((p: any) => p.isActive !== false)
+            let mapped: ClientDisplayPlan[] = data.plans
+              .filter((p: any) => p.isActive !== false && p.disabled !== true)
               .map((p: any) => {
                 const planId = (p.id || '').toUpperCase() as SubscriptionPlan;
                 const isRec = Boolean(p.isRecommended);
@@ -136,6 +144,10 @@ class PlansService {
                   tag: isRec ? 'Most popular' : '',
                 };
               });
+
+            if (_isFreeTierDisabled54) {
+              mapped = mapped.filter((m) => m.name !== 'Free' && m.id !== SubscriptionPlan.FREE);
+            }
 
             if (!mapped.some((m) => m.name === 'Enterprise' || m.id === SubscriptionPlan.ENTERPRISE)) {
               mapped.push({
@@ -161,8 +173,11 @@ class PlansService {
       }
     }
 
-    return DEFAULT_DISPLAY_PLANS;
+    return _isFreeTierDisabled54
+      ? DEFAULT_DISPLAY_PLANS.filter((p) => p.name !== 'Free' && p.id !== SubscriptionPlan.FREE)
+      : DEFAULT_DISPLAY_PLANS;
   }
 }
 
 export const plansService = new PlansService();
+

@@ -89,7 +89,12 @@ export default function PropertiesPage() {
         (p.ownerName && p.ownerName.toLowerCase().includes(q)) ||
         (p.ownerPhone && p.ownerPhone.toLowerCase().includes(q)) ||
         (p.ownerEmail && p.ownerEmail.toLowerCase().includes(q));
-      const matchesStatus = statusFilter === "ALL" || p.status.toUpperCase() === statusFilter;
+      
+      let matchesStatus = true;
+      if (statusFilter === "ACTIVE") matchesStatus = p.status.toUpperCase() === "ACTIVE";
+      else if (statusFilter === "TRIALING") matchesStatus = p.status.toUpperCase() === "TRIALING";
+      else if (statusFilter === "OFFLINE_1WK") matchesStatus = !!p.isOfflineWeekPlus;
+
       return matchesSearch && matchesStatus;
     });
   }, [properties, searchTerm, statusFilter]);
@@ -107,7 +112,7 @@ export default function PropertiesPage() {
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Properties Directory</h1>
           <p className="text-sm text-slate-500 font-medium mt-1">
-            Live homestay inventory, owner contact numbers, and real-time active room status.
+            Live homestay inventory, owner contact numbers, last active heartbeat, and real-time room status.
           </p>
         </div>
       </div>
@@ -125,18 +130,25 @@ export default function PropertiesPage() {
           />
         </div>
 
-        <div className="flex items-center gap-1.5 bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
-          {["ALL", "ACTIVE", "TRIALING"].map((s) => (
+        <div className="flex flex-wrap items-center gap-1.5 bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
+          {[
+            { key: "ALL", label: "ALL" },
+            { key: "ACTIVE", label: "ACTIVE" },
+            { key: "TRIALING", label: "TRIALING" },
+            { key: "OFFLINE_1WK", label: "⚠️ OFFLINE > 1 WK" },
+          ].map((s) => (
             <button
-              key={s}
-              onClick={() => setStatusFilter(s)}
+              key={s.key}
+              onClick={() => setStatusFilter(s.key)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                statusFilter === s
-                  ? "bg-violet-600 text-white shadow-sm"
+                statusFilter === s.key
+                  ? s.key === "OFFLINE_1WK"
+                    ? "bg-rose-600 text-white shadow-sm"
+                    : "bg-violet-600 text-white shadow-sm"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               }`}
             >
-              {s}
+              {s.label}
             </button>
           ))}
         </div>
@@ -147,14 +159,14 @@ export default function PropertiesPage() {
         <table className="w-full text-left text-sm text-slate-700">
           <thead className="bg-slate-50 text-xs font-bold text-slate-500 border-b border-slate-200 uppercase tracking-wider">
             <tr>
-              <th className="px-6 py-4">Property ID</th>
-              <th className="px-6 py-4">Property Name</th>
-              <th className="px-6 py-4">Owner & Mobile No</th>
-              <th className="px-6 py-4">Location</th>
-              <th className="px-6 py-4">Active Rooms</th>
-              <th className="px-6 py-4">Check-ins</th>
-              <th className="px-6 py-4">Plan & Status</th>
-              <th className="px-6 py-4 text-right">Inventory</th>
+              <th className="px-5 py-4">Property ID</th>
+              <th className="px-5 py-4">Property Name</th>
+              <th className="px-5 py-4">Owner & Mobile No</th>
+              <th className="px-5 py-4">Last Active</th>
+              <th className="px-5 py-4">Location</th>
+              <th className="px-5 py-4">Active Rooms</th>
+              <th className="px-5 py-4">Plan & Status</th>
+              <th className="px-5 py-4 text-right">Inventory</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -172,6 +184,7 @@ export default function PropertiesPage() {
                 const occupied = p.occupiedRooms ?? 3;
                 const total = p.rooms || 8;
                 const occupancyRate = Math.round((occupied / total) * 100);
+                const phone = p.ownerPhone || p.phone || "+91 98765 43210";
 
                 return (
                   <tr
@@ -180,38 +193,56 @@ export default function PropertiesPage() {
                       setSelectedProperty(p);
                       setRoomFilter("ALL");
                     }}
-                    className="hover:bg-violet-50/40 transition-colors cursor-pointer group"
+                    className={`transition-colors cursor-pointer group ${
+                      p.isOfflineWeekPlus ? "bg-rose-50/20 hover:bg-rose-50/40" : "hover:bg-violet-50/40"
+                    }`}
                   >
-                    <td className="px-6 py-4 font-mono text-xs font-bold text-violet-700 group-hover:underline">
+                    <td className="px-5 py-4 font-mono text-xs font-bold text-violet-700 group-hover:underline">
                       {p.id}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4">
                       <p className="font-extrabold text-slate-900 group-hover:text-violet-900 transition-colors">
                         {p.name}
                       </p>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4">
                       <div className="flex flex-col">
                         <span className="font-semibold text-slate-900 text-xs">
                           {p.ownerName || "Owner"}
                         </span>
                         <a
-                          href={`tel:${(p.ownerPhone || p.phone || "").replace(/[^0-9+]/g, "")}`}
+                          href={`tel:${phone.replace(/[^0-9+]/g, "")}`}
                           onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 hover:text-violet-700 mt-1"
+                          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-800 hover:text-violet-700 mt-1"
                         >
                           <Phone className="w-3 h-3 text-violet-600 shrink-0" />
-                          <span>{maskPhone(p.ownerPhone || p.phone)}</span>
+                          <span>{phone}</span>
                         </a>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-xs font-medium text-slate-500">
+                    <td className="px-5 py-4">
+                      {p.isOfflineWeekPlus ? (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200">
+                          ⚠️ {p.lastActive}
+                        </span>
+                      ) : p.lastActive?.includes("Online Now") ? (
+                        <span className="inline-flex items-center gap-1.5 text-[11px] font-extrabold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          Online Now
+                        </span>
+                      ) : (
+                        <span className="text-xs font-bold text-slate-600">
+                          {p.lastActive}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4 text-xs font-medium text-slate-500">
                       <div className="flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
                         <span>{p.location}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-5 py-4">
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center gap-1.5">
                           <span className="font-extrabold text-violet-700 text-sm">
@@ -221,7 +252,7 @@ export default function PropertiesPage() {
                             / {total} Active
                           </span>
                         </div>
-                        <div className="w-24 bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <div className="w-20 bg-slate-100 rounded-full h-1.5 overflow-hidden">
                           <div
                             className="bg-violet-600 h-1.5 rounded-full"
                             style={{ width: `${Math.min(100, occupancyRate)}%` }}
@@ -229,9 +260,8 @@ export default function PropertiesPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 font-bold text-emerald-600">{p.checkIns}</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-1.5">
                         <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
                           {p.plan}
                         </span>
@@ -240,9 +270,9 @@ export default function PropertiesPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-5 py-4 text-right">
                       <span className="inline-flex items-center gap-1 text-xs font-bold text-violet-600 group-hover:text-violet-800 bg-violet-50 group-hover:bg-violet-100 px-3 py-1.5 rounded-lg transition-colors">
-                        Rooms & Status →
+                        Rooms →
                       </span>
                     </td>
                   </tr>
@@ -314,7 +344,7 @@ export default function PropertiesPage() {
                         {selectedProperty.ownerName || "Host"}
                       </h4>
                       <p className="text-xs text-slate-500 font-medium mt-0.5">
-                        {maskEmail(selectedProperty.ownerEmail)}
+                        {selectedProperty.ownerEmail || "owner@example.com"} &bull; Last seen: <strong className="text-violet-700">{selectedProperty.lastActive || "Online Now"}</strong>
                       </p>
                     </div>
                   </div>
@@ -322,14 +352,14 @@ export default function PropertiesPage() {
                   {/* Owner Contact Actions */}
                   <div className="flex items-center gap-2">
                     <a
-                      href={`tel:${(selectedProperty.ownerPhone || selectedProperty.phone || "").replace(/[^0-9+]/g, "")}`}
+                      href={`tel:${(selectedProperty.ownerPhone || selectedProperty.phone || "+919876543210").replace(/[^0-9+]/g, "")}`}
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-violet-600 text-white hover:bg-violet-700 text-xs font-bold shadow-sm transition-all"
                     >
                       <Phone className="w-3.5 h-3.5" />
-                      <span>Call: {maskPhone(selectedProperty.ownerPhone || selectedProperty.phone)}</span>
+                      <span>Call: {selectedProperty.ownerPhone || selectedProperty.phone || "+91 98765 43210"}</span>
                     </a>
                     <a
-                      href={`https://wa.me/${(selectedProperty.ownerPhone || selectedProperty.phone || "").replace(/[^0-9]/g, "")}`}
+                      href={`https://wa.me/${(selectedProperty.ownerPhone || selectedProperty.phone || "919876543210").replace(/[^0-9]/g, "")}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 text-xs font-bold shadow-sm transition-all"
