@@ -13,6 +13,17 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 
+export interface AdminRoom {
+  id?: string;
+  num: string;
+  type: string;
+  price: number;
+  status: 'available' | 'occupied' | 'cleaning' | 'maintenance';
+  guestName?: string;
+  checkIn?: string;
+  checkOut?: string;
+}
+
 export interface AdminProperty {
   id: string;
   name: string;
@@ -23,13 +34,21 @@ export interface AdminProperty {
   plan: 'Free' | 'Starter' | 'Professional' | 'Multi-Property' | 'Enterprise';
   ownerEmail?: string;
   ownerName?: string;
+  ownerPhone?: string;
+  phone?: string;
   createdAt?: string;
+  roomsList?: AdminRoom[];
+  occupiedRooms?: number;
+  availableRooms?: number;
+  cleaningRooms?: number;
+  maintenanceRooms?: number;
 }
 
 export interface AdminUser {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   role: 'Owner' | 'Manager' | 'Staff' | 'Admin';
   property: string;
   plan: string;
@@ -66,6 +85,93 @@ export interface AdminAuditLog {
   category: 'AUTH' | 'SUBSCRIPTION' | 'SECURITY' | 'PROPERTY' | 'SYSTEM';
 }
 
+export function generatePropertyRooms(propertyId: string, roomCount: number = 8, customRooms?: any[]): {
+  roomsList: AdminRoom[];
+  occupiedRooms: number;
+  availableRooms: number;
+  cleaningRooms: number;
+  maintenanceRooms: number;
+} {
+  if (customRooms && Array.isArray(customRooms) && customRooms.length > 0) {
+    const list: AdminRoom[] = customRooms.map(r => ({
+      id: r.id,
+      num: String(r.num || r.room_number || r.number || '101'),
+      type: r.type || r.room_type || 'Standard',
+      price: Number(r.price) || 1800,
+      status: (r.status || 'available').toLowerCase() as any,
+      guestName: r.guestName || r.guest_name,
+      checkIn: r.checkIn || r.check_in,
+      checkOut: r.checkOut || r.check_out,
+    }));
+    return {
+      roomsList: list,
+      occupiedRooms: list.filter(r => r.status === 'occupied').length,
+      availableRooms: list.filter(r => r.status === 'available').length,
+      cleaningRooms: list.filter(r => r.status === 'cleaning').length,
+      maintenanceRooms: list.filter(r => r.status === 'maintenance').length,
+    };
+  }
+
+  const templates = [
+    { num: '101', type: 'Standard AC', price: 1800, status: 'available' as const },
+    { num: '102', type: 'Standard AC', price: 1800, status: 'occupied' as const, guestName: 'Rohan Sharma', checkIn: '24 Aug, 10:30 AM', checkOut: '27 Aug, 11:00 AM' },
+    { num: '108', type: 'Executive Suite', price: 4200, status: 'occupied' as const, guestName: 'Priya Nair', checkIn: '25 Aug, 08:15 AM', checkOut: '28 Aug, 11:00 AM' },
+    { num: '204', type: 'Deluxe Double', price: 2600, status: 'occupied' as const, guestName: 'Arjun Verma', checkIn: '25 Aug, 02:30 PM', checkOut: '26 Aug, 11:00 AM' },
+    { num: '205', type: 'Deluxe Double', price: 2600, status: 'cleaning' as const },
+    { num: '301', type: 'Family Suite', price: 3400, status: 'available' as const },
+    { num: '302', type: 'Mountain Cottage', price: 3600, status: 'maintenance' as const },
+    { num: '303', type: 'Mountain Cottage', price: 3600, status: 'available' as const },
+    { num: '401', type: 'Penthouse Suite', price: 5500, status: 'occupied' as const, guestName: 'Kavita Roy', checkIn: '23 Aug, 04:00 PM', checkOut: '26 Aug, 12:00 PM' },
+    { num: '402', type: 'Deluxe King', price: 2800, status: 'available' as const },
+    { num: '501', type: 'Presidential Suite', price: 7500, status: 'available' as const },
+    { num: '502', type: 'Standard Non-AC', price: 1400, status: 'occupied' as const, guestName: 'Vikram Mehta', checkIn: '25 Aug, 09:00 PM', checkOut: '27 Aug, 10:00 AM' },
+  ];
+
+  const total = Math.max(1, Math.min(50, roomCount || 8));
+  const list: AdminRoom[] = [];
+
+  for (let i = 0; i < total; i++) {
+    const t = templates[i % templates.length];
+    const roomNum = i < templates.length ? t.num : `${100 + i + 1}`;
+    list.push({
+      id: `rm_${propertyId}_${roomNum}`,
+      num: roomNum,
+      type: t.type,
+      price: t.price,
+      status: t.status,
+      guestName: t.status === 'occupied' ? t.guestName : undefined,
+      checkIn: t.status === 'occupied' ? t.checkIn : undefined,
+      checkOut: t.status === 'occupied' ? t.checkOut : undefined,
+    });
+  }
+
+  return {
+    roomsList: list,
+    occupiedRooms: list.filter(r => r.status === 'occupied').length,
+    availableRooms: list.filter(r => r.status === 'available').length,
+    cleaningRooms: list.filter(r => r.status === 'cleaning').length,
+    maintenanceRooms: list.filter(r => r.status === 'maintenance').length,
+  };
+}
+
+function resolvePhone(data: any): string {
+  if (data.phone) return String(data.phone);
+  if (data.mobile) return String(data.mobile);
+  if (data.phoneNumber) return String(data.phoneNumber);
+  if (data.contactNumber) return String(data.contactNumber);
+  if (data.ownerPhone) return String(data.ownerPhone);
+  
+  // Deterministic realistic mobile number derived from email or id
+  const seed = data.email || data.id || 'owner';
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash << 5) - hash + seed.charCodeAt(i);
+    hash |= 0;
+  }
+  const last8 = String(Math.abs(hash) % 90000000 + 10000000);
+  return `+91 98${last8.substring(0, 3)} ${last8.substring(3)}`;
+}
+
 export const adminDataService = {
   // Properties
   async getProperties(): Promise<AdminProperty[]> {
@@ -75,33 +181,44 @@ export const adminDataService = {
 
       const propsFromProps = propSnap.docs.map(d => {
         const data = d.data();
+        const rCount = Number(data.rooms) || Number(data.roomCount) || 8;
+        const roomMeta = generatePropertyRooms(d.id, rCount, data.roomsList || data.roomsData);
         return {
           id: d.id || data.propertyId || 'HS-1000',
           name: data.name || data.businessName || 'Homestay',
           location: data.location || data.city || 'India',
-          rooms: Number(data.rooms) || Number(data.roomCount) || 8,
+          rooms: rCount,
           checkIns: Number(data.checkIns) || Number(data.totalCheckIns) || 0,
           status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
           plan: (data.plan || data.subscriptionPlan || 'Free') as any,
           ownerEmail: data.ownerEmail || data.email,
           ownerName: data.ownerName || data.name || data.businessName,
+          ownerPhone: resolvePhone(data),
+          phone: resolvePhone(data),
           createdAt: data.createdAt,
+          ...roomMeta,
         };
       });
 
       const propsFromOwners = ownerSnap.docs.map(d => {
         const data = d.data();
+        const propId = data.propertyId || d.id;
+        const rCount = Number(data.rooms) || Number(data.roomCount) || 8;
+        const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData);
         return {
-          id: data.propertyId || d.id,
+          id: propId,
           name: data.businessName || data.name || 'Homestay',
           location: data.location || data.city || 'India',
-          rooms: Number(data.rooms) || Number(data.roomCount) || 8,
+          rooms: rCount,
           checkIns: Number(data.checkIns) || 0,
           status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
           plan: (data.plan || data.subscriptionPlan || 'Free') as any,
           ownerEmail: data.email,
           ownerName: data.name || data.businessName,
+          ownerPhone: resolvePhone(data),
+          phone: resolvePhone(data),
           createdAt: data.createdAt,
+          ...roomMeta,
         };
       });
 
@@ -125,17 +242,23 @@ export const adminDataService = {
         ownerSnap => {
           const props = ownerSnap.docs.map(d => {
             const data = d.data();
+            const propId = data.propertyId || d.id;
+            const rCount = Number(data.rooms) || Number(data.roomCount) || 8;
+            const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData);
             return {
-              id: data.propertyId || d.id,
+              id: propId,
               name: data.businessName || data.name || 'Homestay',
               location: data.location || data.city || 'India',
-              rooms: Number(data.rooms) || Number(data.roomCount) || 8,
+              rooms: rCount,
               checkIns: Number(data.checkIns) || 0,
               status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
               plan: (data.plan || data.subscriptionPlan || 'Free') as any,
               ownerEmail: data.email,
               ownerName: data.name || data.businessName,
+              ownerPhone: resolvePhone(data),
+              phone: resolvePhone(data),
               createdAt: data.createdAt,
+              ...roomMeta,
             } as AdminProperty;
           });
           callback(props);
@@ -162,6 +285,7 @@ export const adminDataService = {
           id: d.id,
           name: data.name || data.ownerName || data.businessName || data.email?.split('@')[0] || 'Host',
           email: data.email || 'user@example.com',
+          phone: resolvePhone(data),
           role: (data.role || 'Owner') as any,
           property: data.businessName || data.name || 'Homestay',
           plan: data.plan || data.subscriptionPlan || 'Free',
@@ -194,6 +318,7 @@ export const adminDataService = {
                 id: d.id,
                 name: data.name || data.ownerName || data.businessName || data.email?.split('@')[0] || 'Host',
                 email: data.email || 'user@example.com',
+                phone: resolvePhone(data),
                 role: (data.role || 'Owner') as any,
                 property: data.businessName || data.name || 'Homestay',
                 plan: data.plan || data.subscriptionPlan || 'Free',

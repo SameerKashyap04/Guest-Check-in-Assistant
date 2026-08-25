@@ -9,7 +9,7 @@
 
 import React, { useState, useEffect } from "react";
 import { AdminLayout, useAdminContext } from "@/components/AdminLayout";
-import { Search, X, Check } from "lucide-react";
+import { Search, X, Check, Phone, Mail, Building2, User } from "lucide-react";
 import { adminDataService } from "@/lib/adminDataService";
 
 const C = {
@@ -58,7 +58,7 @@ export default function UsersPage() {
         name: u.name || 'Owner',
         businessName: u.property || u.name || 'Homestay',
         email: u.email || '',
-        phone: u.email || u.role || 'Host',
+        phone: u.phone || '+91 98765 43210',
         propertyId: u.propertyId || u.id.substring(0, 7).toUpperCase(),
         plan: (u.plan?.toUpperCase().includes('PRO') ? 'PROFESSIONAL' : u.plan?.toUpperCase().includes('STARTER') ? 'STARTER' : 'FREE') as any,
         status: (u.status?.toLowerCase() === 'trialing' ? 'trialing' : 'active') as any,
@@ -70,10 +70,10 @@ export default function UsersPage() {
     return () => unsub();
   }, []);
 
-  const maskPhone = (p: string) => maskPii ? p.replace(/(\+91 \d{5}) \d{5}/, "$1 *****") : p;
+  const maskPhone = (p: string) => maskPii ? p.replace(/(\+91 \d{2})\d{3} (\d{5})/, "$1*** ***$2") : p;
 
   const filteredUsers = users.filter(u => {
-    const matchSearch = [u.name, u.businessName, u.propertyId, u.email]
+    const matchSearch = [u.name, u.businessName, u.propertyId, u.email, u.phone]
       .some(v => v.toLowerCase().includes(search.toLowerCase()));
     const matchPlan = planFilter === "ALL" || u.plan === planFilter;
     return matchSearch && matchPlan;
@@ -160,7 +160,7 @@ export default function UsersPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, color: C.body }}>
             <thead>
               <tr style={{ borderBottom: `1px solid ${C.hairline}`, backgroundColor: C.soft }}>
-                {["Property & Owner", "Property ID", "Plan & Status", "Rooms", "Monthly Check-ins", ""].map(h => (
+                {["Property & Owner", "Owner Mobile", "Property ID", "Plan & Status", "Rooms", "Monthly Check-ins", ""].map(h => (
                   <th key={h} style={{
                     padding: "12px 20px", textAlign: "left",
                     fontSize: 11, fontWeight: 700, color: C.muted,
@@ -172,7 +172,7 @@ export default function UsersPage() {
             <tbody>
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={6} style={{ padding: "48px 20px", textAlign: "center", color: C.muted }}>
+                  <td colSpan={7} style={{ padding: "48px 20px", textAlign: "center", color: C.muted }}>
                     <p style={{ fontSize: 15, fontWeight: 600, color: C.ink, marginBottom: 4 }}>No property owners found</p>
                     <p style={{ fontSize: 13, color: C.muted }}>Real-time host registrations will appear here automatically.</p>
                   </td>
@@ -191,6 +191,15 @@ export default function UsersPage() {
                       <p style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
                         {user.name} {user.email ? `· ${user.email}` : ""}
                       </p>
+                    </td>
+                    <td style={{ padding: "16px 20px" }}>
+                      <a
+                        href={`tel:${user.phone.replace(/[^0-9+]/g, '')}`}
+                        className="inline-flex items-center gap-1.5 font-bold text-slate-800 hover:text-violet-700 text-xs bg-slate-50 hover:bg-violet-50 border border-slate-200/80 px-2.5 py-1 rounded-lg transition-colors"
+                      >
+                        <Phone className="w-3 h-3 text-violet-600 shrink-0" />
+                        <span>{maskPhone(user.phone)}</span>
+                      </a>
                     </td>
                     <td style={{ padding: "16px 20px", fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: C.muted }}>
                       {user.propertyId}

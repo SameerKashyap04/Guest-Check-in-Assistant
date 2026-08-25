@@ -31,6 +31,7 @@ WebBrowser.maybeCompleteAuthSession();
 export interface OwnerProfile {
   uid: string;
   email: string;
+  phone?: string;
   businessName: string;
   propertyId: string;
   createdAt: string;
@@ -41,9 +42,10 @@ export interface OwnerProfile {
  * Creates a new Homestay Owner account with Email & Password
  * Has automatic offline & unconfigured-firebase fallback
  */
-export async function signUpOwner(email: string, password: string, businessName: string): Promise<OwnerProfile> {
+export async function signUpOwner(email: string, password: string, businessName: string, phone?: string): Promise<OwnerProfile> {
   const cleanEmail = email.trim().toLowerCase();
   const cleanBusinessName = businessName.trim() || 'My Homestay';
+  const cleanPhone = phone?.trim() || '';
 
   try {
     const credential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
@@ -53,6 +55,7 @@ export async function signUpOwner(email: string, password: string, businessName:
     const profile: OwnerProfile = {
       uid: user.uid,
       email: user.email || cleanEmail,
+      phone: cleanPhone,
       businessName: cleanBusinessName,
       propertyId: propertyId,
       createdAt: new Date().toISOString()
@@ -435,3 +438,26 @@ export async function verifyAuthOtp(email: string, enteredCode: string): Promise
   return false;
 }
 
+/**
+ * Updates owner profile with phone number, business details and rooms
+ */
+export async function updateOwnerProfile(uid: string, updates: Partial<OwnerProfile>): Promise<void> {
+  try {
+    const docRef = doc(db, 'owners', uid);
+    await setDoc(docRef, { ...updates, updatedAt: new Date().toISOString() }, { merge: true });
+    
+    if (updates.propertyId) {
+      const propRef = doc(db, 'properties', updates.propertyId);
+      await setDoc(propRef, {
+        propertyId: updates.propertyId,
+        name: updates.businessName,
+        phone: updates.phone,
+        ownerPhone: updates.phone,
+        ownerEmail: updates.email,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true });
+    }
+  } catch (e) {
+    console.warn('Update owner profile notice:', e);
+  }
+}
