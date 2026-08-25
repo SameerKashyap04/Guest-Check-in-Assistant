@@ -176,13 +176,13 @@ export default function PaymentsPage() {
             className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-50 shadow-sm transition-all flex items-center gap-2 text-xs font-bold"
             title="Refresh Transactions"
           >
-            <RefreshCw className={`w-4 h-4 ${loadingTx ? "animate-spin text-violet-600" : ""}`} />
+            <RefreshCw className={`w-4 h-4 ${loadingTx ? "animate-spin text-rose-600" : ""}`} />
             <span className="hidden sm:inline">Sync Data</span>
           </button>
 
           <button
             onClick={() => setShowSettings(true)}
-            className="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-2 cursor-pointer"
+            className="px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-2 cursor-pointer"
           >
             <Settings className="w-4 h-4" />
             <span>Devify Gateway Settings</span>
@@ -199,7 +199,7 @@ export default function PaymentsPage() {
             placeholder="Search by transaction ID, property, or email..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-600 shadow-sm"
+            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-500 shadow-sm"
           />
         </div>
 
@@ -210,7 +210,7 @@ export default function PaymentsPage() {
               onClick={() => setStatusFilter(st)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 statusFilter === st
-                  ? "bg-violet-600 text-white shadow-sm"
+                  ? "bg-rose-500 text-white shadow-sm"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               }`}
             >
@@ -275,7 +275,7 @@ export default function PaymentsPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-5 border-b border-slate-100 mb-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-violet-100 rounded-2xl flex items-center justify-center text-violet-700">
+                <div className="w-10 h-10 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600 border border-rose-200">
                   <CreditCard className="w-5 h-5" />
                 </div>
                 <div>
@@ -302,7 +302,7 @@ export default function PaymentsPage() {
               {/* SECTION 1: DEVIFY CREDENTIALS */}
               <div>
                 <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <Key className="w-3.5 h-3.5 text-violet-600" />
+                  <Key className="w-3.5 h-3.5 text-rose-500" />
                   <span>API Credentials & Server Secrets</span>
                 </h3>
 
@@ -318,7 +318,7 @@ export default function PaymentsPage() {
                         type="text"
                         value={apiUrl}
                         onChange={(e) => setApiUrl(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-10 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-violet-600"
+                        className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-10 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-rose-500"
                         placeholder="https://devifypay.site"
                       />
                       <button
@@ -345,7 +345,7 @@ export default function PaymentsPage() {
                         type={showApiKey ? "text" : "password"}
                         value={apiKey}
                         onChange={(e) => setApiKey(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-20 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-violet-600"
+                        className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-20 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-rose-500"
                         placeholder="sk_test_xxx"
                       />
                       <div className="absolute right-2.5 top-2 flex items-center gap-1">
@@ -371,7 +371,7 @@ export default function PaymentsPage() {
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
                       <span>DEVIFY_WEBHOOK_SECRET</span>
-                      <span className="text-[10px] text-violet-600 font-semibold bg-violet-50 px-2 py-0.5 rounded-full border border-violet-200">
+                      <span className="text-[10px] text-rose-600 font-semibold bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">
                         HMAC-SHA256 Secret
                       </span>
                     </label>
@@ -381,7 +381,7 @@ export default function PaymentsPage() {
                         type={showWebhookSecret ? "text" : "password"}
                         value={webhookSecret}
                         onChange={(e) => setWebhookSecret(e.target.value)}
-                        className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-20 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-violet-600"
+                        className="w-full bg-white border border-slate-200 rounded-xl pl-9 pr-20 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-rose-500"
                         placeholder="whsec_xxx"
                       />
                       <div className="absolute right-2.5 top-2 flex items-center gap-1">
@@ -408,7 +408,7 @@ export default function PaymentsPage() {
               {/* SECTION 2: ENDPOINTS & WEBHOOK URL */}
               <div>
                 <h3 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <Server className="w-3.5 h-3.5 text-violet-600" />
+                  <Server className="w-3.5 h-3.5 text-rose-500" />
                   <span>Integration Endpoints & Webhook URL</span>
                 </h3>
 
@@ -461,29 +461,29 @@ export default function PaymentsPage() {
               </div>
 
               {/* SECTION 3: WEBHOOK PROTOCOL & EVENTS */}
-              <div className="bg-violet-50/80 border border-violet-200/80 rounded-2xl p-4">
-                <h4 className="text-xs font-extrabold text-violet-900 mb-2 flex items-center gap-1.5">
-                  <Zap className="w-4 h-4 text-violet-600" />
+              <div className="bg-rose-50/80 border border-rose-200/80 rounded-2xl p-4">
+                <h4 className="text-xs font-extrabold text-rose-900 mb-2 flex items-center gap-1.5">
+                  <Zap className="w-4 h-4 text-rose-600" />
                   <span>Handled Webhook Events & Signature Protocol</span>
                 </h4>
-                <p className="text-[11px] text-violet-700 leading-relaxed mb-3">
+                <p className="text-[11px] text-rose-700 leading-relaxed mb-3">
                   Devify Pay sends HMAC-SHA256 signed POST events. The backend automatically verifies signature headers and freshness (&lt; 5 mins) before updating Firestore orders.
                 </p>
 
                 <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
-                  <div className="bg-white/80 px-2.5 py-1 rounded-lg border border-violet-100 text-violet-900 flex items-center gap-1">
+                  <div className="bg-white/80 px-2.5 py-1 rounded-lg border border-rose-100 text-rose-900 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
                     <span>payment.success</span>
                   </div>
-                  <div className="bg-white/80 px-2.5 py-1 rounded-lg border border-violet-100 text-violet-900 flex items-center gap-1">
+                  <div className="bg-white/80 px-2.5 py-1 rounded-lg border border-rose-100 text-rose-900 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
                     <span>payment.failed</span>
                   </div>
-                  <div className="bg-white/80 px-2.5 py-1 rounded-lg border border-violet-100 text-violet-900 flex items-center gap-1">
+                  <div className="bg-white/80 px-2.5 py-1 rounded-lg border border-rose-100 text-rose-900 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></span>
                     <span>order.paid</span>
                   </div>
-                  <div className="bg-white/80 px-2.5 py-1 rounded-lg border border-violet-100 text-violet-900 flex items-center gap-1">
+                  <div className="bg-white/80 px-2.5 py-1 rounded-lg border border-rose-100 text-rose-900 flex items-center gap-1">
                     <span className="w-1.5 h-1.5 bg-rose-500 rounded-full"></span>
                     <span>order.failed</span>
                   </div>
@@ -505,7 +505,7 @@ export default function PaymentsPage() {
                 </button>
                 <button
                   onClick={handleSaveSettings}
-                  className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-1.5"
+                  className="px-5 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-1.5"
                 >
                   <Save className="w-3.5 h-3.5" />
                   <span>Save Configuration</span>

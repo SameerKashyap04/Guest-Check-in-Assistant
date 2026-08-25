@@ -42,7 +42,7 @@ export default function PropertiesPage() {
             placeholder="Search property name, ID, or location..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-600 shadow-sm"
+            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-500 shadow-sm"
           />
         </div>
 
@@ -53,7 +53,7 @@ export default function PropertiesPage() {
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 statusFilter === s
-                  ? "bg-violet-600 text-white shadow-sm"
+                  ? "bg-rose-500 text-white shadow-sm"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               }`}
             >
@@ -85,7 +85,7 @@ export default function PropertiesPage() {
               </tr>
             ) : filtered.map((p) => (
               <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
-                <td className="px-6 py-4 font-mono text-xs font-bold text-violet-700">{p.id}</td>
+                <td className="px-6 py-4 font-mono text-xs font-bold text-rose-600">{p.id}</td>
                 <td className="px-6 py-4 font-extrabold text-slate-900">{p.name}</td>
                 <td className="px-6 py-4 text-xs font-medium text-slate-500 flex items-center gap-1 mt-1">
                   <MapPin className="w-3.5 h-3.5 text-slate-400" />
@@ -95,7 +95,7 @@ export default function PropertiesPage() {
                 <td className="px-6 py-4 font-bold text-emerald-600">{p.checkIns}</td>
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200">
+                    <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200">
                       {p.plan}
                     </span>
                     <span className="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border bg-emerald-100 text-emerald-800 border-emerald-200">

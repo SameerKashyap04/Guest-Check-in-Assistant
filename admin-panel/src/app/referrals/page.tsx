@@ -86,7 +86,7 @@ export default function ReferralsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <Gift className="w-6 h-6 text-violet-600" />
+            <Gift className="w-6 h-6 text-rose-500" />
             <span>Refer & Earn Program Management</span>
           </h1>
           <p className="text-sm text-slate-500 font-medium mt-1">
@@ -111,7 +111,7 @@ export default function ReferralsPage() {
 
         <div className="bg-white border border-slate-200/90 rounded-2xl p-5 shadow-sm">
           <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Rewards Distributed</p>
-          <p className="text-2xl font-black text-violet-700 mt-2">₹ {totalRewardsIssued.toLocaleString("en-IN")}</p>
+          <p className="text-2xl font-black text-rose-600 mt-2">₹ {totalRewardsIssued.toLocaleString("en-IN")}</p>
           <p className="text-xs text-slate-500 font-medium mt-1">Credited to host wallets</p>
         </div>
 
@@ -126,7 +126,7 @@ export default function ReferralsPage() {
       <div className="bg-white border border-slate-200/90 rounded-3xl p-6 sm:p-8 shadow-sm mb-8">
         <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-violet-50 rounded-2xl flex items-center justify-center text-violet-600">
+            <div className="w-10 h-10 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600 border border-rose-200">
               <Settings className="w-5 h-5" />
             </div>
             <div>
@@ -165,7 +165,7 @@ export default function ReferralsPage() {
                 value={referrerReward}
                 onChange={(e) => setReferrerReward(Number(e.target.value))}
                 required
-                className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-violet-600 shadow-xs"
+                className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-rose-500 shadow-xs"
               />
             </div>
           </div>
@@ -183,7 +183,7 @@ export default function ReferralsPage() {
                 value={friendDiscount}
                 onChange={(e) => setFriendDiscount(Number(e.target.value))}
                 required
-                className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-violet-600 shadow-xs"
+                className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-4 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-rose-500 shadow-xs"
               />
             </div>
           </div>
@@ -196,7 +196,7 @@ export default function ReferralsPage() {
             <button
               type="submit"
               disabled={isSaving}
-              className="px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-2"
+              className="px-6 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-2"
             >
               <Save className="w-4 h-4" />
               <span>{isSaving ? "Saving Settings..." : "Save Program Settings"}</span>
@@ -236,7 +236,7 @@ export default function ReferralsPage() {
               ) : (
                 referrals.map((r, i) => (
                   <tr key={r.id || i} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="px-6 py-4 font-mono font-bold text-violet-700">{r.referralCode || "STAYMATE"}</td>
+                    <td className="px-6 py-4 font-mono font-bold text-rose-600">{r.referralCode || "STAYMATE"}</td>
                     <td className="px-6 py-4 font-medium text-slate-900">{r.referrerUserId || "Host"}</td>
                     <td className="px-6 py-4 font-medium text-slate-700">{r.referredUserIdentifier || r.referredUserId || "New Homestay"}</td>
                     <td className="px-6 py-4">

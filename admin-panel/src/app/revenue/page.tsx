@@ -77,7 +77,7 @@ export default function RevenuePage() {
             onClick={() => setSelectedPeriod("MRR")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
               selectedPeriod === "MRR"
-                ? "bg-violet-600 text-white shadow-sm"
+                ? "bg-rose-500 text-white shadow-sm"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >
@@ -87,7 +87,7 @@ export default function RevenuePage() {
             onClick={() => setSelectedPeriod("ARR")}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-extrabold transition-all ${
               selectedPeriod === "ARR"
-                ? "bg-violet-600 text-white shadow-sm"
+                ? "bg-rose-500 text-white shadow-sm"
                 : "text-slate-600 hover:text-slate-900"
             }`}
           >

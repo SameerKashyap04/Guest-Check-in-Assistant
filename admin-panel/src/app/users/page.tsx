@@ -127,7 +127,7 @@ export default function UsersPage() {
             placeholder="Search by name, business, or property ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-600 shadow-sm"
+            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-500 shadow-sm"
           />
         </div>
 
@@ -138,7 +138,7 @@ export default function UsersPage() {
               onClick={() => setPlanFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 planFilter === s
-                  ? "bg-violet-600 text-white shadow-sm"
+                  ? "bg-rose-500 text-white shadow-sm"
                   : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
               }`}
             >
