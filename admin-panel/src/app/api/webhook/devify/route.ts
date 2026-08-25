@@ -12,6 +12,8 @@ import { db } from '@/lib/firebase';
 import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { createHmac } from 'crypto';
 import { getPriceInPaise, type SubscriptionPlan, type BillingCycle } from '@/lib/plans';
+import { recordCouponRedemption } from '@/lib/coupons';
+import { completeQualifyingReferral, addWalletTransaction } from '@/lib/referrals';
 
 // ------------------------------------------------------------------
 // Environment (server-side only)
@@ -249,6 +251,48 @@ async function handlePaymentSuccess(payload: any, eventType: string) {
     `[Webhook] ✅ Order ${orderId} marked as PAID. ` +
     `Plan: ${orderData.planId}, User: ${orderData.userId}`
   );
+
+  // 5. Post-Payment Actions:
+  // a) Record coupon redemption if a coupon was used
+  if (orderData.couponCode) {
+    try {
+      await recordCouponRedemption(
+        orderData.couponCode,
+        orderData.userId,
+        orderId,
+        orderData.couponDiscountRupees || 0
+      );
+    } catch (couponErr) {
+      console.warn('[Webhook] Coupon redemption record notice:', couponErr);
+    }
+  }
+
+  // b) Debit StayMate credits from user wallet if applied on this order
+  if (orderData.appliedCreditsRupees && orderData.appliedCreditsRupees > 0) {
+    try {
+      await addWalletTransaction(
+        orderData.userId,
+        'DEBIT',
+        orderData.appliedCreditsRupees,
+        'SUBSCRIPTION_DISCOUNT',
+        orderId,
+        `Applied credits towards ${orderData.planId} subscription (${orderData.durationMonths || 1}M)`
+      );
+    } catch (creditErr) {
+      console.warn('[Webhook] Wallet debit notice:', creditErr);
+    }
+  }
+
+  // c) Check and complete qualifying referral reward for referrer
+  try {
+    await completeQualifyingReferral(
+      orderData.userId,
+      orderId,
+      orderData.planId || 'STARTER'
+    );
+  } catch (refErr) {
+    console.warn('[Webhook] Referral reward completion notice:', refErr);
+  }
 }
 
 async function handlePaymentFailed(payload: any, eventType: string) {

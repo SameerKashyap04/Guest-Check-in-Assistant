@@ -8,6 +8,9 @@ import {
   PlanEntitlements,
   type FeatureFlag,
   type UsageLimitKey,
+  type BillingDurationMonths,
+  type BillingPeriodConfig,
+  type PlanPricingBreakdown,
 } from '@/types/subscription';
 
 // ------------------------------------------------------------------
@@ -36,9 +39,9 @@ const FREE_ENTITLEMENTS: PlanEntitlements = {
 const STARTER_ENTITLEMENTS: PlanEntitlements = {
   limits: {
     maxProperties: 1,
-    maxRoomsPerProperty: 5,
-    monthlyCheckInLimit: UNLIMITED,
-    monthlyExportLimit: UNLIMITED,
+    maxRoomsPerProperty: 8,
+    monthlyCheckInLimit: 100,
+    monthlyExportLimit: 10,
     maxStaffAccounts: 0,
   },
   features: [
@@ -47,7 +50,7 @@ const STARTER_ENTITLEMENTS: PlanEntitlements = {
     'basicReports',
     'pdfExport',
     'csvExport',
-    'unlimitedExports',
+    'ocrScanning',
   ],
 };
 
@@ -309,3 +312,93 @@ export function getPlanDefinition(plan: SubscriptionPlan): PlanDefinition {
 export function formatLimit(value: number): string {
   return value === UNLIMITED ? 'Unlimited' : String(value);
 }
+
+// ------------------------------------------------------------------
+// Dynamic Billing Periods & Duration Discounts
+// ------------------------------------------------------------------
+
+export const BILLING_PERIODS: BillingPeriodConfig[] = [
+  {
+    months: 1,
+    label: '1 Month',
+    discountPercent: 0,
+    badge: undefined,
+    description: 'Standard monthly billing',
+  },
+  {
+    months: 3,
+    label: '3 Months',
+    discountPercent: 5,
+    badge: 'Save 5%',
+    description: 'Quarterly billing (5% discount)',
+  },
+  {
+    months: 6,
+    label: '6 Months',
+    discountPercent: 10,
+    badge: 'Save 10%',
+    description: 'Half-yearly billing (10% discount)',
+  },
+  {
+    months: 12,
+    label: '1 Year',
+    discountPercent: 15,
+    badge: 'Save 15%',
+    description: 'Annual billing (15% discount)',
+  },
+];
+
+export function getBillingPeriodConfig(months: BillingDurationMonths): BillingPeriodConfig {
+  return (
+    BILLING_PERIODS.find((bp) => bp.months === months) || {
+      months,
+      label: `${months} Months`,
+      discountPercent: 0,
+    }
+  );
+}
+
+/**
+ * Dynamically computes base total, duration discount, subtotal, and total savings
+ * for any plan and billing period without hardcoded values.
+ */
+export function calculatePlanPricing(
+  planId: SubscriptionPlan,
+  durationMonths: BillingDurationMonths = 1,
+  couponDiscount: number = 0,
+  appliedCredits: number = 0
+): PlanPricingBreakdown {
+  const plan = PLANS[planId] || PLANS[SubscriptionPlan.FREE];
+  const baseMonthlyPrice = plan.pricing.monthlyPrice;
+  const periodConfig = getBillingPeriodConfig(durationMonths);
+  const durationDiscountPercent = periodConfig.discountPercent;
+
+  const baseTotal = baseMonthlyPrice * durationMonths;
+  const durationDiscountAmount = Math.round(baseTotal * (durationDiscountPercent / 100));
+  const subtotal = Math.max(0, baseTotal - durationDiscountAmount);
+  
+  const couponDiscountAmount = Math.min(subtotal, Math.max(0, couponDiscount));
+  const afterCoupon = Math.max(0, subtotal - couponDiscountAmount);
+  
+  const appliedCreditsAmount = Math.min(afterCoupon, Math.max(0, appliedCredits));
+  const finalPayableAmount = Math.max(0, afterCoupon - appliedCreditsAmount);
+  
+  const totalSavings = durationDiscountAmount + couponDiscountAmount + appliedCreditsAmount;
+
+  return {
+    planId,
+    planName: plan.name,
+    durationMonths,
+    baseMonthlyPrice,
+    baseTotal,
+    durationDiscountPercent,
+    durationDiscountAmount,
+    subtotal,
+    couponDiscountAmount,
+    appliedCreditsAmount,
+    taxAmount: 0, // ready for future GST/tax integration
+    finalPayableAmount,
+    totalSavings,
+  };
+}
+

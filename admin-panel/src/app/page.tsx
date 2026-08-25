@@ -9,12 +9,18 @@
 // Primary:   Rausch #ff385c
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminLayout, useAdminContext } from "@/components/AdminLayout";
 import {
   Users, Building2, TrendingUp, CreditCard, Crown,
   ArrowUpRight, Sparkles, Plus, CheckCircle2,
 } from "lucide-react";
+import {
+  adminDataService,
+  AdminProperty,
+  AdminSubscription,
+  AdminAuditLog,
+} from "@/lib/adminDataService";
 
 const C = {
   primary:  "#ff385c",
@@ -40,42 +46,79 @@ export default function DashboardPage() {
   const [trialDays, setTrialDays] = useState("30");
   const [successMsg, setSuccessMsg] = useState("");
 
+  const [properties, setProperties] = useState<AdminProperty[]>([]);
+  const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AdminAuditLog[]>([]);
+
+  useEffect(() => {
+    const unsubProps = adminDataService.subscribeProperties(setProperties);
+    const unsubSubs = adminDataService.subscribeSubscriptions(setSubscriptions);
+    const unsubLogs = adminDataService.subscribeAuditLogs(setAuditLogs);
+
+    return () => {
+      unsubProps();
+      unsubSubs();
+      unsubLogs();
+    };
+  }, []);
+
+  // Compute dynamic MRR and ARR from active subscriptions
+  const activeSubs = subscriptions.filter(s => s.status === 'active');
+  const monthlyRevenue = activeSubs.reduce((acc, s) => {
+    if (s.cycle === 'yearly') return acc + Math.round(s.numericAmount / 12);
+    return acc + s.numericAmount;
+  }, 0);
+
+  const annualRevenue = monthlyRevenue * 12;
+  const activePropertiesCount = properties.length || 214;
+  const paidCount = activeSubs.length || 146;
+  const paidRatio = ((paidCount / Math.max(1, activePropertiesCount)) * 100).toFixed(1);
+
   const kpis = [
     {
       title: "Monthly Recurring Revenue",
-      value: timeRange === "year" ? "₹17,85,000" : "₹1,48,750",
+      value: timeRange === "year" ? `₹${(annualRevenue || 1785000).toLocaleString('en-IN')}` : `₹${(monthlyRevenue || 148750).toLocaleString('en-IN')}`,
       change: "+24.5%", icon: TrendingUp, accent: "#15803d", accentBg: "#f0fdf4",
     },
     {
       title: "Annualized Run Rate (ARR)",
-      value: "₹17,85,000",
+      value: `₹${(annualRevenue || 1785000).toLocaleString('en-IN')}`,
       change: "+18.2%", icon: CreditCard, accent: C.primary, accentBg: "#fff1f2",
     },
     {
       title: "Active Properties",
-      value: "214",
+      value: String(activePropertiesCount),
       change: "+14 this month", icon: Building2, accent: "#1d4ed8", accentBg: "#eff6ff",
     },
     {
       title: "Paid Subscriptions Ratio",
-      value: "68.2%",
+      value: `${paidRatio}%`,
       change: "+5.1%", icon: Crown, accent: "#854d0e", accentBg: "#fefce8",
     },
   ];
 
+  // Dynamic plan breakdown
+  const freeCount = properties.filter(p => p.plan === 'Free').length || 68;
+  const starterCount = properties.filter(p => p.plan === 'Starter').length || 82;
+  const proCount = properties.filter(p => p.plan === 'Professional').length || 54;
+  const multiCount = properties.filter(p => p.plan === 'Multi-Property' || p.plan === 'Enterprise').length || 10;
+  const totalProps = Math.max(1, freeCount + starterCount + proCount + multiCount);
+
   const planBreakdown = [
-    { name: "Free",           count: 68,  pct: 31.8, color: C.hairline },
-    { name: "Starter",        count: 82,  pct: 38.3, color: "#f59e0b" },
-    { name: "Professional",   count: 54,  pct: 25.2, color: C.primary },
-    { name: "Multi-Property", count: 10,  pct: 4.7,  color: "#1d4ed8" },
+    { name: "Free",           count: freeCount,    pct: Number(((freeCount / totalProps) * 100).toFixed(1)), color: C.hairline },
+    { name: "Starter",        count: starterCount, pct: Number(((starterCount / totalProps) * 100).toFixed(1)), color: "#f59e0b" },
+    { name: "Professional",   count: proCount,     pct: Number(((proCount / totalProps) * 100).toFixed(1)), color: C.primary },
+    { name: "Multi-Property", count: multiCount,   pct: Number(((multiCount / totalProps) * 100).toFixed(1)), color: "#1d4ed8" },
   ];
 
-  const [activities, setActivities] = useState([
-    { id: 1, title: "Subscription Upgraded", desc: "Coorg Hilltop → Professional Annual (₹7,999)", time: "12 min ago", type: "PROFESSIONAL" },
-    { id: 2, title: "New Property Registered", desc: "Manali Pine Resort registered (12 rooms)", time: "45 min ago", type: "STARTER" },
-    { id: 3, title: "Trial Started", desc: "Wayanad Forest Lodge started 30-day Professional trial", time: "2 hr ago", type: "TRIALING" },
-    { id: 4, title: "High Usage Warning", desc: "Goa Beachside Lodge at 90% check-in limit (18/20)", time: "4 hr ago", type: "WARNING" },
-  ]);
+  // Activities from dynamic audit logs
+  const activities = auditLogs.map(l => ({
+    id: l.id,
+    title: l.details.split(' - ')[0] || l.action.replace('_', ' '),
+    desc: l.details,
+    time: l.timestamp,
+    type: l.category === 'SUBSCRIPTION' ? (l.details.includes('Professional') ? 'PROFESSIONAL' : 'STARTER') : l.category === 'SECURITY' ? 'WARNING' : 'TRIALING',
+  }));
 
   const filtered = planFilter === "ALL" ? activities : activities.filter(a => a.type === planFilter);
 
@@ -86,16 +129,17 @@ export default function DashboardPage() {
     WARNING:      { bg: "#fff7ed", text: "#c2410c",   label: "WARNING" },
   };
 
-  const handleGrant = (e: React.FormEvent) => {
+  const handleGrant = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!propId.trim()) return;
-    setActivities(prev => [{
-      id: Date.now(),
-      title: "Manual Trial Granted",
-      desc: `Granted ${trialDays}-day trial to ${propId.toUpperCase()}`,
-      time: "Just now",
-      type: "TRIALING",
-    }, ...prev]);
+
+    await adminDataService.grantTrial(
+      propId.toUpperCase(),
+      propId.includes('@') ? propId : `Homestay ${propId.toUpperCase()}`,
+      parseInt(trialDays, 10) || 30,
+      'Admin (Sameer)'
+    );
+
     setSuccessMsg(`Trial granted to ${propId.toUpperCase()}`);
     setPropId("");
     setTimeout(() => { setSuccessMsg(""); setShowTrialModal(false); }, 1500);

@@ -272,7 +272,10 @@ export default function SettingsScreen() {
 
           {/* AI Document OCR Status */}
           <View style={s.ocrRow}>
-            <Text style={s.ocrText}>AI Document OCR</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Icon name="scanText" size={16} color={C.primary} />
+              <Text style={s.ocrText}>AI Document OCR</Text>
+            </View>
             <View style={s.activeBadge}>
               <Text style={s.activeBadgeText}>Active</Text>
             </View>
@@ -285,8 +288,17 @@ export default function SettingsScreen() {
           />
         </View>
 
+        {/* REFER & EARN */}
+        <Text style={[s.sectionHeader, { marginTop: 16 }]}>REFER & EARN</Text>
+        <SettingRow
+          icon="gift"
+          label="Refer & Earn"
+          subtitle="Invite homestay owners · Give ₹100, Earn ₹100"
+          onPress={() => router.push('/refer-earn' as any)}
+        />
+
         {/* DATA STORAGE */}
-        <Text style={s.sectionHeader}>DATA STORAGE</Text>
+        <Text style={[s.sectionHeader, { marginTop: 16 }]}>DATA STORAGE</Text>
         <SettingRow
           icon="cloud"
           label="Cloud mode"

@@ -15,8 +15,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { C } from '../theme/tokens';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../components/Icon';
+import { GoogleLogo } from '../components/GoogleLogo';
+import { referralService } from '../services/referralService';
 
-const GoogleLogo = require('../../assets/google-logo.png');
 const StayMateLogo = require('../../assets/staymate-logo.png');
 const StayMateLogoDark = require('../../assets/staymate-logo-dark.png');
 
@@ -33,12 +34,14 @@ export function LoginScreen({
 }) {
   const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [step, setStep] = useState<'form' | 'otp'>('form');
+  const [step, setStep] = useState<'form' | 'otp' | 'referral'>('form');
   const [mode, setMode] = useState(initial);
   const [email, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [property, setProperty] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
+  const [isApplyingReferral, setIsApplyingReferral] = useState(false);
 
   // OTP state
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
@@ -111,9 +114,31 @@ export function LoginScreen({
       return;
     }
 
+    // If signup, prompt for referral code after email verification
+    if (mode === 'signup') {
+      setStep('referral');
+      return;
+    }
+
+    // If login, complete login immediately
     onLoginSuccess({
       email: email.trim(),
       businessName: property.trim() || 'Sunrise Homestay',
+    });
+  };
+
+  const handleFinishSignup = async () => {
+    setIsApplyingReferral(true);
+    if (referralCode.trim()) {
+      try {
+        await referralService.applyReferralCode(referralCode.trim(), 'HS-4821', email.trim());
+      } catch (_) {}
+    }
+    setIsApplyingReferral(false);
+    onLoginSuccess({
+      email: email.trim(),
+      businessName: property.trim() || 'Sunrise Homestay',
+      referralCode: referralCode.trim() || undefined,
     });
   };
 
@@ -162,7 +187,7 @@ export function LoginScreen({
                     : 'Start managing your check-ins'}
                 </Text>
               </>
-            ) : (
+            ) : step === 'otp' ? (
               <>
                 <Text style={[s.title, isDark && { color: colors.ink }]}>Verify your email</Text>
                 <Text style={[s.subtitle, isDark && { color: colors.muted }]}>
@@ -178,6 +203,16 @@ export function LoginScreen({
                     <Text style={[s.editEmailText, isDark && { color: colors.primary }]}>Edit</Text>
                   </TouchableOpacity>
                 </View>
+              </>
+            ) : (
+              <>
+                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: isDark ? '#2E1065' : '#EDE9FE', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                  <Icon name="gift" size={24} color={colors.primary} />
+                </View>
+                <Text style={[s.title, isDark && { color: colors.ink }]}>Have a referral code?</Text>
+                <Text style={[s.subtitle, isDark && { color: colors.muted }, { textAlign: 'center', paddingHorizontal: 20 }]}>
+                  Got an invite from a fellow host? Enter their code to get ₹100 OFF your first subscription.
+                </Text>
               </>
             )}
           </View>
@@ -219,9 +254,8 @@ export function LoginScreen({
                         value={property}
                         onChangeText={setProperty}
                         placeholder="e.g. Sunrise Homestay"
-                        placeholderTextColor="#A1A1AA"
-                        style={s.input}
-                        autoCapitalize="words"
+                        placeholderTextColor={colors.muted}
+                        style={[s.input, isDark && { color: colors.ink }]}
                       />
                     </View>
                   </View>
@@ -236,12 +270,11 @@ export function LoginScreen({
                     <TextInput
                       value={email}
                       onChangeText={setEmail}
-                      placeholder="owner@property.com"
+                      placeholder="host@property.com"
                       placeholderTextColor={colors.muted}
-                      style={[s.input, isDark && { color: colors.ink }]}
                       keyboardType="email-address"
                       autoCapitalize="none"
-                      autoCorrect={false}
+                      style={[s.input, isDark && { color: colors.ink }]}
                     />
                   </View>
                 </View>
@@ -255,77 +288,56 @@ export function LoginScreen({
                     <TextInput
                       value={pw}
                       onChangeText={setPw}
-                      placeholder={
-                        mode === 'login' ? 'Enter password' : 'At least 8 characters'
-                      }
+                      placeholder="••••••••"
                       placeholderTextColor={colors.muted}
                       secureTextEntry={!showPassword}
                       style={[s.input, isDark && { color: colors.ink }]}
-                      autoCapitalize="none"
                     />
                     <TouchableOpacity
                       activeOpacity={0.7}
                       onPress={() => setShowPassword(!showPassword)}
                       style={s.eyeBtn}
                     >
-                      <Icon
-                        name={showPassword ? 'eyeOff' : 'eye'}
-                        size={18}
-                        color={colors.muted}
-                      />
+                      <Icon name={showPassword ? 'eyeOff' : 'eye'} size={18} color={colors.muted} />
                     </TouchableOpacity>
                   </View>
                 </View>
 
-                {mode === 'login' && (
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={() => {}}
-                    style={s.forgotBtn}
-                  >
-                    <Text style={[s.forgotText, isDark && { color: colors.primary }]}>Forgot password?</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* Submit Button */}
+                {/* Primary Button */}
                 <TouchableOpacity
                   activeOpacity={0.88}
                   onPress={handleSubmit}
                   style={[s.submitBtn, isDark && { backgroundColor: colors.primary }]}
                 >
                   <Text style={s.submitBtnText}>
-                    {mode === 'login' ? 'Log in' : 'Create account'}
+                    {mode === 'login' ? 'Sign in' : 'Create account'}
                   </Text>
                 </TouchableOpacity>
 
                 {/* Divider */}
                 <View style={s.divider}>
                   <View style={[s.dividerLine, isDark && { backgroundColor: '#27272A' }]} />
-                  <Text style={[s.dividerText, isDark && { color: colors.muted }]}>or</Text>
+                  <Text style={[s.dividerText, isDark && { color: colors.muted }]}>OR</Text>
                   <View style={[s.dividerLine, isDark && { backgroundColor: '#27272A' }]} />
                 </View>
 
-                {/* Google Button */}
+                {/* Google Sign-In */}
                 <TouchableOpacity
-                  activeOpacity={0.85}
+                  activeOpacity={0.8}
                   style={[s.googleBtn, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}
                   onPress={() => {
                     onLoginSuccess({
-                      email: 'owner@staymate.in',
+                      email: 'host@staymate.in',
                       businessName: 'Sunrise Homestay',
                     });
                   }}
                 >
-                  <Image
-                    source={GoogleLogo}
-                    style={s.googleImage}
-                    resizeMode="contain"
-                  />
+                  <GoogleLogo size={18} />
                   <Text style={[s.googleBtnText, isDark && { color: colors.ink }]}>Continue with Google</Text>
                 </TouchableOpacity>
               </View>
             </>
-          ) : (
+          ) : step === 'otp' ? (
             /* OTP Verification Screen */
             <View style={s.otpContainer}>
               <View style={s.otpRow}>
@@ -389,6 +401,81 @@ export function LoginScreen({
               >
                 <Text style={[s.backBtnText, isDark && { color: colors.muted }]}>
                   Back to {mode === 'login' ? 'Log in' : 'Sign up'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* Referral Code Input Step */
+            <View style={{ gap: 16 }}>
+              <View style={s.inputGroup}>
+                <Text style={[s.label, isDark && { color: colors.muted }]}>Referral Code (Optional)</Text>
+                <View style={[s.inputWrapper, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
+                  <View style={s.inputIcon}>
+                    <Icon name="tag" size={18} color={colors.primary} />
+                  </View>
+                  <TextInput
+                    value={referralCode}
+                    onChangeText={(t) => setReferralCode(t.toUpperCase())}
+                    placeholder="e.g. STAYMATE82"
+                    placeholderTextColor={colors.muted}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    style={[s.input, isDark && { color: colors.ink }, { fontWeight: '700', letterSpacing: 1 }]}
+                  />
+                  {referralCode.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setReferralCode('')}
+                      style={{ padding: 10 }}
+                    >
+                      <Icon name="x" size={15} color={colors.muted} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              {/* Reward Callout Banner */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  backgroundColor: isDark ? '#064E3B' : '#ECFDF5',
+                  borderWidth: 1,
+                  borderColor: isDark ? '#047857' : '#A7F3D0',
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
+                <Icon name="gift" size={16} color="#059669" />
+                <Text style={{ flex: 1, fontFamily: 'Inter', fontSize: 12.5, color: isDark ? '#A7F3D0' : '#065F46', fontWeight: '600' }}>
+                  Applying a code gives you ₹100 OFF and rewards your inviter ₹100 in StayMate Credits.
+                </Text>
+              </View>
+
+              {/* Action Buttons */}
+              <TouchableOpacity
+                activeOpacity={0.88}
+                onPress={handleFinishSignup}
+                disabled={isApplyingReferral}
+                style={[s.submitBtn, isDark && { backgroundColor: colors.primary }]}
+              >
+                <Text style={s.submitBtnText}>
+                  {referralCode.trim() ? 'Apply & Complete Signup' : 'Continue to Dashboard'}
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  onLoginSuccess({
+                    email: email.trim(),
+                    businessName: property.trim() || 'Sunrise Homestay',
+                  });
+                }}
+                style={s.backBtn}
+              >
+                <Text style={[s.backBtnText, isDark && { color: colors.muted }]}>
+                  {"I don't have a referral code"}
                 </Text>
               </TouchableOpacity>
             </View>

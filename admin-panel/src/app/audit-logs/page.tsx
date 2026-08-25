@@ -1,18 +1,33 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { ShieldAlert, Shield, Search } from "lucide-react";
+import { adminDataService } from "@/lib/adminDataService";
 
 export default function AuditLogsPage() {
   const [searchTerm, setSearchTerm] = useState("");
-
-  const logs = [
+  const [logs, setLogs] = useState([
     { id: "log_991", action: "PLAN_UPGRADE", admin: "admin@homestay.com", target: "HS-8821 (Coorg Hilltop)", timestamp: "2026-03-08 14:10:02" },
     { id: "log_992", action: "PII_UNMASK_VIEW", admin: "support_lead@homestay.com", target: "HS-4492 (Manali Pine)", timestamp: "2026-03-08 11:25:44" },
     { id: "log_993", action: "TRIAL_EXTENDED", admin: "admin@homestay.com", target: "HS-3109 (Wayanad Forest)", timestamp: "2026-03-07 09:14:18" },
     { id: "log_994", action: "STATUS_OVERRIDE", admin: "admin@homestay.com", target: "HS-7734 (Goa Beachside)", timestamp: "2026-03-06 16:30:11" },
-  ];
+  ]);
+
+  useEffect(() => {
+    const unsub = adminDataService.subscribeAuditLogs((adminLogs) => {
+      if (adminLogs.length > 0) {
+        setLogs(adminLogs.map(l => ({
+          id: l.id,
+          action: l.action,
+          admin: l.actor || 'admin@homestay.com',
+          target: l.target || l.details,
+          timestamp: l.timestamp,
+        })));
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const filteredLogs = logs.filter((l) => {
     return (

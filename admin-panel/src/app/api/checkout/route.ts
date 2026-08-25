@@ -13,9 +13,13 @@ import {
   getPriceInPaise,
   isValidPurchasablePlan,
   SERVER_PLANS,
+  calculateServerPlanAmounts,
   type SubscriptionPlan,
   type BillingCycle,
+  type BillingDurationMonths,
 } from '@/lib/plans';
+import { validateCouponServer } from '@/lib/coupons';
+import { getUserWalletBalance } from '@/lib/referrals';
 
 // ------------------------------------------------------------------
 // Environment & Configuration Resolution
@@ -44,9 +48,12 @@ export async function OPTIONS() {
 
 interface CheckoutRequestBody {
   planId: string;
-  billingCycle: string;
+  billingCycle?: string;
+  durationMonths?: number;
   userId: string;
   userEmail: string;
+  couponCode?: string;
+  appliedCreditsPaise?: number;
   amount?: number;
 }
 
@@ -80,11 +87,11 @@ export async function POST(request: NextRequest) {
 
     // 2. Parse and validate request body
     const body: CheckoutRequestBody = await request.json();
-    const { planId, billingCycle, userId, userEmail } = body;
+    const { planId, userId, userEmail, couponCode, appliedCreditsPaise } = body;
 
-    if (!planId || !billingCycle || !userId || !userEmail) {
+    if (!planId || !userId || !userEmail) {
       return NextResponse.json(
-        { error: 'Missing required fields: planId, billingCycle, userId, userEmail' },
+        { error: 'Missing required fields: planId, userId, userEmail' },
         { status: 400, headers: corsHeaders }
       );
     }
@@ -96,55 +103,57 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (billingCycle !== 'monthly' && billingCycle !== 'yearly') {
-      return NextResponse.json(
-        { error: 'billingCycle must be "monthly" or "yearly"' },
-        { status: 400, headers: corsHeaders }
-      );
-    }
-
     const validPlan = planId as SubscriptionPlan;
+    const durationMonths: BillingDurationMonths =
+      body.durationMonths === 3 || body.durationMonths === 6 || body.durationMonths === 12
+        ? body.durationMonths
+        : body.billingCycle === 'yearly'
+        ? 12
+        : 1;
 
-    // 3. Get the REAL price (prefer client specified amount if valid, then dynamic lookup from Firestore plan matrix, fallback to server defaults)
-    let amountPaise = body.amount && typeof body.amount === 'number' && body.amount > 0 ? body.amount : 0;
-    let planName: string = planId;
+    const billingCycle = durationMonths === 12 ? 'yearly' : 'monthly';
 
-    if (!amountPaise || amountPaise <= 0) {
-      try {
-        const planDocSnap = await getDoc(doc(db, 'system_config', 'plan_matrix'));
-        if (planDocSnap.exists() && Array.isArray(planDocSnap.data()?.plans)) {
-          const dynamicPlans: any[] = planDocSnap.data().plans;
-          const matched = dynamicPlans.find(
-            (p) => p.id === planId || p.name?.toUpperCase() === planId.toUpperCase()
-          );
-          if (matched) {
-            const priceRupees =
-              billingCycle === 'yearly' ? matched.yearlyPrice : matched.monthlyPrice;
-            if (priceRupees && priceRupees > 0) {
-              amountPaise = priceRupees * 100;
-              planName = matched.name || planId;
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('[Checkout] Dynamic price lookup notice:', err);
+    // 3. Authoritative server pricing calculation
+    const planAmounts = calculateServerPlanAmounts(validPlan, durationMonths);
+    let planName = SERVER_PLANS[validPlan]?.name || planId;
+    let baseTotalRupees = planAmounts.baseTotalRupees;
+    let durationDiscountRupees = planAmounts.durationDiscountRupees;
+    let subtotalRupees = planAmounts.subtotalRupees;
+
+    // 4. Validate Coupon server-side if provided
+    let validatedCouponDiscountRupees = 0;
+    let appliedCouponCode: string | null = null;
+
+    if (couponCode && couponCode.trim()) {
+      const couponValidation = await validateCouponServer(
+        couponCode,
+        validPlan,
+        durationMonths,
+        userId,
+        subtotalRupees
+      );
+      if (couponValidation.valid) {
+        validatedCouponDiscountRupees = couponValidation.discountAmount;
+        appliedCouponCode = couponValidation.code;
       }
     }
 
-    if (!amountPaise || amountPaise <= 0) {
-      if (validPlan in SERVER_PLANS) {
-        amountPaise = getPriceInPaise(validPlan, billingCycle as BillingCycle);
-        const planDef = SERVER_PLANS[validPlan];
-        if (planDef) {
-          planName = planDef.name;
-        }
-      } else {
-        return NextResponse.json(
-          { error: `Price configuration not found for plan ${planId}` },
-          { status: 400, headers: corsHeaders }
-        );
-      }
+    // 5. Validate StayMate Credits / Wallet server-side if provided
+    let validatedCreditsRupees = 0;
+    if (appliedCreditsPaise && appliedCreditsPaise > 0) {
+      const requestedCreditsRupees = Math.floor(appliedCreditsPaise / 100);
+      const userBalance = await getUserWalletBalance(userId);
+      const remainingAfterCoupon = Math.max(0, subtotalRupees - validatedCouponDiscountRupees);
+      validatedCreditsRupees = Math.min(requestedCreditsRupees, userBalance, remainingAfterCoupon);
     }
+
+    // 6. Compute final payable amount (minimum ₹1 / 100 paise for gateway)
+    const finalAmountRupees = Math.max(
+      1,
+      subtotalRupees - validatedCouponDiscountRupees - validatedCreditsRupees
+    );
+    const amountPaise = finalAmountRupees * 100;
+    const totalSavingsRupees = durationDiscountRupees + validatedCouponDiscountRupees + validatedCreditsRupees;
 
     // 4. Generate idempotency key to prevent duplicate orders
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
@@ -277,6 +286,16 @@ export async function POST(request: NextRequest) {
         userEmail,
         planId,
         billingCycle,
+        durationMonths,
+        baseMonthlyPrice: planAmounts.baseMonthlyPrice,
+        baseTotalRupees,
+        durationDiscountRupees,
+        subtotalRupees,
+        couponCode: appliedCouponCode || null,
+        couponDiscountRupees: validatedCouponDiscountRupees,
+        appliedCreditsRupees: validatedCreditsRupees,
+        finalAmountRupees,
+        totalSavingsRupees,
         amountPaise,
         currency: 'INR',
         status: 'PENDING',

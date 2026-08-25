@@ -1,20 +1,19 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Building2, BedDouble, ScanLine, Search, Plus, Filter, MapPin } from "lucide-react";
+import { adminDataService, AdminProperty } from "@/lib/adminDataService";
 
 export default function PropertiesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
+  const [properties, setProperties] = useState<AdminProperty[]>([]);
 
-  const properties = [
-    { id: "HS-8821", name: "Coorg Hilltop Homestay", location: "Coorg, Karnataka", rooms: 18, checkIns: 142, status: "Active", plan: "Professional" },
-    { id: "HS-4492", name: "Manali Pine Resort", location: "Manali, Himachal Pradesh", rooms: 12, checkIns: 86, status: "Active", plan: "Starter" },
-    { id: "HS-3109", name: "Wayanad Forest Lodge", location: "Wayanad, Kerala", rooms: 24, checkIns: 65, status: "Trialing", plan: "Professional" },
-    { id: "HS-9012", name: "Munnar Tea Valley Guesthouse", location: "Munnar, Kerala", rooms: 8, checkIns: 18, status: "Active", plan: "Free" },
-    { id: "HS-7734", name: "Goa Beachside Lodge", location: "Calangute, Goa", rooms: 15, checkIns: 195, status: "Active", plan: "Starter" },
-  ];
+  useEffect(() => {
+    const unsub = adminDataService.subscribeProperties(setProperties);
+    return () => unsub();
+  }, []);
 
   const filtered = properties.filter((p) => {
     const matchesSearch =

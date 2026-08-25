@@ -1,4 +1,6 @@
 import { openDatabase } from './index';
+import { getLimit } from '@/services/entitlementService';
+import { useSubscriptionStore } from '@/store/useSubscriptionStore';
 
 export interface GuestData {
   full_name: string;
@@ -24,6 +26,15 @@ export interface StayData {
 export async function createMultipleGuestsAndStay(guestsData: GuestData[], stayData: StayData): Promise<void> {
   if (!guestsData || guestsData.length === 0) {
     throw new Error('At least one guest is required for check-in.');
+  }
+
+  // Strict check-in limit enforcement
+  const checkInLimit = getLimit('monthlyCheckInLimit');
+  if (checkInLimit !== -1) {
+    const currentCheckIns = useSubscriptionStore.getState().usage.checkInCount;
+    if (currentCheckIns >= checkInLimit) {
+      throw new Error(`Monthly check-in limit reached (${checkInLimit} check-ins on current plan). Please upgrade your subscription.`);
+    }
   }
 
   try {
@@ -78,6 +89,9 @@ export async function createMultipleGuestsAndStay(guestsData: GuestData[], stayD
       
       // Commit transaction
       await db.execAsync('COMMIT;');
+
+      // Increment check-in counter on successful commit
+      useSubscriptionStore.getState().incrementCheckIn();
     } catch (error) {
       await db.execAsync('ROLLBACK;').catch(() => {});
       console.warn('SQLite transaction rollback:', error);

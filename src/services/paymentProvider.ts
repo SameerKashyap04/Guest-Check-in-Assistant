@@ -12,7 +12,11 @@
 //   3. Poll GET /api/checkout/status until PAID / FAILED / timeout
 //
 
-import { SubscriptionPlan, type BillingCycle } from '@/types/subscription';
+import {
+  SubscriptionPlan,
+  type BillingCycle,
+  type BillingDurationMonths,
+} from '@/types/subscription';
 import { DEVIFY_CONFIG } from '@/config/devify';
 import { Platform } from 'react-native';
 
@@ -27,6 +31,12 @@ export interface PaymentResult {
   error?: string;
 }
 
+export interface CheckoutOptions {
+  durationMonths?: BillingDurationMonths;
+  couponCode?: string;
+  appliedCreditsPaise?: number;
+}
+
 export interface PaymentProvider {
   /** Provider name for identification */
   readonly name: string;
@@ -39,7 +49,8 @@ export interface PaymentProvider {
     plan: SubscriptionPlan,
     billingCycle: BillingCycle,
     userEmail: string,
-    userId: string
+    userId: string,
+    options?: CheckoutOptions
   ): Promise<PaymentResult>;
 
   /**
@@ -112,7 +123,8 @@ export class DevifyPaymentProvider implements PaymentProvider {
     plan: SubscriptionPlan,
     billingCycle: BillingCycle,
     userEmail: string,
-    userId: string
+    userId: string,
+    options?: CheckoutOptions
   ): Promise<CheckoutResult> {
     let lastError: any = null;
 
@@ -128,8 +140,11 @@ export class DevifyPaymentProvider implements PaymentProvider {
           body: JSON.stringify({
             planId: plan,
             billingCycle,
+            durationMonths: options?.durationMonths || (billingCycle === 'yearly' ? 12 : 1),
             userId,
             userEmail,
+            couponCode: options?.couponCode,
+            appliedCreditsPaise: options?.appliedCreditsPaise,
           }),
           signal: controller.signal,
         });
@@ -289,10 +304,11 @@ export class DevifyPaymentProvider implements PaymentProvider {
     plan: SubscriptionPlan,
     billingCycle: BillingCycle,
     userEmail: string,
-    userId: string
+    userId: string,
+    options?: CheckoutOptions
   ): Promise<PaymentResult> {
     try {
-      const checkout = await this.createCheckout(plan, billingCycle, userEmail, userId);
+      const checkout = await this.createCheckout(plan, billingCycle, userEmail, userId, options);
 
       // Open checkout URL in browser (non-blocking for native)
       if (Platform.OS !== 'web') {

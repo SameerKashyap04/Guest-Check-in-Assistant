@@ -5,9 +5,10 @@
 // Status badges: guest-favorite-badge style, rounded.full pills
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { Search, X, Check } from "lucide-react";
+import { adminDataService, AdminSubscription } from "@/lib/adminDataService";
 
 const C = {
   primary:  "#ff385c",
@@ -24,11 +25,7 @@ const SHADOW = {
   boxShadow: "rgba(0,0,0,0.02) 0 0 0 1px, rgba(0,0,0,0.04) 0 2px 6px, rgba(0,0,0,0.10) 0 4px 8px",
 };
 
-interface SubRecord {
-  id: string; property: string; plan: string; cycle: string;
-  amount: string; status: "active" | "trialing" | "past_due" | "cancelled";
-  renewalDate: string; provider: string;
-}
+type SubRecord = AdminSubscription;
 
 const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
   active:   { bg: "#f0fdf4", text: "#15803d" },
@@ -42,13 +39,12 @@ export default function SubscriptionsPage() {
   const [search, setSearch]           = useState("");
   const [selected, setSelected]       = useState<SubRecord | null>(null);
   const [msg, setMsg]                 = useState("");
+  const [subs, setSubs]               = useState<SubRecord[]>([]);
 
-  const [subs, setSubs] = useState<SubRecord[]>([
-    { id: "sub_901", property: "Coorg Hilltop Homestay",      plan: "PROFESSIONAL", cycle: "yearly",  amount: "₹7,999", status: "active",   renewalDate: "2027-01-15",          provider: "Razorpay"     },
-    { id: "sub_902", property: "Manali Pine Resort",           plan: "STARTER",      cycle: "monthly", amount: "₹299",   status: "active",   renewalDate: "2026-04-01",          provider: "Razorpay"     },
-    { id: "sub_903", property: "Wayanad Forest Lodge",         plan: "PROFESSIONAL", cycle: "monthly", amount: "₹799",   status: "trialing", renewalDate: "2026-04-04 (Trial end)", provider: "Direct Trial" },
-    { id: "sub_904", property: "Goa Beachside Lodge",          plan: "STARTER",      cycle: "monthly", amount: "₹299",   status: "past_due", renewalDate: "2026-03-10 (Past due)", provider: "Razorpay"     },
-  ]);
+  useEffect(() => {
+    const unsub = adminDataService.subscribeSubscriptions(setSubs);
+    return () => unsub();
+  }, []);
 
   const filtered = subs.filter(s => {
     const matchSearch = [s.property, s.id].some(v => v.toLowerCase().includes(search.toLowerCase()));
@@ -56,9 +52,13 @@ export default function SubscriptionsPage() {
     return matchSearch && matchStatus;
   });
 
-  const changeStatus = (newStatus: SubRecord["status"]) => {
+  const changeStatus = async (newStatus: SubRecord["status"]) => {
     if (!selected) return;
-    setSubs(prev => prev.map(s => s.id === selected.id ? { ...s, status: newStatus } : s));
+    await adminDataService.updateSubscription(selected.id, { status: newStatus }, {
+      actor: 'Admin (Sameer)',
+      target: selected.property,
+      reason: `Changed subscription status to ${newStatus.toUpperCase()}`,
+    });
     setSelected({ ...selected, status: newStatus });
     setMsg(`${selected.id} marked as ${newStatus.toUpperCase()}`);
     setTimeout(() => setMsg(""), 2500);

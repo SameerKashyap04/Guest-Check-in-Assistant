@@ -7,9 +7,10 @@
 // Inputs: text-input style — hairline border, ink focus, 8px radius
 // ─────────────────────────────────────────────────────────────────────────────
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminLayout, useAdminContext } from "@/components/AdminLayout";
 import { Search, X, Check } from "lucide-react";
+import { adminDataService } from "@/lib/adminDataService";
 
 const C = {
   primary:  "#ff385c",
@@ -55,6 +56,27 @@ export default function UsersPage() {
     { id: "usr_104", name: "Priya Nair",     businessName: "Munnar Tea Valley Guesthouse", email: "priya@teavalleyguesthouse.in",    phone: "+91 97440 11223", propertyId: "HS-9012", plan: "FREE",         status: "active",   rooms: 8,  checkInsThisMonth: 18,  createdAt: "2026-02-18" },
     { id: "usr_105", name: "Sunil D'Souza",  businessName: "Goa Beachside Lodge",          email: "sunil@goabeachside.com",          phone: "+91 98221 33445", propertyId: "HS-7734", plan: "STARTER",      status: "active",   rooms: 15, checkInsThisMonth: 195, createdAt: "2026-01-10" },
   ]);
+
+  useEffect(() => {
+    const unsub = adminDataService.subscribeUsers((adminUsers) => {
+      if (adminUsers.length > 0) {
+        setUsers(adminUsers.map((u, i) => ({
+          id: u.id || `usr_${i}`,
+          name: u.name || 'Owner',
+          businessName: u.property || 'Homestay',
+          email: u.email || 'user@example.com',
+          phone: '+91 98450 12345',
+          propertyId: `HS-${1000 + i}`,
+          plan: (u.plan?.toUpperCase().includes('PRO') ? 'PROFESSIONAL' : u.plan?.toUpperCase().includes('STARTER') ? 'STARTER' : 'FREE') as any,
+          status: (u.status?.toLowerCase() === 'trialing' ? 'trialing' : 'active') as any,
+          rooms: 8,
+          checkInsThisMonth: 42,
+          createdAt: u.joinedDate || '2026-01-15',
+        })));
+      }
+    });
+    return () => unsub();
+  }, []);
 
   const maskPhone = (p: string) => maskPii ? p.replace(/(\+91 \d{5}) \d{5}/, "$1 *****") : p;
 

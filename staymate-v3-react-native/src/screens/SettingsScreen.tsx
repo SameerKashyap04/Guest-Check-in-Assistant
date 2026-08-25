@@ -64,21 +64,32 @@ const AUTOLOCK_OPTIONS = [
 ];
 
 export function SettingsScreen({
+  currentPlan = 'Professional',
   onAccount,
   onModal,
   onPricing,
+  onReferEarn,
   onLogout,
   onLock,
   onToast,
 }: {
+  currentPlan?: string;
   onAccount: () => void;
   onModal?: (title: string, text: string) => void;
   onPricing: () => void;
+  onReferEarn?: () => void;
   onLogout: () => void;
   onLock: () => void;
   onToast?: (msg: string) => void;
 }) {
   const { themeMode, isDark, colors, setThemeMode } = useTheme();
+
+  // Cloud Mode entitlement (Professional, Multi-Property, Enterprise only)
+  const normalizedPlan = (currentPlan || '').toLowerCase();
+  const isCloudAllowed =
+    normalizedPlan.includes('pro') ||
+    normalizedPlan.includes('multi') ||
+    normalizedPlan.includes('enterprise');
 
   // Live State
   const [profile, setProfile] = useState<PropertyProfile>({
@@ -158,8 +169,23 @@ export function SettingsScreen({
     notify('Property profile updated');
   };
 
-  // Toggle Cloud Mode
+  // Toggle Cloud Mode (restricted to Professional plan or higher)
   const handleToggleCloud = () => {
+    if (!isCloudAllowed) {
+      Alert.alert(
+        'Professional Feature',
+        'Cloud storage & live multi-device sync is available exclusively on the Professional plan and higher.\n\nUpgrade to unlock automated cloud backup and staff device sync.',
+        [
+          { text: 'Not Now', style: 'cancel' },
+          {
+            text: 'View Plans',
+            onPress: onPricing,
+          },
+        ]
+      );
+      return;
+    }
+
     const next = !cloudSync;
     setCloudSync(next);
     notify(
@@ -301,19 +327,57 @@ export function SettingsScreen({
       <View style={[s.planCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
         <View style={s.planTop}>
           <View>
-            <Text style={[s.planTitle, { color: colors.ink }]}>Professional plan</Text>
-            <Text style={[s.planSub, isDark && { color: colors.muted }]}>12 days left on trial</Text>
+            <Text style={[s.planTitle, { color: colors.ink }]}>{currentPlan} plan</Text>
+            <Text style={[s.planSub, isDark && { color: colors.muted }]}>
+              {currentPlan.toLowerCase().includes('free')
+                ? 'Basic local-only tier'
+                : currentPlan.toLowerCase().includes('starter')
+                ? 'Active subscription (Local-first storage)'
+                : 'Active subscription (Cloud sync & OCR enabled)'}
+            </Text>
           </View>
           <View style={s.proBadge}>
-            <Text style={s.proBadgeText}>PRO</Text>
+            <Text style={s.proBadgeText}>
+              {currentPlan.toUpperCase().includes('MULTI')
+                ? 'MULTI'
+                : currentPlan.toUpperCase().includes('START')
+                ? 'START'
+                : currentPlan.toUpperCase().includes('FREE')
+                ? 'FREE'
+                : 'PRO'}
+            </Text>
           </View>
         </View>
 
-        <UsageBar label="Check-ins" value="84 / 100" pct={84}/>
-        <UsageBar label="Reports & exports" value="6 / 10" pct={60} dark/>
+        <UsageBar
+          label="Check-ins"
+          value={
+            currentPlan.toUpperCase().includes('STARTER')
+              ? '84 / 100'
+              : currentPlan.toUpperCase().includes('FREE')
+              ? '12 / 15'
+              : '84 / Unlimited'
+          }
+          pct={currentPlan.toUpperCase().includes('STARTER') ? 84 : currentPlan.toUpperCase().includes('FREE') ? 80 : 25}
+        />
+        <UsageBar
+          label="Reports & exports"
+          value={
+            currentPlan.toUpperCase().includes('STARTER')
+              ? '6 / 10'
+              : currentPlan.toUpperCase().includes('FREE')
+              ? '2 / 3'
+              : '6 / Unlimited'
+          }
+          pct={currentPlan.toUpperCase().includes('STARTER') ? 60 : currentPlan.toUpperCase().includes('FREE') ? 66 : 15}
+          dark
+        />
 
         <View style={s.ocrRow}>
-          <Text style={[s.ocrText, isDark && { color: colors.ink }]}>AI Document OCR</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Icon name="scanText" size={16} color={colors.primary} />
+            <Text style={[s.ocrText, isDark && { color: colors.ink }]}>AI Document OCR</Text>
+          </View>
           <View style={s.activeBadge}>
             <Text style={s.activeBadgeText}>Active</Text>
           </View>
@@ -326,16 +390,31 @@ export function SettingsScreen({
         />
       </View>
 
+      {/* REFER & EARN */}
+      <Text style={[s.sectionHeader, { marginTop: 16, color: colors.muted }]}>REFER & EARN</Text>
+      <SettingRow
+        icon="gift"
+        label="Refer & Earn"
+        subtitle="Invite homestay owners · Give ₹100, Earn ₹100"
+        onPress={onReferEarn}
+      />
+
       {/* DATA STORAGE */}
       <Text style={[s.sectionHeader, { color: colors.muted }]}>DATA STORAGE</Text>
       <SettingRow
         icon="cloud"
         label="Cloud mode"
-        subtitle="Synced live across staff devices"
+        subtitle={
+          isCloudAllowed
+            ? cloudSync
+              ? 'Synced live across staff devices'
+              : 'Offline mode active (Local-first storage)'
+            : 'Requires Professional plan or higher'
+        }
         onPress={handleToggleCloud}
         right={
           <TouchableOpacity activeOpacity={0.9} onPress={handleToggleCloud}>
-            <Switch on={cloudSync}/>
+            <Switch on={isCloudAllowed && cloudSync}/>
           </TouchableOpacity>
         }
       />

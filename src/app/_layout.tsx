@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
-import { DefaultTheme, DarkTheme, ThemeProvider as ExpoNavThemeProvider } from '@react-navigation/native';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -98,7 +97,7 @@ function RootNavigationContent() {
   }, [isDark, setColorScheme]);
 
   return (
-    <ExpoNavThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+    <>
       <StatusBar style={isDark ? 'light' : 'dark'} />
       <Stack
         screenOptions={{
@@ -112,12 +111,13 @@ function RootNavigationContent() {
         <Stack.Screen name="setup" />
         <Stack.Screen name="checkin" />
         <Stack.Screen name="subscription" />
+        <Stack.Screen name="refer-earn" />
         <Stack.Screen name="search" />
         <Stack.Screen name="reports" />
         <Stack.Screen name="registrations" />
       </Stack>
       <CustomAlertProvider />
-    </ExpoNavThemeProvider>
+    </>
   );
 }
 

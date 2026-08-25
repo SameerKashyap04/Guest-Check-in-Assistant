@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { getRooms, addRoom, updateRoom, deleteRoom, Room } from '@/database/rooms';
 import { useSettingsStore } from './useSettingsStore';
 import { syncPropertyRoomsToCloud } from '@/services/firebaseSync';
+import { canUseFeature, getLimit } from '@/services/entitlementService';
 
 interface RoomsState {
   rooms: Room[];
@@ -27,8 +28,8 @@ export const useRoomsStore = create<RoomsState>((set, get) => ({
       const rooms = await getRooms(activePropertyId);
       set({ rooms, isLoading: false });
 
-      // Automatically sync rooms and live availability to Firestore for public self check-in
-      if (rooms && rooms.length > 0) {
+      // Automatically sync rooms and live availability to Firestore if cloudSync is entitled
+      if (rooms && rooms.length > 0 && canUseFeature('cloudSync')) {
         syncPropertyRoomsToCloud(activePropertyId, businessName, rooms, ownerId).catch(() => {});
       }
     } catch (error: any) {
@@ -39,6 +40,12 @@ export const useRoomsStore = create<RoomsState>((set, get) => ({
   createRoom: async (room_number, room_type, status = 'available', price = 0) => {
     set({ isLoading: true, error: null });
     try {
+      const currentRooms = get().rooms;
+      const maxRooms = getLimit('maxRoomsPerProperty');
+      if (maxRooms !== -1 && currentRooms.length >= maxRooms) {
+        throw new Error(`Room capacity limit reached (${maxRooms} rooms on current plan). Please upgrade your subscription.`);
+      }
+
       const activePropertyId = useSettingsStore.getState().propertyId;
       await addRoom(room_number, room_type, status, price, activePropertyId);
       await get().fetchRooms();

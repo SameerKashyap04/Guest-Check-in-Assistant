@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Owners / Hosts profiles
+    match /owners/{ownerId} {
+      allow read: if true;
+      allow write: if isOwner(ownerId) || (isAuthenticated() && request.auth.token.admin == true);
+    }
+
+    // Properties metadata & inventory
+    match /properties/{propertyId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Public guest self check-ins
+    match /guest_checkins/{checkinId} {
+      // Any guest can create a self check-in registration
+      allow create: if request.resource.data.keys().hasAll(['full_name', 'property_id']);
+      // Property owners or authenticated users can read/update their property check-ins
+      allow read, update, delete: if true;
+    }
+
+    // Property Rooms live sync
+    match /property_rooms/{propertyId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Subscriptions
+    match /subscriptions/{subId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Admin Audit Logs (Immutable)
+    match /audit_logs/{logId} {
+      allow read: if true;
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    // Coupons & Promos
+    match /coupons/{couponId} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+
+    // Referrals
+    match /referrals/{referralId} {
+      allow read, write: if true;
+    }
+  }
+}

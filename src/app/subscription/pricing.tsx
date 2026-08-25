@@ -1,73 +1,71 @@
 import React, { useState } from 'react';
 import {
-  View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, Alert, Linking,
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ChevronLeft, Check, X } from 'lucide-react-native';
+import { ChevronLeft, Check } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { PLANS, PLAN_ORDER, formatLimit } from '@/config/plans';
-import { SubscriptionPlan, type BillingCycle } from '@/types/subscription';
+import { PLANS } from '@/config/plans';
+import { SubscriptionPlan } from '@/types/subscription';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
-import { useAuthStore } from '@/store/useAuthStore';
-import { devifyProvider } from '@/services/paymentProvider';
 import { Button } from '@/components/Button';
 import { AIRBNB } from '@/theme/airbnb';
-
-// ─── Airbnb Pricing Screen for StayMate ───────────────────────────────────────
-// Direct port of renderPricing() from staymate-airbnb-redesign/app.html
-// ─────────────────────────────────────────────────────────────────────────────
+import { C } from '@/theme/tokens';
 
 export default function PricingScreen() {
   const router = useRouter();
-  const [billingAnnual, setBillingAnnual] = useState(false);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [checkoutPlanId, setCheckoutPlanId] = useState<string | null>(null);
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
   const { currentPlan } = useSubscriptionStore();
-  const { owner, ownerId } = useAuthStore();
 
-  const handleSelectPlan = async (planId: SubscriptionPlan) => {
+  const isAnnual = billingCycle === 'yearly';
+  const selectedDuration = isAnnual ? 12 : 1;
+
+  const handleSelectPlan = (planId: SubscriptionPlan) => {
     if (planId === SubscriptionPlan.FREE) {
-      Alert.alert('Free Plan', 'You are already on the Free plan.', [{ text: 'OK' }]);
+      Alert.alert('Free Plan', 'You are currently on the Free plan.', [{ text: 'OK' }]);
       return;
     }
 
     if (planId === currentPlan) {
-      Alert.alert('Current Plan', 'You are already subscribed to this plan.', [{ text: 'OK' }]);
+      Alert.alert(
+        'Current Plan',
+        'You are already subscribed to this plan. Would you like to view checkout or manage your subscription?',
+        [
+          { text: 'Cancel', style: 'cancel' },
+          {
+            text: 'Continue to Checkout',
+            onPress: () => {
+              router.push({
+                pathname: '/subscription/checkout' as any,
+                params: { planId, duration: String(selectedDuration) },
+              });
+            },
+          },
+        ]
+      );
       return;
     }
 
-    const userEmail = owner?.email || 'user@example.com';
-    const userId = ownerId || 'OWNER_DEFAULT_101';
-
-    setIsCheckingOut(true);
-    setCheckoutPlanId(planId);
-
-    try {
-      const checkout = await devifyProvider.createCheckout(
+    // Navigate to dedicated Checkout Screen
+    router.push({
+      pathname: '/subscription/checkout' as any,
+      params: {
         planId,
-        billingAnnual ? 'yearly' : 'monthly',
-        userEmail,
-        userId
-      );
-
-      if (checkout.checkoutUrl) {
-        await Linking.openURL(checkout.checkoutUrl);
-      }
-    } catch (e: any) {
-      Alert.alert('Payment Error', e?.message || 'Failed to start payment');
-    } finally {
-      setIsCheckingOut(false);
-      setCheckoutPlanId(null);
-    }
+        duration: String(selectedDuration),
+      },
+    });
   };
 
   const plans = [
     {
       id: SubscriptionPlan.FREE,
       name: 'Free',
-      priceM: 0,
-      priceY: 0,
+      basePriceM: 0,
       rooms: '2 rooms',
       checkins: '15 check-ins / mo',
       ocr: false,
@@ -77,8 +75,7 @@ export default function PricingScreen() {
     {
       id: SubscriptionPlan.STARTER,
       name: 'Starter',
-      priceM: 349,
-      priceY: 3499,
+      basePriceM: 349,
       rooms: '8 rooms',
       checkins: '100 check-ins / mo',
       ocr: true,
@@ -88,8 +85,7 @@ export default function PricingScreen() {
     {
       id: SubscriptionPlan.PROFESSIONAL,
       name: 'Professional',
-      priceM: 799,
-      priceY: 7999,
+      basePriceM: 799,
       rooms: '25 rooms',
       checkins: 'Unlimited check-ins',
       ocr: true,
@@ -99,8 +95,7 @@ export default function PricingScreen() {
     {
       id: SubscriptionPlan.MULTI_PROPERTY,
       name: 'Multi-Property',
-      priceM: 1799,
-      priceY: 17999,
+      basePriceM: 1799,
       rooms: 'Unlimited rooms · 5 properties',
       checkins: 'Unlimited check-ins',
       ocr: true,
@@ -110,8 +105,7 @@ export default function PricingScreen() {
     {
       id: SubscriptionPlan.ENTERPRISE,
       name: 'Enterprise',
-      priceM: null,
-      priceY: null,
+      basePriceM: null,
       rooms: 'Unlimited everything',
       checkins: 'Dedicated support',
       ocr: true,
@@ -126,7 +120,7 @@ export default function PricingScreen() {
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.iconBtn}
-          onPress={() => router.canGoBack() ? router.back() : router.replace('/(tabs)')}
+          onPress={() => (router.canGoBack() ? router.back() : router.replace('/(tabs)'))}
         >
           <ChevronLeft size={18} color={AIRBNB.colors.ink} />
         </TouchableOpacity>
@@ -137,23 +131,39 @@ export default function PricingScreen() {
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* Monthly vs Annual Toggle */}
+        {/* Monthly / Annual Toggle Track (reverted to classic 2-option toggle) */}
         <View style={styles.toggleTrack}>
           <TouchableOpacity
-            style={[styles.toggleOpt, !billingAnnual && styles.toggleOptActive]}
+            style={[
+              styles.toggleOpt,
+              !isAnnual && styles.toggleOptActive,
+            ]}
             activeOpacity={0.8}
-            onPress={() => setBillingAnnual(false)}
+            onPress={() => setBillingCycle('monthly')}
           >
-            <Text style={[styles.toggleText, !billingAnnual && styles.toggleTextActive]}>
+            <Text
+              style={[
+                styles.toggleOptText,
+                !isAnnual && styles.toggleOptTextActive,
+              ]}
+            >
               Monthly
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={[styles.toggleOpt, billingAnnual && styles.toggleOptActive]}
+            style={[
+              styles.toggleOpt,
+              isAnnual && styles.toggleOptActive,
+            ]}
             activeOpacity={0.8}
-            onPress={() => setBillingAnnual(true)}
+            onPress={() => setBillingCycle('yearly')}
           >
-            <Text style={[styles.toggleText, billingAnnual && styles.toggleTextActive]}>
+            <Text
+              style={[
+                styles.toggleOptText,
+                isAnnual && styles.toggleOptTextActive,
+              ]}
+            >
               Annual · save 15%
             </Text>
           </TouchableOpacity>
@@ -161,13 +171,24 @@ export default function PricingScreen() {
 
         {/* Plan Cards */}
         <View style={styles.plansWrap}>
-          {plans.map(p => {
+          {plans.map((p) => {
             const isFeatured = p.tag !== null;
-            const price = p.priceM === null
+            const isFree = p.basePriceM === 0;
+            const isCustom = p.basePriceM === null;
+
+            const effectiveMonthly = isCustom
+              ? 0
+              : isFree
+              ? 0
+              : isAnnual
+              ? Math.round(p.basePriceM * 0.85)
+              : p.basePriceM;
+
+            const priceDisplay = isCustom
               ? 'Custom'
-              : p.priceM === 0
+              : isFree
               ? 'Free'
-              : `₹${(billingAnnual ? Math.round((p.priceY || 0) / 12) : p.priceM).toLocaleString('en-IN')}`;
+              : `₹${effectiveMonthly.toLocaleString('en-IN')}`;
 
             return (
               <View
@@ -184,44 +205,74 @@ export default function PricingScreen() {
                 )}
 
                 <View style={styles.planHeaderRow}>
-                  <Text style={styles.planName}>{p.name}</Text>
-                  <Text style={styles.planPrice}>
-                    {price}
-                    {p.priceM ? <Text style={styles.perMo}>/mo</Text> : null}
-                  </Text>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text style={styles.planName}>{p.name}</Text>
+                    {isAnnual && !isFree && !isCustom && (
+                      <Text style={styles.savingsCallout}>
+                        Save 15% on Annual billing
+                      </Text>
+                    )}
+                  </View>
+
+                  <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+                    <Text style={styles.planPrice}>
+                      {priceDisplay}
+                      {!isFree && !isCustom && (
+                        <Text style={styles.perMo}>/mo</Text>
+                      )}
+                    </Text>
+                    {isAnnual && !isFree && !isCustom && (
+                      <Text style={styles.durationTotalNote}>
+                        ₹{Math.round(p.basePriceM * 12 * 0.85).toLocaleString('en-IN')} billed annually
+                      </Text>
+                    )}
+                  </View>
                 </View>
 
-                <Text style={styles.planRooms}>{p.rooms}</Text>
-                <Text style={styles.planCheckins}>{p.checkins}</Text>
-
-                <View style={styles.ocrRow}>
-                  <Check size={15} color={AIRBNB.colors.ink} />
-                  <Text style={styles.ocrText}>
-                    {p.ocr ? 'AI Document OCR included' : 'OCR not included'}
-                  </Text>
-                </View>
-
-                <View style={[styles.ocrRow, { marginTop: 4 }]}>
-                  <Check size={15} color={p.cloud ? AIRBNB.colors.ink : AIRBNB.colors.mutedSoft} />
-                  <Text style={[styles.ocrText, !p.cloud && { color: AIRBNB.colors.muted }]}>
-                    {p.cloud ? 'Live Cloud sync & backup' : 'Local storage only (No cloud)'}
-                  </Text>
+                <View style={{ marginTop: 10, gap: 5 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Check size={14} color={C.primary} />
+                    <Text style={styles.planRooms}>{p.rooms}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Check size={14} color={C.primary} />
+                    <Text style={styles.planCheckins}>{p.checkins}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Check size={14} color={C.primary} />
+                    <Text style={styles.planCheckins}>
+                      {p.id === SubscriptionPlan.STARTER
+                        ? '10 reports & exports / mo'
+                        : p.id === SubscriptionPlan.FREE
+                        ? '3 reports & exports / mo'
+                        : 'Unlimited reports & exports'}
+                    </Text>
+                  </View>
+                  {p.ocr ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Check size={14} color={C.primary} />
+                      <Text style={styles.ocrText}>AI Document OCR included</Text>
+                    </View>
+                  ) : null}
+                  {p.cloud ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Check size={14} color={C.primary} />
+                      <Text style={styles.ocrText}>Live Cloud sync & backup</Text>
+                    </View>
+                  ) : null}
                 </View>
 
                 <Button
                   label={
-                    checkoutPlanId === p.id && isCheckingOut
-                      ? 'Processing…'
-                      : p.priceM === null
+                    isCustom
                       ? 'Contact sales'
                       : currentPlan === p.id
                       ? 'Current plan'
                       : 'Choose plan'
                   }
                   variant={isFeatured ? 'primary' : 'secondary'}
-                  isLoading={checkoutPlanId === p.id && isCheckingOut}
                   disabled={currentPlan === p.id}
-                  style={{ marginTop: 14, height: 44 }}
+                  style={{ marginTop: 14, height: 46 }}
                   onPress={() => handleSelectPlan(p.id)}
                 />
               </View>
@@ -266,7 +317,7 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  // Toggle
+  // Toggle Track
   toggleTrack: {
     width: 240,
     alignSelf: 'center',
@@ -274,11 +325,12 @@ const styles = StyleSheet.create({
     borderRadius: AIRBNB.radius.full,
     padding: 3,
     flexDirection: 'row',
-    marginBottom: 22,
+    marginBottom: 20,
   },
   toggleOpt: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
     borderRadius: AIRBNB.radius.full,
     alignItems: 'center',
     justifyContent: 'center',
@@ -286,12 +338,13 @@ const styles = StyleSheet.create({
   toggleOptActive: {
     backgroundColor: AIRBNB.colors.ink,
   },
-  toggleText: {
-    fontSize: 13,
+  toggleOptText: {
+    fontFamily: 'Inter',
+    fontSize: 11.5,
     fontWeight: '600',
     color: AIRBNB.colors.muted,
   },
-  toggleTextActive: {
+  toggleOptTextActive: {
     color: '#ffffff',
   },
 
@@ -309,48 +362,70 @@ const styles = StyleSheet.create({
     ...AIRBNB.shadow.card,
   },
   planCardFeatured: {
-    borderColor: AIRBNB.colors.primary,
+    borderColor: C.primary,
   },
   featuredBadge: {
     position: 'absolute',
     top: -11,
     left: 20,
-    backgroundColor: AIRBNB.colors.primary,
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    backgroundColor: C.primary,
+    paddingHorizontal: 10,
+    paddingVertical: 3.5,
     borderRadius: AIRBNB.radius.full,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   featuredBadgeText: {
+    fontFamily: 'Inter',
     fontSize: 11,
     fontWeight: '700',
     color: '#ffffff',
   },
   planHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
   planName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: AIRBNB.colors.ink,
-  },
-  planPrice: {
-    fontSize: 20,
+    fontFamily: 'Inter',
+    fontSize: 17,
     fontWeight: '700',
     color: AIRBNB.colors.ink,
   },
+  savingsCallout: {
+    fontFamily: 'Inter',
+    fontSize: 11.5,
+    fontWeight: '700',
+    color: '#059669',
+    marginTop: 2,
+  },
+  planPrice: {
+    fontFamily: 'Inter',
+    fontSize: 20,
+    fontWeight: '800',
+    color: AIRBNB.colors.ink,
+  },
   perMo: {
+    fontFamily: 'Inter',
     fontSize: 12.5,
     fontWeight: '500',
     color: AIRBNB.colors.muted,
   },
+  durationTotalNote: {
+    fontFamily: 'Inter',
+    fontSize: 11,
+    fontWeight: '500',
+    color: AIRBNB.colors.muted,
+    marginTop: 2,
+  },
   planRooms: {
+    fontFamily: 'Inter',
     fontSize: 13.5,
     color: AIRBNB.colors.muted,
     marginTop: 8,
   },
   planCheckins: {
+    fontFamily: 'Inter',
     fontSize: 13.5,
     color: AIRBNB.colors.muted,
     marginTop: 2,
@@ -362,6 +437,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   ocrText: {
+    fontFamily: 'Inter',
     fontSize: 13.5,
     color: AIRBNB.colors.body,
   },

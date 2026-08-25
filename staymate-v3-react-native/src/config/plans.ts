@@ -8,6 +8,9 @@ import {
   PlanEntitlements,
   type FeatureFlag,
   type UsageLimitKey,
+  type BillingDurationMonths,
+  type BillingPeriodConfig,
+  type PlanPricingBreakdown,
 } from '../types/subscription';
 
 // ------------------------------------------------------------------
@@ -36,9 +39,9 @@ const FREE_ENTITLEMENTS: PlanEntitlements = {
 const STARTER_ENTITLEMENTS: PlanEntitlements = {
   limits: {
     maxProperties: 1,
-    maxRoomsPerProperty: 5,
-    monthlyCheckInLimit: UNLIMITED,
-    monthlyExportLimit: UNLIMITED,
+    maxRoomsPerProperty: 8,
+    monthlyCheckInLimit: 100,
+    monthlyExportLimit: 10,
     maxStaffAccounts: 0,
   },
   features: [
@@ -47,7 +50,7 @@ const STARTER_ENTITLEMENTS: PlanEntitlements = {
     'basicReports',
     'pdfExport',
     'csvExport',
-    'unlimitedExports',
+    'ocrScanning',
   ],
 };
 
@@ -308,4 +311,91 @@ export function getPlanDefinition(plan: SubscriptionPlan): PlanDefinition {
 /** Returns human-readable limit display: "5", "30", or "Unlimited" */
 export function formatLimit(value: number): string {
   return value === UNLIMITED ? 'Unlimited' : String(value);
+}
+
+// ------------------------------------------------------------------
+// Billing Periods & Duration Discounts
+// ------------------------------------------------------------------
+
+export const BILLING_PERIODS: BillingPeriodConfig[] = [
+  {
+    months: 1,
+    label: '1 Month',
+    discountPercent: 0,
+  },
+  {
+    months: 3,
+    label: '3 Months',
+    discountPercent: 5,
+    badge: 'Save 5%',
+  },
+  {
+    months: 6,
+    label: '6 Months',
+    discountPercent: 10,
+    badge: 'Save 10%',
+  },
+  {
+    months: 12,
+    label: '1 Year',
+    discountPercent: 15,
+    badge: 'Save 15%',
+  },
+];
+
+export function getBillingPeriodConfig(months: BillingDurationMonths): BillingPeriodConfig {
+  return (
+    BILLING_PERIODS.find((p) => p.months === months) || {
+      months,
+      label: `${months} Months`,
+      discountPercent: 0,
+    }
+  );
+}
+
+/**
+ * Dynamic price calculation engine:
+ * Computes base price, duration discount, subtotal, coupon discount, credits used, and final payable amount.
+ */
+export function calculatePlanPricing(
+  planId: SubscriptionPlan,
+  durationMonths: BillingDurationMonths,
+  couponDiscountAmount = 0,
+  appliedCreditsAmount = 0
+): PlanPricingBreakdown {
+  const plan = PLANS[planId] || PLANS[SubscriptionPlan.STARTER];
+  const period = getBillingPeriodConfig(durationMonths);
+
+  const baseMonthlyPrice = plan.pricing.monthlyPrice;
+  const baseTotal = baseMonthlyPrice * durationMonths;
+
+  // Duration discount
+  const durationDiscountPercent = period.discountPercent;
+  const durationDiscountAmount = Math.round(baseTotal * (durationDiscountPercent / 100));
+
+  // Subtotal after duration discount
+  const subtotal = Math.max(0, baseTotal - durationDiscountAmount);
+
+  // Authoritative bounds on discounts
+  const safeCouponDiscount = Math.min(subtotal, Math.max(0, couponDiscountAmount));
+  const remainingAfterCoupon = Math.max(0, subtotal - safeCouponDiscount);
+
+  const safeCreditsApplied = Math.min(remainingAfterCoupon, Math.max(0, appliedCreditsAmount));
+  const finalPayableAmount = Math.max(0, remainingAfterCoupon - safeCreditsApplied);
+
+  const totalSavings = durationDiscountAmount + safeCouponDiscount + safeCreditsApplied;
+
+  return {
+    planId,
+    durationMonths,
+    baseMonthlyPrice,
+    baseTotal,
+    durationDiscountPercent,
+    durationDiscountAmount,
+    subtotal,
+    couponDiscountAmount: safeCouponDiscount,
+    appliedCreditsAmount: safeCreditsApplied,
+    finalPayableAmount,
+    totalSavings,
+  };
 }

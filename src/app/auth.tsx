@@ -26,12 +26,13 @@ import {
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSettingsStore } from '@/store/useSettingsStore';
 import { PinScreen } from '@/features/auth/PinScreen';
+import { referralService } from '@/services/referralService';
 import { C } from '@/theme/tokens';
 import { useTheme } from '@/theme/ThemeContext';
 import { Icon } from '@/components/v3/Icon';
+import { GoogleLogo } from '@/components/GoogleLogo';
 import { assignLegacyUnassignedGuests } from '@/database';
 
-const GoogleLogo = require('../../assets/images/google-logo.png');
 const StayMateLogo = require('../../assets/images/staymate-logo.png');
 const StayMateLogoDark = require('../../assets/images/staymate-logo-dark.png');
 
@@ -40,7 +41,7 @@ export default function AuthScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const [step, setStep] = useState<'form' | 'otp'>('form');
+  const [step, setStep] = useState<'form' | 'otp' | 'referral'>('form');
   const [authStage, setAuthStage] = useState<'form' | 'set_pin'>('form');
   const [tab, setTab] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
@@ -48,6 +49,8 @@ export default function AuthScreen() {
   const [businessName, setBusinessName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
+  const [createdProfile, setCreatedProfile] = useState<any>(null);
 
   // OTP state (6 digits)
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
@@ -215,29 +218,37 @@ export default function AuthScreen() {
       }
 
       // Complete login / sign up
-      let profile;
       if (tab === 'signup') {
-        profile = await signUpOwner(
+        const profile = await signUpOwner(
           email.trim(),
           password.trim(),
           businessName.trim()
         );
         setBusinessSetup(businessName.trim());
+        setOwner(profile);
+        setOwnerId(profile.uid);
+        if (profile.propertyId) {
+          setPropertyId(profile.propertyId);
+          assignLegacyUnassignedGuests(profile.propertyId).catch(() => {});
+        }
+        setCreatedProfile(profile);
+        setIsLoading(false);
+        setStep('referral');
+        return;
       } else {
-        profile = await loginOwner(email.trim(), password.trim());
+        const profile = await loginOwner(email.trim(), password.trim());
         if (profile.businessName) {
           setBusinessSetup(profile.businessName);
         }
+        setOwner(profile);
+        setOwnerId(profile.uid);
+        if (profile.propertyId) {
+          setPropertyId(profile.propertyId);
+          assignLegacyUnassignedGuests(profile.propertyId).catch(() => {});
+        }
+        useAuthStore.setState({ isUnlocked: false });
+        setAuthStage('set_pin');
       }
-
-      setOwner(profile);
-      setOwnerId(profile.uid);
-      if (profile.propertyId) {
-        setPropertyId(profile.propertyId);
-        assignLegacyUnassignedGuests(profile.propertyId).catch(() => {});
-      }
-      useAuthStore.setState({ isUnlocked: false });
-      setAuthStage('set_pin');
     } catch (err: any) {
       console.error('Auth verification error', err);
       Alert.alert(
@@ -247,6 +258,23 @@ export default function AuthScreen() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleFinishSignupWithReferral = async () => {
+    if (referralCode.trim() && createdProfile?.uid) {
+      try {
+        setIsLoading(true);
+        await referralService.applyReferralCode(
+          referralCode.trim(),
+          createdProfile.uid,
+          email.trim()
+        );
+      } catch (_) {} finally {
+        setIsLoading(false);
+      }
+    }
+    useAuthStore.setState({ isUnlocked: false });
+    setAuthStage('set_pin');
   };
 
   const handleForgotPassword = async () => {
@@ -308,7 +336,7 @@ export default function AuthScreen() {
                     : 'Start managing your check-ins'}
                 </Text>
               </>
-            ) : (
+            ) : step === 'otp' ? (
               <>
                 <Text style={[s.title, isDark && { color: colors.ink }]}>Verify your email</Text>
                 <Text style={[s.subtitle, isDark && { color: colors.muted }]}>
@@ -324,6 +352,16 @@ export default function AuthScreen() {
                     <Text style={[s.editEmailText, isDark && { color: colors.primary }]}>Edit</Text>
                   </TouchableOpacity>
                 </View>
+              </>
+            ) : (
+              <>
+                <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: isDark ? '#2E1065' : '#EDE9FE', alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
+                  <Icon name="gift" size={24} color={colors.primary} />
+                </View>
+                <Text style={[s.title, isDark && { color: colors.ink }]}>Have a referral code?</Text>
+                <Text style={[s.subtitle, isDark && { color: colors.muted }, { textAlign: 'center', paddingHorizontal: 20 }]}>
+                  Got an invite from a fellow host? Enter their code to get ₹100 OFF your first subscription.
+                </Text>
               </>
             )}
           </View>
@@ -463,16 +501,12 @@ export default function AuthScreen() {
                   onPress={handleGoogleAuth}
                   disabled={isLoading}
                 >
-                  <Image
-                    source={GoogleLogo}
-                    style={s.googleImage}
-                    resizeMode="contain"
-                  />
+                  <GoogleLogo size={18} />
                   <Text style={[s.googleBtnText, isDark && { color: colors.ink }]}>Continue with Google</Text>
                 </TouchableOpacity>
               </View>
             </>
-          ) : (
+          ) : step === 'otp' ? (
             /* OTP Verification Step Screen */
             <View style={s.otpContainer}>
               {/* 6-digit OTP Inputs */}
@@ -542,6 +576,83 @@ export default function AuthScreen() {
               >
                 <Text style={[s.backBtnText, isDark && { color: colors.muted }]}>
                   Back to {tab === 'login' ? 'Log in' : 'Sign up'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            /* Referral Code Input Step */
+            <View style={{ gap: 16 }}>
+              <View style={s.inputGroup}>
+                <Text style={[s.label, isDark && { color: colors.muted }]}>Referral Code (Optional)</Text>
+                <View style={[s.inputWrapper, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
+                  <View style={s.inputIcon}>
+                    <Icon name="tag" size={18} color={colors.primary} />
+                  </View>
+                  <TextInput
+                    value={referralCode}
+                    onChangeText={(t) => setReferralCode(t.toUpperCase())}
+                    placeholder="e.g. STAYMATE82"
+                    placeholderTextColor={colors.muted}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    style={[s.input, isDark && { color: colors.ink }, { fontWeight: '700', letterSpacing: 1 }]}
+                  />
+                  {referralCode.length > 0 && (
+                    <TouchableOpacity
+                      onPress={() => setReferralCode('')}
+                      style={{ padding: 10 }}
+                    >
+                      <Icon name="x" size={15} color={colors.muted} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+
+              {/* Reward Callout Banner */}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 10,
+                  backgroundColor: isDark ? '#064E3B' : '#ECFDF5',
+                  borderWidth: 1,
+                  borderColor: isDark ? '#047857' : '#A7F3D0',
+                  borderRadius: 12,
+                  padding: 12,
+                }}
+              >
+                <Icon name="gift" size={16} color="#059669" />
+                <Text style={{ flex: 1, fontFamily: 'Inter', fontSize: 12.5, color: isDark ? '#A7F3D0' : '#065F46', fontWeight: '600' }}>
+                  Applying a code gives you ₹100 OFF and rewards your inviter ₹100 in StayMate Credits.
+                </Text>
+              </View>
+
+              {/* Action Buttons */}
+              <TouchableOpacity
+                activeOpacity={0.88}
+                onPress={handleFinishSignupWithReferral}
+                disabled={isLoading}
+                style={[s.submitBtn, isDark && { backgroundColor: colors.primary }, isLoading && { opacity: 0.8 }]}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={s.submitBtnText}>
+                    {referralCode.trim() ? 'Apply & Complete Signup' : 'Continue to Dashboard'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  useAuthStore.setState({ isUnlocked: false });
+                  setAuthStage('set_pin');
+                }}
+                style={s.backBtn}
+              >
+                <Text style={[s.backBtnText, isDark && { color: colors.muted }]}>
+                  {"I don't have a referral code"}
                 </Text>
               </TouchableOpacity>
             </View>

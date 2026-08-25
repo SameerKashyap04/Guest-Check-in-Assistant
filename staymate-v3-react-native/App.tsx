@@ -39,6 +39,10 @@ import {ScannerScreen} from './src/screens/ScannerScreen';
 import {SettingsScreen} from './src/screens/SettingsScreen';
 import {ManualEntryScreen} from './src/screens/ManualEntryScreen';
 import {AccountPortalScreen} from './src/screens/AccountPortalScreen';
+import {CheckoutScreen} from './src/screens/CheckoutScreen';
+import {ReferEarnScreen} from './src/screens/ReferEarnScreen';
+import {BillingDurationMonths, SubscriptionPlan} from './src/types/subscription';
+import {BILLING_PERIODS, calculatePlanPricing, getBillingPeriodConfig} from './src/config/plans';
 import {GUESTS, ROOMS, STATUS_META, RoomStatus, SELF_CHECKINS, SELF_CHECKIN_URL, PLANS, buildSelfCheckinLink} from './src/data';
 import * as Clipboard from 'expo-clipboard';
 import { File, Paths } from 'expo-file-system';
@@ -101,7 +105,11 @@ function MainApp() {
   } | null>(null);
   const [sheet, setSheet] = useState<'guest' | 'self' | 'room' | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
-  const [overlay, setOverlay] = useState<'search' | 'reports' | 'pricing' | null>(null);
+  const [overlay, setOverlay] = useState<'search' | 'reports' | 'pricing' | 'checkout' | 'refer-earn' | null>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<{ plan: string; duration: BillingDurationMonths }>({
+    plan: 'Professional',
+    duration: 6,
+  });
   const [manual, setManual] = useState(false);
   const [manualInitialData, setManualInitialData] = useState<any | null>(null);
   const [account, setAccount] = useState(false);
@@ -109,6 +117,7 @@ function MainApp() {
   const [selectedGuestObj, setSelectedGuestObj] = useState<any>(null);
   const [toast, setToast] = useState('');
   const [billing, setBilling] = useState(false);
+  const [activePlan, setActivePlan] = useState<string>('Professional');
 
   const handleLoginSuccess = async (userData?: any) => {
     setCurrentUser(userData || { email: 'host@staymate.in' });
@@ -205,8 +214,27 @@ function MainApp() {
     notify(`Room ${roomNum} marked as ${meta.label}`);
   };
 
-  // Add new room to property inventory
+  // Add new room to property inventory with strict plan capacity limits
   const handleAddRoom = (newRoom: any) => {
+    const maxRooms =
+      activePlan.toUpperCase().includes('FREE')
+        ? 2
+        : activePlan.toUpperCase().includes('STARTER')
+        ? 8
+        : activePlan.toUpperCase().includes('PRO')
+        ? 25
+        : 9999;
+
+    if (roomsList.length >= maxRooms) {
+      show(
+        'Room Capacity Limit Reached',
+        `Your ${activePlan} plan allows up to ${maxRooms} rooms. Please upgrade your subscription to add more rooms.`,
+        'Upgrade Plan',
+        () => setOverlay('pricing')
+      );
+      return;
+    }
+
     setRoomsList((prev) => [newRoom, ...prev]);
     notify(`✓ Room ${newRoom.num} (${newRoom.type}) added to property!`);
   };
@@ -252,6 +280,25 @@ function MainApp() {
 
   // Handle successful check-in from either Scanner or Manual Entry
   const handleCheckinComplete = (newGuest: any) => {
+    const maxCheckins =
+      activePlan.toUpperCase().includes('FREE')
+        ? 15
+        : activePlan.toUpperCase().includes('STARTER')
+        ? 100
+        : 999999;
+
+    const currentCheckins = guestsList.filter((g) => g.status === 'active' || g.status === 'checked_out').length;
+
+    if (currentCheckins >= maxCheckins) {
+      show(
+        'Monthly Check-in Limit Reached',
+        `Your ${activePlan} plan includes ${maxCheckins} check-ins per month. Please upgrade your subscription to continue checking in guests.`,
+        'Upgrade Plan',
+        () => setOverlay('pricing')
+      );
+      return;
+    }
+
     // Add guest to active reactive list
     setGuestsList((prev) => [newGuest, ...prev]);
 
@@ -338,8 +385,15 @@ function MainApp() {
           setManual(true);
         }}
         onVerify={() => {
-          // Fallback path (not normally reached — onScanned handles all scans)
-          // Use random data so it never shows the same person
+          if (activePlan.toUpperCase().includes('FREE')) {
+            show(
+              'AI Document OCR Upgrade Required',
+              'AI Document OCR scanning is included in Starter and Professional plans. Please upgrade to scan physical IDs automatically.',
+              'View Plans',
+              () => setOverlay('pricing')
+            );
+            return;
+          }
           const names = [
             { name: 'Lakshmi Iyer', docType: 'Aadhaar', idNum: '5510 7723 8894', dob: '1987-12-03', gender: 'Female', phone: '+91 98842 11205', address: '9 Adyar Main Road, Chennai, Tamil Nadu 600020', photoUri: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&auto=format&fit=crop&q=80' },
             { name: 'Arjun Kapoor', docType: 'Driving Licence', idNum: 'DL05 20210018431', dob: '1997-02-11', gender: 'Male', phone: '+91 99101 78890', address: '301 Green Park Extension, New Delhi 110016', photoUri: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&auto=format&fit=crop&q=80' },
@@ -352,6 +406,15 @@ function MainApp() {
           setManual(true);
         }}
         onScanned={(guestData) => {
+          if (activePlan.toUpperCase().includes('FREE')) {
+            show(
+              'AI Document OCR Upgrade Required',
+              'AI Document OCR scanning is included in Starter and Professional plans. Please upgrade to scan physical IDs automatically.',
+              'View Plans',
+              () => setOverlay('pricing')
+            );
+            return;
+          }
           setManualInitialData(guestData);
           setManual(true);
         }}
@@ -359,9 +422,11 @@ function MainApp() {
       />
     ) : (
       <SettingsScreen
+        currentPlan={activePlan}
         onAccount={() => setAccount(true)}
         onModal={show}
         onPricing={() => setOverlay('pricing')}
+        onReferEarn={() => setOverlay('refer-earn')}
         onToast={notify}
         onLogout={() =>
           show(
@@ -463,8 +528,10 @@ function MainApp() {
           <ReportsOverlay
             guests={guestsList}
             rooms={roomsList}
+            currentPlan={activePlan}
             onClose={() => setOverlay(null)}
             onToast={notify}
+            onUpgrade={() => setOverlay('pricing')}
           />
         </Modal>
       )}
@@ -477,9 +544,41 @@ function MainApp() {
             setBilling={setBilling}
             onClose={() => setOverlay(null)}
             onSelectPlan={(plan) => {
+              setActivePlan(plan);
               setOverlay(null);
               notify(`Switched to ${plan} plan`);
             }}
+            onOpenCheckout={(plan, duration) => {
+              setCheckoutPlan({ plan, duration });
+              setOverlay('checkout');
+            }}
+          />
+        </Modal>
+      )}
+
+      {/* Dedicated Checkout overlay */}
+      {overlay === 'checkout' && (
+        <Modal visible animationType="slide">
+          <CheckoutScreen
+            initialPlan={checkoutPlan.plan}
+            initialDuration={checkoutPlan.duration}
+            onClose={() => setOverlay(null)}
+            onPaymentSuccess={(plan) => {
+              setActivePlan(plan);
+              setOverlay(null);
+              notify(`✓ Upgraded to ${plan} plan!`);
+            }}
+            onToast={notify}
+          />
+        </Modal>
+      )}
+
+      {/* Refer & Earn overlay */}
+      {overlay === 'refer-earn' && (
+        <Modal visible animationType="slide">
+          <ReferEarnScreen
+            onClose={() => setOverlay(null)}
+            onToast={notify}
           />
         </Modal>
       )}
@@ -2531,19 +2630,24 @@ function SearchOverlay({
 function ReportsOverlay({
   guests = [],
   rooms = [],
+  currentPlan = 'Professional',
   onClose,
   onToast,
+  onUpgrade,
 }: {
   guests?: any[];
   rooms?: any[];
+  currentPlan?: string;
   onClose: () => void;
   onToast: (msg: string) => void;
+  onUpgrade?: () => void;
 }) {
   const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<'month' | 'range' | 'room'>('month');
   const [selectedRoomNum, setSelectedRoomNum] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [exportCount, setExportCount] = useState(6);
 
   // Compute active filtered guest list
   const activeGuestList = guests.length > 0 ? guests : GUESTS;
@@ -2562,10 +2666,24 @@ function ReportsOverlay({
 
   // Generate & Share PDF
   const handleExportPdf = async (customLabel?: string, customGuests?: any[]) => {
+    const maxExports =
+      currentPlan?.toUpperCase().includes('FREE')
+        ? 3
+        : currentPlan?.toUpperCase().includes('STARTER')
+        ? 10
+        : 999999;
+
+    if (exportCount >= maxExports) {
+      if (onUpgrade) onUpgrade();
+      onToast(`Monthly export limit reached (${maxExports}/mo on ${currentPlan}). Please upgrade.`);
+      return;
+    }
+
     const listToExport = customGuests || filteredGuests;
     const period = customLabel || getPeriodLabel();
     try {
       setIsExporting(true);
+      setExportCount(prev => prev + 1);
       onToast(`Generating Police Form C PDF (${period})...`);
 
       const rowsHtml = listToExport.map((g, idx) => {
@@ -2752,10 +2870,24 @@ function ReportsOverlay({
 
   // Generate & Share CSV
   const handleExportCsv = async (customLabel?: string, customGuests?: any[]) => {
+    const maxExports =
+      currentPlan?.toUpperCase().includes('FREE')
+        ? 3
+        : currentPlan?.toUpperCase().includes('STARTER')
+        ? 10
+        : 999999;
+
+    if (exportCount >= maxExports) {
+      if (onUpgrade) onUpgrade();
+      onToast(`Monthly export limit reached (${maxExports}/mo on ${currentPlan}). Please upgrade.`);
+      return;
+    }
+
     const listToExport = customGuests || filteredGuests;
     const period = customLabel || getPeriodLabel();
     try {
       setIsExporting(true);
+      setExportCount(prev => prev + 1);
       onToast(`Exporting Police Form C CSV (${period})...`);
 
       const headers = ['S_No', 'Guest_Name', 'Phone', 'Email', 'Gender', 'Nationality', 'Document_Type', 'Document_ID_Full', 'Address', 'Room', 'Room_Type', 'Check_in_Date_Time', 'Check_out_Date_Time', 'Verified_Status'];
@@ -2950,31 +3082,28 @@ function ReportsOverlay({
 }
 
 function PricingOverlay({
-  billing,
+  billing = false,
   setBilling,
   onClose,
   onSelectPlan,
+  onOpenCheckout,
 }: {
-  billing: boolean;
-  setBilling: (b: boolean) => void;
+  billing?: boolean;
+  setBilling?: (b: boolean) => void;
   onClose: () => void;
   onSelectPlan: (plan: string) => void;
+  onOpenCheckout: (plan: string, duration: BillingDurationMonths) => void;
 }) {
   const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [activeCheckout, setActiveCheckout] = useState<DevifyCheckoutResult | null>(null);
-  const [selectedPlanDetails, setSelectedPlanDetails] = useState<{
-    name: string;
-    amount: number;
-    cycle: string;
-  } | null>(null);
-  const [verifying, setVerifying] = useState(false);
+  const [isAnnual, setIsAnnual] = useState(billing);
 
-  const [payMethod, setPayMethod] = useState<'upi' | 'card' | 'netbanking'>('upi');
-  const [copiedUpi, setCopiedUpi] = useState(false);
+  const handleToggleBilling = (annual: boolean) => {
+    setIsAnnual(annual);
+    if (setBilling) setBilling(annual);
+  };
 
-  const handleChoosePlan = async (p: any) => {
+  const handleChoosePlan = (p: any) => {
     // 1. Enterprise Plan -> Contact Sales
     if (p.priceM === null) {
       Alert.alert(
@@ -3001,215 +3130,88 @@ function PricingOverlay({
       return;
     }
 
-    // 3. Paid Plans -> Devify Pay In-App Checkout
-    const amount = billing ? (p.priceY ?? p.priceM * 10) : p.priceM;
-    const cycle = billing ? 'yearly' : 'monthly';
-
-    setIsCheckingOut(true);
-    setSelectedPlanDetails({ name: p.name, amount, cycle });
-
-    try {
-      const checkout = await devifyPay.createCheckout({
-        planName: p.name,
-        billingCycle: cycle as any,
-        amount,
-        userEmail: 'owner@sunrisehomestay.com',
-        userId: 'HS-4821',
-      });
-
-      setActiveCheckout(checkout);
-    } catch (e: any) {
-      Alert.alert('Checkout Error', e?.message || 'Failed to initialize Devify Pay checkout');
-    } finally {
-      setIsCheckingOut(false);
-    }
-  };
-
-  // Real-time polling & AppState listener to automatically verify payment when user returns from GPay/PhonePe
-  useEffect(() => {
-    if (!activeCheckout || !selectedPlanDetails) return;
-
-    let isMounted = true;
-
-    const pollStatus = async () => {
-      try {
-        const orderStatus = await devifyPay.checkOrderStatus(activeCheckout.orderId);
-        if (isMounted && orderStatus.status === 'PAID') {
-          handleVerifyPayment(true);
-        }
-      } catch (_) {}
-    };
-
-    const interval = setInterval(pollStatus, 2000);
-
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active') {
-        pollStatus();
-      }
-    });
-
-    return () => {
-      isMounted = false;
-      clearInterval(interval);
-      subscription.remove();
-    };
-  }, [activeCheckout, selectedPlanDetails]);
-
-  const handleVerifyPayment = async (silent = false) => {
-    if (!selectedPlanDetails || !activeCheckout) return;
-    setVerifying(true);
-
-    try {
-      // 1. Query Devify Pay backend status
-      let orderStatus = await devifyPay.checkOrderStatus(activeCheckout.orderId);
-
-      // If pending, retry up to 2 times with a 1.2s delay for instant bank settlements
-      if (orderStatus.status !== 'PAID') {
-        await new Promise((resolve) => setTimeout(resolve, 1200));
-        orderStatus = await devifyPay.checkOrderStatus(activeCheckout.orderId);
-      }
-
-      if (orderStatus.status === 'PAID') {
-        const planName = selectedPlanDetails.name;
-        setActiveCheckout(null);
-        setSelectedPlanDetails(null);
-        setVerifying(false);
-        onSelectPlan(planName);
-        onClose();
-        Alert.alert(
-          'Subscription Activated',
-          `Your payment of ₹${selectedPlanDetails.amount.toLocaleString('en-IN')} via Devify Pay has been verified successfully.\n\nWelcome to StayMate ${planName} plan!`,
-          [{ text: 'Continue', style: 'default' }]
-        );
-        return;
-      }
-
-      // Still pending after checks
-      setVerifying(false);
-      if (!silent) {
-        Alert.alert(
-          'Payment Processing',
-          'Your transaction is being confirmed by the bank. If you completed payment in UPI/GPay, your subscription will activate automatically in a few moments.\n\nYou can also tap "I have completed payment" to check again.',
-          [
-            { text: 'Wait & Auto-Verify', style: 'cancel' },
-            {
-              text: 'Check Again',
-              onPress: () => handleVerifyPayment(false),
-            },
-          ]
-        );
-      }
-    } catch (err: any) {
-      setVerifying(false);
-      if (!silent) {
-        Alert.alert('Verification Notice', err?.message || 'Connecting to payment gateway... Please tap "I have completed payment" again in a few moments.');
-      }
-    }
-  };
-
-  const handleOpenUpiApp = async (app: string) => {
-    if (!selectedPlanDetails || !activeCheckout) return;
-    const cleanAmount = String(selectedPlanDetails.amount);
-    const upiUri = `upi://pay?pa=${upiId}&pn=StayMate&am=${cleanAmount}&cu=INR&tn=${activeCheckout.orderId}`;
-    
-    try {
-      if (app === 'gpay' || app === 'googlepay') {
-        const targetUrl = Platform.OS === 'ios'
-          ? `tez://upi/pay?pa=${upiId}&pn=StayMate&am=${cleanAmount}&cu=INR&tn=${activeCheckout.orderId}`
-          : upiUri;
-        const canOpen = await Linking.canOpenURL(targetUrl).catch(() => false);
-        if (canOpen) {
-          await Linking.openURL(targetUrl);
-          return;
-        }
-      } else if (app === 'phonepe') {
-        const targetUrl = Platform.OS === 'ios'
-          ? `phonepe://pay?pa=${upiId}&pn=StayMate&am=${cleanAmount}&cu=INR&tn=${activeCheckout.orderId}`
-          : upiUri;
-        const canOpen = await Linking.canOpenURL(targetUrl).catch(() => false);
-        if (canOpen) {
-          await Linking.openURL(targetUrl);
-          return;
-        }
-      } else if (app === 'paytm') {
-        const targetUrl = Platform.OS === 'ios'
-          ? `paytmmp://pay?pa=${upiId}&pn=StayMate&am=${cleanAmount}&cu=INR&tn=${activeCheckout.orderId}`
-          : upiUri;
-        const canOpen = await Linking.canOpenURL(targetUrl).catch(() => false);
-        if (canOpen) {
-          await Linking.openURL(targetUrl);
-          return;
-        }
-      }
-      await Linking.openURL(upiUri);
-    } catch (_) {
-      // Fallback: open checkout url
-      if (activeCheckout.checkoutUrl) {
-        await Linking.openURL(activeCheckout.checkoutUrl).catch(() => {});
-      }
-    }
-  };
-
-  const upiId = 'staymate@devifypay';
-  const upiString = selectedPlanDetails && activeCheckout
-    ? `upi://pay?pa=${upiId}&pn=StayMate%20Homestay&am=${selectedPlanDetails.amount}&cu=INR&tn=${activeCheckout.orderId}`
-    : '';
-  const upiQrUrl = upiString
-    ? `https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(upiString)}&color=1E1B4B&bgcolor=FFFFFF&margin=1`
-    : '';
-
-  const handleCopyUpi = async () => {
-    await Clipboard.setStringAsync(upiId);
-    setCopiedUpi(true);
-    setTimeout(() => setCopiedUpi(false), 2500);
+    // 3. Paid Plans -> Open Dedicated Checkout Screen (passing 12 for Annual, 1 for Monthly)
+    onOpenCheckout(p.name, isAnnual ? 12 : 1);
   };
 
   return (
-    <View style={[ms.overlayContainer, isDark && {backgroundColor: colors.canvas}, {paddingTop: insets.top}]}>
-      <View style={[ms.overlayHeader, isDark && {borderBottomColor: colors.cardBorder}]}>
-        <IconButton name="x" size={17} onPress={onClose}/>
-        <Text style={[ms.titleMd, isDark && {color: colors.ink}]}>Plans & pricing</Text>
+    <View style={[ms.overlayContainer, isDark && { backgroundColor: colors.canvas }, { paddingTop: insets.top }]}>
+      <View style={[ms.overlayHeader, isDark && { borderBottomColor: colors.cardBorder }]}>
+        <IconButton name="x" size={17} onPress={onClose} />
+        <Text style={[ms.titleMd, isDark && { color: colors.ink }]}>Plans &amp; pricing</Text>
       </View>
-      <ScrollView contentContainerStyle={{padding: 20, paddingBottom: Math.max(30, insets.bottom + 16)}} showsVerticalScrollIndicator={false}>
-        {/* Toggle track */}
-        <View style={[ms.toggleTrack, isDark && {backgroundColor: '#27272A'}]}>
+      <ScrollView
+        contentContainerStyle={{ padding: 20, paddingBottom: Math.max(30, insets.bottom + 16) }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Toggle track (reverted to classic Monthly / Annual 2-option switch) */}
+        <View style={[ms.toggleTrack, isDark && { backgroundColor: '#27272A' }]}>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setBilling(false)}
-            style={[ms.toggleOpt, !billing && (isDark ? {backgroundColor: colors.primary} : ms.toggleOptActive)]}
+            onPress={() => handleToggleBilling(false)}
+            style={[
+              ms.toggleOpt,
+              !isAnnual && (isDark ? { backgroundColor: colors.primary } : ms.toggleOptActive),
+            ]}
           >
-            <Text style={[ms.toggleOptText, isDark && {color: colors.muted}, !billing && ms.toggleOptTextActive]}>
+            <Text
+              style={[
+                ms.toggleOptText,
+                isDark && { color: colors.muted },
+                !isAnnual && ms.toggleOptTextActive,
+              ]}
+            >
               Monthly
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => setBilling(true)}
-            style={[ms.toggleOpt, billing && (isDark ? {backgroundColor: colors.primary} : ms.toggleOptActive)]}
+            onPress={() => handleToggleBilling(true)}
+            style={[
+              ms.toggleOpt,
+              isAnnual && (isDark ? { backgroundColor: colors.primary } : ms.toggleOptActive),
+            ]}
           >
-            <Text style={[ms.toggleOptText, isDark && {color: colors.muted}, billing && ms.toggleOptTextActive]}>
+            <Text
+              style={[
+                ms.toggleOptText,
+                isDark && { color: colors.muted },
+                isAnnual && ms.toggleOptTextActive,
+              ]}
+            >
               Annual · save 15%
             </Text>
           </TouchableOpacity>
         </View>
 
         {/* Plans */}
-        <View style={{gap: 14}}>
+        <View style={{ gap: 14 }}>
           {PLANS.map((p) => {
             const isFeatured = Boolean(p.tag);
-            const priceDisplay =
-              p.priceM === null
-                ? 'Custom'
-                : p.priceM === 0
-                ? 'Free'
-                : `₹${(billing ? Math.round((p.priceY ?? 0) / 12) : p.priceM).toLocaleString('en-IN')}`;
+            const isFree = p.priceM === 0;
+            const isCustom = p.priceM === null;
+
+            const effectiveMonthly = isCustom
+              ? 0
+              : isFree
+              ? 0
+              : isAnnual
+              ? Math.round((p.priceM ?? 0) * 0.85)
+              : p.priceM ?? 0;
+
+            const priceDisplay = isCustom
+              ? 'Custom'
+              : isFree
+              ? 'Free'
+              : `₹${effectiveMonthly.toLocaleString('en-IN')}`;
+
             return (
               <View
                 key={p.name}
                 style={[
                   ms.planCard,
-                  isDark && {backgroundColor: '#18181B', borderColor: '#27272A'},
-                  isFeatured && (isDark ? {borderColor: colors.primary} : ms.planCardFeatured),
+                  isDark && { backgroundColor: '#18181B', borderColor: '#27272A' },
+                  isFeatured && (isDark ? { borderColor: colors.primary } : ms.planCardFeatured),
                 ]}
               >
                 {p.tag ? (
@@ -3217,46 +3219,72 @@ function PricingOverlay({
                     <Text style={ms.featuredBadgeText}>{p.tag}</Text>
                   </View>
                 ) : null}
-                <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start'}}>
-                  <Text style={[ms.titleMd, isDark && {color: colors.ink}]}>{p.name}</Text>
-                  <Text style={[ms.planPriceText, isDark && {color: colors.ink}]}>
-                    {priceDisplay}
-                    {p.priceM !== null && p.priceM > 0 ? (
-                      <Text style={[ms.perMoText, isDark && {color: colors.muted}]}>/mo</Text>
-                    ) : null}
-                  </Text>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                  <View style={{ flex: 1, paddingRight: 8 }}>
+                    <Text style={[ms.titleMd, isDark && { color: colors.ink }]}>{p.name}</Text>
+                    {isAnnual && !isFree && !isCustom && (
+                      <Text style={{ fontFamily: 'Inter', fontSize: 11.5, fontWeight: '700', color: '#059669', marginTop: 2 }}>
+                        Save 15% on Annual billing
+                      </Text>
+                    )}
+                  </View>
+                  <View style={{ alignItems: 'flex-end', flexShrink: 0 }}>
+                    <Text style={[ms.planPriceText, isDark && { color: colors.ink }]}>
+                      {priceDisplay}
+                      {!isFree && !isCustom ? (
+                        <Text style={[ms.perMoText, isDark && { color: colors.muted }]}>/mo</Text>
+                      ) : null}
+                    </Text>
+                    {isAnnual && !isFree && !isCustom && (
+                      <Text style={{ fontFamily: 'Inter', fontSize: 11, color: colors.muted, marginTop: 1 }}>
+                        ₹{Math.round((p.priceM ?? 0) * 12 * 0.85).toLocaleString('en-IN')} billed annually
+                      </Text>
+                    )}
+                  </View>
                 </View>
-                <Text style={[ms.bodySm, isDark && {color: colors.muted}, {marginTop: 8}]}>{p.rooms}</Text>
-                <Text style={[ms.bodySm, isDark && {color: colors.muted}]}>{p.checkins}</Text>
-                <View style={{flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8}}>
-                  <Icon name="check" size={15} color={colors.ink}/>
-                  <Text style={[ms.bodySm, {color: colors.ink}]}>
-                    {p.ocr ? 'AI Document OCR included' : 'OCR not included'}
-                  </Text>
+                <View style={{ marginTop: 10, gap: 5 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Icon name="check" size={14} color={colors.primary} />
+                    <Text style={[ms.bodySm, isDark && { color: colors.ink }]}>{p.rooms}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Icon name="check" size={14} color={colors.primary} />
+                    <Text style={[ms.bodySm, isDark && { color: colors.ink }]}>{p.checkins}</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Icon name="check" size={14} color={colors.primary} />
+                    <Text style={[ms.bodySm, isDark && { color: colors.ink }]}>
+                      {p.name === 'Starter'
+                        ? '10 reports & exports / mo'
+                        : p.name === 'Free'
+                        ? '3 reports & exports / mo'
+                        : 'Unlimited reports & exports'}
+                    </Text>
+                  </View>
+                  {p.ocr ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Icon name="check" size={14} color={colors.primary} />
+                      <Text style={[ms.bodySm, isDark && { color: colors.ink }]}>AI Document OCR included</Text>
+                    </View>
+                  ) : null}
+                  {p.cloud ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                      <Icon name="check" size={14} color={colors.primary} />
+                      <Text style={[ms.bodySm, isDark && { color: colors.ink }]}>Live Cloud sync & backup</Text>
+                    </View>
+                  ) : null}
                 </View>
-                <View style={{marginTop: 14}}>
+                <View style={{ marginTop: 14 }}>
                   {isFeatured ? (
                     <PrimaryButton
-                      label={
-                        isCheckingOut && selectedPlanDetails?.name === p.name
-                          ? 'Starting checkout...'
-                          : p.priceM === null
-                          ? 'Contact sales'
-                          : 'Choose plan'
-                      }
-                      style={{height: 44}}
+                      label={p.priceM === null ? 'Contact sales' : 'Choose plan'}
+                      style={{ height: 44 }}
                       onPress={() => handleChoosePlan(p)}
                     />
                   ) : (
                     <SecondaryButton
-                      label={
-                        isCheckingOut && selectedPlanDetails?.name === p.name
-                          ? 'Starting checkout...'
-                          : p.priceM === null
-                          ? 'Contact sales'
-                          : 'Choose plan'
-                      }
-                      style={{height: 44}}
+                      label={p.priceM === null ? 'Contact sales' : 'Choose plan'}
+                      style={{ height: 44 }}
                       onPress={() => handleChoosePlan(p)}
                     />
                   )}
@@ -3266,264 +3294,6 @@ function PricingOverlay({
           })}
         </View>
       </ScrollView>
-
-      {/* Devify Pay In-App WebView Checkout Modal */}
-      {activeCheckout && selectedPlanDetails && (
-        <Modal visible animationType="slide" onRequestClose={() => setActiveCheckout(null)}>
-          <View style={[{flex: 1, backgroundColor: '#FAF8FD'}, isDark && {backgroundColor: colors.canvas}]}>
-            {/* Header Bar with Safe Notch Offset */}
-            <View style={{
-              paddingTop: Math.max(20, insets.top + 8),
-              paddingBottom: 14,
-              paddingHorizontal: 16,
-              backgroundColor: isDark ? '#18181B' : '#fff',
-              borderBottomWidth: 1,
-              borderBottomColor: isDark ? '#27272A' : '#ECEAF0',
-              flexDirection: 'row',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}>
-              <View style={{flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1}}>
-                <View style={{width: 36, height: 36, borderRadius: 18, backgroundColor: isDark ? '#2E1065' : '#EDE9FE', alignItems: 'center', justifyContent: 'center'}}>
-                  <Icon name="shield" size={19} color={colors.primary}/>
-                </View>
-                <View style={{flex: 1}}>
-                  <Text style={{fontFamily: 'Inter', fontSize: 15.5, fontWeight: '700', color: colors.ink}}>
-                    Devify Pay Checkout
-                  </Text>
-                  <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '500', color: colors.muted, marginTop: 1}}>
-                    {selectedPlanDetails.name} Plan · ₹{selectedPlanDetails.amount.toLocaleString('en-IN')} ({selectedPlanDetails.cycle === 'yearly' ? 'Annual' : 'Monthly'})
-                  </Text>
-                </View>
-              </View>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => setActiveCheckout(null)}
-                style={{width: 36, height: 36, borderRadius: 18, backgroundColor: isDark ? '#27272A' : '#F1F5F9', alignItems: 'center', justifyContent: 'center', marginLeft: 10}}
-              >
-                <Icon name="x" size={17} color={colors.ink}/>
-              </TouchableOpacity>
-            </View>
-
-            {/* In-App Browser / WebView Area */}
-            <View style={{flex: 1, backgroundColor: '#FFFFFF'}}>
-              {Platform.OS === 'web' ? (
-                // @ts-ignore
-                <iframe
-                  src={activeCheckout.checkoutUrl}
-                  style={{width: '100%', height: '100%', border: 'none'}}
-                  title="Devify Pay Checkout"
-                />
-              ) : (
-                <WebView
-                  source={{ uri: activeCheckout.checkoutUrl }}
-                  style={{flex: 1, backgroundColor: '#FFFFFF'}}
-                  startInLoadingState
-                  javaScriptEnabled
-                  domStorageEnabled
-                  scalesPageToFit
-                  originWhitelist={['*']}
-                  injectedJavaScript={`
-                    (function() {
-                      function checkSuccessUrl(url) {
-                        if (!url) return false;
-                        if (
-                          url.startsWith('staymate://') ||
-                          url.includes('status=PAID') ||
-                          url.includes('status=SUCCESS') ||
-                          url.includes('payment_status=success') ||
-                          url.includes('/success') ||
-                          url.includes('/confirmation') ||
-                          url.includes('order_status=paid') ||
-                          url.includes('status=completed')
-                        ) {
-                          if (window.ReactNativeWebView) {
-                            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'PAYMENT_SUCCESS', url: url }));
-                          }
-                          return true;
-                        }
-                        return false;
-                      }
-
-                      // Check current URL immediately
-                      checkSuccessUrl(window.location.href);
-
-                      // Monitor DOM for Devify Pay confirmation / success screen
-                      var successNotified = false;
-                      setInterval(function() {
-                        if (successNotified) return;
-                        var bodyText = (document.body && document.body.innerText) || '';
-                        if (
-                          bodyText.includes('Payment Successful') ||
-                          bodyText.includes('Payment Successful!') ||
-                          bodyText.includes('Payment Completed') ||
-                          bodyText.includes('Order Paid') ||
-                          bodyText.includes('Transaction Successful') ||
-                          bodyText.includes('Thank you for your payment')
-                        ) {
-                          successNotified = true;
-                          if (window.ReactNativeWebView) {
-                            window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'PAYMENT_SUCCESS' }));
-                          }
-                        }
-                      }, 800);
-
-                      var checkInterval = setInterval(function() {
-                        if (typeof window.openUpiApp === 'function' && !window.openUpiApp._hooked) {
-                          var origOpenUpi = window.openUpiApp;
-                          window.openUpiApp = function(app, evt) {
-                            if (evt) evt.preventDefault();
-                            if (window.upiUri && window.ReactNativeWebView) {
-                              window.ReactNativeWebView.postMessage(JSON.stringify({
-                                type: 'OPEN_UPI_APP',
-                                app: app,
-                                upiUri: window.upiUri
-                              }));
-                            }
-                            return origOpenUpi.apply(this, arguments);
-                          };
-                          window.openUpiApp._hooked = true;
-                        }
-                      }, 250);
-                    })();
-                    true;
-                  `}
-                  onMessage={(event) => {
-                    try {
-                      const data = JSON.parse(event.nativeEvent.data);
-                      if (data.type === 'PAYMENT_SUCCESS') {
-                        handleVerifyPayment(true);
-                      } else if (data.type === 'OPEN_URL' && data.url) {
-                        let target = data.url;
-                        if (target.startsWith('intent://')) {
-                          target = target.replace(/^intent:\/\//, 'upi://').split('#Intent')[0];
-                        }
-                        if (target.startsWith('gpay://') && Platform.OS === 'ios') {
-                          target = target.replace('gpay://upi/pay', 'tez://upi/pay').replace('gpay://', 'tez://');
-                        }
-                        Linking.openURL(target).catch(() => Linking.openURL(data.url).catch(() => {}));
-                      } else if (data.type === 'OPEN_UPI_APP' && data.upiUri) {
-                        const { app, upiUri } = data;
-                        let targetScheme = upiUri;
-                        if (targetScheme.startsWith('intent://')) {
-                          targetScheme = targetScheme.replace(/^intent:\/\//, 'upi://').split('#Intent')[0];
-                        }
-                        if (app === 'gpay' || app === 'googlepay') {
-                          targetScheme = Platform.OS === 'ios'
-                            ? targetScheme.replace('upi://pay', 'tez://upi/pay').replace('gpay://upi/pay', 'tez://upi/pay')
-                            : targetScheme;
-                        } else if (app === 'phonepe') {
-                          targetScheme = Platform.OS === 'ios' ? targetScheme.replace('upi://pay', 'phonepe://pay') : targetScheme;
-                        } else if (app === 'paytm') {
-                          targetScheme = Platform.OS === 'ios' ? targetScheme.replace('upi://pay', 'paytmmp://pay') : targetScheme;
-                        } else if (app === 'cred') {
-                          targetScheme = Platform.OS === 'ios' ? targetScheme.replace('upi://pay', 'cred://pay') : targetScheme;
-                        } else if (app === 'supermoney') {
-                          targetScheme = Platform.OS === 'ios' ? targetScheme.replace('upi://pay', 'super://pay') : targetScheme;
-                        }
-                        Linking.openURL(targetScheme).catch(() => {
-                          Linking.openURL(upiUri).catch(() => {});
-                        });
-                      }
-                    } catch (e) {
-                      console.warn('[WebView] onMessage error:', e);
-                    }
-                  }}
-                  onShouldStartLoadWithRequest={(request) => {
-                    const url = request.url;
-                    // Detect deep link redirects back to StayMate
-                    if (
-                      url.startsWith('staymate://') ||
-                      url.includes('status=PAID') ||
-                      url.includes('status=SUCCESS') ||
-                      url.includes('/success') ||
-                      url.includes('/confirmation') ||
-                      url.includes('order_status=paid')
-                    ) {
-                      handleVerifyPayment(true);
-                      return false;
-                    }
-                    // Detect UPI and external payment schemes
-                    if (
-                      url.startsWith('upi://') ||
-                      url.startsWith('gpay://') ||
-                      url.startsWith('tez://') ||
-                      url.startsWith('phonepe://') ||
-                      url.startsWith('paytmmp://') ||
-                      url.startsWith('super://') ||
-                      url.startsWith('supermoney://') ||
-                      url.startsWith('cred://') ||
-                      url.startsWith('bhim://') ||
-                      url.startsWith('intent://') ||
-                      (!url.startsWith('http://') && !url.startsWith('https://') && !url.startsWith('about:'))
-                    ) {
-                      let targetUrl = url;
-                      if (url.startsWith('intent://')) {
-                        targetUrl = url.replace(/^intent:\/\//, 'upi://').split('#Intent')[0];
-                      }
-                      if (targetUrl.startsWith('gpay://') && Platform.OS === 'ios') {
-                        targetUrl = targetUrl.replace('gpay://upi/pay', 'tez://upi/pay').replace('gpay://', 'tez://');
-                      }
-                      Linking.openURL(targetUrl).catch(() => {
-                        Linking.openURL(url).catch((err) => {
-                          console.warn('[WebView] Could not open external app scheme:', err);
-                        });
-                      });
-                      return false;
-                    }
-                    return true;
-                  }}
-                  onNavigationStateChange={(navState) => {
-                    const url = navState.url || '';
-                    if (
-                      url.includes('status=PAID') ||
-                      url.includes('status=SUCCESS') ||
-                      url.includes('payment_status=success') ||
-                      url.includes('/success') ||
-                      url.includes('/confirmation') ||
-                      url.includes('order_status=paid') ||
-                      url.includes('status=completed') ||
-                      url.startsWith('staymate://')
-                    ) {
-                      handleVerifyPayment(true);
-                    }
-                  }}
-                />
-              )}
-            </View>
-
-            {/* Bottom Action Toolbar */}
-            <View style={{padding: 16, paddingBottom: Math.max(20, insets.bottom + 12), backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#ECEAF0', gap: 10}}>
-              <PrimaryButton
-                label={verifying ? "Verifying payment..." : "I have completed payment"}
-                icon="check"
-                onPress={() => handleVerifyPayment(false)}
-                style={{height: 48}}
-              />
-              <View style={{flexDirection: 'row', gap: 10}}>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => Linking.openURL(activeCheckout.checkoutUrl)}
-                  style={{flex: 1, height: 42, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center'}}
-                >
-                  <Text style={{fontFamily: 'Inter', fontSize: 13, fontWeight: '600', color: '#334155'}}>
-                    Open in Browser ↗
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => setActiveCheckout(null)}
-                  style={{flex: 1, height: 42, borderRadius: 12, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', justifyContent: 'center'}}
-                >
-                  <Text style={{fontFamily: 'Inter', fontSize: 13, fontWeight: '600', color: '#64748B'}}>
-                    Cancel
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
     </View>
   );
 }
@@ -4086,26 +3856,28 @@ const ms = StyleSheet.create({
     justifyContent: 'center',
   },
   toggleTrack: {
-    width: 220,
+    width: 240,
     alignSelf: 'center',
     backgroundColor: '#f2f2f2',
     borderRadius: R.full,
-    padding: 4,
+    padding: 3,
     flexDirection: 'row',
-    marginBottom: 22,
+    marginBottom: 20,
   },
   toggleOpt: {
     flex: 1,
-    paddingVertical: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
     borderRadius: R.full,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   toggleOptActive: {
     backgroundColor: '#222222',
   },
   toggleOptText: {
     fontFamily: 'Inter',
-    fontSize: 13,
+    fontSize: 11.5,
     fontWeight: '600',
     color: '#6a6a6a',
   },

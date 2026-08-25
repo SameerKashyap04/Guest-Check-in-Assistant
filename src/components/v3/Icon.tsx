@@ -302,6 +302,66 @@ const P: Record<string, React.ReactNode> = {
       <Path d="m16 18 6-6-6-6M8 6l-6 6 6 6" />
     </>
   ),
+  gift: (
+    <>
+      <Rect x="3" y="8" width="18" height="4" rx="1" />
+      <Path d="M12 8v13" />
+      <Path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7" />
+      <Path d="M7.5 8a2.5 2.5 0 0 1 0-5A4.8 8 0 0 1 12 8a4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5" />
+    </>
+  ),
+  tag: (
+    <>
+      <Path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z" />
+      <Circle cx="7" cy="7" r="1.5" />
+    </>
+  ),
+  scanText: (
+    <>
+      <Path d="M3 7V5a2 2 0 0 1 2-2h2" />
+      <Path d="M17 3h2a2 2 0 0 1 2 2v2" />
+      <Path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+      <Path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+      <Path d="M7 8h10" />
+      <Path d="M7 12h10" />
+      <Path d="M7 16h6" />
+    </>
+  ),
+  scan: (
+    <>
+      <Path d="M3 7V5a2 2 0 0 1 2-2h2" />
+      <Path d="M17 3h2a2 2 0 0 1 2 2v2" />
+      <Path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+      <Path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+      <Path d="M7 12h10" />
+    </>
+  ),
+  sparkles: (
+    <>
+      <Path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3L12 3Z" />
+      <Path d="M19 3v4M21 5h-4M5 19v2M6 20H4" />
+    </>
+  ),
+  wallet: (
+    <>
+      <Path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+      <Path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+      <Path d="M18 12a2 2 0 0 0 0 4h4v-4h-4z" />
+    </>
+  ),
+  percent: (
+    <>
+      <Circle cx="6.5" cy="6.5" r="2.5" />
+      <Circle cx="17.5" cy="17.5" r="2.5" />
+      <Path d="m19 5-14 14" />
+    </>
+  ),
+  award: (
+    <>
+      <Circle cx="12" cy="8" r="6" />
+      <Path d="m15.4 12.8 2.6 8.2-6-3-6 3 2.6-8.2" />
+    </>
+  ),
 };
 
 export type IconName = keyof typeof P;

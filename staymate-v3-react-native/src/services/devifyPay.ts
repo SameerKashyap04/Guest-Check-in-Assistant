@@ -1,15 +1,15 @@
-// ============================================================
-// StayMate — Devify Pay Client Integration Service
-// ============================================================
-
 import { Linking, Platform } from 'react-native';
+import type { BillingDurationMonths } from '../types/subscription';
 
 export interface DevifyCheckoutParams {
   planName: string;
   billingCycle: 'monthly' | 'yearly';
+  durationMonths?: BillingDurationMonths;
   amount: number; // in INR
   userEmail?: string;
   userId?: string;
+  couponCode?: string;
+  appliedCreditsPaise?: number;
 }
 
 export interface DevifyCheckoutResult {
@@ -39,7 +39,16 @@ class DevifyPayService {
    * Initiates a real Devify Pay checkout session
    */
   async createCheckout(params: DevifyCheckoutParams): Promise<DevifyCheckoutResult> {
-    const { planName, billingCycle, amount, userEmail = 'owner@sunrisehomestay.com', userId = 'HS-4821' } = params;
+    const {
+      planName,
+      billingCycle,
+      durationMonths = billingCycle === 'yearly' ? 12 : 1,
+      amount,
+      userEmail = 'owner@sunrisehomestay.com',
+      userId = 'HS-4821',
+      couponCode,
+      appliedCreditsPaise,
+    } = params;
 
     const normalizePlanId = (name: string): string => {
       const upper = (name || '').toUpperCase().trim();
@@ -51,7 +60,7 @@ class DevifyPayService {
 
     const planIdKey = normalizePlanId(planName);
     const amountPaise = (amount || 0) * 100;
-    const idempotencyKey = `devify_${userId}_${planIdKey}_${billingCycle}_${Date.now()}`;
+    const idempotencyKey = `devify_${userId}_${planIdKey}_${billingCycle}_${durationMonths}_${Date.now()}`;
 
     // 1. Try Admin Backend Checkout API
     try {
@@ -65,9 +74,12 @@ class DevifyPayService {
           planId: planIdKey,
           planName,
           billingCycle,
+          durationMonths,
           amount: amountPaise,
           userId,
           userEmail,
+          couponCode,
+          appliedCreditsPaise,
         }),
         signal: controller.signal,
       });
