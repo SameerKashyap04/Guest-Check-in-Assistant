@@ -36,6 +36,9 @@ export interface AdminUser {
   lastActive: string;
   joinedDate: string;
   authProvider?: string;
+  propertyId?: string;
+  rooms?: number;
+  checkIns?: number;
 }
 
 export interface AdminSubscription {
@@ -165,6 +168,9 @@ export const adminDataService = {
           lastActive: 'Online',
           joinedDate: data.createdAt ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent',
           authProvider: data.authProvider || 'Email',
+          propertyId: data.propertyId || d.id.substring(0, 7).toUpperCase(),
+          rooms: Number(data.rooms) || Number(data.roomCount) || 8,
+          checkIns: Number(data.checkIns) || 0,
         };
       });
     } catch (e) {
@@ -194,6 +200,9 @@ export const adminDataService = {
                 lastActive: 'Online',
                 joinedDate: data.createdAt ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent',
                 authProvider: data.authProvider || 'Email',
+                propertyId: data.propertyId || d.id.substring(0, 7).toUpperCase(),
+                rooms: Number(data.rooms) || Number(data.roomCount) || 8,
+                checkIns: Number(data.checkIns) || 0,
               };
             }));
           }

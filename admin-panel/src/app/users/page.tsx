@@ -56,14 +56,14 @@ export default function UsersPage() {
       setUsers(adminUsers.map((u, i) => ({
         id: u.id || `usr_${i}`,
         name: u.name || 'Owner',
-        businessName: u.property || 'Homestay',
-        email: u.email || 'user@example.com',
-        phone: u.role || 'Host',
-        propertyId: u.id || `HS-${1000 + i}`,
+        businessName: u.property || u.name || 'Homestay',
+        email: u.email || '',
+        phone: u.email || u.role || 'Host',
+        propertyId: u.propertyId || u.id.substring(0, 7).toUpperCase(),
         plan: (u.plan?.toUpperCase().includes('PRO') ? 'PROFESSIONAL' : u.plan?.toUpperCase().includes('STARTER') ? 'STARTER' : 'FREE') as any,
         status: (u.status?.toLowerCase() === 'trialing' ? 'trialing' : 'active') as any,
-        rooms: 8,
-        checkInsThisMonth: 0,
+        rooms: u.rooms || 8,
+        checkInsThisMonth: u.checkIns || 0,
         createdAt: u.joinedDate || 'Recent',
       })));
     });
@@ -88,57 +88,61 @@ export default function UsersPage() {
   };
 
   const inputStyle = {
-    fontSize: 14, color: C.ink,
-    padding: "10px 14px",
+    backgroundColor: C.canvas,
     border: `1px solid ${C.hairline}`,
     borderRadius: 8,
+    padding: "8px 12px",
+    fontSize: 14,
+    color: C.ink,
     outline: "none",
-    backgroundColor: C.soft,
+    width: "100%",
   };
 
   return (
     <AdminLayout>
-      {/* Page header */}
+      {/* Toast */}
+      {msg && (
+        <div className="fixed top-5 right-5 z-50 flex items-center gap-2 bg-slate-900 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-lg animate-in fade-in slide-in-from-top-2">
+          <Check className="w-3.5 h-3.5 text-emerald-400" />
+          <span>{msg}</span>
+        </div>
+      )}
+
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 style={{ fontSize: 28, fontWeight: 700, color: C.ink }}>Property Owners</h1>
-          <p style={{ fontSize: 14, fontWeight: 400, color: C.muted, marginTop: 4 }}>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Property Owners</h1>
+          <p className="text-sm text-slate-500 font-medium mt-1">
             Manage homestay accounts, check-in quotas, and subscription tiers.
           </p>
         </div>
       </div>
 
-      {/* Search + Filter bar */}
-      <div className="flex flex-col md:flex-row gap-3 mb-6">
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col md:flex-row gap-4 mb-6">
         <div className="relative flex-1">
-          <Search className="w-4 h-4 absolute left-3.5 top-3" style={{ color: C.muted }} />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
           <input
             type="text"
-            placeholder="Search by name, business, or property ID…"
+            placeholder="Search by name, business, or property ID..."
             value={search}
-            onChange={e => setSearch(e.target.value)}
-            style={{ ...inputStyle, width: "100%", paddingLeft: 36, boxSizing: "border-box" }}
-            onFocus={e => { e.currentTarget.style.borderColor = C.ink; e.currentTarget.style.backgroundColor = C.canvas; }}
-            onBlur={e  => { e.currentTarget.style.borderColor = C.hairline; e.currentTarget.style.backgroundColor = C.soft; }}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-600 shadow-sm"
           />
         </div>
-        {/* Plan filter — category-strip */}
-        <div className="flex items-center gap-1 p-1" style={{ backgroundColor: C.canvas, border: `1px solid ${C.hairline}`, borderRadius: 9999 }}>
-          {["ALL", "FREE", "STARTER", "PROFESSIONAL"].map(p => (
+
+        <div className="flex items-center gap-1.5 bg-white border border-slate-200 p-1 rounded-xl shadow-sm">
+          {["ALL", "FREE", "STARTER", "PROFESSIONAL"].map((s) => (
             <button
-              key={p}
-              onClick={() => setPlanFilter(p)}
-              style={{
-                fontSize: 11, fontWeight: 600,
-                paddingInline: 12, paddingBlock: 6,
-                borderRadius: 9999,
-                backgroundColor: planFilter === p ? C.ink : "transparent",
-                color: planFilter === p ? "#ffffff" : C.muted,
-                border: "none", cursor: "pointer", whiteSpace: "nowrap",
-                transition: "all 0.1s",
-              }}
+              key={s}
+              onClick={() => setPlanFilter(s)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                planFilter === s
+                  ? "bg-violet-600 text-white shadow-sm"
+                  : "text-slate-600 hover:text-slate-900 hover:bg-slate-50"
+              }`}
             >
-              {p}
+              {s}
             </button>
           ))}
         </div>
@@ -185,7 +189,7 @@ export default function UsersPage() {
                     <td style={{ padding: "16px 20px" }}>
                       <p style={{ fontWeight: 600, color: C.ink }}>{user.businessName}</p>
                       <p style={{ fontSize: 12, color: C.muted, marginTop: 2 }}>
-                        {user.name} · {maskPhone(user.phone)}
+                        {user.name} {user.email ? `· ${user.email}` : ""}
                       </p>
                     </td>
                     <td style={{ padding: "16px 20px", fontFamily: "monospace", fontSize: 12, fontWeight: 700, color: C.muted }}>
