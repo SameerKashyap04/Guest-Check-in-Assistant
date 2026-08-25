@@ -13,7 +13,7 @@ import {
   Clock,
   Sparkles
 } from "lucide-react";
-import { adminDataService, AdminAuditLog } from "@/lib/adminDataService";
+import { adminDataService, AdminAuditLog, parseAuditTimestamp } from "@/lib/adminDataService";
 
 export default function AuditLogsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -32,14 +32,14 @@ export default function AuditLogsPage() {
   const formatRelativeTime = (timeStr: string) => {
     if (!timeStr) return "Just now";
     try {
-      const date = new Date(timeStr);
-      if (isNaN(date.getTime())) return timeStr;
-      const diffSec = Math.floor((Date.now() - date.getTime()) / 1000);
+      const ts = parseAuditTimestamp(timeStr);
+      if (!ts) return timeStr;
+      const diffSec = Math.floor((Date.now() - ts) / 1000);
       if (diffSec < 60) return "Just now";
       if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
       if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
       if (diffSec < 604800) return `${Math.floor(diffSec / 86400)}d ago`;
-      return date.toLocaleDateString("en-GB", {
+      return new Date(ts).toLocaleDateString("en-GB", {
         day: "2-digit",
         month: "short",
         hour: "2-digit",
@@ -62,8 +62,8 @@ export default function AuditLogsPage() {
       return matchSearch && matchCat;
     })
     .sort((a, b) => {
-      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      const timeA = parseAuditTimestamp(a.timestamp || (a as any).createdAt);
+      const timeB = parseAuditTimestamp(b.timestamp || (b as any).createdAt);
       return timeB - timeA; // Newest 1st, oldest last
     });
 

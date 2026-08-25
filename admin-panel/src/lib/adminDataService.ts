@@ -251,6 +251,33 @@ export interface AdminAuthConfig {
   updatedAt?: string;
 }
 
+export function parseAuditTimestamp(timeVal: any): number {
+  if (!timeVal) return 0;
+  if (typeof timeVal === 'number') return timeVal;
+  if (timeVal?.toDate) return timeVal.toDate().getTime();
+
+  const str = String(timeVal).trim();
+  const parsed = new Date(str).getTime();
+  if (!isNaN(parsed)) return parsed;
+
+  const match = str.match(/(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (match) {
+    let [_, hours, mins, ampm] = match;
+    let h = parseInt(hours, 10);
+    const m = parseInt(mins, 10);
+    if (ampm.toUpperCase() === 'PM' && h < 12) h += 12;
+    if (ampm.toUpperCase() === 'AM' && h === 12) h = 0;
+    const d = new Date();
+    d.setHours(h, m, 0, 0);
+    if (d.getTime() > Date.now() + 60000) {
+      d.setDate(d.getDate() - 1);
+    }
+    return d.getTime();
+  }
+
+  return 0;
+}
+
 export const adminDataService = {
   // Super Admin Firestore Auth Config
   async getAdminAuth(): Promise<AdminAuthConfig> {
@@ -623,8 +650,8 @@ export const adminDataService = {
           } else {
             const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminAuditLog));
             list.sort((a, b) => {
-              const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
-              const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+              const timeA = parseAuditTimestamp(a.timestamp || (a as any).createdAt);
+              const timeB = parseAuditTimestamp(b.timestamp || (b as any).createdAt);
               return timeB - timeA; // Newest 1st, oldest last
             });
             callback(list);
@@ -790,7 +817,7 @@ export const adminDataService = {
     try {
       await addDoc(collection(db, 'audit_logs'), {
         ...entry,
-        timestamp: new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) + ' ago',
+        timestamp: new Date().toISOString(),
         createdAt: new Date().toISOString(),
       });
     } catch (e) {
