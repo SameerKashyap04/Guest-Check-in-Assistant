@@ -79,15 +79,33 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Generate and send 2FA OTP code
-      const code = await send2faCode(email);
-      setTimer(60);
-      setCanResend(false);
-      setIsLoading(false);
-      setStep("2FA_OTP");
+      const res = await fetch("/api/auth/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "VERIFY_CREDENTIALS",
+          email,
+          password,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        if (data.generatedOtp) {
+          setGeneratedCode(data.generatedOtp);
+        }
+        setTimer(60);
+        setCanResend(false);
+        setIsLoading(false);
+        setStep("2FA_OTP");
+      } else {
+        setIsLoading(false);
+        setErrorMsg(data.error || "Invalid Super Admin credentials.");
+      }
     } catch (err: any) {
       setIsLoading(false);
-      setErrorMsg("Failed to initiate 2FA verification. Please check your credentials.");
+      setErrorMsg("Failed to authenticate. Please check network connection.");
     }
   };
 
@@ -123,7 +141,7 @@ export default function LoginPage() {
     }
   };
 
-  const handleVerify2fa = (e: React.FormEvent) => {
+  const handleVerify2fa = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg("");
     const enteredCode = otp.join("");
@@ -133,21 +151,40 @@ export default function LoginPage() {
       return;
     }
 
-    if (enteredCode === generatedCode || enteredCode === "123456") {
-      setIsLoading(true);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("staymate_super_admin_session", JSON.stringify({
-          authenticated: true,
-          email: email,
-          loginTime: new Date().toISOString(),
-          twoFactorVerified: true,
-        }));
-      }
-      setTimeout(() => {
+    setIsLoading(true);
+
+    try {
+      const res = await fetch("/api/auth/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "VERIFY_2FA",
+          email,
+          otp: enteredCode,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("staymate_super_admin_session", JSON.stringify({
+            authenticated: true,
+            email: email,
+            role: "SUPER_ADMIN",
+            token: data.token,
+            loginTime: new Date().toISOString(),
+            twoFactorVerified: true,
+          }));
+        }
         router.push("/");
-      }, 500);
-    } else {
-      setErrorMsg("Invalid 2FA verification code. Please check and try again.");
+      } else {
+        setIsLoading(false);
+        setErrorMsg(data.error || "Invalid 2FA verification code.");
+      }
+    } catch (err: any) {
+      setIsLoading(false);
+      setErrorMsg("Failed to verify 2FA code.");
     }
   };
 
@@ -157,23 +194,45 @@ export default function LoginPage() {
 
     try {
       const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
-    } catch (e) {
-      console.warn("Google popup notice, completing simulated super-admin auth:", e);
-    }
+      const result = await signInWithPopup(auth, provider);
+      const googleEmail = result?.user?.email || "dev@company.com";
 
-    if (typeof window !== "undefined") {
-      localStorage.setItem("staymate_super_admin_session", JSON.stringify({
-        authenticated: true,
-        email: "superadmin@staymate.co",
-        provider: "google",
-        loginTime: new Date().toISOString(),
-        twoFactorVerified: true,
-      }));
-    }
+      const res = await fetch("/api/auth/admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "GOOGLE_AUTH",
+          googleEmail,
+        }),
+      });
 
-    setIsLoading(false);
-    router.push("/");
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        if (typeof window !== "undefined") {
+          localStorage.setItem("staymate_super_admin_session", JSON.stringify({
+            authenticated: true,
+            email: googleEmail,
+            role: "SUPER_ADMIN",
+            provider: "google",
+            token: data.token,
+            loginTime: new Date().toISOString(),
+            twoFactorVerified: true,
+          }));
+        }
+        router.push("/");
+      } else {
+        setIsLoading(false);
+        setErrorMsg(data.error || "Google account not authorized for Super Admin access.");
+      }
+    } catch (e: any) {
+      console.warn("Google popup notice, completing super-admin auth:", e);
+      // If popup was cancelled or blocked, show message
+      setIsLoading(false);
+      if (e?.code !== "auth/popup-closed-by-user") {
+        setErrorMsg(e?.message || "Google Sign-In failed.");
+      }
+    }
   };
 
   return (
