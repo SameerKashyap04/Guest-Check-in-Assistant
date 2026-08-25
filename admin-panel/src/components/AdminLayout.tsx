@@ -63,7 +63,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
   return (
     <AdminContext.Provider value={{ maskPii, setMaskPii, isSyncing, refreshData }}>
       {/* ── Root shell — surface-soft background ── */}
-      <div className="min-h-screen flex" style={{ backgroundColor: "#f7f7f7", fontFamily: "'Inter', sans-serif" }}>
+      <div className="min-h-screen flex" style={{ backgroundColor: "#f8f7fb", fontFamily: "'Inter', sans-serif" }}>
 
         {/* ════════════════════════════════════════
             SIDEBAR — white canvas, hairline border
@@ -83,35 +83,30 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               borderBottom: "1px solid #dddddd",
             }}
           >
-            {/* Rausch search-orb brand mark */}
-            <div
-              className="flex items-center justify-center"
-              style={{
-                width: 36, height: 36, borderRadius: 9999,
-                backgroundColor: "#ff385c",
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="white"/>
-              </svg>
-            </div>
-            <div>
-              <h1 style={{ fontSize: 16, fontWeight: 700, color: "#222222", lineHeight: 1.2 }}>
-                StayMate
-              </h1>
-              <p style={{ fontSize: 11, fontWeight: 600, color: "#6a6a6a", marginTop: 1 }}>
-                Platform Admin
-              </p>
+            {/* StayMate Logo with Text */}
+            <div className="flex items-center gap-2">
+              <img
+                src="/logo-with-text.png"
+                alt="StayMate"
+                className="h-9 w-auto max-w-[160px] object-contain"
+                onError={(e) => {
+                  // Fallback to stylized icon if image fails
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <span className="text-[10px] font-extrabold uppercase tracking-wider bg-violet-50 text-violet-700 px-2 py-0.5 rounded-md border border-violet-200">
+                Admin
+              </span>
             </div>
           </div>
 
           {/* Platform notice */}
           <div
             className="mx-4 mt-4 px-3 py-2 rounded-lg"
-            style={{ backgroundColor: "#f7f7f7", border: "1px solid #ebebeb" }}
+            style={{ backgroundColor: "#f8f7fb", border: "1px solid #ebebeb" }}
           >
             <p style={{ fontSize: 12, fontWeight: 600, color: "#222222", marginBottom: 2, display: "flex", alignItems: "center", gap: 4 }}>
-              <Building className="w-3 h-3" style={{ color: "#ff385c" }} /> Control Console
+              <Building className="w-3 h-3" style={{ color: "#7c3aed" }} /> Control Console
             </p>
             <p style={{ fontSize: 11, fontWeight: 400, color: "#6a6a6a", lineHeight: 1.4 }}>
               Operations &amp; developer console. Property owners use the mobile app.
@@ -121,12 +116,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
           {/* PII toggle */}
           <div
             className="mx-4 mt-3 px-3 py-2.5 rounded-lg flex items-center justify-between"
-            style={{ backgroundColor: "#f7f7f7", border: "1px solid #ebebeb" }}
+            style={{ backgroundColor: "#f8f7fb", border: "1px solid #ebebeb" }}
           >
             <div className="flex items-center gap-2">
               {maskPii
                 ? <EyeOff className="w-4 h-4" style={{ color: "#222222" }} />
-                : <Eye className="w-4 h-4" style={{ color: "#ff385c" }} />
+                : <Eye className="w-4 h-4" style={{ color: "#7c3aed" }} />
               }
               <span style={{ fontSize: 12, fontWeight: 600, color: "#222222" }}>PII Privacy</span>
             </div>
@@ -136,9 +131,9 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                 fontSize: 10, fontWeight: 700,
                 paddingInline: 10, paddingBlock: 4,
                 borderRadius: 9999,
-                backgroundColor: maskPii ? "#f7f7f7" : "#fff1f2",
-                color: maskPii ? "#6a6a6a" : "#ff385c",
-                border: `1px solid ${maskPii ? "#dddddd" : "#ff385c"}`,
+                backgroundColor: maskPii ? "#f8f7fb" : "#ede9fe",
+                color: maskPii ? "#6a6a6a" : "#7c3aed",
+                border: `1px solid ${maskPii ? "#dddddd" : "#7c3aed"}`,
                 cursor: "pointer",
               }}
             >
@@ -161,24 +156,23 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                     gap: 10,
                     paddingInline: 12,
                     paddingBlock: 10,
-                    borderRadius: 8,              // rounded.sm
+                    borderRadius: 8,
                     textDecoration: "none",
-                    // Active: Rausch left accent bar + ink text
-                    borderLeft: isActive ? "2px solid #ff385c" : "2px solid transparent",
-                    backgroundColor: isActive ? "#fff1f2" : "transparent",
-                    color: isActive ? "#222222" : "#6a6a6a",
-                    fontWeight: isActive ? 600 : 400,
+                    borderLeft: isActive ? "2px solid #7c3aed" : "2px solid transparent",
+                    backgroundColor: isActive ? "#ede9fe" : "transparent",
+                    color: isActive ? "#7c3aed" : "#6a6a6a",
+                    fontWeight: isActive ? 700 : 500,
                     fontSize: 14,
                     transition: "all 0.1s",
                   }}
-                  className="hover:bg-[#f7f7f7] hover:text-[#222222] transition-colors"
+                  className="hover:bg-[#f8f7fb] hover:text-[#222222] transition-colors"
                 >
                   <Icon
                     className="w-4 h-4 flex-shrink-0"
-                    style={{ color: isActive ? "#ff385c" : "#6a6a6a" }}
+                    style={{ color: isActive ? "#7c3aed" : "#6a6a6a" }}
                   />
                   <span>{item.label}</span>
-                  {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" style={{ color: "#ff385c" }} />}
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 ml-auto" style={{ color: "#7c3aed" }} />}
                 </Link>
               );
             })}
@@ -197,7 +191,7 @@ export function AdminLayout({ children }: AdminLayoutProps) {
             </div>
             <Link
               href="/login"
-              className="p-2 rounded-full hover:bg-[#f7f7f7] transition-colors"
+              className="p-2 rounded-full hover:bg-[#f8f7fb] transition-colors"
               style={{ color: "#6a6a6a" }}
               title="Log Out"
             >
@@ -236,12 +230,12 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <button
                 onClick={refreshData}
                 disabled={isSyncing}
-                className="flex items-center gap-1.5 hover:bg-[#f7f7f7] px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 hover:bg-[#f8f7fb] px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
                 style={{ fontSize: 12, fontWeight: 500, color: "#6a6a6a" }}
               >
                 <RefreshCw
                   className={`w-3.5 h-3.5 ${isSyncing ? "animate-spin" : ""}`}
-                  style={{ color: isSyncing ? "#ff385c" : "#dddddd" }}
+                  style={{ color: isSyncing ? "#7c3aed" : "#dddddd" }}
                 />
                 <span>{isSyncing ? "Syncing…" : "Live Sync"}</span>
               </button>
@@ -253,13 +247,13 @@ export function AdminLayout({ children }: AdminLayoutProps) {
               <div className="relative">
                 <button
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className="p-2 rounded-full hover:bg-[#f7f7f7] transition-colors relative cursor-pointer"
+                  className="p-2 rounded-full hover:bg-[#f8f7fb] transition-colors relative cursor-pointer"
                   style={{ color: "#6a6a6a" }}
                 >
                   <Bell className="w-4 h-4" />
                   <span
                     className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full"
-                    style={{ backgroundColor: "#ff385c" }}
+                    style={{ backgroundColor: "#7c3aed" }}
                   />
                 </button>
 

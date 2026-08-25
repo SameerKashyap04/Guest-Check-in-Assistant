@@ -6,9 +6,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f7f7f7;
+  --background: #f8f7fb;
   --foreground: #222222;
-  --primary: #ff385c;
+  --primary: #7c3aed;
   --canvas: #ffffff;
   --hairline: #dddddd;
   --muted: #6a6a6a;
@@ -22,7 +22,7 @@
 }
 
 body {
-  background-color: #f7f7f7;
+  background-color: #f8f7fb;
   color: #222222;
   font-family: 'Inter', -apple-system, system-ui, Roboto, 'Helvetica Neue', sans-serif;
   -webkit-font-smoothing: antialiased;

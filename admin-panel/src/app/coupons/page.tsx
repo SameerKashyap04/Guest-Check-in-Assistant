@@ -172,7 +172,7 @@ export default function CouponsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
-            <Tag className="w-6 h-6 text-rose-500" />
+            <Tag className="w-6 h-6 text-violet-600" />
             <span>Coupons & Promo Codes</span>
           </h1>
           <p className="text-sm text-slate-500 font-medium mt-1">
@@ -182,7 +182,7 @@ export default function CouponsPage() {
 
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-2"
+          className="px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
           <span>Create New Coupon</span>
@@ -222,7 +222,7 @@ export default function CouponsPage() {
             placeholder="Search coupon code or description..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-500 shadow-sm"
+            className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-violet-600 shadow-sm"
           />
         </div>
       </div>
@@ -255,7 +255,7 @@ export default function CouponsPage() {
                   <tr key={coupon.code} className="hover:bg-slate-50/80 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono font-extrabold text-slate-900 bg-rose-50 text-rose-700 px-2.5 py-1 rounded-lg border border-rose-200 text-xs">
+                        <span className="font-mono font-extrabold text-slate-900 bg-violet-50 text-violet-700 px-2.5 py-1 rounded-lg border border-violet-200 text-xs">
                           {coupon.code}
                         </span>
                         <button
@@ -346,7 +346,7 @@ export default function CouponsPage() {
           <div className="bg-white border border-slate-200 rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl relative my-8 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-5">
               <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                <Tag className="w-5 h-5 text-rose-500" />
+                <Tag className="w-5 h-5 text-violet-600" />
                 <span>Create New Coupon</span>
               </h3>
               <button
@@ -366,7 +366,7 @@ export default function CouponsPage() {
                   value={code}
                   onChange={(e) => setCode(e.target.value.toUpperCase())}
                   required
-                  className="w-full font-mono font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-rose-500"
+                  className="w-full font-mono font-bold bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-600"
                 />
               </div>
 
@@ -376,7 +376,7 @@ export default function CouponsPage() {
                   <select
                     value={discountType}
                     onChange={(e: any) => setDiscountType(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-rose-500 font-semibold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-600 font-semibold"
                   >
                     <option value="percentage">Percentage (%)</option>
                     <option value="fixed">Flat Amount (₹)</option>
@@ -391,7 +391,7 @@ export default function CouponsPage() {
                     value={discountValue}
                     onChange={(e) => setDiscountValue(Number(e.target.value))}
                     required
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-rose-500 font-semibold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-600 font-semibold"
                   />
                 </div>
               </div>
@@ -405,7 +405,7 @@ export default function CouponsPage() {
                     placeholder="0 for none"
                     value={minAmount}
                     onChange={(e) => setMinAmount(Number(e.target.value))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-rose-500 font-semibold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-600 font-semibold"
                   />
                 </div>
 
@@ -416,7 +416,7 @@ export default function CouponsPage() {
                     placeholder="Leave empty for uncapped"
                     value={maxDiscount}
                     onChange={(e) => setMaxDiscount(e.target.value ? Number(e.target.value) : "")}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-rose-500 font-semibold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-600 font-semibold"
                   />
                 </div>
               </div>
@@ -429,7 +429,7 @@ export default function CouponsPage() {
                     placeholder="e.g. 100"
                     value={usageLimit}
                     onChange={(e) => setUsageLimit(e.target.value ? Number(e.target.value) : "")}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-rose-500 font-semibold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-600 font-semibold"
                   />
                 </div>
 
@@ -439,7 +439,7 @@ export default function CouponsPage() {
                     type="date"
                     value={validUntil}
                     onChange={(e) => setValidUntil(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-rose-500 font-semibold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-600 font-semibold"
                   />
                 </div>
               </div>
@@ -451,7 +451,7 @@ export default function CouponsPage() {
                   placeholder="e.g. Early adopter 20% discount on Professional annual"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-rose-500 font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-600 font-medium"
                 />
               </div>
 
@@ -466,7 +466,7 @@ export default function CouponsPage() {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="px-5 py-2 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all"
+                  className="px-5 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition-all"
                 >
                   {isSubmitting ? "Creating..." : "Create Coupon"}
                 </button>
