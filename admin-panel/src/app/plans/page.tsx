@@ -303,13 +303,21 @@ export default function PlansPage() {
               {/* Badges Header */}
               <div className="flex items-center justify-between gap-2 mb-3">
                 {p.isRecommended ? (
-                  <span className="text-[10px] font-black text-white bg-violet-600 px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 uppercase tracking-wider">
+                  <button
+                    onClick={() => toggleFeatureFlag(p.id, "isRecommended")}
+                    title="Click to remove Recommended badge"
+                    className="text-[10px] font-black text-white bg-violet-600 hover:bg-violet-700 px-2.5 py-0.5 rounded-full shadow-sm flex items-center gap-1 uppercase tracking-wider cursor-pointer transition-all"
+                  >
                     <Star className="w-3 h-3 fill-white" /> Recommended
-                  </span>
+                  </button>
                 ) : (
-                  <span className="text-[10px] font-extrabold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md uppercase">
-                    Tier
-                  </span>
+                  <button
+                    onClick={() => toggleFeatureFlag(p.id, "isRecommended")}
+                    title="Click to set as Recommended plan"
+                    className="text-[10px] font-extrabold text-slate-500 hover:text-violet-700 bg-slate-100 hover:bg-violet-50 px-2 py-0.5 rounded-md uppercase cursor-pointer transition-all flex items-center gap-1"
+                  >
+                    <Star className="w-3 h-3 text-slate-400" /> Tier
+                  </button>
                 )}
 
                 <div className="flex items-center gap-1.5">

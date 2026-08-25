@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft, Check } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { PLANS } from '@/config/plans';
 import { SubscriptionPlan } from '@/types/subscription';
 import { useSubscriptionStore } from '@/store/useSubscriptionStore';
+import { plansService, DEFAULT_DISPLAY_PLANS, ClientDisplayPlan } from '@/services/plansService';
 import { Button } from '@/components/Button';
 import { AIRBNB } from '@/theme/airbnb';
 import { C } from '@/theme/tokens';
@@ -20,7 +20,20 @@ import { C } from '@/theme/tokens';
 export default function PricingScreen() {
   const router = useRouter();
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('yearly');
+  const [plans, setPlans] = useState<ClientDisplayPlan[]>(DEFAULT_DISPLAY_PLANS);
   const { currentPlan } = useSubscriptionStore();
+
+  useEffect(() => {
+    let isMounted = true;
+    plansService.fetchLivePlans().then((live) => {
+      if (isMounted && live && live.length > 0) {
+        setPlans(live);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const isAnnual = billingCycle === 'yearly';
   const selectedDuration = isAnnual ? 12 : 1;
@@ -60,59 +73,6 @@ export default function PricingScreen() {
       },
     });
   };
-
-  const plans = [
-    {
-      id: SubscriptionPlan.FREE,
-      name: 'Free',
-      basePriceM: 0,
-      rooms: '2 rooms',
-      checkins: '15 check-ins / mo',
-      ocr: false,
-      cloud: false,
-      tag: null,
-    },
-    {
-      id: SubscriptionPlan.STARTER,
-      name: 'Starter',
-      basePriceM: 349,
-      rooms: '8 rooms',
-      checkins: '100 check-ins / mo',
-      ocr: true,
-      cloud: false,
-      tag: null,
-    },
-    {
-      id: SubscriptionPlan.PROFESSIONAL,
-      name: 'Professional',
-      basePriceM: 799,
-      rooms: '25 rooms',
-      checkins: 'Unlimited check-ins',
-      ocr: true,
-      cloud: true,
-      tag: 'Most popular',
-    },
-    {
-      id: SubscriptionPlan.MULTI_PROPERTY,
-      name: 'Multi-Property',
-      basePriceM: 1799,
-      rooms: 'Unlimited rooms · 5 properties',
-      checkins: 'Unlimited check-ins',
-      ocr: true,
-      cloud: true,
-      tag: null,
-    },
-    {
-      id: SubscriptionPlan.ENTERPRISE,
-      name: 'Enterprise',
-      basePriceM: null,
-      rooms: 'Unlimited everything',
-      checkins: 'Dedicated support',
-      ocr: true,
-      cloud: true,
-      tag: null,
-    },
-  ];
 
   return (
     <SafeAreaView edges={['top', 'bottom']} style={styles.screen}>
@@ -172,7 +132,7 @@ export default function PricingScreen() {
         {/* Plan Cards */}
         <View style={styles.plansWrap}>
           {plans.map((p) => {
-            const isFeatured = p.tag !== null;
+            const isFeatured = Boolean(p.isRecommended) || p.tag !== null;
             const isFree = p.basePriceM === 0;
             const isCustom = p.basePriceM === null;
 
@@ -198,9 +158,9 @@ export default function PricingScreen() {
                   isFeatured && styles.planCardFeatured,
                 ]}
               >
-                {p.tag && (
+                {isFeatured && (
                   <View style={styles.featuredBadge}>
-                    <Text style={styles.featuredBadgeText}>{p.tag}</Text>
+                    <Text style={styles.featuredBadgeText}>{p.tag || 'Recommended'}</Text>
                   </View>
                 )}
 
