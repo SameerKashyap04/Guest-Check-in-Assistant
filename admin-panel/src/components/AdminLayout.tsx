@@ -275,25 +275,17 @@ export function AdminLayout({ children }: AdminLayoutProps) {
                       <h4 style={{ fontSize: 14, fontWeight: 600, color: "#222222" }}>Notifications</h4>
                       <span
                         style={{
-                          fontSize: 10, fontWeight: 700, color: "#ff385c",
-                          backgroundColor: "#fff1f2", paddingInline: 8, paddingBlock: 3,
+                          fontSize: 10, fontWeight: 700, color: "#15803d",
+                          backgroundColor: "#f0fdf4", paddingInline: 8, paddingBlock: 3,
                           borderRadius: 9999,
                         }}
                       >
-                        2 NEW
+                        LIVE
                       </span>
                     </div>
-                    <div className="space-y-3 text-xs">
-                      <div className="p-3 rounded-lg" style={{ backgroundColor: "#fff1f2", border: "1px solid #fecdd3" }}>
-                        <p style={{ fontWeight: 600, color: "#222222" }}>New Subscription Upgraded</p>
-                        <p style={{ color: "#6a6a6a", marginTop: 2 }}>Coorg Hilltop → Professional Annual (₹7,999)</p>
-                        <span style={{ color: "#929292", marginTop: 4, display: "block" }}>5 mins ago</span>
-                      </div>
-                      <div className="p-3 rounded-lg" style={{ backgroundColor: "#f0fdf4", border: "1px solid #bbf7d0" }}>
-                        <p style={{ fontWeight: 600, color: "#222222" }}>New Homestay Onboarded</p>
-                        <p style={{ color: "#6a6a6a", marginTop: 2 }}>Manali Pine Resort joined (12 rooms)</p>
-                        <span style={{ color: "#929292", marginTop: 4, display: "block" }}>30 mins ago</span>
-                      </div>
+                    <div className="py-4 text-center text-xs" style={{ color: "#6a6a6a" }}>
+                      <p style={{ fontWeight: 600, color: "#222222" }}>All systems operational</p>
+                      <p style={{ marginTop: 2 }}>Real-time alerts will appear here as users sign up and upgrade.</p>
                     </div>
                   </div>
                 )}
