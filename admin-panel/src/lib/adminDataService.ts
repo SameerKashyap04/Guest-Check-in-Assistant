@@ -66,9 +66,48 @@ export const adminDataService = {
   // Properties
   async getProperties(): Promise<AdminProperty[]> {
     try {
-      const snap = await getDocs(collection(db, 'properties'));
-      if (snap.empty) return [];
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminProperty));
+      const propSnap = await getDocs(collection(db, 'properties'));
+      const ownerSnap = await getDocs(collection(db, 'owners'));
+
+      const propsFromProps = propSnap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id || data.propertyId || 'HS-1000',
+          name: data.name || data.businessName || 'Homestay',
+          location: data.location || data.city || 'India',
+          rooms: Number(data.rooms) || Number(data.roomCount) || 8,
+          checkIns: Number(data.checkIns) || Number(data.totalCheckIns) || 0,
+          status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
+          plan: (data.plan || data.subscriptionPlan || 'Free') as any,
+          ownerEmail: data.ownerEmail || data.email,
+          ownerName: data.ownerName || data.name || data.businessName,
+          createdAt: data.createdAt,
+        };
+      });
+
+      const propsFromOwners = ownerSnap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: data.propertyId || d.id,
+          name: data.businessName || data.name || 'Homestay',
+          location: data.location || data.city || 'India',
+          rooms: Number(data.rooms) || Number(data.roomCount) || 8,
+          checkIns: Number(data.checkIns) || 0,
+          status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
+          plan: (data.plan || data.subscriptionPlan || 'Free') as any,
+          ownerEmail: data.email,
+          ownerName: data.name || data.businessName,
+          createdAt: data.createdAt,
+        };
+      });
+
+      // Merge and deduplicate by id
+      const map = new Map<string, AdminProperty>();
+      [...propsFromProps, ...propsFromOwners].forEach(p => {
+        if (!map.has(p.id)) map.set(p.id, p);
+      });
+
+      return Array.from(map.values());
     } catch (e) {
       console.warn('Properties query error:', e);
       return [];
@@ -78,13 +117,24 @@ export const adminDataService = {
   subscribeProperties(callback: (props: AdminProperty[]) => void) {
     try {
       return onSnapshot(
-        collection(db, 'properties'),
-        snap => {
-          if (snap.empty) {
-            callback([]);
-          } else {
-            callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminProperty)));
-          }
+        collection(db, 'owners'),
+        ownerSnap => {
+          const props = ownerSnap.docs.map(d => {
+            const data = d.data();
+            return {
+              id: data.propertyId || d.id,
+              name: data.businessName || data.name || 'Homestay',
+              location: data.location || data.city || 'India',
+              rooms: Number(data.rooms) || Number(data.roomCount) || 8,
+              checkIns: Number(data.checkIns) || 0,
+              status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
+              plan: (data.plan || data.subscriptionPlan || 'Free') as any,
+              ownerEmail: data.email,
+              ownerName: data.name || data.businessName,
+              createdAt: data.createdAt,
+            } as AdminProperty;
+          });
+          callback(props);
         },
         err => {
           console.warn('Properties listener error:', err);
@@ -102,7 +152,21 @@ export const adminDataService = {
     try {
       const snap = await getDocs(collection(db, 'owners'));
       if (snap.empty) return [];
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminUser));
+      return snap.docs.map(d => {
+        const data = d.data();
+        return {
+          id: d.id,
+          name: data.name || data.ownerName || data.businessName || data.email?.split('@')[0] || 'Host',
+          email: data.email || 'user@example.com',
+          role: (data.role || 'Owner') as any,
+          property: data.businessName || data.name || 'Homestay',
+          plan: data.plan || data.subscriptionPlan || 'Free',
+          status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
+          lastActive: 'Online',
+          joinedDate: data.createdAt ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent',
+          authProvider: data.authProvider || 'Email',
+        };
+      });
     } catch (e) {
       console.warn('Users query error:', e);
       return [];
@@ -117,7 +181,21 @@ export const adminDataService = {
           if (snap.empty) {
             callback([]);
           } else {
-            callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminUser)));
+            callback(snap.docs.map(d => {
+              const data = d.data();
+              return {
+                id: d.id,
+                name: data.name || data.ownerName || data.businessName || data.email?.split('@')[0] || 'Host',
+                email: data.email || 'user@example.com',
+                role: (data.role || 'Owner') as any,
+                property: data.businessName || data.name || 'Homestay',
+                plan: data.plan || data.subscriptionPlan || 'Free',
+                status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
+                lastActive: 'Online',
+                joinedDate: data.createdAt ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent',
+                authProvider: data.authProvider || 'Email',
+              };
+            }));
           }
         },
         err => {
