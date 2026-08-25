@@ -300,6 +300,57 @@ export const adminDataService = {
     }
   },
 
+  // Live Payment Orders Subscriber
+  subscribeOrders(callback: (orders: any[]) => void) {
+    try {
+      return onSnapshot(
+        collection(db, 'subscription_orders'),
+        snap => {
+          if (snap.empty) {
+            callback([]);
+          } else {
+            const list = snap.docs.map(doc => {
+              const data = doc.data();
+              let formattedDate = "Recent";
+              if (data.createdAt?.toDate) {
+                formattedDate = data.createdAt.toDate().toISOString().replace("T", " ").substring(0, 16);
+              } else if (data.createdAt) {
+                formattedDate = new Date(data.createdAt).toISOString().replace("T", " ").substring(0, 16);
+              }
+
+              return {
+                id: doc.id,
+                txId: data.paymentId || data.orderId || doc.id,
+                property: data.userEmail ? `${data.userEmail}` : "Property Owner",
+                amount: data.amountPaise ? `₹ ${(data.amountPaise / 100).toLocaleString("en-IN")}` : `₹ ${data.amount || 0}`,
+                numericAmount: data.amountPaise ? data.amountPaise / 100 : (data.amount || 0),
+                plan: `${data.planId || "Professional"} (${data.billingCycle || "monthly"})`,
+                status:
+                  data.status === "PAID"
+                    ? "Captured"
+                    : data.status === "FAILED"
+                    ? "Failed"
+                    : data.status === "PENDING_VERIFICATION" || (data.status === "PENDING" && (data.transactionRef || data.paymentId))
+                    ? "Pending"
+                    : "Created",
+                date: formattedDate,
+                raw: data,
+              };
+            });
+            callback(list);
+          }
+        },
+        err => {
+          console.warn('Orders listener error:', err);
+          callback([]);
+        }
+      );
+    } catch {
+      callback([]);
+      return () => {};
+    }
+  },
+
   async logAudit(entry: Omit<AdminAuditLog, 'id' | 'timestamp'>) {
     try {
       await addDoc(collection(db, 'audit_logs'), {

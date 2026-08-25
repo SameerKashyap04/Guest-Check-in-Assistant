@@ -117,7 +117,7 @@ export default function PaymentsPage() {
     }
   };
 
-  const allTx = realTransactions.length > 0 ? [...realTransactions, ...mockTransactions] : mockTransactions;
+  const allTx = realTransactions.length > 0 ? realTransactions : mockTransactions;
 
   const filteredTx = allTx.filter((tx) => {
     const matchesSearch =

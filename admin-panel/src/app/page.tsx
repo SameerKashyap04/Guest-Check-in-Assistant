@@ -70,19 +70,20 @@ export default function DashboardPage() {
   }, 0);
 
   const annualRevenue = monthlyRevenue * 12;
-  const activePropertiesCount = properties.length || 214;
-  const paidCount = activeSubs.length || 146;
-  const paidRatio = ((paidCount / Math.max(1, activePropertiesCount)) * 100).toFixed(1);
+  const activePropertiesCount = properties.length;
+  const paidCount = activeSubs.length;
+  const paidRatio = activePropertiesCount > 0 ? ((paidCount / activePropertiesCount) * 100).toFixed(1) : "0.0";
+  const arpu = activePropertiesCount > 0 ? Math.round(monthlyRevenue / activePropertiesCount) : 0;
 
   const kpis = [
     {
       title: "Monthly Recurring Revenue",
-      value: timeRange === "year" ? `₹${(annualRevenue || 1785000).toLocaleString('en-IN')}` : `₹${(monthlyRevenue || 148750).toLocaleString('en-IN')}`,
+      value: timeRange === "year" ? `₹${annualRevenue.toLocaleString('en-IN')}` : `₹${monthlyRevenue.toLocaleString('en-IN')}`,
       change: "+24.5%", icon: TrendingUp, accent: "#15803d", accentBg: "#f0fdf4",
     },
     {
       title: "Annualized Run Rate (ARR)",
-      value: `₹${(annualRevenue || 1785000).toLocaleString('en-IN')}`,
+      value: `₹${annualRevenue.toLocaleString('en-IN')}`,
       change: "+18.2%", icon: CreditCard, accent: C.primary, accentBg: "#fff1f2",
     },
     {
@@ -98,26 +99,34 @@ export default function DashboardPage() {
   ];
 
   // Dynamic plan breakdown
-  const freeCount = properties.filter(p => p.plan === 'Free').length || 68;
-  const starterCount = properties.filter(p => p.plan === 'Starter').length || 82;
-  const proCount = properties.filter(p => p.plan === 'Professional').length || 54;
-  const multiCount = properties.filter(p => p.plan === 'Multi-Property' || p.plan === 'Enterprise').length || 10;
-  const totalProps = Math.max(1, freeCount + starterCount + proCount + multiCount);
+  const freeCount = properties.filter(p => (p.plan || '').toLowerCase() === 'free').length;
+  const starterCount = properties.filter(p => (p.plan || '').toLowerCase() === 'starter').length;
+  const proCount = properties.filter(p => (p.plan || '').toLowerCase() === 'professional').length;
+  const multiCount = properties.filter(p => (p.plan || '').toLowerCase().includes('multi') || (p.plan || '').toLowerCase().includes('enterprise')).length;
+  const totalProps = Math.max(1, activePropertiesCount);
 
   const planBreakdown = [
-    { name: "Free",           count: freeCount,    pct: Number(((freeCount / totalProps) * 100).toFixed(1)), color: C.hairline },
-    { name: "Starter",        count: starterCount, pct: Number(((starterCount / totalProps) * 100).toFixed(1)), color: "#f59e0b" },
-    { name: "Professional",   count: proCount,     pct: Number(((proCount / totalProps) * 100).toFixed(1)), color: C.primary },
-    { name: "Multi-Property", count: multiCount,   pct: Number(((multiCount / totalProps) * 100).toFixed(1)), color: "#1d4ed8" },
+    { name: "Free",           count: freeCount,    pct: activePropertiesCount > 0 ? Number(((freeCount / totalProps) * 100).toFixed(1)) : 0, color: C.hairline },
+    { name: "Starter",        count: starterCount, pct: activePropertiesCount > 0 ? Number(((starterCount / totalProps) * 100).toFixed(1)) : 0, color: "#f59e0b" },
+    { name: "Professional",   count: proCount,     pct: activePropertiesCount > 0 ? Number(((proCount / totalProps) * 100).toFixed(1)) : 0, color: C.primary },
+    { name: "Multi-Property", count: multiCount,   pct: activePropertiesCount > 0 ? Number(((multiCount / totalProps) * 100).toFixed(1)) : 0, color: "#1d4ed8" },
   ];
 
   // Activities from dynamic audit logs
+  const formatActionTitle = (action: string) => {
+    return action
+      .toLowerCase()
+      .split('_')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+  };
+
   const activities = auditLogs.map(l => ({
     id: l.id,
-    title: l.details.split(' - ')[0] || l.action.replace('_', ' '),
+    title: formatActionTitle(l.action || 'System Event'),
     desc: l.details,
     time: l.timestamp,
-    type: l.category === 'SUBSCRIPTION' ? (l.details.includes('Professional') ? 'PROFESSIONAL' : 'STARTER') : l.category === 'SECURITY' ? 'WARNING' : 'TRIALING',
+    type: l.category === 'SUBSCRIPTION' ? (l.details?.includes('Professional') ? 'PROFESSIONAL' : 'STARTER') : l.category === 'SECURITY' ? 'WARNING' : 'TRIALING',
   }));
 
   const filtered = planFilter === "ALL" ? activities : activities.filter(a => a.type === planFilter);
@@ -266,7 +275,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between mb-5 pb-4" style={{ borderBottom: `1px solid ${C.hairlineSoft}` }}>
             <div>
               <h2 style={{ fontSize: 16, fontWeight: 600, color: C.ink }}>Plan Breakdown</h2>
-              <p style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>214 active properties</p>
+              <p style={{ fontSize: 13, color: C.muted, marginTop: 2 }}>{activePropertiesCount} active {activePropertiesCount === 1 ? 'property' : 'properties'}</p>
             </div>
             {/* guest-favorite-badge */}
             <span style={{
@@ -274,7 +283,7 @@ export default function DashboardPage() {
               backgroundColor: "#fff1f2",
               borderRadius: 9999, paddingInline: 10, paddingBlock: 4,
             }}>
-              146 PAID
+              {paidCount} PAID
             </span>
           </div>
 
@@ -297,7 +306,7 @@ export default function DashboardPage() {
 
           <div className="flex justify-between mt-5 pt-4" style={{ borderTop: `1px solid ${C.hairlineSoft}` }}>
             <span style={{ fontSize: 13, fontWeight: 500, color: C.body }}>ARPU</span>
-            <span style={{ fontSize: 16, fontWeight: 700, color: "#15803d" }}>₹695 / mo</span>
+            <span style={{ fontSize: 16, fontWeight: 700, color: "#15803d" }}>₹{arpu.toLocaleString('en-IN')} / mo</span>
           </div>
         </div>
 

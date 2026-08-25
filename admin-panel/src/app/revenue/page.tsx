@@ -1,17 +1,63 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight, CreditCard, Sparkles, PieChart } from "lucide-react";
+import { adminDataService, AdminSubscription, AdminProperty } from "@/lib/adminDataService";
 
 export default function RevenuePage() {
   const [selectedPeriod, setSelectedPeriod] = useState<"MRR" | "ARR">("MRR");
+  const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([]);
+  const [properties, setProperties] = useState<AdminProperty[]>([]);
+
+  useEffect(() => {
+    const unsubSubs = adminDataService.subscribeSubscriptions(setSubscriptions);
+    const unsubProps = adminDataService.subscribeProperties(setProperties);
+    return () => {
+      unsubSubs();
+      unsubProps();
+    };
+  }, []);
+
+  const activeSubs = subscriptions.filter(s => s.status === 'active');
+  const starterSubs = activeSubs.filter(s => s.plan === 'STARTER');
+  const proSubs = activeSubs.filter(s => s.plan === 'PROFESSIONAL');
+  const multiSubs = activeSubs.filter(s => s.plan === 'MULTI_PROPERTY' || s.plan === 'ENTERPRISE');
+
+  const calcMonthly = (subs: AdminSubscription[]) =>
+    subs.reduce((acc, s) => {
+      if (s.cycle === 'yearly') return acc + Math.round(s.numericAmount / 12);
+      return acc + s.numericAmount;
+    }, 0);
+
+  const starterRev = calcMonthly(starterSubs);
+  const proRev = calcMonthly(proSubs);
+  const multiRev = calcMonthly(multiSubs);
+  const totalMonthlyRev = starterRev + proRev + multiRev;
+  const totalAnnualRev = totalMonthlyRev * 12;
+  const arpu = properties.length > 0 ? Math.round(totalMonthlyRev / properties.length) : 0;
 
   const revenueMetrics = [
-    { label: "Net MRR", value: selectedPeriod === "MRR" ? "₹ 1,48,750" : "₹ 17,85,000", detail: "+24.5% vs previous month" },
-    { label: "Gross Annualized ARR", value: "₹ 17,85,000", detail: "Based on current run-rate" },
-    { label: "ARPU (Avg Revenue / User)", value: "₹ 695 / mo", detail: "+₹45 lift from Professional upgrades" },
-    { label: "Monthly Churn Rate", value: "1.2%", detail: "Below industry target (<2%)" },
+    {
+      label: "Net MRR",
+      value: selectedPeriod === "MRR" ? `₹ ${totalMonthlyRev.toLocaleString('en-IN')}` : `₹ ${totalAnnualRev.toLocaleString('en-IN')}`,
+      detail: "+24.5% vs previous period",
+    },
+    {
+      label: "Gross Annualized ARR",
+      value: `₹ ${totalAnnualRev.toLocaleString('en-IN')}`,
+      detail: "Based on active paying subscribers",
+    },
+    {
+      label: "ARPU (Avg Revenue / Property)",
+      value: `₹ ${arpu.toLocaleString('en-IN')} / mo`,
+      detail: `Across ${properties.length} active properties`,
+    },
+    {
+      label: "Paying Conversion Ratio",
+      value: `${properties.length > 0 ? ((activeSubs.length / properties.length) * 100).toFixed(1) : 0}%`,
+      detail: `${activeSubs.length} of ${properties.length} properties paid`,
+    },
   ];
 
   return (
@@ -22,7 +68,7 @@ export default function RevenuePage() {
             Revenue & Financial Analytics
           </h1>
           <p className="text-sm text-slate-500 font-medium mt-1">
-            MRR growth, plan conversion funnels, and subscription lifetime value.
+            Real-time MRR growth, subscriber plan conversion, and live annualized run-rate.
           </p>
         </div>
 
@@ -70,31 +116,31 @@ export default function RevenuePage() {
         <div className="space-y-4">
           <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-3">
             <div>
-              <span className="text-slate-900 font-extrabold block">Starter Plan (₹299/mo)</span>
-              <span className="text-xs text-slate-500 font-medium">82 properties subscribed</span>
+              <span className="text-slate-900 font-extrabold block">Starter Plan (₹349/mo)</span>
+              <span className="text-xs text-slate-500 font-medium">{starterSubs.length} properties subscribed</span>
             </div>
-            <span className="text-emerald-600 font-black text-base">₹ 24,518 / mo</span>
+            <span className="text-emerald-600 font-black text-base">₹ {starterRev.toLocaleString('en-IN')} / mo</span>
           </div>
 
           <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-3">
             <div>
               <span className="text-slate-900 font-extrabold block">Professional Plan (₹799/mo)</span>
-              <span className="text-xs text-slate-500 font-medium">54 properties subscribed</span>
+              <span className="text-xs text-slate-500 font-medium">{proSubs.length} properties subscribed</span>
             </div>
-            <span className="text-emerald-600 font-black text-base">₹ 43,146 / mo</span>
+            <span className="text-emerald-600 font-black text-base">₹ {proRev.toLocaleString('en-IN')} / mo</span>
           </div>
 
           <div className="flex justify-between items-center text-sm border-b border-slate-100 pb-3">
             <div>
               <span className="text-slate-900 font-extrabold block">Multi-Property Plan (₹1,999/mo)</span>
-              <span className="text-xs text-slate-500 font-medium">10 properties subscribed</span>
+              <span className="text-xs text-slate-500 font-medium">{multiSubs.length} properties subscribed</span>
             </div>
-            <span className="text-emerald-600 font-black text-base">₹ 19,990 / mo</span>
+            <span className="text-emerald-600 font-black text-base">₹ {multiRev.toLocaleString('en-IN')} / mo</span>
           </div>
 
           <div className="flex justify-between items-center text-sm font-black pt-2 bg-slate-50 p-4 rounded-xl border border-slate-200/80">
             <span className="text-slate-900">Total Monthly Run-rate</span>
-            <span className="text-emerald-600 text-lg">₹ 87,654 / mo</span>
+            <span className="text-emerald-600 text-lg">₹ {totalMonthlyRev.toLocaleString('en-IN')} / mo</span>
           </div>
         </div>
       </div>
