@@ -114,6 +114,65 @@ async function syncSubscriptionPaid(orderData: any, orderId: string, paidTimesta
     try {
       await completeQualifyingReferral(resolvedUserId, orderId, resolvedPlanId);
     } catch (_) {}
+
+    // 6. Register Subscription in Devify Pay Dashboard
+    try {
+      const devifyApiUrl = process.env.DEVIFY_API_URL || 'https://devifypay.site';
+      let devifyApiKey = process.env.DEVIFY_API_KEY || '';
+
+      const devifyDocSnap = await getDoc(doc(db, 'system_config', 'devify_config'));
+      if (devifyDocSnap.exists()) {
+        const cfg = devifyDocSnap.data();
+        if (cfg?.apiKey && cfg.apiKey !== 'sk_test_xxx') devifyApiKey = cfg.apiKey;
+      }
+
+      if (devifyApiKey) {
+        let devifyPlanId = 'seed-plan-airmate-pro';
+        try {
+          const plansRes = await fetch(`${devifyApiUrl}/v1/plans`, {
+            headers: {
+              'X-Api-Key': devifyApiKey,
+              Authorization: `Bearer ${devifyApiKey}`,
+            },
+          });
+          if (plansRes.ok) {
+            const plansJson = await plansRes.json();
+            const pList = plansJson?.data || plansJson?.plans || (Array.isArray(plansJson) ? plansJson : []);
+            if (pList.length > 0) {
+              const match = pList.find((p: any) => p.name?.toUpperCase()?.includes(resolvedPlanId) || p.id === resolvedPlanId) || pList[0];
+              if (match?.id) devifyPlanId = match.id;
+            }
+          }
+        } catch (_) {}
+
+        await fetch(`${devifyApiUrl}/v1/subscriptions`, {
+          method: 'POST',
+          headers: {
+            'X-Api-Key': devifyApiKey,
+            Authorization: `Bearer ${devifyApiKey}`,
+            'Content-Type': 'application/json',
+            'Idempotency-Key': `sub_paid_${orderId}`,
+          },
+          body: JSON.stringify({
+            plan_id: devifyPlanId,
+            customer: {
+              name: orderData?.userEmail?.split('@')[0] || 'StayMate Host',
+              email: orderData?.userEmail || 'owner@example.com',
+              phone: orderData?.userPhone || '9876543210',
+            },
+            metadata: {
+              app: 'Staymate',
+              user_id: resolvedUserId,
+              order_id: orderId,
+              plan: resolvedPlanId,
+              amount: amountRupees,
+            },
+          }),
+        });
+      }
+    } catch (devifySubErr) {
+      console.warn('[SyncSubscriptionPaid] Devify Pay subscription register notice:', devifySubErr);
+    }
   } catch (err) {
     console.warn('[SyncSubscriptionPaid] Notice:', err);
   }
