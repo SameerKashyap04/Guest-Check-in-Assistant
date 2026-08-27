@@ -28,6 +28,7 @@ interface CouponItem {
   maximum_discount: number | null;
   usage_limit: number | null;
   used_count: number;
+  per_user_limit?: number;
   is_active: boolean;
   valid_until?: string;
   description?: string;
@@ -48,6 +49,7 @@ export default function CouponsPage() {
   const [minAmount, setMinAmount] = useState(0);
   const [maxDiscount, setMaxDiscount] = useState<number | "">(500);
   const [usageLimit, setUsageLimit] = useState<number | "">(100);
+  const [perUserLimit, setPerUserLimit] = useState<number | "">(1);
   const [validUntil, setValidUntil] = useState("2026-12-31");
   const [description, setDescription] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -127,7 +129,7 @@ export default function CouponsPage() {
         used_count: 0,
         valid_from: new Date().toISOString(),
         valid_until: new Date(validUntil || "2026-12-31").toISOString(),
-        per_user_limit: 1,
+        per_user_limit: perUserLimit ? Number(perUserLimit) : 1,
         is_active: true,
         description: description.trim() || `Special discount coupon ${code.toUpperCase()}`,
         applicable_plan: ["STARTER", "PROFESSIONAL", "MULTI_PROPERTY"],
@@ -296,6 +298,9 @@ export default function CouponsPage() {
                         {" "}
                         / {coupon.usage_limit ? coupon.usage_limit : "∞"}
                       </span>
+                      <p className="text-[10px] text-slate-400 font-medium">
+                        Max {coupon.per_user_limit ?? 1} per host
+                      </p>
                     </td>
 
                     <td className="px-6 py-4">
@@ -423,10 +428,10 @@ export default function CouponsPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Usage Limit (Max Uses)</label>
+                  <label className="block font-bold text-slate-700 mb-1">Total Usage Limit (Global)</label>
                   <input
                     type="number"
-                    placeholder="e.g. 100"
+                    placeholder="e.g. 100 (Empty = ∞)"
                     value={usageLimit}
                     onChange={(e) => setUsageLimit(e.target.value ? Number(e.target.value) : "")}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-600 font-semibold"
@@ -434,14 +439,26 @@ export default function CouponsPage() {
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Expiry Date</label>
+                  <label className="block font-bold text-slate-700 mb-1">Per-User Limit (Max / Host)</label>
                   <input
-                    type="date"
-                    value={validUntil}
-                    onChange={(e) => setValidUntil(e.target.value)}
+                    type="number"
+                    min="1"
+                    placeholder="1 (e.g. 99 for testing)"
+                    value={perUserLimit}
+                    onChange={(e) => setPerUserLimit(e.target.value ? Number(e.target.value) : "")}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-600 font-semibold"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Expiry Date</label>
+                <input
+                  type="date"
+                  value={validUntil}
+                  onChange={(e) => setValidUntil(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-900 focus:outline-none focus:border-violet-600 font-semibold"
+                />
               </div>
 
               <div>
