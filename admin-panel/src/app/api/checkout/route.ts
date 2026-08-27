@@ -294,40 +294,6 @@ export async function POST(request: NextRequest) {
     const separator = checkoutUrl.includes('?') ? '&' : '?';
     checkoutUrl = `${checkoutUrl}${separator}redirect_url=${encodeURIComponent(successRedirectUrl)}`;
 
-    // 6.b Register subscription with Devify Pay API (/v1/subscriptions)
-    // This populates the Subscriptions tab in Devify Pay Admin Dashboard
-    try {
-      const devifySubPlanId = resolvedDevifyPlanId || planId;
-
-      await fetch(`${devifyApiUrl}/v1/subscriptions`, {
-        method: 'POST',
-        headers: {
-          'X-Api-Key': devifyApiKey,
-          Authorization: `Bearer ${devifyApiKey}`,
-          'Content-Type': 'application/json',
-          'Idempotency-Key': `${idempotencyKey}_sub`,
-        },
-        body: JSON.stringify({
-          plan_id: devifySubPlanId,
-          customer: {
-            name: customerName,
-            email: userEmail,
-            phone: customerPhone,
-          },
-          metadata: {
-            user_id: userId,
-            order_id: orderId,
-            payment_id: paymentId,
-            billing_cycle: billingCycle,
-            duration_months: durationMonths,
-            amount_rupees: finalAmountRupees,
-          },
-        }),
-      });
-    } catch (subErr) {
-      console.warn('[Checkout] Devify subscription register notice:', subErr);
-    }
-
     // 7a. Save order record to Firestore (safely wrapped)
     try {
       const orderDocRef = doc(db, 'subscription_orders', orderId);

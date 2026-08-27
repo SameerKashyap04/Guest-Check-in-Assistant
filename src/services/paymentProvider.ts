@@ -108,10 +108,7 @@ export class DevifyPaymentProvider implements PaymentProvider {
 
   constructor() {
     const primary = DEVIFY_CONFIG.ADMIN_API_URL || 'https://admin-guest-check-in-assistant.vercel.app';
-    this.candidateUrls = Array.from(new Set([
-      primary,
-      'http://192.168.31.209:3000',
-    ]));
+    this.candidateUrls = Array.from(new Set([primary]));
     this.baseUrl = primary;
   }
 
