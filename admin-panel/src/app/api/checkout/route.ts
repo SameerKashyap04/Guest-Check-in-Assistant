@@ -167,18 +167,16 @@ export async function POST(request: NextRequest) {
     const customerPhone = (body as any).userPhone || '9876543210';
     const customerName = (body as any).userName || userEmail.split('@')[0] || 'StayMate Host';
 
-    // Resolve the Devify plan ID for this plan+cycle combination.
-    // Stored in Firestore after the one-time setup-plans call.
-    let resolvedDevifyPlanId: string | null = null;
-    try {
-      const planKey = billingCycle === 'yearly' ? `${validPlan}_YEARLY` : `${validPlan}_MONTHLY`;
-      const devifyPlansSnap = await getDoc(doc(db, 'system_config', 'devify_plans'));
-      if (devifyPlansSnap.exists()) {
-        resolvedDevifyPlanId = devifyPlansSnap.data()?.[planKey] || null;
-      }
-    } catch (planLookupErr) {
-      console.warn('[Checkout] devify_plans lookup notice:', planLookupErr);
-    }
+    // Resolve or automatically create/provision the Devify plan ID for this plan+cycle.
+    // Ensures metadata.plan_id is ALWAYS populated with a valid Devify Plan ID.
+    const resolvedDevifyPlanId = await getOrProvisionDevifyPlanId(
+      devifyApiUrl,
+      devifyApiKey,
+      validPlan,
+      billingCycle,
+      planName,
+      amountPaise
+    );
 
     const orderRes = await fetch(`${devifyApiUrl}/v1/orders`, {
       method: 'POST',
@@ -297,25 +295,9 @@ export async function POST(request: NextRequest) {
     checkoutUrl = `${checkoutUrl}${separator}redirect_url=${encodeURIComponent(successRedirectUrl)}`;
 
     // 6.b Register subscription with Devify Pay API (/v1/subscriptions)
-    // This populates the Subscriptions tab in Devify Pay Admin Dashboard (Step 4 of Developer Guide)
+    // This populates the Subscriptions tab in Devify Pay Admin Dashboard
     try {
-      let devifyPlanId = planId;
-      try {
-        const plansRes = await fetch(`${devifyApiUrl}/v1/plans`, {
-          headers: {
-            'X-Api-Key': devifyApiKey,
-            Authorization: `Bearer ${devifyApiKey}`,
-          },
-        });
-        if (plansRes.ok) {
-          const plansJson = await plansRes.json();
-          const pList = plansJson?.data || plansJson?.plans || (Array.isArray(plansJson) ? plansJson : []);
-          if (pList.length > 0) {
-            const match = pList.find((p: any) => p.name?.toUpperCase()?.includes(planId) || p.id === planId) || pList[0];
-            if (match?.id) devifyPlanId = match.id;
-          }
-        }
-      } catch (_) {}
+      const devifySubPlanId = resolvedDevifyPlanId || planId;
 
       await fetch(`${devifyApiUrl}/v1/subscriptions`, {
         method: 'POST',
@@ -326,7 +308,7 @@ export async function POST(request: NextRequest) {
           'Idempotency-Key': `${idempotencyKey}_sub`,
         },
         body: JSON.stringify({
-          plan_id: devifyPlanId,
+          plan_id: devifySubPlanId,
           customer: {
             name: customerName,
             email: userEmail,
@@ -416,4 +398,91 @@ export async function POST(request: NextRequest) {
       { status: 500, headers: corsHeaders }
     );
   }
+}
+
+// ------------------------------------------------------------------
+// Auto-Provisioning Helper: Gets or creates Devify Plan ID on-the-fly
+// ------------------------------------------------------------------
+
+async function getOrProvisionDevifyPlanId(
+  devifyApiUrl: string,
+  devifyApiKey: string,
+  validPlan: SubscriptionPlan,
+  billingCycle: BillingCycle,
+  planName: string,
+  amountPaise: number
+): Promise<string | null> {
+  const planKey = billingCycle === 'yearly' ? `${validPlan}_YEARLY` : `${validPlan}_MONTHLY`;
+
+  // 1. Try Firestore cache lookup first
+  try {
+    const devifyPlansSnap = await getDoc(doc(db, 'system_config', 'devify_plans'));
+    if (devifyPlansSnap.exists() && devifyPlansSnap.data()?.[planKey]) {
+      return devifyPlansSnap.data()[planKey];
+    }
+  } catch (err) {
+    console.warn('[Checkout] Firestore devify_plans lookup notice:', err);
+  }
+
+  // 2. Provision on-the-fly: create plan in Devify Pay
+  try {
+    const res = await fetch(`${devifyApiUrl}/v1/plans`, {
+      method: 'POST',
+      headers: {
+        'X-Api-Key': devifyApiKey,
+        Authorization: `Bearer ${devifyApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: `StayMate ${planName} ${billingCycle === 'yearly' ? 'Yearly' : 'Monthly'}`,
+        amount: amountPaise,
+        currency: 'INR',
+        interval: billingCycle === 'yearly' ? 'YEAR' : 'MONTH',
+        interval_count: 1,
+      }),
+    });
+
+    let planId: string | null = null;
+
+    if (res.status === 201 || res.status === 200) {
+      const data = await res.json();
+      planId = data.id || data.plan_id || data.data?.id || null;
+    } else if (res.status === 409) {
+      try {
+        const errJson = await res.json();
+        planId = errJson.existing_id || errJson.id || errJson.plan_id || errJson.data?.id || null;
+      } catch {}
+
+      if (!planId) {
+        const listRes = await fetch(`${devifyApiUrl}/v1/plans`, {
+          headers: {
+            'X-Api-Key': devifyApiKey,
+            Authorization: `Bearer ${devifyApiKey}`,
+          },
+        });
+        if (listRes.ok) {
+          const listJson = await listRes.json();
+          const pList: any[] = listJson.data || listJson.plans || (Array.isArray(listJson) ? listJson : []);
+          const match = pList.find((p: any) => p.name?.toLowerCase().includes(validPlan.toLowerCase()) || p.amount === amountPaise);
+          if (match?.id) planId = match.id;
+        }
+      }
+    }
+
+    if (planId) {
+      try {
+        await setDoc(
+          doc(db, 'system_config', 'devify_plans'),
+          { [planKey]: planId, updatedAt: serverTimestamp() },
+          { merge: true }
+        );
+        console.info(`[Checkout] Auto-provisioned & cached Devify Plan ID for ${planKey}: ${planId}`);
+      } catch (_) {}
+      return planId;
+    }
+  } catch (err) {
+    console.warn('[Checkout] On-the-fly Devify plan creation notice:', err);
+  }
+
+  return null;
 }
