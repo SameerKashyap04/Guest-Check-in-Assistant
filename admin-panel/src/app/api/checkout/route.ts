@@ -167,6 +167,19 @@ export async function POST(request: NextRequest) {
     const customerPhone = (body as any).userPhone || '9876543210';
     const customerName = (body as any).userName || userEmail.split('@')[0] || 'StayMate Host';
 
+    // Resolve the Devify plan ID for this plan+cycle combination.
+    // Stored in Firestore after the one-time setup-plans call.
+    let resolvedDevifyPlanId: string | null = null;
+    try {
+      const planKey = billingCycle === 'yearly' ? `${validPlan}_YEARLY` : `${validPlan}_MONTHLY`;
+      const devifyPlansSnap = await getDoc(doc(db, 'system_config', 'devify_plans'));
+      if (devifyPlansSnap.exists()) {
+        resolvedDevifyPlanId = devifyPlansSnap.data()?.[planKey] || null;
+      }
+    } catch (planLookupErr) {
+      console.warn('[Checkout] devify_plans lookup notice:', planLookupErr);
+    }
+
     const orderRes = await fetch(`${devifyApiUrl}/v1/orders`, {
       method: 'POST',
       headers: {
@@ -184,6 +197,24 @@ export async function POST(request: NextRequest) {
           email: userEmail,
           phone: customerPhone,
         },
+        // plan_id in metadata tells Devify Pay to auto-create a TRIALING subscription
+        // customer.email is REQUIRED for Devify to link the customer to the subscription
+        ...(resolvedDevifyPlanId ? {
+          metadata: {
+            plan_id: resolvedDevifyPlanId,
+            user_id: userId,
+            plan_key: `${validPlan}_${billingCycle.toUpperCase()}`,
+            billing_cycle: billingCycle,
+            duration_months: durationMonths,
+          },
+        } : {
+          metadata: {
+            user_id: userId,
+            plan_key: `${validPlan}_${billingCycle.toUpperCase()}`,
+            billing_cycle: billingCycle,
+            duration_months: durationMonths,
+          },
+        }),
       }),
     });
 
@@ -315,7 +346,7 @@ export async function POST(request: NextRequest) {
       console.warn('[Checkout] Devify subscription register notice:', subErr);
     }
 
-    // 7. Save order record to Firestore (safely wrapped)
+    // 7a. Save order record to Firestore (safely wrapped)
     try {
       const orderDocRef = doc(db, 'subscription_orders', orderId);
       await setDoc(orderDocRef, {
@@ -346,6 +377,27 @@ export async function POST(request: NextRequest) {
       });
     } catch (err) {
       console.warn('[Checkout] Order Firestore write notice:', err);
+    }
+
+    // 7b. Store pending_subscription record so the webhook handler can look up the user.
+    // This is written AFTER the order so orderId is guaranteed to exist.
+    // The webhook fires after payment — by then this doc is already in Firestore.
+    try {
+      const { addDoc, collection: col } = await import('firebase/firestore');
+      const planKey = `${validPlan}_${billingCycle.toUpperCase()}`;
+      await addDoc(col(db, 'pending_subscriptions'), {
+        userId,
+        userEmail,
+        planKey,
+        devifyPlanId: resolvedDevifyPlanId || null,
+        devifyOrderId: orderId,
+        devifyPaymentId: paymentId || null,
+        devifySubscriptionId: null,  // populated by subscription.activated webhook
+        status: 'PENDING',
+        createdAt: serverTimestamp(),
+      });
+    } catch (pendingErr) {
+      console.warn('[Checkout] pending_subscriptions write notice:', pendingErr);
     }
 
     // 8. Return checkout URL to the app

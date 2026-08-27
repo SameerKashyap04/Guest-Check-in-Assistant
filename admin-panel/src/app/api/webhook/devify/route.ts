@@ -9,7 +9,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
-import { doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, getDocs, updateDoc, setDoc, addDoc, collection, query, where, limit, serverTimestamp } from 'firebase/firestore';
 import { createHmac } from 'crypto';
 import { getPriceInPaise, type SubscriptionPlan, type BillingCycle } from '@/lib/plans';
 import { recordCouponRedemption } from '@/lib/coupons';
@@ -167,9 +167,19 @@ export async function POST(request: NextRequest) {
     switch (eventType) {
       case 'payment.success':
       case 'order.paid':
-      case 'subscription.created':
-      case 'subscription.activated':
         await handlePaymentSuccess(eventData, eventType);
+        break;
+
+      // subscription.activated is handled separately — it writes to user_subscriptions
+      // which is the authoritative subscription table (not just order status)
+      case 'subscription.activated':
+      case 'subscription.created':
+        await handleSubscriptionActivated(payload);
+        break;
+
+      case 'subscription.cancelled':
+      case 'subscription.expired':
+        await handleSubscriptionCancelled(payload);
         break;
 
       case 'payment.failed':
@@ -400,4 +410,272 @@ async function handlePaymentFailed(payload: any, eventType: string) {
   });
 
   console.info(`[Webhook] ❌ Order ${orderId} marked as FAILED. User: ${orderData.userId}`);
+}
+
+// ------------------------------------------------------------------
+// Subscription Event Handlers
+// ------------------------------------------------------------------
+
+/**
+ * Handles subscription.activated webhook.
+ *
+ * Devify fires this when a customer pays and the TRIALING subscription transitions to ACTIVE.
+ * We:
+ *   1. Guard against duplicate processing via processed_webhooks
+ *   2. Find the pending_subscriptions record (created at checkout time) by Devify sub ID
+ *      — with fallback to devifyOrderId if the sub ID wasn't stored yet
+ *   3. Upsert user_subscriptions (the authoritative subscription state per user)
+ *   4. Mark pending_subscriptions as CONVERTED
+ *   5. Write processed_webhooks idempotency record
+ */
+async function handleSubscriptionActivated(payload: any) {
+  // Supports both nested (payload.data.subscription) and flat payload shapes
+  const sub = payload.data?.subscription ?? payload.subscription ?? {};
+  const subscriptionId = sub.id ?? payload.data?.subscription_id ?? payload.subscription_id;
+  const planId         = sub.plan_id ?? payload.data?.plan_id ?? payload.plan_id;
+  const startDate      = sub.start_date ?? payload.data?.start_date ?? payload.start_date;
+  const endDate        = sub.end_date   ?? payload.data?.end_date   ?? payload.end_date;
+
+  if (!subscriptionId) {
+    console.error('[Webhook] subscription.activated missing subscription_id');
+    return;
+  }
+
+  // 1. Idempotency guard
+  const dedupeKey = `subscription.activated:${subscriptionId}`;
+  const processedRef = doc(db, 'processed_webhooks', dedupeKey.replace(/:/g, '_'));
+  const processedSnap = await getDoc(processedRef);
+  if (processedSnap.exists()) {
+    console.info(`[Webhook] subscription.activated already processed: ${subscriptionId}`);
+    return;
+  }
+
+  // 2. Find pending subscription record — first by subscriptionId, then by orderId
+  let pendingDoc: any = null;
+  let pendingDocId: string | null = null;
+
+  // Try devifySubscriptionId match first
+  try {
+    const qBySubId = query(
+      collection(db, 'pending_subscriptions'),
+      where('devifySubscriptionId', '==', subscriptionId),
+      limit(1)
+    );
+    const snap = await getDocs(qBySubId);
+    if (!snap.empty) {
+      pendingDocId = snap.docs[0].id;
+      pendingDoc = snap.docs[0].data();
+    }
+  } catch (e) {
+    console.warn('[Webhook] pending_subscriptions sub-id query notice:', e);
+  }
+
+  // Fallback: look up by orderId from payload (handles race where sub ID wasn't stored yet)
+  if (!pendingDoc) {
+    const orderId = payload.data?.order_id ?? payload.order_id;
+    if (orderId) {
+      try {
+        const qByOrder = query(
+          collection(db, 'pending_subscriptions'),
+          where('devifyOrderId', '==', orderId),
+          where('status', '==', 'PENDING'),
+          limit(1)
+        );
+        const snap = await getDocs(qByOrder);
+        if (!snap.empty) {
+          pendingDocId = snap.docs[0].id;
+          pendingDoc = snap.docs[0].data();
+        }
+      } catch (e) {
+        console.warn('[Webhook] pending_subscriptions order-id query notice:', e);
+      }
+    }
+  }
+
+  if (!pendingDoc || !pendingDocId) {
+    console.warn(`[Webhook] No pending_subscription found for sub ${subscriptionId}. May be a direct Devify creation.`);
+    // Still write idempotency record so we don't reprocess
+    await setDoc(processedRef, { key: dedupeKey, processedAt: serverTimestamp() });
+    return;
+  }
+
+  const { userId, planKey, userEmail } = pendingDoc;
+
+  // 3. Upsert user_subscriptions (the authoritative subscription state)
+  const userSubId = `usub_${userId.toLowerCase()}`;
+  await setDoc(
+    doc(db, 'user_subscriptions', userSubId),
+    {
+      id: userSubId,
+      userId,
+      userEmail: userEmail || null,
+      planKey,
+      devifySubscriptionId: subscriptionId,
+      devifyPlanId: planId || null,
+      status: 'ACTIVE',
+      startDate: startDate ? new Date(startDate).toISOString() : new Date().toISOString(),
+      endDate: endDate ? new Date(endDate).toISOString() : null,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  // 4. Mark pending subscription as CONVERTED and store the subscription ID
+  await updateDoc(doc(db, 'pending_subscriptions', pendingDocId), {
+    status: 'CONVERTED',
+    devifySubscriptionId: subscriptionId,
+    convertedAt: serverTimestamp(),
+  });
+
+  // 5. Write idempotency record
+  await setDoc(processedRef, { key: dedupeKey, processedAt: serverTimestamp() });
+
+  // 6. Mirror to existing subscriptions collection for admin panel compatibility
+  try {
+    const subDocId = `sub_${userId.toLowerCase()}`;
+    await setDoc(
+      doc(db, 'subscriptions', subDocId),
+      {
+        id: subDocId,
+        property: userEmail || `Homestay (${userId})`,
+        propertyId: userId,
+        plan: planKey.split('_')[0],
+        cycle: (planKey.includes('YEARLY') ? 'yearly' : 'monthly'),
+        status: 'active',
+        devifySubscriptionId: subscriptionId,
+        renewalDate: endDate ? new Date(endDate).toISOString().split('T')[0] + ' (Renews)' : 'TBD',
+        provider: 'Devify Pay',
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (mirrorErr) {
+    console.warn('[Webhook] subscriptions mirror write notice:', mirrorErr);
+  }
+
+  // 7. Update owners collection
+  try {
+    await setDoc(
+      doc(db, 'owners', userId),
+      {
+        plan: planKey.split('_')[0],
+        status: 'Active',
+        subscriptionPlan: planKey.split('_')[0],
+        devifySubscriptionId: subscriptionId,
+        lastActive: 'Online Now',
+        lastActiveTimestamp: Date.now(),
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (_) {}
+
+  // 8. Emit audit log
+  try {
+    await addDoc(collection(db, 'audit_logs'), {
+      actor: userEmail || userId,
+      action: 'SUBSCRIPTION_ACTIVATED',
+      target: planKey,
+      details: `Devify subscription ${subscriptionId} activated (${planKey})`,
+      category: 'SUBSCRIPTION',
+      timestamp: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+    });
+  } catch (_) {}
+
+  console.info(`[Webhook] ✅ Subscription ${subscriptionId} ACTIVATED for user ${userId} (${planKey})`);
+}
+
+/**
+ * Handles subscription.cancelled (and subscription.expired) webhooks.
+ *
+ * Updates user_subscriptions to CANCELLED/EXPIRED status.
+ * Guards against duplicate processing.
+ */
+async function handleSubscriptionCancelled(payload: any) {
+  const subscriptionId =
+    payload.data?.subscription?.id ??
+    payload.data?.subscription_id ??
+    payload.subscription_id;
+
+  const eventType = payload.type || payload.event || 'subscription.cancelled';
+  const newStatus = eventType.includes('expired') ? 'EXPIRED' : 'CANCELLED';
+
+  if (!subscriptionId) {
+    console.error('[Webhook] subscription.cancelled missing subscription_id');
+    return;
+  }
+
+  // 1. Idempotency guard
+  const dedupeKey = `${eventType}:${subscriptionId}`;
+  const processedRef = doc(db, 'processed_webhooks', dedupeKey.replace(/[:.]/g, '_'));
+  const processedSnap = await getDoc(processedRef);
+  if (processedSnap.exists()) {
+    console.info(`[Webhook] ${eventType} already processed: ${subscriptionId}`);
+    return;
+  }
+
+  // 2. Find user_subscriptions record
+  try {
+    const qBySub = query(
+      collection(db, 'user_subscriptions'),
+      where('devifySubscriptionId', '==', subscriptionId),
+      limit(1)
+    );
+    const snap = await getDocs(qBySub);
+
+    if (!snap.empty) {
+      const userSubDoc = snap.docs[0];
+      const { userId, planKey, userEmail } = userSubDoc.data();
+
+      // 3. Mark subscription as cancelled
+      await updateDoc(doc(db, 'user_subscriptions', userSubDoc.id), {
+        status: newStatus,
+        cancelledAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      });
+
+      // 4. Update mirrored subscriptions collection
+      try {
+        const subDocId = `sub_${userId.toLowerCase()}`;
+        await updateDoc(doc(db, 'subscriptions', subDocId), {
+          status: newStatus.toLowerCase(),
+          updatedAt: new Date().toISOString(),
+        });
+      } catch (_) {}
+
+      // 5. Update owners collection
+      try {
+        await setDoc(
+          doc(db, 'owners', userId),
+          { plan: 'FREE', status: 'Inactive', updatedAt: new Date().toISOString() },
+          { merge: true }
+        );
+      } catch (_) {}
+
+      // 6. Emit audit log
+      try {
+        await addDoc(collection(db, 'audit_logs'), {
+          actor: userEmail || userId,
+          action: `SUBSCRIPTION_${newStatus}`,
+          target: planKey,
+          details: `Devify subscription ${subscriptionId} ${newStatus.toLowerCase()}`,
+          category: 'SUBSCRIPTION',
+          timestamp: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        });
+      } catch (_) {}
+
+      console.info(`[Webhook] ⚠️ Subscription ${subscriptionId} ${newStatus} for user ${userId}`);
+    } else {
+      console.warn(`[Webhook] No user_subscription found for sub ${subscriptionId}`);
+    }
+  } catch (e) {
+    console.error('[Webhook] handleSubscriptionCancelled error:', e);
+    throw e;
+  }
+
+  // 7. Write idempotency record
+  await setDoc(processedRef, { key: dedupeKey, processedAt: serverTimestamp() });
 }
