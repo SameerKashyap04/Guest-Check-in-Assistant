@@ -95,7 +95,6 @@ class PlansService {
   private candidateUrls = Array.from(
     new Set([
       DEVIFY_CONFIG.ADMIN_API_URL || 'https://admin-guest-check-in-assistant.vercel.app',
-      'http://192.168.31.209:3000',
     ])
   );
 
