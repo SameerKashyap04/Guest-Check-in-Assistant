@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchOwnerProfile, syncCheckinToFirestore, syncRoomsToFirestore } from './src/services/firebaseAuth';
 import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
@@ -85,12 +87,56 @@ if (Platform.OS === 'web' && typeof document !== 'undefined') {
   }
 }
 
+function InternetRequiredScreen({ onRetry, isChecking }: { onRetry: () => void; isChecking: boolean }) {
+  const { colors, isDark } = useTheme();
+  return (
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.canvas, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <View style={{ width: 80, height: 80, borderRadius: 40, backgroundColor: isDark ? '#2E1065' : '#EDE9FE', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+        <Icon name="cloud" size={40} color={colors.primary} />
+      </View>
+      <Text style={{ fontFamily: 'Inter', fontSize: 22, fontWeight: '800', color: colors.ink, textAlign: 'center', marginBottom: 12 }}>
+        Internet Connection Required
+      </Text>
+      <Text style={{ fontFamily: 'Inter', fontSize: 14, color: colors.muted, textAlign: 'center', lineHeight: 22, maxWidth: 320, marginBottom: 32 }}>
+        StayMate operates in real-time Cloud Compliance Mode. An active internet connection is mandatory to verify guest IDs, ensure live Police ledger synchronization, and access your property records.
+      </Text>
+      <TouchableOpacity
+        activeOpacity={0.85}
+        onPress={onRetry}
+        disabled={isChecking}
+        style={{
+          width: '100%',
+          maxWidth: 280,
+          backgroundColor: colors.primary,
+          paddingVertical: 14,
+          borderRadius: 14,
+          alignItems: 'center',
+          justifyContent: 'center',
+          shadowColor: colors.primary,
+          shadowOpacity: 0.3,
+          shadowRadius: 10,
+          shadowOffset: { width: 0, height: 4 },
+          elevation: 4,
+        }}
+      >
+        <Text style={{ fontFamily: 'Inter', fontSize: 15, fontWeight: '700', color: '#FFFFFF' }}>
+          {isChecking ? 'Checking Connection…' : 'Retry Connection'}
+        </Text>
+      </TouchableOpacity>
+    </SafeAreaView>
+  );
+}
+
 function MainApp() {
   const { isDark, colors } = useTheme();
   const [authStage, setAuthStage] = useState<'login' | 'set_password' | 'enter_pin' | 'dashboard'>('login');
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [unlocked, setUnlocked] = useState(false);
   const [isSecurityReady, setIsSecurityReady] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
+  const [isCheckingNet, setIsCheckingNet] = useState(false);
   const lastActiveRef = useRef<number>(Date.now());
 
   const [tab, setTab] = useState<TabName>('dashboard');
@@ -120,22 +166,95 @@ function MainApp() {
   const [billing, setBilling] = useState(false);
   const [activePlan, setActivePlan] = useState<string>('Professional');
 
+  // Network connectivity verification
+  const checkConnectivity = async () => {
+    try {
+      setIsCheckingNet(true);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3500);
+      const res = await fetch('https://clients3.google.com/generate_204', {
+        method: 'HEAD',
+        cache: 'no-store',
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (res.status === 204 || res.ok || res.status < 400) {
+        setIsOnline(true);
+      } else {
+        setIsOnline(false);
+      }
+    } catch (_) {
+      setIsOnline(false);
+    } finally {
+      setIsCheckingNet(false);
+    }
+  };
+
+  useEffect(() => {
+    checkConnectivity();
+    const interval = setInterval(checkConnectivity, 6000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Strict Login flow: Login -> Set Master Password / PIN -> Dashboard
   const handleLoginSuccess = async (userData?: any) => {
-    setCurrentUser(userData || { email: 'host@staymate.in' });
+    let profile = userData || { email: 'host@staymate.in' };
+    if (userData?.uid || userData?.email) {
+      const cloud = await fetchOwnerProfile(userData.uid, userData.email);
+      if (cloud) {
+        profile = { ...profile, ...cloud };
+      }
+    }
+    setCurrentUser(profile);
+    try {
+      await AsyncStorage.setItem('@staymate_user_profile', JSON.stringify(profile));
+    } catch (_) {}
+    setUnlocked(false);
     setAuthStage('set_password');
+    notify(userData?.provider === 'google' ? '✓ Signed in with Google! Set your master PIN' : '✓ Please configure your master PIN');
+  };
+
+  const handleProfileUpdated = (updates: any) => {
+    setCurrentUser((prev: any) => {
+      const merged = { ...(prev || {}), ...updates };
+      AsyncStorage.setItem('@staymate_user_profile', JSON.stringify(merged)).catch(() => {});
+      return merged;
+    });
   };
 
   const handleSetPasswordSuccess = () => {
     setUnlocked(true);
     setAuthStage('dashboard');
-    notify('✓ Master security password configured!');
+    notify('✓ Master security PIN configured!');
   };
 
-  // Initialize Security Settings & check if lock is required
+  // Initialize Security Settings & load stored user profile for persistent auto-login
   useEffect(() => {
     (async () => {
-      const cfg = await securityService.init();
-      setIsSecurityReady(true);
+      try {
+        const cfg = await securityService.init();
+        setIsSecurityReady(true);
+        const stored = await AsyncStorage.getItem('@staymate_user_profile');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          setCurrentUser(parsed);
+          // If App Lock is enabled in settings, prompt for PIN, otherwise enter dashboard directly
+          if (cfg.isLockEnabled) {
+            setAuthStage('enter_pin');
+            setUnlocked(false);
+          } else {
+            setAuthStage('dashboard');
+            setUnlocked(true);
+          }
+        } else {
+          setAuthStage('login');
+          setUnlocked(false);
+        }
+      } catch (_) {
+        setAuthStage('login');
+      } finally {
+        setIsInitializing(false);
+      }
     })();
   }, []);
 
@@ -168,7 +287,8 @@ function MainApp() {
 
   // Subscribe to real-time online self check-in submissions from Firestore
   useEffect(() => {
-    const unsub = subscribeToPropertyCheckins('HS-4821', (cloudCheckin) => {
+    const propId = currentUser?.propertyId || 'HS-4821';
+    const unsub = subscribeToPropertyCheckins(propId, (cloudCheckin) => {
       const formatted = {
         id: cloudCheckin.id || `cloud_${Date.now()}`,
         name: cloudCheckin.full_name,
@@ -208,9 +328,9 @@ function MainApp() {
 
   // Update room status reactively across the entire application
   const handleUpdateRoomStatus = (roomNum: string, newStatus: RoomStatus) => {
-    setRoomsList((prev) =>
-      prev.map((r) => (r.num === roomNum ? {...r, status: newStatus} : r))
-    );
+    const updated = roomsList.map((r) => (r.num === roomNum ? {...r, status: newStatus} : r));
+    setRoomsList(updated);
+    syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updated);
     const meta = STATUS_META[newStatus];
     notify(`Room ${roomNum} marked as ${meta.label}`);
   };
@@ -236,13 +356,17 @@ function MainApp() {
       return;
     }
 
-    setRoomsList((prev) => [newRoom, ...prev]);
+    const updated = [newRoom, ...roomsList];
+    setRoomsList(updated);
+    syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updated);
     notify(`✓ Room ${newRoom.num} (${newRoom.type}) added to property!`);
   };
 
   // Delete room from property inventory
   const handleDeleteRoom = (roomNum: string) => {
-    setRoomsList((prev) => prev.filter((r) => r.num !== roomNum));
+    const updated = roomsList.filter((r) => r.num !== roomNum);
+    setRoomsList(updated);
+    syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updated);
     setSheet(null);
     setSelectedRoom(null);
     notify(`Room ${roomNum} deleted from property`);
@@ -251,9 +375,8 @@ function MainApp() {
   // Checkout guest from room and set room to cleaning (NEVER deletes guest details)
   const handleCheckoutGuest = (roomNum: string, guestName?: string) => {
     // 1. Update room status to cleaning
-    setRoomsList((prev) =>
-      prev.map((r) => (r.num === roomNum ? {...r, status: 'cleaning'} : r))
-    );
+    const updatedRooms = roomsList.map((r) => (r.num === roomNum ? {...r, status: 'cleaning' as RoomStatus} : r));
+    setRoomsList(updatedRooms);
 
     // 2. Mark guest as checked out with timestamp instead of deleting their record
     const now = new Date();
@@ -273,6 +396,9 @@ function MainApp() {
         return g;
       })
     );
+
+    // Sync updated room occupancy to Firestore
+    syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updatedRooms);
 
     setSheet(null);
     setSelectedRoom(null);
@@ -304,9 +430,11 @@ function MainApp() {
     setGuestsList((prev) => [newGuest, ...prev]);
 
     // Update room status to occupied reactively
-    setRoomsList((prev) =>
-      prev.map((r) => (r.num === newGuest.room ? {...r, status: 'occupied'} : r))
-    );
+    const updatedRooms = roomsList.map((r) => (r.num === newGuest.room ? {...r, status: 'occupied' as RoomStatus} : r));
+    setRoomsList(updatedRooms);
+
+    // Sync check-in to Firestore checkins collection and update live property room inventory
+    syncCheckinToFirestore(currentUser?.propertyId || 'HS-4821', newGuest, updatedRooms);
 
     setManual(false);
     setManualInitialData(null);
@@ -341,7 +469,9 @@ function MainApp() {
       raw: g.raw || g,
     };
     setGuestsList((prev) => [newGuest, ...prev]);
-    handleUpdateRoomStatus(assignedRoom, 'occupied');
+    const updatedRooms = roomsList.map((r) => (r.num === assignedRoom ? {...r, status: 'occupied' as RoomStatus} : r));
+    setRoomsList(updatedRooms);
+    syncCheckinToFirestore(currentUser?.propertyId || 'HS-4821', newGuest, updatedRooms);
     setPendingCheckins((prev) => prev.filter((item) => item.id !== g.id));
     if (g.id && typeof g.id === 'string') {
       deleteCloudCheckinDoc(g.id);
@@ -362,6 +492,7 @@ function MainApp() {
     tab === 'dashboard' ? (
       <DashboardScreen
         guests={guestsList}
+        userProfile={currentUser}
         onSearch={() => setOverlay('search')}
         onReports={() => setOverlay('reports')}
         onGuest={(id) => {
@@ -424,20 +555,23 @@ function MainApp() {
     ) : (
       <SettingsScreen
         currentPlan={activePlan}
+        userProfile={currentUser}
         onAccount={() => setAccount(true)}
         onModal={show}
         onPricing={() => setOverlay('pricing')}
         onReferEarn={() => setOverlay('refer-earn')}
         onToast={notify}
+        onProfileUpdated={handleProfileUpdated}
         onLogout={() =>
           show(
             'Log out of StayMate?',
             'You will need to sign in again with your email and password.',
             'Log out',
-            () => {
+            async () => {
               setUnlocked(false);
               setAuthStage('login');
               setCurrentUser(null);
+              try { await AsyncStorage.removeItem('@staymate_user_profile'); } catch (_) {}
               setModal(null);
               notify('Logged out securely');
             }
@@ -450,12 +584,26 @@ function MainApp() {
       />
     );
 
+  // Splash/Loading check while reading stored session
+  if (isInitializing) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.canvas }]} edges={['top', 'bottom', 'left', 'right']}>
+        <StatusBar style={isDark ? "light" : "dark"}/>
+      </SafeAreaView>
+    );
+  }
+
+  // RESTRICTION: Real-time Cloud Compliance Mode requires active Internet connection
+  if (!isOnline) {
+    return <InternetRequiredScreen onRetry={checkConnectivity} isChecking={isCheckingNet} />;
+  }
+
   // STAGE 1: Host Login Screen
-  if (authStage === 'login') {
+  if (authStage === 'login' || (!currentUser && !unlocked)) {
     return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
   }
 
-  // STAGE 2: Set Master Password / PIN Screen
+  // STAGE 2: Set Master Password / PIN Screen (only if explicitly invoked)
   if (authStage === 'set_password') {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.canvas }]} edges={['top', 'bottom', 'left', 'right']}>
@@ -465,8 +613,8 @@ function MainApp() {
     );
   }
 
-  // STAGE 3: Unlock Guard for existing sessions / auto-lock
-  if (isSecurityReady && !unlocked) {
+  // STAGE 3: Unlock Guard for existing sessions / auto-lock (only if PIN Lock is enabled)
+  if (isSecurityReady && !unlocked && currentUser && securityService.getSettings().isLockEnabled) {
     return (
       <SafeAreaView style={[styles.container, { backgroundColor: colors.canvas }]} edges={['top', 'bottom', 'left', 'right']}>
         <StatusBar style={isDark ? "light" : "dark"}/>
@@ -501,9 +649,11 @@ function MainApp() {
       {account && (
         <Modal visible animationType="slide">
           <AccountPortalScreen
+            userProfile={currentUser}
             onClose={() => setAccount(false)}
             onToast={notify}
             onModal={show}
+            onProfileUpdated={handleProfileUpdated}
           />
         </Modal>
       )}

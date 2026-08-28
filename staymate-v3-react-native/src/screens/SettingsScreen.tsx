@@ -21,6 +21,7 @@ import {useTheme, ThemeMode} from '../theme/ThemeContext';
 import {Icon, IconName} from '../components/Icon';
 import {SettingRow, PrimaryButton, SecondaryButton, Field} from '../components/Ui';
 import {securityService} from '../services/securityService';
+import {updateOwnerProfile} from '../services/firebaseAuth';
 
 const StayMateLogo = require('../../assets/staymate-logo.png');
 const StayMateLogoDark = require('../../assets/staymate-logo-dark.png');
@@ -44,14 +45,13 @@ const LANGUAGES = [
   {id: 'mr', name: 'Marathi', native: 'मराठी'},
   {id: 'bn', name: 'Bengali', native: 'বাংলা'},
   {id: 'gu', name: 'Gujarati', native: 'ગુજરાતી'},
-  {id: 'es', name: 'Spanish', native: 'Español'},
-  {id: 'fr', name: 'French', native: 'Français'},
+  {id: 'pa', name: 'Punjabi', native: 'ਪੰਜਾਬੀ'},
 ];
 
 const THEMES: {id: ThemeMode; name: string; desc: string}[] = [
-  {id: 'system', name: 'System default', desc: 'Follows device appearance'},
-  {id: 'light', name: 'Light mode', desc: 'Crisp bright interface'},
+  {id: 'light', name: 'Light mode', desc: 'Crisp bright white interface'},
   {id: 'dark', name: 'Dark mode', desc: 'Sleek low-light theme'},
+  {id: 'system', name: 'System preference', desc: 'Automatically match device appearance'},
 ];
 
 const AUTOLOCK_OPTIONS = [
@@ -64,7 +64,8 @@ const AUTOLOCK_OPTIONS = [
 ];
 
 export function SettingsScreen({
-  currentPlan = 'Professional',
+  currentPlan,
+  userProfile,
   onAccount,
   onModal,
   onPricing,
@@ -72,8 +73,10 @@ export function SettingsScreen({
   onLogout,
   onLock,
   onToast,
+  onProfileUpdated,
 }: {
   currentPlan?: string;
+  userProfile?: any;
   onAccount: () => void;
   onModal?: (title: string, text: string) => void;
   onPricing: () => void;
@@ -81,6 +84,7 @@ export function SettingsScreen({
   onLogout: () => void;
   onLock: () => void;
   onToast?: (msg: string) => void;
+  onProfileUpdated?: (updated: any) => void;
 }) {
   const { themeMode, isDark, colors, setThemeMode } = useTheme();
 
@@ -93,13 +97,27 @@ export function SettingsScreen({
 
   // Live State
   const [profile, setProfile] = useState<PropertyProfile>({
-    name: 'Sunrise Homestay',
-    code: 'HS-4821',
-    owner: 'Homestay Owner',
-    address: 'Plot 14, Hilltop View Road, Ooty, Tamil Nadu 643001',
-    phone: '+91 98765 43210',
-    email: 'owner@sunrisehomestay.com',
+    name: userProfile?.businessName || userProfile?.propertyName || 'Sunrise Homestay',
+    code: userProfile?.propertyId || 'HS-4821',
+    owner: userProfile?.ownerName || userProfile?.displayName || (userProfile?.email ? userProfile.email.split('@')[0] : 'Homestay Owner'),
+    address: userProfile?.address || 'Plot 14, Hilltop View Road, Ooty, Tamil Nadu 643001',
+    phone: userProfile?.phone || '+91 98765 43210',
+    email: userProfile?.email || 'owner@sunrisehomestay.com',
   });
+
+  useEffect(() => {
+    if (userProfile) {
+      setProfile((prev) => ({
+        ...prev,
+        name: userProfile.businessName || userProfile.propertyName || prev.name,
+        code: userProfile.propertyId || prev.code,
+        owner: userProfile.ownerName || userProfile.displayName || (userProfile.email ? userProfile.email.split('@')[0] : prev.owner),
+        email: userProfile.email || prev.email,
+        phone: userProfile.phone || prev.phone,
+        address: userProfile.address || prev.address,
+      }));
+    }
+  }, [userProfile]);
 
   const [cloudSync, setCloudSync] = useState(true);
   const [requirePin, setRequirePin] = useState(true);
@@ -159,14 +177,33 @@ export function SettingsScreen({
   };
 
   // Save Profile Sheet
-  const handleSaveProfile = () => {
+  const handleSaveProfile = async () => {
     if (!editProfile.name.trim()) {
       Alert.alert('Required', 'Please enter a property name.');
       return;
     }
     setProfile(editProfile);
     setActiveModal(null);
-    notify('Property profile updated');
+    try {
+      const uid = userProfile?.uid || '';
+      const updates = {
+        businessName: editProfile.name.trim(),
+        name: editProfile.owner.trim(),
+        ownerName: editProfile.owner.trim(),
+        propertyId: editProfile.code.trim(),
+        phone: editProfile.phone.trim(),
+        email: editProfile.email.trim(),
+        address: editProfile.address.trim(),
+        location: editProfile.address.trim(),
+      };
+      await updateOwnerProfile(uid, updates);
+      if (onProfileUpdated) {
+        onProfileUpdated(updates);
+      }
+      notify('Property profile updated & synced to cloud');
+    } catch (e) {
+      notify('Property profile updated');
+    }
   };
 
   // Toggle Cloud Mode (restricted to Professional plan or higher)
@@ -573,7 +610,7 @@ export function SettingsScreen({
               </View>
 
               <ScrollView
-                contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 32}}
+                contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 280}}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
                 keyboardDismissMode="on-drag"

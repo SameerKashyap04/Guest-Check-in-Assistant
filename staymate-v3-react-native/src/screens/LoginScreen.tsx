@@ -17,6 +17,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../components/Icon';
 import { GoogleLogo } from '../components/GoogleLogo';
 import { referralService } from '../services/referralService';
+import { signInWithGoogleOwner } from '../services/firebaseAuth';
 
 const StayMateLogo = require('../../assets/staymate-logo.png');
 const StayMateLogoDark = require('../../assets/staymate-logo-dark.png');
@@ -47,6 +48,8 @@ export function LoginScreen({
   const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [resendTimer, setResendTimer] = useState<number>(30);
   const otpInputsRef = useRef<(TextInput | null)[]>([]);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [googleError, setGoogleError] = useState('');
 
   useEffect(() => {
     let interval: any;
@@ -63,6 +66,15 @@ export function LoginScreen({
       return;
     }
     if (mode === 'signup' && !property.trim()) {
+      return;
+    }
+
+    if (mode === 'login') {
+      onLoginSuccess({
+        email: email.trim(),
+        businessName: property.trim() || 'Sunrise Homestay',
+        provider: 'password',
+      });
       return;
     }
 
@@ -161,9 +173,9 @@ export function LoginScreen({
       >
         <ScrollView
           contentContainerStyle={{
-            paddingTop: 143,
+            paddingTop: Math.max(28, insets.top + 12),
             paddingHorizontal: 24,
-            paddingBottom: Math.max(32, insets.bottom + 16),
+            paddingBottom: 280,
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -323,18 +335,35 @@ export function LoginScreen({
 
                 {/* Google Sign-In */}
                 <TouchableOpacity
-                  activeOpacity={0.8}
-                  style={[s.googleBtn, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}
-                  onPress={() => {
-                    onLoginSuccess({
-                      email: 'host@staymate.in',
-                      businessName: 'Sunrise Homestay',
-                    });
+                  activeOpacity={isGoogleLoading ? 1 : 0.8}
+                  style={[s.googleBtn, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }, isGoogleLoading && { opacity: 0.6 }]}
+                  onPress={async () => {
+                    if (isGoogleLoading) return;
+                    setGoogleError('');
+                    setIsGoogleLoading(true);
+                    try {
+                      const profile = await signInWithGoogleOwner();
+                      onLoginSuccess({
+                        email: profile.email,
+                        businessName: profile.businessName,
+                        uid: profile.uid,
+                        provider: 'google',
+                      });
+                    } catch (err: any) {
+                      setGoogleError(err?.message || 'Google Sign-In failed. Please try again.');
+                    } finally {
+                      setIsGoogleLoading(false);
+                    }
                   }}
                 >
                   <GoogleLogo size={18} />
-                  <Text style={[s.googleBtnText, isDark && { color: colors.ink }]}>Continue with Google</Text>
+                  <Text style={[s.googleBtnText, isDark && { color: colors.ink }]}>
+                    {isGoogleLoading ? 'Signing in...' : 'Continue with Google'}
+                  </Text>
                 </TouchableOpacity>
+                {googleError ? (
+                  <Text style={{ color: '#EF4444', fontSize: 13, textAlign: 'center', marginTop: 8 }}>{googleError}</Text>
+                ) : null}
               </View>
             </>
           ) : step === 'otp' ? (

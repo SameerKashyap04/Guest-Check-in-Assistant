@@ -16,17 +16,22 @@ import { C, R } from '../theme/tokens';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../components/Icon';
 import { securityService } from '../services/securityService';
+import { updateOwnerProfile } from '../services/firebaseAuth';
 
 type ViewMode = 'main' | 'otp_email_old' | 'otp_email_new' | 'otp_password';
 
 export function AccountPortalScreen({
+  userProfile,
   onClose,
   onToast,
   onModal,
+  onProfileUpdated,
 }: {
+  userProfile?: any;
   onClose: () => void;
   onToast: (m: string) => void;
   onModal?: (t: string, m: string) => void;
+  onProfileUpdated?: (updated: any) => void;
 }) {
   const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -35,12 +40,27 @@ export function AccountPortalScreen({
   const [viewMode, setViewMode] = useState<ViewMode>('main');
 
   // Profile Credentials State
-  const [username, setUsername] = useState('Meera Sharma');
-  const [email, setEmail] = useState('owner@staymate.in');
-  const [originalEmail, setOriginalEmail] = useState('owner@staymate.in');
-  const [propertyName, setPropertyName] = useState('Sunrise Homestay');
+  const initialUser = userProfile?.ownerName || userProfile?.displayName || (userProfile?.email ? userProfile.email.split('@')[0] : 'Homestay Owner');
+  const [username, setUsername] = useState(initialUser.charAt(0).toUpperCase() + initialUser.slice(1));
+  const [email, setEmail] = useState(userProfile?.email || 'owner@staymate.in');
+  const [originalEmail, setOriginalEmail] = useState(userProfile?.email || 'owner@staymate.in');
+  const [propertyName, setPropertyName] = useState(userProfile?.businessName || userProfile?.propertyName || 'Sunrise Homestay');
   const [pendingEmail, setPendingEmail] = useState('');
   const [isSavingProfile, setIsSavingProfile] = useState(false);
+
+  useEffect(() => {
+    if (userProfile) {
+      const u = userProfile.ownerName || userProfile.displayName || (userProfile.email ? userProfile.email.split('@')[0] : 'Homestay Owner');
+      setUsername(u.charAt(0).toUpperCase() + u.slice(1));
+      if (userProfile.email) {
+        setEmail(userProfile.email);
+        setOriginalEmail(userProfile.email);
+      }
+      if (userProfile.businessName || userProfile.propertyName) {
+        setPropertyName(userProfile.businessName || userProfile.propertyName);
+      }
+    }
+  }, [userProfile]);
 
   // Password State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -141,13 +161,20 @@ export function AccountPortalScreen({
     // Email didn't change -> save directly
     setIsSavingProfile(true);
     try {
-      await securityService.saveAccountProfile({
-        username: username.trim(),
+      const updates = {
+        ownerName: username.trim(),
+        name: username.trim(),
         email: originalEmail,
         businessName: propertyName.trim(),
-      });
+      };
+      const uid = userProfile?.uid || '';
+      await updateOwnerProfile(uid, updates);
+      await securityService.saveAccountProfile(updates);
+      if (onProfileUpdated) {
+        onProfileUpdated(updates);
+      }
       setIsSavingProfile(false);
-      onToast('Account credentials saved successfully');
+      onToast('Account credentials updated & synced to cloud');
     } catch (e) {
       setIsSavingProfile(false);
       onToast('Failed to save credentials');
@@ -188,24 +215,31 @@ export function AccountPortalScreen({
     if (code === generatedOtp || code === '123456' || code.length === 6) {
       setIsSavingProfile(true);
       try {
-        await securityService.saveAccountProfile({
-          username: username.trim(),
+        const updates = {
+          ownerName: username.trim(),
+          name: username.trim(),
           email: pendingEmail,
           businessName: propertyName.trim(),
-        });
+        };
+        const uid = userProfile?.uid || '';
+        await updateOwnerProfile(uid, updates);
+        await securityService.saveAccountProfile(updates);
+        if (onProfileUpdated) {
+          onProfileUpdated(updates);
+        }
         setOriginalEmail(pendingEmail);
         setEmail(pendingEmail);
         setIsSavingProfile(false);
         setViewMode('main');
-        onToast('✓ 2FA Verified! Registered email successfully updated.');
+        onToast('✓ 2FA Verified! Registered email & profile synced to cloud.');
       } catch (e) {
         setIsSavingProfile(false);
-        setOtpError('Failed to save verified email');
+        onToast('Failed to update email');
       }
     } else {
       triggerShake();
       if (Platform.OS !== 'web') Vibration.vibrate(200);
-      setOtpError('Invalid OTP code for new email.');
+      setOtpError('Invalid verification OTP for new email.');
     }
   };
 

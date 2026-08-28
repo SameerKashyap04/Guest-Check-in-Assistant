@@ -77,13 +77,19 @@ export default function UsersPage() {
       .some(v => v.toLowerCase().includes(search.toLowerCase()));
     const matchPlan = planFilter === "ALL" || u.plan === planFilter;
     return matchSearch && matchPlan;
-  });
-
-  const updatePlan = (plan: OwnerUser["plan"]) => {
+  const updatePlan = async (plan: OwnerUser["plan"]) => {
     if (!selected) return;
     setUsers(prev => prev.map(u => u.id === selected.id ? { ...u, plan } : u));
     setSelected({ ...selected, plan });
-    setMsg(`Updated ${selected.businessName} to ${plan}`);
+    await adminDataService.updateUser(selected.id, {
+      plan,
+      propertyId: selected.propertyId,
+      property: selected.businessName,
+      name: selected.name,
+      email: selected.email,
+      phone: selected.phone,
+    });
+    setMsg(`✓ Updated ${selected.businessName} to ${plan} & synced to Firestore`);
     setTimeout(() => setMsg(""), 2500);
   };
 

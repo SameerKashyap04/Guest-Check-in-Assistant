@@ -1,13 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import {
-  useColorScheme as useSystemColorScheme,
-  Appearance,
-  ColorSchemeName,
-} from 'react-native';
+import { ColorSchemeName, Appearance } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { C_LIGHT, C_DARK } from './tokens';
 
-export type ThemeMode = 'system' | 'light' | 'dark';
+export type ThemeMode = 'light' | 'dark' | 'system';
 
 interface ThemeContextType {
   themeMode: ThemeMode;
@@ -20,7 +16,7 @@ interface ThemeContextType {
 const STORAGE_KEY = '@staymate_theme_mode';
 
 const ThemeContext = createContext<ThemeContextType>({
-  themeMode: 'system',
+  themeMode: 'light',
   isDark: false,
   systemScheme: 'light',
   colors: C_LIGHT,
@@ -28,48 +24,27 @@ const ThemeContext = createContext<ThemeContextType>({
 });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const hookScheme = useSystemColorScheme();
-  const [currentSystemScheme, setCurrentSystemScheme] = useState<ColorSchemeName>(
-    Appearance.getColorScheme() || hookScheme || 'light'
-  );
-  const [themeMode, setThemeModeState] = useState<ThemeMode>('system');
+  const [themeMode, setThemeModeState] = useState<ThemeMode>('light');
+  const [systemScheme, setSystemScheme] = useState<ColorSchemeName>(Appearance.getColorScheme() || 'light');
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Active listener for OS system theme changes (Light <-> Dark mode in iOS/Android)
+  // Listen to OS system color scheme changes for 'system' preference mode
   useEffect(() => {
-    // Sync initial system appearance
-    const initialScheme = Appearance.getColorScheme();
-    if (initialScheme) {
-      setCurrentSystemScheme(initialScheme);
-    }
-
     const subscription = Appearance.addChangeListener(({ colorScheme }) => {
-      if (colorScheme) {
-        setCurrentSystemScheme(colorScheme);
-      }
+      setSystemScheme(colorScheme || 'light');
     });
-
-    return () => {
-      subscription.remove();
-    };
+    return () => subscription.remove();
   }, []);
 
-  // Also sync from hook
-  useEffect(() => {
-    if (hookScheme) {
-      setCurrentSystemScheme(hookScheme);
-    }
-  }, [hookScheme]);
-
-  // Load user theme preference
+  // Load user theme preference from storage (defaults to clean 'light' mode)
   useEffect(() => {
     (async () => {
       try {
         const saved = await AsyncStorage.getItem(STORAGE_KEY);
-        if (saved && (saved === 'system' || saved === 'light' || saved === 'dark')) {
+        if (saved === 'dark' || saved === 'light' || saved === 'system') {
           setThemeModeState(saved as ThemeMode);
         } else {
-          setThemeModeState('system');
+          setThemeModeState('light');
         }
       } catch (e) {
         console.warn('Failed to load theme preference', e);
@@ -88,12 +63,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Evaluate isDark: if 'system', use currentSystemScheme (dark or light)
-  const isSystemDark = currentSystemScheme === 'dark';
-  const isDark =
-    themeMode === 'dark' ||
-    (themeMode === 'system' && isSystemDark);
-
+  // Evaluate isDark: if 'system', respect device systemScheme, otherwise use strict selection
+  const isDark = themeMode === 'system' ? systemScheme === 'dark' : themeMode === 'dark';
   const colors = isDark ? C_DARK : C_LIGHT;
 
   return (
@@ -101,7 +72,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       value={{
         themeMode,
         isDark,
-        systemScheme: currentSystemScheme,
+        systemScheme,
         colors,
         setThemeMode,
       }}

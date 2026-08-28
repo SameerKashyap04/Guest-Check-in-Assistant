@@ -30,12 +30,14 @@ function getTodayStr(): string {
 
 export function DashboardScreen({
   guests = GUESTS as any,
+  userProfile,
   onSearch,
   onReports,
   onGuest,
   onSelfCheckin,
 }: {
   guests?: any[];
+  userProfile?: any;
   onSearch: () => void;
   onReports: () => void;
   onGuest: (id: number) => void;
@@ -46,6 +48,11 @@ export function DashboardScreen({
   const checkedOutCount = guests.filter((g) => g.status === 'checked_out' || g.checkedOut).length;
   const pendingVerifyCount = guests.filter((g) => !g.verified).length;
   const totalCheckinsToday = guests.length;
+
+  const rawName = userProfile?.ownerName || userProfile?.displayName || (userProfile?.email ? userProfile.email.split('@')[0] : 'Host');
+  const displayName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+  const propertyName = userProfile?.businessName || userProfile?.propertyName || 'My Homestay';
+  const propertyId = userProfile?.propertyId || 'HS-4821';
 
   return (
     <ScrollView
@@ -67,7 +74,7 @@ export function DashboardScreen({
           </View>
         </View>
         <Text style={[s.dateText, { color: colors.muted }]}>{getTodayStr()}</Text>
-        <Text style={[s.h1, { color: colors.ink }]}>{getGreeting()}, Meera</Text>
+        <Text style={[s.h1, { color: colors.ink }]}>{getGreeting()}, {displayName}</Text>
       </View>
 
       {/* Search + bell */}
