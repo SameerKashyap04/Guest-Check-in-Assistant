@@ -1,5 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchOwnerProfile, syncCheckinToFirestore, syncRoomsToFirestore } from './src/services/firebaseAuth';
+import {
+  fetchOwnerProfile,
+  syncCheckinToFirestore,
+  syncRoomsToFirestore,
+  updateGuestInFirestore,
+  syncReportGeneratedToFirestore,
+} from './src/services/firebaseAuth';
 import React, {useState, useEffect, useRef} from 'react';
 import {
   View,
@@ -16,6 +22,7 @@ import {
   Alert,
   Linking,
   AppState,
+  BackHandler,
 } from 'react-native';
 import {SafeAreaProvider, SafeAreaView, initialWindowMetrics, useSafeAreaInsets} from 'react-native-safe-area-context';
 import {StatusBar} from 'expo-status-bar';
@@ -52,6 +59,7 @@ import * as Sharing from 'expo-sharing';
 import * as Print from 'expo-print';
 import { captureRef } from 'react-native-view-shot';
 import { AddRoomModal } from './src/components/AddRoomModal';
+import { EditGuestModal } from './src/components/EditGuestModal';
 import { devifyPay, DevifyCheckoutResult } from './src/services/devifyPay';
 import { plansService, DEFAULT_DISPLAY_PLANS, ClientDisplayPlan } from './src/services/plansService';
 import { WebView } from 'react-native-webview';
@@ -163,6 +171,7 @@ function MainApp() {
   const [account, setAccount] = useState(false);
   const [guestId, setGuestId] = useState<any>(null);
   const [selectedGuestObj, setSelectedGuestObj] = useState<any>(null);
+  const [editingGuest, setEditingGuest] = useState<any | null>(null);
   const [toast, setToast] = useState('');
   const [billing, setBilling] = useState(false);
 
@@ -184,6 +193,104 @@ function MainApp() {
       return prev;
     });
   }, [activePlan]);
+
+  // Handle saving guest profile edits & room updates
+  const handleSaveEditedGuest = (updatedGuest: any) => {
+    if (!updatedGuest) return;
+
+    // 1. Update guest in local guests list
+    setGuestsList((prev) =>
+      prev.map((g) => (String(g.id) === String(updatedGuest.id) ? { ...g, ...updatedGuest } : g))
+    );
+
+    // 2. If room assignment changed, update room statuses
+    const oldGuest = guestsList.find((g) => String(g.id) === String(updatedGuest.id));
+    let updatedRooms = [...roomsList];
+
+    if (oldGuest && String(oldGuest.room) !== String(updatedGuest.room)) {
+      // Check if old room has other active guests
+      const otherGuestsInOldRoom = guestsList.some(
+        (g) => String(g.id) !== String(updatedGuest.id) && String(g.room) === String(oldGuest.room) && (g.status === 'active' || !g.status)
+      );
+      if (!otherGuestsInOldRoom) {
+        updatedRooms = updatedRooms.map((r) =>
+          String(r.num) === String(oldGuest.room) ? { ...r, status: 'cleaning' as RoomStatus, guestName: undefined } : r
+        );
+      }
+      // Set new room to occupied
+      updatedRooms = updatedRooms.map((r) =>
+        String(r.num) === String(updatedGuest.room)
+          ? { ...r, status: 'occupied' as RoomStatus, guestName: updatedGuest.name, checkIn: updatedGuest.checkIn || 'Recent' }
+          : r
+      );
+      setRoomsList(updatedRooms);
+      syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updatedRooms);
+    }
+
+    // 3. Sync updated guest to Firestore
+    updateGuestInFirestore(currentUser?.propertyId || 'HS-4821', updatedGuest);
+
+    if (selectedGuestObj && String(selectedGuestObj.id) === String(updatedGuest.id)) {
+      setSelectedGuestObj(updatedGuest);
+    }
+
+    notify(`✓ ${updatedGuest.name}'s details updated successfully!`);
+  };
+
+  // Android hardware & gesture Back button handler
+  useEffect(() => {
+    const onBackPress = () => {
+      // Priority 1: Top-level alert modals & popups
+      if (modal) {
+        setModal(null);
+        return true;
+      }
+      // Priority 2: Guest editor modal
+      if (editingGuest) {
+        setEditingGuest(null);
+        return true;
+      }
+      // Priority 3: Add room modal
+      if (showAddRoom) {
+        setShowAddRoom(false);
+        return true;
+      }
+      // Priority 4: Manual entry full screen
+      if (manual) {
+        setManual(false);
+        setManualInitialData(null);
+        return true;
+      }
+      // Priority 5: Account & Property Profile portal
+      if (account) {
+        setAccount(false);
+        return true;
+      }
+      // Priority 6: Overlays (Search, Reports, Pricing, Checkout, Refer & Earn)
+      if (overlay) {
+        setOverlay(null);
+        return true;
+      }
+      // Priority 7: Bottom sheets (Guest Details, Self-Checkins, Room Action Sheet)
+      if (sheet) {
+        setSheet(null);
+        setSelectedRoom(null);
+        setGuestId(null);
+        setSelectedGuestObj(null);
+        return true;
+      }
+      // Priority 8: Non-dashboard tabs -> return to Dashboard
+      if (tab !== 'dashboard') {
+        setTab('dashboard');
+        return true;
+      }
+      // Priority 9: On Dashboard with nothing open -> Allow system back (exit/minimize)
+      return false;
+    };
+
+    const backSub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => backSub.remove();
+  }, [modal, editingGuest, showAddRoom, manual, account, overlay, sheet, tab]);
 
   // Network connectivity verification
   const checkConnectivity = async () => {
@@ -710,6 +817,9 @@ function MainApp() {
             onClose={() => setOverlay(null)}
             onToast={notify}
             onUpgrade={() => setOverlay('pricing')}
+            onExportGenerated={(type, count) => {
+              syncReportGeneratedToFirestore(currentUser?.propertyId || 'HS-4821', type, count);
+            }}
           />
         </Modal>
       )}
@@ -797,6 +907,15 @@ function MainApp() {
         existingRoomNums={roomsList.map((r) => r.num)}
       />
 
+      {/* Edit Guest Details Modal */}
+      <EditGuestModal
+        visible={editingGuest !== null}
+        guest={editingGuest}
+        roomsList={roomsList}
+        onClose={() => setEditingGuest(null)}
+        onSave={handleSaveEditedGuest}
+      />
+
       {/* Guest details sheet */}
       {sheet === 'guest' && (guestId || selectedGuestObj) ? (
         <Modal visible transparent animationType="slide">
@@ -808,6 +927,10 @@ function MainApp() {
               pendingCheckins={pendingCheckins}
               onToast={notify}
               onClose={() => { setSheet(null); setSelectedGuestObj(null); }}
+              onEdit={(g) => {
+                setSheet(null);
+                setEditingGuest(g);
+              }}
             />
           </Sheet>
         </Modal>
@@ -1217,6 +1340,7 @@ function GuestSheet({
   pendingCheckins = [],
   onToast,
   onClose,
+  onEdit,
 }: {
   id?: any;
   guestObj?: any;
@@ -1224,6 +1348,7 @@ function GuestSheet({
   pendingCheckins?: any[];
   onToast: (msg: string) => void;
   onClose: () => void;
+  onEdit?: (guest: any) => void;
 }) {
   const { isDark, colors } = useTheme();
   const g = guestObj 
@@ -1525,10 +1650,14 @@ function GuestSheet({
         {/* Actions */}
         <View style={{flexDirection: 'row', gap: 10, marginTop: 18}}>
           <SecondaryButton
-            label="Back to Summary"
-            icon="chevronLeft"
+            label="Edit Details"
+            icon="edit"
             style={{flex: 1}}
-            onPress={() => setShowFullDetails(false)}
+            onPress={() => {
+              if (onEdit) {
+                onEdit(g);
+              }
+            }}
           />
           <PrimaryButton
             label="Contact Guest"
@@ -1703,8 +1832,9 @@ function GuestSheet({
           icon="edit"
           style={{flex: 1}}
           onPress={() => {
-            onClose();
-            onToast('Opening guest editor');
+            if (onEdit) {
+              onEdit(g);
+            }
           }}
         />
         <SecondaryButton
@@ -2812,6 +2942,7 @@ function ReportsOverlay({
   onClose,
   onToast,
   onUpgrade,
+  onExportGenerated,
 }: {
   guests?: any[];
   rooms?: any[];
@@ -2819,6 +2950,7 @@ function ReportsOverlay({
   onClose: () => void;
   onToast: (msg: string) => void;
   onUpgrade?: () => void;
+  onExportGenerated?: (type: 'PDF' | 'CSV', count: number) => void;
 }) {
   const { isDark, colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -3037,6 +3169,9 @@ function ReportsOverlay({
           dialogTitle: `Police Form C PDF (${period}) — StayMate`,
         });
         onToast(`Police Form C PDF (${period}) ready! ✓`);
+        if (onExportGenerated) {
+          onExportGenerated('PDF', listToExport.length);
+        }
       }
     } catch (e: any) {
       console.warn('PDF export error:', e);
@@ -3107,6 +3242,9 @@ function ReportsOverlay({
           UTI: 'public.comma-separated-values-text',
         });
         onToast(`Police Form C CSV (${period}) exported! ✓`);
+        if (onExportGenerated) {
+          onExportGenerated('CSV', listToExport.length);
+        }
       }
     } catch (e: any) {
       console.warn('CSV export error:', e);

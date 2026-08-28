@@ -273,6 +273,54 @@ export async function syncRoomsToFirestore(propertyId: string, roomsList: any[])
 }
 
 /**
+ * Updates an existing check-in / guest record in Firestore
+ */
+export async function updateGuestInFirestore(propertyId: string, guest: any) {
+  try {
+    const app = getFirebaseApp();
+    const db = getFirestore(app);
+    const checkinId = String(guest.id || guest._id || `chk_${Date.now()}`);
+    const cleaned = cleanFirestoreData({
+      ...guest,
+      propertyId: propertyId || 'HS-4821',
+      updatedAt: new Date().toISOString(),
+    });
+    await setDoc(doc(db, 'checkins', checkinId), cleaned, { merge: true });
+  } catch (e) {
+    console.warn('Failed to update guest in Firestore:', e);
+  }
+}
+
+/**
+ * Records a report generation event (PDF or CSV) in Firestore reports collection
+ */
+export async function syncReportGeneratedToFirestore(
+  propertyId: string,
+  type: 'PDF' | 'CSV',
+  guestCount: number
+) {
+  try {
+    const app = getFirebaseApp();
+    const db = getFirestore(app);
+    const repId = `rep_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    await setDoc(
+      doc(db, 'reports', repId),
+      {
+        id: repId,
+        propertyId: propertyId || 'HS-4821',
+        type: type,
+        guestCount: guestCount,
+        createdAt: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (e) {
+    console.warn('Failed to sync report generation event:', e);
+  }
+}
+
+/**
  * Native Google Sign-In — identical logic to the working main app.
  * Primary: @react-native-google-signin native sheet (works because applicationId=com.staymate.app is registered in Firebase)
  * Fallback: WebBrowser OAuth flow for any DEVELOPER_ERROR edge case

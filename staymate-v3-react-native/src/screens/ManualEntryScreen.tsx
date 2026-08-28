@@ -23,6 +23,7 @@ import {RoomCard} from '../components/RoomCard';
 import {AddCoGuestModal, CoGuestItem} from '../components/AddCoGuestModal';
 import {CalendarPicker} from '../components/CalendarPicker';
 import {compressImage} from '../utils/imageCompressor';
+import {OCRPipeline} from '../utils/OCRPipeline';
 
 export function ManualEntryScreen({
   onDone,
@@ -39,6 +40,7 @@ export function ManualEntryScreen({
   const insets = useSafeAreaInsets();
   const activeRooms = roomsList && roomsList.length > 0 ? roomsList : (ROOMS as any);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [name, setName] = useState(initialData?.name || '');
   const [docType, setDocType] = useState(initialData?.docType || 'Aadhaar');
   const [idNum, setIdNum] = useState(initialData?.idNum || '');
@@ -64,19 +66,22 @@ export function ManualEntryScreen({
       if (initialData.gender) setGender(initialData.gender);
       if (initialData.phone) setPhone(initialData.phone);
       if (initialData.address) setAddress(initialData.address);
+      if (initialData.room) setRoom(initialData.room);
       if (initialData.photoUri || initialData.photo_uri) setPhotoUri(initialData.photoUri || initialData.photo_uri);
       if (initialData.backPhotoUri || initialData.back_photo_uri) setBackPhotoUri(initialData.backPhotoUri || initialData.back_photo_uri);
-      if (initialData.room) setRoom(initialData.room);
     }
   }, [initialData]);
 
-  // Launch photo picker / camera for ID document upload
-  const handleUploadPhoto = async (side: 'front' | 'back', useCamera = false) => {
+  const handleUploadPhoto = async (side: 'front' | 'back', useCamera: boolean) => {
     try {
-      if (Platform.OS !== 'web') {
-        const permission = useCamera
-          ? await ImagePicker.requestCameraPermissionsAsync()
-          : await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (useCamera) {
+        const permission = await ImagePicker.requestCameraPermissionsAsync();
+        if (!permission.granted) {
+          Alert.alert('Permission Required', `Please grant camera access to capture ${side === 'front' ? 'Front' : 'Back'} ID photo.`);
+          return;
+        }
+      } else {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!permission.granted) {
           Alert.alert('Permission Required', `Please grant access to upload ${side === 'front' ? 'Front' : 'Back'} ID photo.`);
           return;
@@ -87,35 +92,49 @@ export function ManualEntryScreen({
         ? await ImagePicker.launchCameraAsync({
             mediaTypes: ['images'],
             allowsEditing: false,
-            quality: 0.8,
+            quality: 0.85,
           })
         : await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ['images'],
             allowsEditing: false,
-            quality: 0.8,
+            quality: 0.85,
           });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
-        const compressed = await compressImage(result.assets[0].uri, {
-          maxWidth: 1000,
-          maxHeight: 1000,
-          quality: 0.55,
+        setIsOcrProcessing(true);
+        const originalUri = result.assets[0].uri;
+        const compressed = await compressImage(originalUri, {
+          maxWidth: 1200,
+          maxHeight: 1200,
+          quality: 0.65,
         });
-        const uri = compressed.uri || result.assets[0].uri;
+        const uri = compressed.uri || originalUri;
         if (side === 'front') {
           setPhotoUri(uri);
         } else {
           setBackPhotoUri(uri);
         }
-        if (!name) setName('Ananya Patel');
-        if (!idNum) setIdNum('9821 4452 1092');
-        if (!dob) setDob('1994-06-12');
-        if (!gender) setGender('Female');
-        if (!phone) setPhone('+91 98765 43210');
-        setAddress(address || '742 Silver Oak, Bandra West, Mumbai');
+
+        // Run ML Kit OCR on uploaded/captured document
+        try {
+          const ocrResult = await OCRPipeline.processImage(uri, docType);
+          if (ocrResult) {
+            if (ocrResult.name && (!name || name === 'Guest' || name === 'Ananya Patel')) setName(ocrResult.name);
+            if (ocrResult.idNum) setIdNum(ocrResult.idNum);
+            if (ocrResult.dob) setDob(ocrResult.dob);
+            if (ocrResult.gender) setGender(ocrResult.gender);
+            if (ocrResult.address) setAddress(ocrResult.address);
+            if (ocrResult.docType && ocrResult.docType !== 'Unknown') setDocType(ocrResult.docType);
+          }
+        } catch (ocrErr) {
+          console.warn('Manual Entry OCR parse notice:', ocrErr);
+        } finally {
+          setIsOcrProcessing(false);
+        }
       }
     } catch (e) {
       console.log('Upload error', e);
+      setIsOcrProcessing(false);
     }
   };
 

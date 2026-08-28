@@ -1045,6 +1045,7 @@ export const adminDataService = {
     try {
       let currentCheckInsList: any[] = [];
       let currentPropertiesList: AdminProperty[] = [];
+      let currentReportsList: any[] = [];
 
       const emitAnalytics = () => {
         const totalPropRooms = currentPropertiesList.reduce((acc, p) => acc + (p.rooms || (p.plan === 'Free' ? 2 : 8)), 0);
@@ -1082,7 +1083,7 @@ export const adminDataService = {
         }
 
         const calculatedOcr = Math.max(ocrCount, actualCheckinDocs > 0 ? ocrCount : Math.round(totalCheckIns * 0.72));
-        const reportsCount = Math.max(currentPropertiesList.length * 2, Math.round(totalCheckIns * 0.25));
+        const reportsCount = currentReportsList.length > 0 ? currentReportsList.length : Math.max(currentPropertiesList.length * 2, Math.round(totalCheckIns * 0.25));
 
         const denom = Math.max(1, aadhaarCount + dlPanCount + passportCount);
         const aadhaarPct = Math.round((aadhaarCount / denom) * 100);
@@ -1123,11 +1124,39 @@ export const adminDataService = {
         }
       );
 
+      const unsubReports = onSnapshot(
+        collection(db, 'reports'),
+        snap => {
+          currentReportsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          emitAnalytics();
+        },
+        () => {
+          emitAnalytics();
+        }
+      );
+
       return () => {
         unsubProps();
         unsubCheckins();
+        unsubReports();
       };
     } catch {
+      callback({
+        totalCheckIns: 0,
+        ocrScans: 0,
+        manualCheckIns: 0,
+        reportsGenerated: 0,
+        totalRooms: 0,
+        activeProperties: 0,
+        docDistribution: {
+          aadhaar: 0,
+          aadhaarPct: 0,
+          dlPan: 0,
+          dlPanPct: 0,
+          passport: 0,
+          passportPct: 0,
+        },
+      });
       return () => {};
     }
   },
