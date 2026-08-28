@@ -180,22 +180,15 @@ export function generatePropertyRooms(
   };
 }
 
-function resolvePhone(data: any): string {
-  if (data.phone) return String(data.phone);
-  if (data.mobile) return String(data.mobile);
-  if (data.phoneNumber) return String(data.phoneNumber);
-  if (data.contactNumber) return String(data.contactNumber);
-  if (data.ownerPhone) return String(data.ownerPhone);
-  
-  // Deterministic realistic mobile number derived from email or id
-  const seed = data.email || data.id || 'owner';
-  let hash = 0;
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash << 5) - hash + seed.charCodeAt(i);
-    hash |= 0;
+function resolvePhone(...sources: any[]): string {
+  for (const data of sources) {
+    if (!data) continue;
+    const ph = data.phone || data.mobile || data.phoneNumber || data.contactNumber || data.ownerPhone;
+    if (ph && typeof ph === 'string' && ph.trim() && ph.trim() !== '—') {
+      return ph.trim();
+    }
   }
-  const last8 = String(Math.abs(hash) % 90000000 + 10000000);
-  return `+91 98${last8.substring(0, 3)} ${last8.substring(3)}`;
+  return '—';
 }
 
 function resolveLastActive(data: any, seedId: string): {
@@ -605,29 +598,48 @@ export const adminDataService = {
   async getUsers(): Promise<AdminUser[]> {
     try {
       const snap = await getDocs(collection(db, 'owners'));
-      if (snap.empty) return [];
+      const propSnap = await getDocs(collection(db, 'properties'));
+      const checkinSnap = await getDocs(collection(db, 'checkins'));
+
+      const propMap = new Map<string, any>();
+      propSnap.docs.forEach(d => {
+        const data = d.data();
+        const email = (data.ownerEmail || data.email || '').toLowerCase().trim();
+        const propId = data.propertyId || d.id;
+        if (email) propMap.set(email, { id: propId, ...data });
+        if (propId) propMap.set(propId, { id: propId, ...data });
+      });
+
+      const checkinsList = checkinSnap.docs.map(d => ({ id: d.id, ...d.data() }));
       const userMap = new Map<string, AdminUser>();
 
       snap.docs.forEach(d => {
         const data = d.data();
         const email = (data.email || '').toLowerCase().trim();
-        const key = email || d.id;
+        const propId = data.propertyId || d.id;
+        const key = email || propId;
+        const matchedProp = propMap.get(email) || propMap.get(propId);
+
+        const plan = matchedProp?.plan || matchedProp?.subscriptionPlan || data.plan || data.subscriptionPlan || 'Free';
+        const planMax = getMaxRoomsForPlan(plan);
+        const rCount = Math.min(planMax, Number(matchedProp?.rooms) || Number(data.rooms) || planMax);
+        const propCheckins = checkinsList.filter(c => (c as any).propertyId === (matchedProp?.id || propId) || (c as any).property_id === (matchedProp?.id || propId));
 
         const userObj: AdminUser = {
           id: d.id,
-          name: data.name || data.ownerName || data.businessName || email.split('@')[0] || 'Host',
-          email: data.email || 'user@example.com',
-          phone: resolvePhone(data),
+          name: data.name || data.ownerName || matchedProp?.ownerName || matchedProp?.name || email.split('@')[0] || 'Host',
+          email: data.email || matchedProp?.ownerEmail || 'user@example.com',
+          phone: resolvePhone(matchedProp, data),
           role: (data.role || 'Owner') as any,
-          property: data.businessName || data.name || 'Homestay',
-          plan: data.plan || data.subscriptionPlan || 'Free',
-          status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
+          property: matchedProp?.name || matchedProp?.businessName || data.businessName || data.name || 'Homestay',
+          plan: plan,
+          status: (data.status === 'Trialing' || matchedProp?.status === 'Trialing' ? 'Trialing' : 'Active') as any,
           lastActive: 'Online',
           joinedDate: data.createdAt ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent',
           authProvider: data.authProvider || 'Email',
-          propertyId: data.propertyId || d.id.substring(0, 7).toUpperCase(),
-          rooms: Number(data.rooms) || Number(data.roomCount) || 8,
-          checkIns: Number(data.checkIns) || 0,
+          propertyId: matchedProp?.id || data.propertyId || d.id.substring(0, 7).toUpperCase(),
+          rooms: rCount,
+          checkIns: Math.max(Number(matchedProp?.checkIns) || 0, Number(data.checkIns) || 0, propCheckins.length),
         };
 
         if (!userMap.has(key) || (d.id.length > 15 && key.includes('@'))) {
@@ -644,50 +656,89 @@ export const adminDataService = {
 
   subscribeUsers(callback: (users: AdminUser[]) => void) {
     try {
-      return onSnapshot(
+      let currentOwnersList: any[] = [];
+      let currentPropsList: any[] = [];
+      let currentCheckinsList: any[] = [];
+
+      const emitUsers = () => {
+        const propMap = new Map<string, any>();
+        currentPropsList.forEach(data => {
+          const email = (data.ownerEmail || data.email || '').toLowerCase().trim();
+          const propId = data.propertyId || data.id;
+          if (email) propMap.set(email, data);
+          if (propId) propMap.set(propId, data);
+        });
+
+        const userMap = new Map<string, AdminUser>();
+
+        currentOwnersList.forEach(data => {
+          const email = (data.email || '').toLowerCase().trim();
+          const propId = data.propertyId || data.id;
+          const key = email || propId;
+          const matchedProp = propMap.get(email) || propMap.get(propId);
+
+          const plan = matchedProp?.plan || matchedProp?.subscriptionPlan || data.plan || data.subscriptionPlan || 'Free';
+          const planMax = getMaxRoomsForPlan(plan);
+          const rCount = Math.min(planMax, Number(matchedProp?.rooms) || Number(data.rooms) || planMax);
+          const propCheckins = currentCheckinsList.filter(c => c.propertyId === (matchedProp?.id || propId) || c.property_id === (matchedProp?.id || propId));
+
+          const userObj: AdminUser = {
+            id: data.id,
+            name: data.name || data.ownerName || matchedProp?.ownerName || matchedProp?.name || email.split('@')[0] || 'Host',
+            email: data.email || matchedProp?.ownerEmail || 'user@example.com',
+            phone: resolvePhone(matchedProp, data),
+            role: (data.role || 'Owner') as any,
+            property: matchedProp?.name || matchedProp?.businessName || data.businessName || data.name || 'Homestay',
+            plan: plan,
+            status: (data.status === 'Trialing' || matchedProp?.status === 'Trialing' ? 'Trialing' : 'Active') as any,
+            lastActive: 'Online',
+            joinedDate: data.createdAt ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent',
+            authProvider: data.authProvider || 'Email',
+            propertyId: matchedProp?.id || data.propertyId || data.id.substring(0, 7).toUpperCase(),
+            rooms: rCount,
+            checkIns: Math.max(Number(matchedProp?.checkIns) || 0, Number(data.checkIns) || 0, propCheckins.length),
+          };
+
+          if (!userMap.has(key) || data.id.length > 20) {
+            userMap.set(key, userObj);
+          }
+        });
+
+        callback(Array.from(userMap.values()));
+      };
+
+      const unsubOwners = onSnapshot(
         collection(db, 'owners'),
         snap => {
-          if (snap.empty) {
-            callback([]);
-          } else {
-            const userMap = new Map<string, AdminUser>();
-
-            snap.docs.forEach(d => {
-              const data = d.data();
-              const email = (data.email || '').toLowerCase().trim();
-              const key = email || d.id;
-
-              const userObj: AdminUser = {
-                id: d.id,
-                name: data.name || data.ownerName || data.businessName || email.split('@')[0] || 'Host',
-                email: data.email || 'user@example.com',
-                phone: resolvePhone(data),
-                role: (data.role || 'Owner') as any,
-                property: data.businessName || data.name || 'Homestay',
-                plan: data.plan || data.subscriptionPlan || 'Free',
-                status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
-                lastActive: 'Online',
-                joinedDate: data.createdAt ? new Date(data.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent',
-                authProvider: data.authProvider || 'Email',
-                propertyId: data.propertyId || d.id.substring(0, 7).toUpperCase(),
-                rooms: Number(data.rooms) || Number(data.roomCount) || 8,
-                checkIns: Number(data.checkIns) || 0,
-              };
-
-              // Prevent duplicate owner cards for same email
-              if (!userMap.has(key) || d.id.length > 20) {
-                userMap.set(key, userObj);
-              }
-            });
-
-            callback(Array.from(userMap.values()));
-          }
+          currentOwnersList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          emitUsers();
         },
-        err => {
-          console.warn('Users listener error:', err);
-          callback([]);
-        }
+        () => emitUsers()
       );
+
+      const unsubProps = onSnapshot(
+        collection(db, 'properties'),
+        snap => {
+          currentPropsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          emitUsers();
+        },
+        () => emitUsers()
+      );
+
+      const unsubCheckins = onSnapshot(
+        collection(db, 'checkins'),
+        snap => {
+          currentCheckinsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          emitUsers();
+        },
+        () => emitUsers()
+      );
+
+      return () => {
+        unsubOwners();
+        unsubProps();
+        unsubCheckins();
+      };
     } catch {
       callback([]);
       return () => {};

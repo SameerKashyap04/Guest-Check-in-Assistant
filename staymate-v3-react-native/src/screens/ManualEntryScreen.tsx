@@ -177,12 +177,12 @@ export function ManualEntryScreen({
       name: name.trim() || 'Guest',
       room: room,
       type: docType,
-      idNum: idNum.trim() || 'Pending verification',
-      phone: phone.trim() || '+91 98765 00000',
-      email: `${(name || 'guest').toLowerCase().replace(/\s+/g, '.')}@email.com`,
+      idNum: idNum.trim() || '',
+      phone: phone.trim() || '',
+      email: email.trim() || '',
       nat: 'Indian',
       gender: gender || 'Unspecified',
-      address: address.trim() || 'Verified by Host',
+      address: address.trim() || '',
       time: 'Just now',
       verified: true,
       roomType: activeRooms.find((r: any) => r.num === room)?.type || 'Standard',
@@ -616,29 +616,29 @@ export function ManualEntryScreen({
               <View style={s.reviewGrid}>
                 <View style={s.kvCol}>
                   <Text style={[s.kvLabel, {color: colors.muted}]}>Full name</Text>
-                  <Text style={[s.kvValue, {color: colors.ink}]}>{name || 'Ananya Patel'}</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{name || '—'}</Text>
                 </View>
                 <View style={s.kvCol}>
                   <Text style={[s.kvLabel, {color: colors.muted}]}>Document</Text>
                   <Text style={[s.kvValue, {color: colors.ink}]}>
-                    {docType} · {idNum || '9821 4452 1092'}
+                    {docType} {idNum ? `· ${idNum}` : ''}
                   </Text>
                 </View>
                 <View style={s.kvCol}>
                   <Text style={[s.kvLabel, {color: colors.muted}]}>DOB</Text>
-                  <Text style={[s.kvValue, {color: colors.ink}]}>{dob || '1994-06-12'}</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{dob || '—'}</Text>
                 </View>
                 <View style={s.kvCol}>
                   <Text style={[s.kvLabel, {color: colors.muted}]}>Gender</Text>
-                  <Text style={[s.kvValue, {color: colors.ink}]}>{gender || 'Female'}</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{gender || '—'}</Text>
                 </View>
                 <View style={s.kvCol}>
                   <Text style={[s.kvLabel, {color: colors.muted}]}>Phone</Text>
-                  <Text style={[s.kvValue, {color: colors.ink}]}>{phone || '+91 98765 43210'}</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{phone || '—'}</Text>
                 </View>
                 <View style={s.kvCol}>
                   <Text style={[s.kvLabel, {color: colors.muted}]}>Address</Text>
-                  <Text style={[s.kvValue, {color: colors.ink}]}>{address || 'Bandra West, Mumbai'}</Text>
+                  <Text style={[s.kvValue, {color: colors.ink}]}>{address || '—'}</Text>
                 </View>
               </View>
             </View>
