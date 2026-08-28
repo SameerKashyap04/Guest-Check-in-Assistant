@@ -77,6 +77,8 @@ export default function UsersPage() {
       .some(v => v.toLowerCase().includes(search.toLowerCase()));
     const matchPlan = planFilter === "ALL" || u.plan === planFilter;
     return matchSearch && matchPlan;
+  });
+
   const updatePlan = async (plan: OwnerUser["plan"]) => {
     if (!selected) return;
     setUsers(prev => prev.map(u => u.id === selected.id ? { ...u, plan } : u));
