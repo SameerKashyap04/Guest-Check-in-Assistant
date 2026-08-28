@@ -140,7 +140,8 @@ function MainApp() {
   const lastActiveRef = useRef<number>(Date.now());
 
   const [tab, setTab] = useState<TabName>('dashboard');
-  const [roomsList, setRoomsList] = useState<any[]>([...ROOMS]);
+  const [activePlan, setActivePlan] = useState<string>('Free');
+  const [roomsList, setRoomsList] = useState<any[]>(() => ROOMS.slice(0, 2));
   const [guestsList, setGuestsList] = useState<any[]>([...GUESTS]);
   const [pendingCheckins, setPendingCheckins] = useState<any[]>([...SELF_CHECKINS]);
   const [showAddRoom, setShowAddRoom] = useState(false);
@@ -164,7 +165,25 @@ function MainApp() {
   const [selectedGuestObj, setSelectedGuestObj] = useState<any>(null);
   const [toast, setToast] = useState('');
   const [billing, setBilling] = useState(false);
-  const [activePlan, setActivePlan] = useState<string>('Professional');
+
+  const getMaxRoomsForPlan = (plan: string) => {
+    const p = (plan || 'Free').toUpperCase();
+    if (p.includes('FREE')) return 2;
+    if (p.includes('STARTER')) return 8;
+    if (p.includes('PRO')) return 25;
+    return 9999;
+  };
+
+  // Re-evaluate allowed rooms count strictly when plan changes
+  useEffect(() => {
+    const maxAllowed = getMaxRoomsForPlan(activePlan);
+    setRoomsList((prev) => {
+      if (prev.length > maxAllowed) {
+        return prev.slice(0, maxAllowed);
+      }
+      return prev;
+    });
+  }, [activePlan]);
 
   // Network connectivity verification
   const checkConnectivity = async () => {
@@ -205,6 +224,8 @@ function MainApp() {
         profile = { ...profile, ...cloud };
       }
     }
+    const currentPlan = profile.plan || profile.subscriptionPlan || 'Free';
+    setActivePlan(currentPlan);
     setCurrentUser(profile);
     try {
       await AsyncStorage.setItem('@staymate_user_profile', JSON.stringify(profile));
@@ -217,6 +238,9 @@ function MainApp() {
   const handleProfileUpdated = (updates: any) => {
     setCurrentUser((prev: any) => {
       const merged = { ...(prev || {}), ...updates };
+      if (merged.plan || merged.subscriptionPlan) {
+        setActivePlan(merged.plan || merged.subscriptionPlan);
+      }
       AsyncStorage.setItem('@staymate_user_profile', JSON.stringify(merged)).catch(() => {});
       return merged;
     });
@@ -238,6 +262,8 @@ function MainApp() {
         if (stored) {
           const parsed = JSON.parse(stored);
           setCurrentUser(parsed);
+          const savedPlan = parsed.plan || parsed.subscriptionPlan || 'Free';
+          setActivePlan(savedPlan);
           // If App Lock is enabled in settings, prompt for PIN, otherwise enter dashboard directly
           if (cfg.isLockEnabled) {
             setAuthStage('enter_pin');
@@ -636,6 +662,7 @@ function MainApp() {
         <Modal visible animationType="slide">
           <ManualEntryScreen
             initialData={manualInitialData}
+            roomsList={roomsList}
             onClose={() => {
               setManual(false);
               setManualInitialData(null);

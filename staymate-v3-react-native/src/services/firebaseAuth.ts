@@ -154,6 +154,22 @@ export async function updateOwnerProfile(
   }
 }
 
+function cleanFirestoreData(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) return obj.map(cleanFirestoreData);
+  if (typeof obj === 'object') {
+    const clean: any = {};
+    Object.keys(obj).forEach((key) => {
+      const val = obj[key];
+      if (val !== undefined) {
+        clean[key] = typeof val === 'object' && val !== null ? cleanFirestoreData(val) : val;
+      }
+    });
+    return clean;
+  }
+  return obj;
+}
+
 /**
  * Syncs a new checkin to Firestore checkins collection and updates property inventory stats
  */
@@ -168,43 +184,59 @@ export async function syncCheckinToFirestore(
     const propId = propertyId || 'HS-4821';
     const checkinId = checkinData.id ? String(checkinData.id) : `chk_${Date.now()}`;
 
-    // 1. Write to checkins collection
-    await setDoc(
-      doc(db, 'checkins', checkinId),
-      {
-        ...checkinData,
-        id: checkinId,
-        propertyId: propId,
-        docType: checkinData.type || checkinData.docType || 'Aadhaar',
-        createdAt: checkinData.createdAt || new Date().toISOString(),
-        timestamp: new Date().toISOString(),
-        verified: checkinData.verified ?? true,
-      },
-      { merge: true }
-    );
+    // 1. Sanitize & write to checkins collection
+    const rawCheckinPayload = {
+      ...checkinData,
+      id: checkinId,
+      propertyId: propId,
+      docType: checkinData.type || checkinData.docType || 'Aadhaar',
+      createdAt: checkinData.createdAt || new Date().toISOString(),
+      timestamp: new Date().toISOString(),
+      verified: checkinData.verified ?? true,
+    };
+    const sanitizedCheckin = cleanFirestoreData(rawCheckinPayload);
 
-    // 2. Update property's roomsList, live room count, and active occupancy
+    await setDoc(doc(db, 'checkins', checkinId), sanitizedCheckin, { merge: true });
+
+    // 2. Fetch current property doc to increment check-ins counter accurately
     const propRef = doc(db, 'properties', propId);
+    let currentCheckins = 0;
+    try {
+      const snap = await getDoc(propRef);
+      if (snap.exists()) {
+        currentCheckins = Number(snap.data()?.checkIns || 0);
+      }
+    } catch (_) {}
+
+    const newCheckinsCount = currentCheckins + 1;
+
+    // 3. Update property's roomsList, live room count, and active occupancy
     const updateData: any = {
+      propertyId: propId,
+      id: propId,
+      checkIns: newCheckinsCount,
       updatedAt: new Date().toISOString(),
       lastActive: new Date().toISOString(),
     };
-    if (updatedRoomsList) {
-      updateData.roomsList = updatedRoomsList;
+
+    if (updatedRoomsList && Array.isArray(updatedRoomsList)) {
+      updateData.roomsList = cleanFirestoreData(updatedRoomsList);
       updateData.rooms = updatedRoomsList.length;
       updateData.occupiedRooms = updatedRoomsList.filter((r) => r.status === 'occupied').length;
       updateData.availableRooms = updatedRoomsList.filter((r) => r.status === 'available').length;
+      updateData.cleaningRooms = updatedRoomsList.filter((r) => r.status === 'cleaning').length;
+      updateData.maintenanceRooms = updatedRoomsList.filter((r) => r.status === 'maintenance').length;
     }
+
     await setDoc(propRef, updateData, { merge: true });
 
-    // 3. Increment total check-ins counter
-    const snap = await getDoc(propRef);
-    if (snap.exists()) {
-      const currentCount = Number(snap.data().checkIns || 0);
-      await updateDoc(propRef, {
-        checkIns: currentCount + 1,
-      });
-    }
+    // Also update owners collection if matching
+    try {
+      const ownerSnap = await getDoc(doc(db, 'owners', propId));
+      if (ownerSnap.exists()) {
+        await setDoc(doc(db, 'owners', propId), { checkIns: newCheckinsCount, updatedAt: new Date().toISOString() }, { merge: true });
+      }
+    } catch (_) {}
   } catch (e) {
     console.warn('Failed to sync checkin to Firestore:', e);
   }
@@ -218,13 +250,18 @@ export async function syncRoomsToFirestore(propertyId: string, roomsList: any[])
     const app = getFirebaseApp();
     const db = getFirestore(app);
     const propId = propertyId || 'HS-4821';
+    const cleanedRooms = cleanFirestoreData(roomsList);
     await setDoc(
       doc(db, 'properties', propId),
       {
-        roomsList: roomsList,
+        id: propId,
+        propertyId: propId,
+        roomsList: cleanedRooms,
         rooms: roomsList.length,
         occupiedRooms: roomsList.filter((r) => r.status === 'occupied').length,
         availableRooms: roomsList.filter((r) => r.status === 'available').length,
+        cleaningRooms: roomsList.filter((r) => r.status === 'cleaning').length,
+        maintenanceRooms: roomsList.filter((r) => r.status === 'maintenance').length,
         updatedAt: new Date().toISOString(),
         lastActive: new Date().toISOString(),
       },

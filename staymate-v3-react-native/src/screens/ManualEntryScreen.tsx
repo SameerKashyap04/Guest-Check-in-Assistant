@@ -28,13 +28,16 @@ export function ManualEntryScreen({
   onDone,
   onClose,
   initialData,
+  roomsList,
 }: {
   onDone: (newGuest: any) => void;
   onClose: () => void;
   initialData?: any;
+  roomsList?: any[];
 }) {
   const {isDark, colors} = useTheme();
   const insets = useSafeAreaInsets();
+  const activeRooms = roomsList && roomsList.length > 0 ? roomsList : (ROOMS as any);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [name, setName] = useState(initialData?.name || '');
   const [docType, setDocType] = useState(initialData?.docType || 'Aadhaar');
@@ -45,7 +48,7 @@ export function ManualEntryScreen({
   const [address, setAddress] = useState(initialData?.address || '');
   const [photoUri, setPhotoUri] = useState<string | null>(initialData?.photoUri || initialData?.photo_uri || null);
   const [backPhotoUri, setBackPhotoUri] = useState<string | null>(initialData?.backPhotoUri || initialData?.back_photo_uri || null);
-  const [room, setRoom] = useState(initialData?.room || '101');
+  const [room, setRoom] = useState(initialData?.room || activeRooms[0]?.num || '101');
   const [checkin, setCheckin] = useState('2026-08-20');
   const [checkout, setCheckout] = useState('2026-08-22');
   const [coGuests, setCoGuests] = useState<CoGuestItem[]>([]);
@@ -154,7 +157,7 @@ export function ManualEntryScreen({
       address: address.trim() || 'Verified by Host',
       time: 'Just now',
       verified: true,
-      roomType: ROOMS.find((r) => r.num === room)?.type || 'Standard',
+      roomType: activeRooms.find((r: any) => r.num === room)?.type || 'Standard',
       photoUri: photoUri || undefined,
       backPhotoUri: backPhotoUri || undefined,
       guestCount: 1 + coGuests.length,
@@ -501,9 +504,8 @@ export function ManualEntryScreen({
           <View>
             <Text style={[s.sectionHeader, {color: colors.muted}]}>SELECT ROOM</Text>
             <View style={s.stayRoomGrid}>
-              {ROOMS.filter((r) => r.status === 'available' || r.num === room)
-                .slice(0, 6)
-                .map((r) => (
+              {activeRooms.filter((r: any) => r.status === 'available' || r.num === room)
+                .map((r: any) => (
                   <View key={r.num} style={{width: '48.2%'}}>
                     <RoomCard
                       room={r}
@@ -541,7 +543,7 @@ export function ManualEntryScreen({
                 <Text style={[s.rateValue, {color: colors.ink}]}>
                   ₹
                   {Number(
-                    ROOMS.find((r) => r.num === room)?.price || 1800
+                    activeRooms.find((r: any) => r.num === room)?.price || 1800
                   ).toLocaleString('en-IN')}{' '}
                   / night
                 </Text>
@@ -675,7 +677,7 @@ export function ManualEntryScreen({
                   <Text style={[s.kvValue, {color: colors.ink}]}>
                     ₹
                     {Number(
-                      ROOMS.find((r) => r.num === room)?.price || 1800
+                      activeRooms.find((r: any) => r.num === room)?.price || 1800
                     ).toLocaleString('en-IN')}{' '}
                     / night
                   </Text>

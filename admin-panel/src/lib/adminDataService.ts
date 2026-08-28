@@ -99,16 +99,32 @@ export interface AdminAuditLog {
   category: 'AUTH' | 'SUBSCRIPTION' | 'SECURITY' | 'PROPERTY' | 'SYSTEM';
 }
 
-export function generatePropertyRooms(propertyId: string, roomCount: number = 8, customRooms?: any[]): {
+export function getMaxRoomsForPlan(plan?: string): number {
+  const p = (plan || 'Free').toUpperCase();
+  if (p.includes('FREE')) return 2;
+  if (p.includes('STARTER')) return 8;
+  if (p.includes('PRO')) return 25;
+  return 50;
+}
+
+export function generatePropertyRooms(
+  propertyId: string,
+  roomCount?: number,
+  customRooms?: any[],
+  plan: string = 'Free'
+): {
   roomsList: AdminRoom[];
   occupiedRooms: number;
   availableRooms: number;
   cleaningRooms: number;
   maintenanceRooms: number;
 } {
+  const planMax = getMaxRoomsForPlan(plan);
+  const effectiveCount = Math.min(planMax, roomCount !== undefined && roomCount > 0 ? roomCount : planMax);
+
   if (customRooms && Array.isArray(customRooms) && customRooms.length > 0) {
-    const list: AdminRoom[] = customRooms.map(r => ({
-      id: r.id,
+    const list: AdminRoom[] = customRooms.slice(0, effectiveCount).map(r => ({
+      id: r.id || `rm_${propertyId}_${r.num}`,
       num: String(r.num || r.room_number || r.number || '101'),
       type: r.type || r.room_type || 'Standard',
       price: Number(r.price) || 1800,
@@ -128,20 +144,16 @@ export function generatePropertyRooms(propertyId: string, roomCount: number = 8,
 
   const templates = [
     { num: '101', type: 'Standard AC', price: 1800, status: 'available' as const },
-    { num: '102', type: 'Standard AC', price: 1800, status: 'occupied' as const, guestName: 'Rohan Sharma', checkIn: '24 Aug, 10:30 AM', checkOut: '27 Aug, 11:00 AM' },
+    { num: '102', type: 'Standard AC', price: 1800, status: 'available' as const },
     { num: '108', type: 'Executive Suite', price: 4200, status: 'occupied' as const, guestName: 'Priya Nair', checkIn: '25 Aug, 08:15 AM', checkOut: '28 Aug, 11:00 AM' },
     { num: '204', type: 'Deluxe Double', price: 2600, status: 'occupied' as const, guestName: 'Arjun Verma', checkIn: '25 Aug, 02:30 PM', checkOut: '26 Aug, 11:00 AM' },
     { num: '205', type: 'Deluxe Double', price: 2600, status: 'cleaning' as const },
     { num: '301', type: 'Family Suite', price: 3400, status: 'available' as const },
     { num: '302', type: 'Mountain Cottage', price: 3600, status: 'maintenance' as const },
     { num: '303', type: 'Mountain Cottage', price: 3600, status: 'available' as const },
-    { num: '401', type: 'Penthouse Suite', price: 5500, status: 'occupied' as const, guestName: 'Kavita Roy', checkIn: '23 Aug, 04:00 PM', checkOut: '26 Aug, 12:00 PM' },
-    { num: '402', type: 'Deluxe King', price: 2800, status: 'available' as const },
-    { num: '501', type: 'Presidential Suite', price: 7500, status: 'available' as const },
-    { num: '502', type: 'Standard Non-AC', price: 1400, status: 'occupied' as const, guestName: 'Vikram Mehta', checkIn: '25 Aug, 09:00 PM', checkOut: '27 Aug, 10:00 AM' },
   ];
 
-  const total = Math.max(1, Math.min(50, roomCount || 8));
+  const total = Math.max(1, Math.min(effectiveCount, 50));
   const list: AdminRoom[] = [];
 
   for (let i = 0; i < total; i++) {
@@ -353,24 +365,43 @@ export const adminDataService = {
     try {
       const propSnap = await getDocs(collection(db, 'properties'));
       const ownerSnap = await getDocs(collection(db, 'owners'));
+      const checkinSnap = await getDocs(collection(db, 'checkins'));
 
       const propMap = new Map<string, AdminProperty>();
+      const checkinsList = checkinSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       // 1. Process properties collection first
       propSnap.docs.forEach(d => {
         const data = d.data();
         const propId = data.propertyId || d.id || 'HS-4821';
-        const rCount = Number(data.rooms) || Number(data.roomCount) || 8;
-        const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData);
+        const plan = data.plan || data.subscriptionPlan || 'Free';
+        const planMax = getMaxRoomsForPlan(plan);
+        const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || planMax);
+        const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData, plan);
+
+        // Reflect any live checkins matching this property
+        const propCheckins = checkinsList.filter(c => (c as any).propertyId === propId || (c as any).property_id === propId);
+        propCheckins.forEach((c: any) => {
+          const roomNum = String(c.room || c.room_number || '');
+          const match = roomMeta.roomsList.find(r => r.num === roomNum);
+          if (match) {
+            match.status = 'occupied';
+            match.guestName = c.name || c.full_name || 'Guest';
+            match.checkIn = c.checkIn || c.checkin || c.createdAt || 'Recent';
+          }
+        });
+        roomMeta.occupiedRooms = roomMeta.roomsList.filter(r => r.status === 'occupied').length;
+        roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
+
         const activeMeta = resolveLastActive(data, propId);
         const p: AdminProperty = {
           id: propId,
           name: data.name || data.businessName || 'Homestay',
           location: data.location || data.address || data.city || 'India',
-          rooms: rCount,
-          checkIns: Number(data.checkIns) || 0,
+          rooms: roomMeta.roomsList.length,
+          checkIns: Math.max(Number(data.checkIns) || 0, propCheckins.length),
           status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
-          plan: (data.plan || data.subscriptionPlan || 'Free') as any,
+          plan: plan as any,
           ownerEmail: data.ownerEmail || data.email,
           ownerName: data.ownerName || data.name || data.businessName,
           ownerPhone: resolvePhone(data),
@@ -389,17 +420,33 @@ export const adminDataService = {
         const propId = data.propertyId || d.id;
         const key = (data.email || propId).toLowerCase().trim();
         if (!propMap.has(key)) {
-          const rCount = Number(data.rooms) || Number(data.roomCount) || 8;
-          const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData);
+          const plan = data.plan || data.subscriptionPlan || 'Free';
+          const planMax = getMaxRoomsForPlan(plan);
+          const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || planMax);
+          const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData, plan);
+
+          const propCheckins = checkinsList.filter(c => (c as any).propertyId === propId || (c as any).property_id === propId);
+          propCheckins.forEach((c: any) => {
+            const roomNum = String(c.room || c.room_number || '');
+            const match = roomMeta.roomsList.find(r => r.num === roomNum);
+            if (match) {
+              match.status = 'occupied';
+              match.guestName = c.name || c.full_name || 'Guest';
+              match.checkIn = c.checkIn || c.checkin || c.createdAt || 'Recent';
+            }
+          });
+          roomMeta.occupiedRooms = roomMeta.roomsList.filter(r => r.status === 'occupied').length;
+          roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
+
           const activeMeta = resolveLastActive(data, propId);
           propMap.set(key, {
             id: propId,
             name: data.businessName || data.name || 'Homestay',
             location: data.location || data.address || data.city || 'India',
-            rooms: rCount,
-            checkIns: Number(data.checkIns) || 0,
+            rooms: roomMeta.roomsList.length,
+            checkIns: Math.max(Number(data.checkIns) || 0, propCheckins.length),
             status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
-            plan: (data.plan || data.subscriptionPlan || 'Free') as any,
+            plan: plan as any,
             ownerEmail: data.email,
             ownerName: data.ownerName || data.name || data.businessName,
             ownerPhone: resolvePhone(data),
@@ -422,6 +469,7 @@ export const adminDataService = {
     try {
       let currentPropsList: any[] = [];
       let currentOwnersList: any[] = [];
+      let currentCheckinsList: any[] = [];
 
       const emitDeduplicatedProperties = () => {
         const propMap = new Map<string, AdminProperty>();
@@ -429,17 +477,34 @@ export const adminDataService = {
         // Process properties collection
         currentPropsList.forEach(data => {
           const propId = data.propertyId || data.id || 'HS-4821';
-          const rCount = Number(data.rooms) || Number(data.roomCount) || (data.roomsList ? data.roomsList.length : 8);
-          const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData);
+          const plan = data.plan || data.subscriptionPlan || 'Free';
+          const planMax = getMaxRoomsForPlan(plan);
+          const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || (data.roomsList ? data.roomsList.length : planMax));
+          const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData, plan);
+
+          // Reflect live checkins matching this property
+          const propCheckins = currentCheckinsList.filter(c => c.propertyId === propId || c.property_id === propId);
+          propCheckins.forEach((c: any) => {
+            const roomNum = String(c.room || c.room_number || '');
+            const match = roomMeta.roomsList.find(r => r.num === roomNum);
+            if (match) {
+              match.status = 'occupied';
+              match.guestName = c.name || c.full_name || 'Guest';
+              match.checkIn = c.checkIn || c.checkin || c.createdAt || 'Recent';
+            }
+          });
+          roomMeta.occupiedRooms = roomMeta.roomsList.filter(r => r.status === 'occupied').length;
+          roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
+
           const activeMeta = resolveLastActive(data, propId);
           const p: AdminProperty = {
             id: propId,
             name: data.name || data.businessName || 'Homestay',
             location: data.location || data.address || data.city || 'India',
-            rooms: rCount,
-            checkIns: Number(data.checkIns) || 0,
+            rooms: roomMeta.roomsList.length,
+            checkIns: Math.max(Number(data.checkIns) || 0, propCheckins.length),
             status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
-            plan: (data.plan || data.subscriptionPlan || 'Free') as any,
+            plan: plan as any,
             ownerEmail: data.ownerEmail || data.email,
             ownerName: data.ownerName || data.name || data.businessName,
             ownerPhone: resolvePhone(data),
@@ -457,17 +522,33 @@ export const adminDataService = {
           const propId = data.propertyId || data.id;
           const key = (data.email || propId).toLowerCase().trim();
           if (!propMap.has(key)) {
-            const rCount = Number(data.rooms) || Number(data.roomCount) || 8;
-            const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData);
+            const plan = data.plan || data.subscriptionPlan || 'Free';
+            const planMax = getMaxRoomsForPlan(plan);
+            const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || planMax);
+            const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData, plan);
+
+            const propCheckins = currentCheckinsList.filter(c => c.propertyId === propId || c.property_id === propId);
+            propCheckins.forEach((c: any) => {
+              const roomNum = String(c.room || c.room_number || '');
+              const match = roomMeta.roomsList.find(r => r.num === roomNum);
+              if (match) {
+                match.status = 'occupied';
+                match.guestName = c.name || c.full_name || 'Guest';
+                match.checkIn = c.checkIn || c.checkin || c.createdAt || 'Recent';
+              }
+            });
+            roomMeta.occupiedRooms = roomMeta.roomsList.filter(r => r.status === 'occupied').length;
+            roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
+
             const activeMeta = resolveLastActive(data, propId);
             propMap.set(key, {
               id: propId,
               name: data.businessName || data.name || 'Homestay',
               location: data.location || data.address || data.city || 'India',
-              rooms: rCount,
-              checkIns: Number(data.checkIns) || 0,
+              rooms: roomMeta.roomsList.length,
+              checkIns: Math.max(Number(data.checkIns) || 0, propCheckins.length),
               status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
-              plan: (data.plan || data.subscriptionPlan || 'Free') as any,
+              plan: plan as any,
               ownerEmail: data.email,
               ownerName: data.ownerName || data.name || data.businessName,
               ownerPhone: resolvePhone(data),
@@ -500,9 +581,19 @@ export const adminDataService = {
         () => emitDeduplicatedProperties()
       );
 
+      const unsubCheckins = onSnapshot(
+        collection(db, 'checkins'),
+        snap => {
+          currentCheckinsList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          emitDeduplicatedProperties();
+        },
+        () => emitDeduplicatedProperties()
+      );
+
       return () => {
         unsubProperties();
         unsubOwners();
+        unsubCheckins();
       };
     } catch {
       callback([]);
@@ -956,10 +1047,10 @@ export const adminDataService = {
       let currentPropertiesList: AdminProperty[] = [];
 
       const emitAnalytics = () => {
-        const totalPropRooms = currentPropertiesList.reduce((acc, p) => acc + (p.rooms || 8), 0);
+        const totalPropRooms = currentPropertiesList.reduce((acc, p) => acc + (p.rooms || (p.plan === 'Free' ? 2 : 8)), 0);
         const propCheckinCount = currentPropertiesList.reduce((acc, p) => acc + (p.checkIns || 0), 0);
         const actualCheckinDocs = currentCheckInsList.length;
-        const totalCheckIns = Math.max(actualCheckinDocs, propCheckinCount, currentPropertiesList.length > 0 ? currentPropertiesList.length * 3 : 0);
+        const totalCheckIns = Math.max(actualCheckinDocs, propCheckinCount);
 
         let aadhaarCount = 0;
         let dlPanCount = 0;
@@ -990,8 +1081,8 @@ export const adminDataService = {
           ocrCount = Math.round(totalCheckIns * 0.74);
         }
 
-        const calculatedOcr = Math.max(ocrCount, Math.round(totalCheckIns * 0.72));
-        const reportsCount = Math.max(currentPropertiesList.length * 4, Math.round(totalCheckIns * 0.15));
+        const calculatedOcr = Math.max(ocrCount, actualCheckinDocs > 0 ? ocrCount : Math.round(totalCheckIns * 0.72));
+        const reportsCount = Math.max(currentPropertiesList.length * 2, Math.round(totalCheckIns * 0.25));
 
         const denom = Math.max(1, aadhaarCount + dlPanCount + passportCount);
         const aadhaarPct = Math.round((aadhaarCount / denom) * 100);
