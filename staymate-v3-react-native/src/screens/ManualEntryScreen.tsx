@@ -30,15 +30,18 @@ export function ManualEntryScreen({
   onClose,
   initialData,
   roomsList,
+  currentPlan = 'Free',
 }: {
   onDone: (newGuest: any) => void;
   onClose: () => void;
   initialData?: any;
   roomsList?: any[];
+  currentPlan?: string;
 }) {
   const {isDark, colors} = useTheme();
   const insets = useSafeAreaInsets();
   const activeRooms = roomsList && roomsList.length > 0 ? roomsList : (ROOMS as any);
+  const isFreePlan = (currentPlan || 'Free').toUpperCase().includes('FREE');
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [name, setName] = useState(initialData?.name || '');
@@ -115,7 +118,13 @@ export function ManualEntryScreen({
           setBackPhotoUri(uri);
         }
 
-        // Run ML Kit OCR on uploaded/captured document
+        // On Free Plan, OCR auto-fill is strictly disabled (photo is only attached)
+        if (isFreePlan) {
+          setIsOcrProcessing(false);
+          return;
+        }
+
+        // On Paid Plans: Run ML Kit OCR on uploaded/captured document
         try {
           const ocrResult = await OCRPipeline.processImage(uri, docType);
           if (ocrResult) {

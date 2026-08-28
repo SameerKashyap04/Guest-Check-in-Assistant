@@ -770,6 +770,7 @@ function MainApp() {
           <ManualEntryScreen
             initialData={manualInitialData}
             roomsList={roomsList}
+            currentPlan={activePlan}
             onClose={() => {
               setManual(false);
               setManualInitialData(null);
