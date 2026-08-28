@@ -11,7 +11,7 @@ import {
   signInWithCredential,
   getAuth,
 } from '@firebase/auth';
-import { getFirestore, doc, setDoc, getDoc } from '@firebase/firestore';
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from '@firebase/firestore';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import * as WebBrowser from 'expo-web-browser';
@@ -87,6 +87,94 @@ export async function fetchOwnerProfile(uid?: string, email?: string): Promise<O
     console.warn('Firestore owner profile fetch notice:', e);
   }
   return null;
+}
+
+/**
+ * Subscribes to real-time owner and property profile updates from Firestore.
+ * Automatically synchronizes plan tier changes, room count limits, and profile edits
+ * made by the Admin in the Admin Panel without requiring the app to be restarted.
+ */
+export function subscribeToOwnerProfile(
+  uid?: string,
+  email?: string,
+  propertyId?: string,
+  callback?: (profile: OwnerProfile) => void
+): () => void {
+  if (!callback) return () => {};
+  try {
+    const app = getFirebaseApp();
+    const db = getFirestore(app);
+    const cleanEmail = email ? email.trim().toLowerCase() : '';
+    const emailKey = cleanEmail ? cleanEmail.replace(/[^a-zA-Z0-9]/g, '_') : '';
+    const propId = propertyId || (uid ? `HS-${uid.slice(0, 4).toUpperCase()}` : 'HS-4821');
+
+    const unsubs: (() => void)[] = [];
+
+    const handleData = (data: any) => {
+      if (data && typeof data === 'object') {
+        callback(data as OwnerProfile);
+      }
+    };
+
+    if (uid) {
+      unsubs.push(
+        onSnapshot(
+          doc(db, 'owners', uid),
+          (snap) => {
+            if (snap.exists()) handleData(snap.data());
+          },
+          () => {}
+        )
+      );
+    }
+
+    if (emailKey && emailKey !== uid) {
+      unsubs.push(
+        onSnapshot(
+          doc(db, 'owners', emailKey),
+          (snap) => {
+            if (snap.exists()) handleData(snap.data());
+          },
+          () => {}
+        )
+      );
+    }
+
+    if (cleanEmail && cleanEmail !== emailKey && cleanEmail !== uid) {
+      unsubs.push(
+        onSnapshot(
+          doc(db, 'owners', cleanEmail),
+          (snap) => {
+            if (snap.exists()) handleData(snap.data());
+          },
+          () => {}
+        )
+      );
+    }
+
+    if (propId) {
+      unsubs.push(
+        onSnapshot(
+          doc(db, 'properties', propId),
+          (snap) => {
+            if (snap.exists()) handleData(snap.data());
+          },
+          () => {}
+        )
+      );
+    }
+
+    return () => {
+      unsubs.forEach((u) => {
+        try {
+          u();
+        } catch (_) {}
+      });
+    };
+  } catch (e) {
+    console.warn('subscribeToOwnerProfile notice:', e);
+    return () => {};
+  }
 }
 
 /**

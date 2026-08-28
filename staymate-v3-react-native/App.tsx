@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   fetchOwnerProfile,
+  subscribeToOwnerProfile,
   syncCheckinToFirestore,
   syncRoomsToFirestore,
   updateGuestInFirestore,
@@ -418,6 +419,45 @@ function MainApp() {
     };
   }, []);
 
+  // Real-time synchronization of Owner Profile & Plan Changes from Firestore (Admin Panel)
+  useEffect(() => {
+    if (!currentUser?.uid && !currentUser?.email) return;
+    const unsub = subscribeToOwnerProfile(
+      currentUser.uid,
+      currentUser.email,
+      currentUser.propertyId,
+      (cloudProfile) => {
+        if (!cloudProfile) return;
+        const newPlan = cloudProfile.plan || cloudProfile.subscriptionPlan;
+        if (newPlan && newPlan !== activePlan) {
+          setActivePlan(newPlan);
+          notify(`✓ Plan updated to ${newPlan} by Admin`);
+        }
+        setCurrentUser((prev: any) => {
+          const merged = { ...(prev || {}), ...cloudProfile, ...(newPlan ? { plan: newPlan } : {}) };
+          AsyncStorage.setItem('@staymate_user_profile', JSON.stringify(merged)).catch(() => {});
+          return merged;
+        });
+      }
+    );
+    return () => unsub?.();
+  }, [currentUser?.uid, currentUser?.email, currentUser?.propertyId, activePlan]);
+
+  // Adjust active rooms capacity dynamically whenever activePlan changes
+  useEffect(() => {
+    const maxAllowed = getMaxRoomsForPlan(activePlan);
+    setRoomsList((prev) => {
+      if (prev.length < maxAllowed) {
+        const fullRooms = (ROOMS as any);
+        return fullRooms.slice(0, Math.min(maxAllowed, fullRooms.length));
+      }
+      if (prev.length > maxAllowed) {
+        return prev.slice(0, maxAllowed);
+      }
+      return prev;
+    });
+  }, [activePlan]);
+
   // Subscribe to real-time online self check-in submissions from Firestore
   useEffect(() => {
     const propId = currentUser?.propertyId || 'HS-4821';
@@ -733,7 +773,12 @@ function MainApp() {
 
   // STAGE 1: Host Login Screen
   if (authStage === 'login' || (!currentUser && !unlocked)) {
-    return <LoginScreen onLoginSuccess={handleLoginSuccess} />;
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.canvas }]} edges={['top', 'bottom', 'left', 'right']}>
+        <StatusBar style={isDark ? "light" : "dark"}/>
+        <LoginScreen onLoginSuccess={handleLoginSuccess} />
+      </SafeAreaView>
+    );
   }
 
   // STAGE 2: Set Master Password / PIN Screen (only if explicitly invoked)

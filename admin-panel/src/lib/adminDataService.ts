@@ -747,37 +747,99 @@ export const adminDataService = {
 
   async updateUser(userId: string, updates: Partial<AdminUser> & Record<string, any>) {
     try {
-      const ownerRef = doc(db, 'owners', userId);
+      const email = (updates.email || '').toLowerCase().trim();
+      const emailKey = email ? email.replace(/[^a-zA-Z0-9]/g, '_') : '';
+      const propId = updates.propertyId || userId;
+
+      let normalizedPlan = updates.plan;
+      if (typeof normalizedPlan === 'string') {
+        const u = normalizedPlan.toUpperCase();
+        if (u.includes('PRO')) normalizedPlan = 'Professional';
+        else if (u.includes('STARTER')) normalizedPlan = 'Starter';
+        else normalizedPlan = 'Free';
+      }
+
       const cleanUpdates: any = {
         ...updates,
         updatedAt: new Date().toISOString(),
       };
-      if (updates.name) cleanUpdates.ownerName = updates.name;
-      if (updates.property) cleanUpdates.businessName = updates.property;
-      if (updates.plan) {
-        cleanUpdates.plan = updates.plan;
-        cleanUpdates.subscriptionPlan = updates.plan;
+      if (updates.name) {
+        cleanUpdates.ownerName = updates.name;
+        cleanUpdates.name = updates.name;
       }
-      await setDoc(ownerRef, cleanUpdates, { merge: true });
+      if (updates.property) {
+        cleanUpdates.businessName = updates.property;
+        cleanUpdates.property = updates.property;
+        cleanUpdates.name = updates.property;
+      }
+      if (normalizedPlan) {
+        cleanUpdates.plan = normalizedPlan;
+        cleanUpdates.subscriptionPlan = normalizedPlan;
+      }
+      if (updates.phone) {
+        cleanUpdates.phone = updates.phone;
+        cleanUpdates.ownerPhone = updates.phone;
+        cleanUpdates.mobile = updates.phone;
+      }
 
-      // Sync to properties collection
-      const propId = updates.propertyId || userId;
-      await setDoc(doc(db, 'properties', propId), {
+      // Write to owner document under userId
+      await setDoc(doc(db, 'owners', userId), cleanUpdates, { merge: true });
+
+      // Write to owner document under emailKey if different
+      if (emailKey && emailKey !== userId) {
+        await setDoc(doc(db, 'owners', emailKey), cleanUpdates, { merge: true });
+      }
+      if (email && email !== emailKey && email !== userId) {
+        await setDoc(doc(db, 'owners', email), cleanUpdates, { merge: true });
+      }
+
+      // Write to property document
+      const propUpdates: any = {
         id: propId,
         propertyId: propId,
-        ...(updates.property ? { name: updates.property, businessName: updates.property } : {}),
-        ...(updates.name ? { ownerName: updates.name } : {}),
-        ...(updates.email ? { ownerEmail: updates.email, email: updates.email } : {}),
-        ...(updates.phone ? { phone: updates.phone, ownerPhone: updates.phone } : {}),
-        ...(updates.plan ? { plan: updates.plan } : {}),
         updatedAt: new Date().toISOString(),
-      }, { merge: true });
+      };
+      if (updates.property) {
+        propUpdates.name = updates.property;
+        propUpdates.businessName = updates.property;
+      }
+      if (updates.name) propUpdates.ownerName = updates.name;
+      if (email) {
+        propUpdates.ownerEmail = email;
+        propUpdates.email = email;
+      }
+      if (updates.phone) {
+        propUpdates.phone = updates.phone;
+        propUpdates.ownerPhone = updates.phone;
+        propUpdates.mobile = updates.phone;
+      }
+      if (normalizedPlan) {
+        propUpdates.plan = normalizedPlan;
+        propUpdates.subscriptionPlan = normalizedPlan;
+      }
+      await setDoc(doc(db, 'properties', propId), propUpdates, { merge: true });
+      if (userId !== propId) {
+        await setDoc(doc(db, 'properties', userId), propUpdates, { merge: true });
+      }
+
+      // Also ensure subscriptions collection is in sync
+      if (normalizedPlan) {
+        const subId = `SUB-${propId.replace('HS-', '')}`;
+        await setDoc(doc(db, 'subscriptions', subId), {
+          id: subId,
+          propertyId: propId,
+          property: updates.property || 'Homestay',
+          plan: normalizedPlan.toUpperCase(),
+          status: 'active',
+          updatedAt: new Date().toISOString(),
+        }, { merge: true });
+      }
 
       await this.logAudit({
         actor: 'Admin',
         action: 'USER_UPDATED',
         target: userId,
-        details: `Updated user profile & plan for ${userId}`,
+        details: `Updated user profile & plan to ${normalizedPlan} for ${userId}`,
         category: 'AUTH',
       });
 

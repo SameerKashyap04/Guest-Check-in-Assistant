@@ -173,9 +173,11 @@ export function LoginScreen({
       >
         <ScrollView
           contentContainerStyle={{
-            paddingTop: Math.max(28, insets.top + 12),
+            flexGrow: 1,
+            justifyContent: 'center',
+            paddingTop: Math.max(48, insets.top + 32),
             paddingHorizontal: 24,
-            paddingBottom: 280,
+            paddingBottom: Math.max(36, insets.bottom + 20),
           }}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
@@ -554,9 +556,10 @@ const s = StyleSheet.create({
     marginBottom: 24,
   },
   brandLogo: {
-    width: 190,
-    height: 34,
-    marginBottom: 36,
+    width: 200,
+    height: 36,
+    marginTop: 4,
+    marginBottom: 24,
   },
   title: {
     fontFamily: 'Inter',
