@@ -18,6 +18,9 @@ export interface GuestProfile {
   backPhotoUri?: string;
 }
 
+// Noise / boilerplate tokens that cannot be a person's name
+const BOILERPLATE_REGEX = /\b(government|india|unique|identification|authority|uidai|aadhaar|adhar|aadhar|enrolment|enrollment|issued|issue|details|proof|identity|citizenship|birth|verification|authentication|scanning|offline|xml|code|mera|meri|pehchan|help|portal|male|female|transgender|father|husband|mother|guardian|address|floor|flat|sector|road|street|house|district|state|haryana|delhi|maharashtra|karnataka|kerala|punjab|gujarat|rajasthan|tamil|uttar|pradesh|bengal|pin|pincode|po|dist|near|opp|behind|lane|block|ward|nagar|colony|vid|1947|valid|validity|signature|department|income|tax|permanent|account|card|holder|elector|election|commission|republic|passport)\b/i;
+
 export class DocumentParser {
   /**
    * Determine document type based on raw OCR text lines or string
@@ -62,7 +65,8 @@ export class DocumentParser {
       /AADHAAR|GOVERNMENT|GOVENMENT|GOVT|UIDAI|UNIQUEIDENTIFICATION/i.test(normalizedText) ||
       /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/.test(text) ||
       /\b\d{12}\b/.test(normalizedText) ||
-      /VID\s*:?\s*\d+/i.test(text)
+      /VID\s*:?\s*\d+/i.test(text) ||
+      /MERA\s*AADHAAR/i.test(text)
     ) {
       return 'AADHAAR';
     }
@@ -78,97 +82,203 @@ export class DocumentParser {
     const fullText = textLines.join('\n');
     const result: Partial<GuestProfile> = {};
 
-    // Common Date Matcher (DOB)
-    const dobMatch = fullText.match(/(\d{2}[\/\-]\d{2}[\/\-]\d{4})/);
-    if (dobMatch) {
-      result.dob = {value: dobMatch[1], confidence: 95};
+    // -------------------------------------------------------------
+    // 1. GENDER DETECTION (Multi-lingual)
+    // -------------------------------------------------------------
+    if (/महिला|FEMALE/i.test(fullText)) {
+      result.gender = { value: 'Female', confidence: 98 };
+    } else if (/पुरुष|\bMALE\b/i.test(fullText)) {
+      result.gender = { value: 'Male', confidence: 98 };
+    } else if (/TRANSGENDER|उभयलिंगी/i.test(fullText)) {
+      result.gender = { value: 'Transgender', confidence: 98 };
     }
 
-    // Common Gender Matcher
-    if (/\b(MALE|FEMALE|TRANSGENDER)\b/i.test(fullText)) {
-      const gMatch = fullText.match(/\b(MALE|FEMALE|TRANSGENDER)\b/i);
-      if (gMatch) {
-        result.gender = {value: gMatch[1].toUpperCase(), confidence: 95};
-      }
-    }
-
+    // -------------------------------------------------------------
+    // 2. DOCUMENT SPECIFIC PARSING
+    // -------------------------------------------------------------
     if (docType === 'AADHAAR') {
-      const idMatch = fullText.match(/\b(\d{4}[-\s]?\d{4}[-\s]?\d{4})\b/);
+      // Aadhaar 12-digit Number (e.g. 4906 5637 6032)
+      const idMatch = fullText.match(/\b(\d{4}[\s-]?\d{4}[\s-]?\d{4})\b/);
       if (idMatch) {
-        result.idNumber = {value: idMatch[1].replace(/[-\s]/g, ' '), confidence: 99};
+        result.idNumber = { value: idMatch[1].replace(/[-\s]/g, ' '), confidence: 99 };
       }
 
-      // Address is usually preceded by S/O, W/O, D/O, C/O or 'Address'
-      const addressMatch = fullText.match(/(?:Address|S\/O|W\/O|D\/O|C\/O)[\s:]*([\s\S]+?)(?=\d{6}|$)/i);
-      if (addressMatch) {
-        let cleanAddress = addressMatch[1].replace(/\n/g, ', ').trim();
-        cleanAddress = cleanAddress.replace(/U[nr]ique\s+[a-z]+\s+Auth[a-z]*\s+(?:of|oft|ef|af)\s+[it]nd[ia]+[,.\s]*/ig, '');
-        cleanAddress = cleanAddress.replace(/^afNfor\s*/ig, '');
-        result.address = {value: cleanAddress, confidence: 85};
-      }
-
-      const pinMatch = fullText.match(/\b(\d{6})\b/);
-      if (pinMatch) {
-        result.pinCode = {value: pinMatch[1], confidence: 95};
-      }
-
-      // 1. Check for explicit "Name:" or "Name :"
-      const explicitNameMatch = fullText.match(/(?:Name|Full Name)[\s:]+([A-Za-z\s]{3,30})/i);
-      if (explicitNameMatch && !/government|india|unique|authority/i.test(explicitNameMatch[1])) {
-        result.fullName = {value: explicitNameMatch[1].trim(), confidence: 90};
+      // Date of Birth (Avoid left margin 'Issued: 27/03/2013' or 'Details as on 13/12/2023')
+      const explicitDob = fullText.match(/(?:जन्म\s*तिथि|DOB|Birth|Year\s*of\s*Birth|D\.O\.B)[\s\:\/\.\-]+(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4})/i);
+      if (explicitDob) {
+        result.dob = { value: explicitDob[1].replace(/[\-\.]/g, '/'), confidence: 98 };
       } else {
-        // 2. Search candidate lines above DOB / Year of Birth
-        for (let i = 0; i < textLines.length; i++) {
-          const line = textLines[i].toLowerCase();
-          if (line.includes('dob') || line.includes('birth') || line.includes('year') || textLines[i].match(/\d{2}[\/\-]\d{2}[\/\-]\d{4}/)) {
-            // Check lines i-1, i-2, i-3 for English name
-            for (let j = 1; j <= 3; j++) {
-              if (i - j >= 0) {
-                const cand = textLines[i - j].trim();
-                const isEnglishWords = /^[A-Za-z\s.'-]+$/.test(cand);
-                const words = cand.split(/\s+/).filter(Boolean);
-                const isNotHeader = !/government|india|unique|identification|authority|uidai|aadhaar|enrollment|father|husband|mother|male|female|help|portal/i.test(cand);
-                if (isEnglishWords && words.length >= 1 && words.length <= 4 && isNotHeader && cand.length >= 3) {
-                  result.fullName = {value: cand, confidence: 85};
-                  break;
-                }
+        // Check for 4-digit Year of Birth
+        const yobMatch = fullText.match(/(?:जन्म\s*तिथि|DOB|Birth|Year\s*of\s*Birth|D\.O\.B)[\s\:\/\.\-]+(\d{4})/i);
+        if (yobMatch) {
+          result.dob = { value: `01/01/${yobMatch[1]}`, confidence: 85 };
+        } else {
+          // Fallback: search dates that are NOT preceded by 'issued' or 'details as on'
+          for (const line of textLines) {
+            if (!/issued|details|valid|print|as on/i.test(line)) {
+              const dMatch = line.match(/(\d{2}[\/\-\.]\d{2}[\/\-\.]\d{4})/);
+              if (dMatch) {
+                result.dob = { value: dMatch[1].replace(/[\-\.]/g, '/'), confidence: 90 };
+                break;
               }
             }
+          }
+        }
+      }
+
+      // PIN Code (6 digits)
+      const pinMatch = fullText.match(/\b([1-9][0-9]{5})\b/);
+      if (pinMatch) {
+        result.pinCode = { value: pinMatch[1], confidence: 95 };
+      }
+
+      // English Name Extraction (e.g. "Bhushan Diwakar")
+      // Check for explicit "Name:" pattern first
+      const explicitName = fullText.match(/(?:Name|Full Name)[\s:]+([A-Za-z\s.'-]{3,30})/i);
+      if (explicitName && !BOILERPLATE_REGEX.test(explicitName[1])) {
+        result.fullName = { value: explicitName[1].trim(), confidence: 95 };
+      } else {
+        // Find line index of DOB or Gender
+        let dobLineIndex = -1;
+        for (let i = 0; i < textLines.length; i++) {
+          const l = textLines[i].toLowerCase();
+          if (l.includes('dob') || l.includes('जन्म तिथि') || l.includes('birth') || textLines[i].match(/\d{2}[\/\-]\d{2}[\/\-]\d{4}/)) {
+            dobLineIndex = i;
             break;
           }
         }
-      }
-    } else if (docType === 'PAN') {
-      const idMatch = fullText.match(/\b([A-Z]{5}[0-9]{4}[A-Z])\b/i);
-      if (idMatch) {
-        result.idNumber = {value: idMatch[1].toUpperCase(), confidence: 99};
-      }
 
-      const nameCandidates = fullText.match(/\b([A-Z]{2,}\s+[A-Z]{2,}(?:\s+[A-Z]{2,})?)\b/g);
-      if (nameCandidates) {
-        const validNames = nameCandidates.filter(
-          (n) => !/INCOME|TAX|DEPARTMENT|DEPAKT|DERRT|PERMAN|ACCOUNT|AOUT|NUMBER|UMIBER|CARD|CART|GOVT|GOVE|INDIA|INDLA|FATHER|FAHES|SIGNATURE|NAME|NOUNL/i.test(n)
-        );
-        if (validNames.length > 0) {
-          result.fullName = {value: validNames[0].trim(), confidence: 88};
-          if (validNames.length > 1) {
-            result.fatherName = {value: validNames[1].trim(), confidence: 75};
+        // Pass 1: Scan 1 to 4 lines directly above the DOB line
+        if (dobLineIndex > 0) {
+          for (let offset = 1; offset <= 4; offset++) {
+            const idx = dobLineIndex - offset;
+            if (idx >= 0) {
+              const cand = textLines[idx].trim();
+              // Clean out punctuation noise
+              const cleanCand = cand.replace(/[^A-Za-z\s.'-]/g, '').trim();
+              const words = cleanCand.split(/\s+/).filter(Boolean);
+              
+              if (
+                cleanCand.length >= 3 &&
+                cleanCand.length <= 35 &&
+                words.length >= 1 &&
+                words.length <= 4 &&
+                /^[A-Za-z\s.'-]+$/.test(cleanCand) &&
+                !BOILERPLATE_REGEX.test(cleanCand)
+              ) {
+                result.fullName = { value: cleanCand, confidence: 92 };
+                break;
+              }
+            }
+          }
+        }
+
+        // Pass 2: Fallback scan all lines between header and Aadhaar number
+        if (!result.fullName) {
+          for (const line of textLines) {
+            const cleanCand = line.replace(/[^A-Za-z\s.'-]/g, '').trim();
+            const words = cleanCand.split(/\s+/).filter(Boolean);
+            if (
+              cleanCand.length >= 4 &&
+              cleanCand.length <= 30 &&
+              words.length >= 2 &&
+              words.length <= 4 &&
+              /^[A-Za-z\s.'-]+$/.test(cleanCand) &&
+              !BOILERPLATE_REGEX.test(cleanCand) &&
+              !/^(male|female|india|father|mother|husband)$/i.test(cleanCand)
+            ) {
+              result.fullName = { value: cleanCand, confidence: 80 };
+              break;
+            }
           }
         }
       }
+
+      // Address Extraction (from back of Aadhaar card)
+      // Matches English address block starting at 'Address:' or 'S/O', 'W/O', 'D/O', 'C/O'
+      const addrMatch = fullText.match(/(?:Address|पता)[\s\:\-]+([\s\S]+?)(?=(?:\b\d{4}\s+\d{4}\s+\d{4}\b|\b\d{12}\b|www\.uidai|help@uidai|1947|$))/i);
+      if (addrMatch) {
+        let rawAddr = addrMatch[1];
+        // If both Hindi and English are present, extract from English "Address:" if available
+        const engAddressSplit = rawAddr.match(/Address[\s\:\-]+([\s\S]+)/i);
+        if (engAddressSplit) {
+          rawAddr = engAddressSplit[1];
+        }
+
+        // Clean and format address
+        let cleanAddr = rawAddr
+          .replace(/\r?\n/g, ', ')
+          .replace(/Unique\s+Identification\s+Authority\s+of\s+India/gi, '')
+          .replace(/Details\s+as\s+on\s*[\d\/\-]+/gi, '')
+          .replace(/Aadhaar\s+No\.?/gi, '')
+          .replace(/help@uidai\.gov\.in|www\.uidai\.gov\.in|1947/gi, '')
+          .replace(/,\s*,/g, ',')
+          .replace(/^[\s,:-]+|[\s,:-]+$/g, '')
+          .trim();
+
+        if (cleanAddr.length >= 10) {
+          result.address = { value: cleanAddr, confidence: 90 };
+        }
+      } else {
+        // Fallback address check for S/O, W/O, D/O, C/O anywhere in text
+        const careOfMatch = fullText.match(/(?:S\/O|W\/O|D\/O|C\/O|Care\s+of)[\s\:\-]+([\s\S]+?)(?=(?:\b\d{4}\s+\d{4}\s+\d{4}\b|\b\d{12}\b|www\.uidai|1947|$))/i);
+        if (careOfMatch) {
+          let cleanAddr = careOfMatch[0].replace(/\r?\n/g, ', ').replace(/,\s*,/g, ',').trim();
+          if (cleanAddr.length >= 10) {
+            result.address = { value: cleanAddr, confidence: 85 };
+          }
+        }
+      }
+
+    } else if (docType === 'PAN') {
+      // PAN Number: 5 Letters + 4 Digits + 1 Letter
+      const idMatch = fullText.match(/\b([A-Z]{5}[0-9]{4}[A-Z])\b/i);
+      if (idMatch) {
+        result.idNumber = { value: idMatch[1].toUpperCase(), confidence: 99 };
+      }
+
+      // PAN DOB (dd/mm/yyyy)
+      const dobMatch = fullText.match(/(\d{2}[\/\-]\d{2}[\/\-]\d{4})/);
+      if (dobMatch) {
+        result.dob = { value: dobMatch[1].replace(/[\-\.]/g, '/'), confidence: 95 };
+      }
+
+      // PAN Names (uppercase alphabets)
+      const nameCandidates = fullText.match(/\b([A-Z]{2,}\s+[A-Z]{2,}(?:\s+[A-Z]{2,})?)\b/g);
+      if (nameCandidates) {
+        const validNames = nameCandidates.filter(
+          (n) => !BOILERPLATE_REGEX.test(n) && !/INCOME|TAX|DEPARTMENT|DEPAKT|DERRT|PERMAN|ACCOUNT|AOUT|NUMBER|UMIBER|CARD|CART|GOVT|GOVE|INDIA|INDLA|FATHER|FAHES|SIGNATURE|NAME|NOUNL/i.test(n)
+        );
+        if (validNames.length > 0) {
+          result.fullName = { value: validNames[0].trim(), confidence: 90 };
+          if (validNames.length > 1) {
+            result.fatherName = { value: validNames[1].trim(), confidence: 75 };
+          }
+        }
+      }
+
     } else if (docType === 'DRIVING_LICENCE') {
       const idMatch = fullText.match(/\b([A-Z]{2}[-\s]?\d{2,14})\b/i);
       if (idMatch) {
-        result.idNumber = {value: idMatch[1].toUpperCase(), confidence: 90};
+        result.idNumber = { value: idMatch[1].toUpperCase(), confidence: 90 };
+      }
+      const dobMatch = fullText.match(/(\d{2}[\/\-]\d{2}[\/\-]\d{4})/);
+      if (dobMatch) {
+        result.dob = { value: dobMatch[1].replace(/[\-\.]/g, '/'), confidence: 95 };
       }
       const dlNameMatch = fullText.match(/(?:Name|Holder Name)[\s:]+([A-Za-z\s]{3,30})/i);
       if (dlNameMatch) {
-        result.fullName = {value: dlNameMatch[1].trim(), confidence: 90};
+        result.fullName = { value: dlNameMatch[1].trim(), confidence: 90 };
       }
+
     } else if (docType === 'PASSPORT') {
       const idMatch = fullText.match(/\b([A-Z][0-9]{7})\b/i);
       if (idMatch) {
-        result.idNumber = {value: idMatch[1].toUpperCase(), confidence: 90};
+        result.idNumber = { value: idMatch[1].toUpperCase(), confidence: 90 };
+      }
+      const dobMatch = fullText.match(/(\d{2}[\/\-]\d{2}[\/\-]\d{4})/);
+      if (dobMatch) {
+        result.dob = { value: dobMatch[1].replace(/[\-\.]/g, '/'), confidence: 95 };
       }
 
       const mrzLines = textLines.filter((l) => l.startsWith('P<') || l.length >= 40);
@@ -180,21 +290,26 @@ export class DocumentParser {
           if (names.length >= 2) {
             const surname = names[0].replace(/</g, ' ').trim();
             const givenName = names[1].replace(/</g, ' ').trim();
-            result.fullName = {value: `${givenName} ${surname}`.trim(), confidence: 99};
+            result.fullName = { value: `${givenName} ${surname}`.trim(), confidence: 99 };
           }
           if (mrz2.length >= 28) {
-            result.idNumber = {value: mrz2.substring(0, 8), confidence: 99};
+            result.idNumber = { value: mrz2.substring(0, 8), confidence: 99 };
           }
         }
       }
+
     } else if (docType === 'VOTER_ID') {
       const idMatch = fullText.match(/\b([A-Z]{3}[0-9]{7})\b/i);
       if (idMatch) {
-        result.idNumber = {value: idMatch[1].toUpperCase(), confidence: 95};
+        result.idNumber = { value: idMatch[1].toUpperCase(), confidence: 95 };
+      }
+      const dobMatch = fullText.match(/(\d{2}[\/\-]\d{2}[\/\-]\d{4})/);
+      if (dobMatch) {
+        result.dob = { value: dobMatch[1].replace(/[\-\.]/g, '/'), confidence: 95 };
       }
       const voterNameMatch = fullText.match(/(?:Elector's Name|Name)[\s:]+([A-Za-z\s]{3,30})/i);
       if (voterNameMatch) {
-        result.fullName = {value: voterNameMatch[1].trim(), confidence: 90};
+        result.fullName = { value: voterNameMatch[1].trim(), confidence: 90 };
       }
     }
 
