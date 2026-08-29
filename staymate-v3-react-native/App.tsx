@@ -1935,10 +1935,18 @@ function GuestSheet({
           }}
         />
         <SecondaryButton
-          label="Share ID"
-          icon="share"
+          label="Call Now"
+          icon="phone"
           style={{flex: 1}}
-          onPress={() => onToast('Guest document link copied')}
+          onPress={() => {
+            const rawPhone = g.phone || g.mobile || g.contact || '';
+            const clean = String(rawPhone).replace(/[^0-9+]/g, '');
+            if (clean && clean.length >= 7) {
+              Linking.openURL(`tel:${clean}`).catch(() => onToast('Cannot open phone dialer'));
+            } else {
+              onToast('No phone number provided for this guest');
+            }
+          }}
         />
       </View>
     </ScrollView>

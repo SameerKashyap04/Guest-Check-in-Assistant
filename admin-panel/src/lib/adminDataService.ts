@@ -108,6 +108,29 @@ export function getMaxRoomsForPlan(plan?: string): number {
   return 50;
 }
 
+export function resolveSubscriptionAmount(sub: any): number {
+  if (!sub) return 0;
+  if (typeof sub.numericAmount === 'number' && !isNaN(sub.numericAmount) && sub.numericAmount > 0) {
+    return sub.numericAmount;
+  }
+  if (sub.amountPaise && typeof sub.amountPaise === 'number' && !isNaN(sub.amountPaise)) {
+    return sub.amountPaise / 100;
+  }
+  if (typeof sub.amount === 'number' && !isNaN(sub.amount) && sub.amount > 0) {
+    return sub.amount;
+  }
+  if (typeof sub.amount === 'string') {
+    const cleanStr = sub.amount.replace(/[^0-9.]/g, '');
+    const parsed = parseFloat(cleanStr);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  const planKey = String(sub.plan || '').toUpperCase().trim();
+  if (planKey.includes('PRO')) return 799;
+  if (planKey.includes('STARTER')) return 349;
+  if (planKey.includes('MULTI') || planKey.includes('ENTERPRISE')) return 1999;
+  return 0;
+}
+
 export function generatePropertyRooms(
   propertyId: string,
   roomCount?: number,
@@ -958,7 +981,19 @@ export const adminDataService = {
     try {
       const snap = await getDocs(collection(db, 'subscriptions'));
       if (snap.empty) return [];
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminSubscription));
+      return snap.docs.map(d => {
+        const data = d.data();
+        const numAmt = resolveSubscriptionAmount(data);
+        return {
+          id: d.id,
+          ...data,
+          numericAmount: numAmt,
+          amount: data.amount || `₹${numAmt}`,
+          cycle: data.cycle || 'monthly',
+          plan: data.plan || 'Free',
+          status: data.status || 'active',
+        } as AdminSubscription;
+      });
     } catch (e) {
       console.warn('Subscriptions query error:', e);
       return [];
@@ -973,7 +1008,19 @@ export const adminDataService = {
           if (snap.empty) {
             callback([]);
           } else {
-            callback(snap.docs.map(d => ({ id: d.id, ...d.data() } as AdminSubscription)));
+            callback(snap.docs.map(d => {
+              const data = d.data();
+              const numAmt = resolveSubscriptionAmount(data);
+              return {
+                id: d.id,
+                ...data,
+                numericAmount: numAmt,
+                amount: data.amount || `₹${numAmt}`,
+                cycle: data.cycle || 'monthly',
+                plan: data.plan || 'Free',
+                status: data.status || 'active',
+              } as AdminSubscription;
+            }));
           }
         },
         err => {

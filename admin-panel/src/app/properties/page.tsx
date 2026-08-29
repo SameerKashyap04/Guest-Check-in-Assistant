@@ -587,10 +587,20 @@ export default function PropertiesPage() {
 
                         {/* Guest or Status Details */}
                         {room.status === "occupied" ? (
-                          <div className="bg-white/80 p-2.5 rounded-xl border border-violet-100 mt-2 space-y-1.5">
+                          <div className="bg-white/90 p-2.5 rounded-xl border border-violet-100 mt-2 space-y-1.5 shadow-sm">
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase">Guest</span>
-                              <span className="text-xs font-black text-slate-900">{room.guestName || "Registered Guest"}</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase">Guest Name</span>
+                              <span className="text-xs font-black text-slate-900">
+                                {room.guestName && room.guestName !== "Registered Guest"
+                                  ? room.guestName
+                                  : `StayMate Guest (Room ${room.num})`}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between text-[11px] text-slate-500">
+                              <span>Occupancy:</span>
+                              <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">
+                                Active In-House Stay
+                              </span>
                             </div>
                             {room.checkIn && (
                               <div className="flex items-center justify-between text-[11px] text-slate-500">

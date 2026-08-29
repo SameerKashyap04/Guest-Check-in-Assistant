@@ -23,6 +23,7 @@ import {
   AdminSubscription,
   AdminAuditLog,
   parseAuditTimestamp,
+  resolveSubscriptionAmount,
 } from "@/lib/adminDataService";
 
 const C = {
@@ -68,17 +69,18 @@ export default function DashboardPage() {
   }, []);
 
   // Compute dynamic MRR and ARR from active subscriptions
-  const activeSubs = subscriptions.filter(s => s.status === 'active');
+  const activeSubs = subscriptions.filter(s => s.status === 'active' || s.status === 'trialing');
   const monthlyRevenue = activeSubs.reduce((acc, s) => {
-    if (s.cycle === 'yearly') return acc + Math.round(s.numericAmount / 12);
-    return acc + s.numericAmount;
+    const amt = typeof s.numericAmount === 'number' && !isNaN(s.numericAmount) ? s.numericAmount : resolveSubscriptionAmount(s);
+    if (s.cycle === 'yearly') return acc + Math.round(amt / 12);
+    return acc + (isNaN(amt) ? 0 : amt);
   }, 0);
 
   const annualRevenue = monthlyRevenue * 12;
   const activePropertiesCount = properties.length;
   const paidCount = activeSubs.length;
   const paidRatio = activePropertiesCount > 0 ? ((paidCount / activePropertiesCount) * 100).toFixed(1) : "0.0";
-  const arpu = activePropertiesCount > 0 ? Math.round(monthlyRevenue / activePropertiesCount) : 0;
+  const arpu = activePropertiesCount > 0 ? Math.round((monthlyRevenue || 0) / activePropertiesCount) : 0;
 
   const kpis = [
     {

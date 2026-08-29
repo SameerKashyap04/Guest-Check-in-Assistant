@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { AdminLayout } from "@/components/AdminLayout";
 import { TrendingUp, DollarSign, ArrowUpRight, ArrowDownRight, CreditCard, Sparkles, PieChart } from "lucide-react";
-import { adminDataService, AdminSubscription, AdminProperty } from "@/lib/adminDataService";
+import { adminDataService, AdminSubscription, AdminProperty, resolveSubscriptionAmount } from "@/lib/adminDataService";
 
 export default function RevenuePage() {
   const [selectedPeriod, setSelectedPeriod] = useState<"MRR" | "ARR">("MRR");
@@ -19,15 +19,16 @@ export default function RevenuePage() {
     };
   }, []);
 
-  const activeSubs = subscriptions.filter(s => s.status === 'active');
-  const starterSubs = activeSubs.filter(s => s.plan === 'STARTER');
-  const proSubs = activeSubs.filter(s => s.plan === 'PROFESSIONAL');
-  const multiSubs = activeSubs.filter(s => s.plan === 'MULTI_PROPERTY' || s.plan === 'ENTERPRISE');
+  const activeSubs = subscriptions.filter(s => s.status === 'active' || s.status === 'trialing');
+  const starterSubs = activeSubs.filter(s => (s.plan || '').toUpperCase().includes('STARTER'));
+  const proSubs = activeSubs.filter(s => (s.plan || '').toUpperCase().includes('PRO'));
+  const multiSubs = activeSubs.filter(s => (s.plan || '').toUpperCase().includes('MULTI') || (s.plan || '').toUpperCase().includes('ENTERPRISE'));
 
   const calcMonthly = (subs: AdminSubscription[]) =>
     subs.reduce((acc, s) => {
-      if (s.cycle === 'yearly') return acc + Math.round(s.numericAmount / 12);
-      return acc + s.numericAmount;
+      const amt = typeof s.numericAmount === 'number' && !isNaN(s.numericAmount) ? s.numericAmount : resolveSubscriptionAmount(s);
+      if (s.cycle === 'yearly') return acc + Math.round(amt / 12);
+      return acc + (isNaN(amt) ? 0 : amt);
     }, 0);
 
   const starterRev = calcMonthly(starterSubs);

@@ -145,17 +145,6 @@ export function PinScreen({
     setError('');
   };
 
-  const handleQuickUnlock = async () => {
-    if (currentStep === 'enter') {
-      await securityService.resetToDefaultPin();
-      onUnlock();
-    } else {
-      await securityService.savePin('1234');
-      if (onPinSet) onPinSet('1234');
-      onUnlock();
-    }
-  };
-
   return (
     <View style={[s.wrap, isDark && { backgroundColor: colors.canvas }]}>
       <View style={s.lock}>
@@ -231,16 +220,6 @@ export function PinScreen({
           <Icon name="chevronLeft" size={20} color={colors.ink} />
         </TouchableOpacity>
       </View>
-
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={handleQuickUnlock}
-        style={[s.quickUnlock, isDark && { backgroundColor: '#2E1065' }]}
-      >
-        <Text style={[s.quickUnlockText, isDark && { color: colors.primary }]}>
-          {currentStep !== 'enter' ? 'Skip (Use 1234) →' : 'Quick Unlock (Demo) →'}
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 }
