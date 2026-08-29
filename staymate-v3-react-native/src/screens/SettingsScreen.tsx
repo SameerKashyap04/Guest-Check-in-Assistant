@@ -70,6 +70,8 @@ export function SettingsScreen({
   onModal,
   onPricing,
   onReferEarn,
+  onStaff,
+  onProperties,
   onLogout,
   onLock,
   onToast,
@@ -81,6 +83,8 @@ export function SettingsScreen({
   onModal?: (title: string, text: string) => void;
   onPricing: () => void;
   onReferEarn?: () => void;
+  onStaff?: () => void;
+  onProperties?: () => void;
   onLogout: () => void;
   onLock: () => void;
   onToast?: (msg: string) => void;
@@ -436,8 +440,31 @@ export function SettingsScreen({
         onPress={onReferEarn}
       />
 
+      {/* TEAM & PROPERTIES */}
+      <Text style={[s.sectionHeader, { marginTop: 16, color: colors.muted }]}>TEAM & PROPERTIES</Text>
+      <SettingRow
+        icon="users"
+        label="Staff & Team Accounts"
+        subtitle={
+          (currentPlan || '').toUpperCase().includes('ENTERPRISE')
+            ? 'Manage managers & front desk (Unlimited)'
+            : (currentPlan || '').toUpperCase().includes('MULTI')
+            ? 'Manage managers & front desk (Up to 20 accounts)'
+            : (currentPlan || '').toUpperCase().includes('PRO')
+            ? 'Manage managers & front desk (Up to 5 accounts)'
+            : 'Role-based staff accounts (Upgrade to Pro)'
+        }
+        onPress={() => onStaff && onStaff()}
+      />
+      <SettingRow
+        icon="mapPin"
+        label="Properties & Branches"
+        subtitle={`Active: ${profile.name} (${profile.code}) · Switch or add`}
+        onPress={() => onProperties && onProperties()}
+      />
+
       {/* DATA STORAGE */}
-      <Text style={[s.sectionHeader, { color: colors.muted }]}>DATA STORAGE</Text>
+      <Text style={[s.sectionHeader, { marginTop: 16, color: colors.muted }]}>DATA STORAGE</Text>
       <SettingRow
         icon="cloud"
         label="Cloud mode"

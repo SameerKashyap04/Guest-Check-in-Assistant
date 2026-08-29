@@ -52,6 +52,8 @@ import {ManualEntryScreen} from './src/screens/ManualEntryScreen';
 import {AccountPortalScreen} from './src/screens/AccountPortalScreen';
 import {CheckoutScreen} from './src/screens/CheckoutScreen';
 import {ReferEarnScreen} from './src/screens/ReferEarnScreen';
+import {StaffManagementScreen} from './src/screens/StaffManagementScreen';
+import {PropertyManagerScreen} from './src/screens/PropertyManagerScreen';
 import {BillingDurationMonths, SubscriptionPlan} from './src/types/subscription';
 import {BILLING_PERIODS, calculatePlanPricing, getBillingPeriodConfig} from './src/config/plans';
 import {GUESTS, ROOMS, STATUS_META, RoomStatus, SELF_CHECKINS, SELF_CHECKIN_URL, PLANS, buildSelfCheckinLink} from './src/data';
@@ -163,7 +165,7 @@ function MainApp() {
   } | null>(null);
   const [sheet, setSheet] = useState<'guest' | 'self' | 'room' | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<string | null>(null);
-  const [overlay, setOverlay] = useState<'search' | 'reports' | 'pricing' | 'checkout' | 'refer-earn' | null>(null);
+  const [overlay, setOverlay] = useState<'search' | 'reports' | 'pricing' | 'checkout' | 'refer-earn' | 'staff' | 'properties' | null>(null);
   const [checkoutPlan, setCheckoutPlan] = useState<{ plan: string; duration: BillingDurationMonths }>({
     plan: 'Professional',
     duration: 6,
@@ -817,6 +819,8 @@ function MainApp() {
         onModal={show}
         onPricing={() => setOverlay('pricing')}
         onReferEarn={() => setOverlay('refer-earn')}
+        onStaff={() => setOverlay('staff')}
+        onProperties={() => setOverlay('properties')}
         onToast={notify}
         onProfileUpdated={handleProfileUpdated}
         onLogout={() =>
@@ -1001,6 +1005,56 @@ function MainApp() {
           <ReferEarnScreen
             userProfile={currentUser}
             onClose={() => setOverlay(null)}
+            onToast={notify}
+          />
+        </Modal>
+      )}
+
+      {/* Staff Management overlay */}
+      {overlay === 'staff' && (
+        <Modal visible animationType="slide" onRequestClose={() => setOverlay(null)}>
+          <StaffManagementScreen
+            propertyId={currentUser?.propertyId || 'HS-4821'}
+            propertyName={currentUser?.businessName || currentUser?.name || 'Sunrise Homestay'}
+            activePlan={activePlan}
+            onClose={() => setOverlay(null)}
+            onUpgrade={() => {
+              setOverlay('pricing');
+            }}
+            onToast={notify}
+          />
+        </Modal>
+      )}
+
+      {/* Property Switcher & Manager overlay */}
+      {overlay === 'properties' && (
+        <Modal visible animationType="slide" onRequestClose={() => setOverlay(null)}>
+          <PropertyManagerScreen
+            ownerUid={currentUser?.uid || 'default_owner'}
+            ownerEmail={currentUser?.email}
+            currentPropertyId={currentUser?.propertyId || 'HS-4821'}
+            currentPropertyName={currentUser?.businessName || currentUser?.name || 'Sunrise Homestay'}
+            currentPropertyAddress={currentUser?.location || currentUser?.address || 'India'}
+            activePlan={activePlan}
+            onClose={() => setOverlay(null)}
+            onSelectProperty={(selectedProp) => {
+              const propId = selectedProp.code || selectedProp.id;
+              setCurrentUser((prev: any) => {
+                const updated = {
+                  ...(prev || {}),
+                  propertyId: propId,
+                  businessName: selectedProp.name,
+                  location: selectedProp.address,
+                };
+                AsyncStorage.setItem('@staymate_user_profile', JSON.stringify(updated)).catch(() => {});
+                return updated;
+              });
+              syncRoomsToFirestore(propId, roomsList, currentUser?.email, currentUser?.uid);
+              notify(`✓ Switched to ${selectedProp.name} (${propId})!`);
+            }}
+            onUpgrade={() => {
+              setOverlay('pricing');
+            }}
             onToast={notify}
           />
         </Modal>
