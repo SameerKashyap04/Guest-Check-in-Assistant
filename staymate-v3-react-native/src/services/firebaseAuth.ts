@@ -332,6 +332,50 @@ export async function syncCheckinToFirestore(
 }
 
 /**
+ * Instantly pings user presence & lastActive timestamp to Firestore (properties and owners collections).
+ * Called as fast as user launches or opens the app, transitions to active, or on heartbeat.
+ */
+export async function pingPresenceToFirestore(
+  propertyId?: string,
+  ownerEmail?: string,
+  ownerUid?: string,
+  isOnline: boolean = true
+): Promise<void> {
+  try {
+    const app = getFirebaseApp();
+    const db = getFirestore(app);
+    const nowIso = new Date().toISOString();
+    const propId = propertyId || 'HS-4821';
+
+    const presencePayload = {
+      isOnline,
+      lastActiveAt: nowIso,
+      lastActive: nowIso,
+      lastSeen: nowIso,
+      lastPingTimestamp: Date.now(),
+      updatedAt: nowIso,
+    };
+
+    // 1. Write to properties/{propId}
+    await setDoc(doc(db, 'properties', propId), presencePayload, { merge: true });
+
+    // 2. Also write to owners collection for real-time live sync
+    if (ownerUid) {
+      try {
+        await setDoc(doc(db, 'owners', ownerUid), presencePayload, { merge: true });
+      } catch (_) {}
+    }
+    if (ownerEmail) {
+      try {
+        await setDoc(doc(db, 'owners', ownerEmail.toLowerCase().trim()), presencePayload, { merge: true });
+      } catch (_) {}
+    }
+  } catch (e) {
+    // Non-blocking background presence ping
+  }
+}
+
+/**
  * Syncs live room inventory to Firestore properties and owners collections
  */
 export async function syncRoomsToFirestore(propertyId: string, roomsList: any[], ownerEmail?: string, ownerUid?: string) {
@@ -340,6 +384,7 @@ export async function syncRoomsToFirestore(propertyId: string, roomsList: any[],
     const db = getFirestore(app);
     const propId = propertyId || 'HS-4821';
     const cleanedRooms = cleanFirestoreData(roomsList);
+    const nowIso = new Date().toISOString();
     const roomPayload = {
       id: propId,
       propertyId: propId,
@@ -351,8 +396,11 @@ export async function syncRoomsToFirestore(propertyId: string, roomsList: any[],
       availableRooms: roomsList.filter((r) => r.status === 'available').length,
       cleaningRooms: roomsList.filter((r) => r.status === 'cleaning').length,
       maintenanceRooms: roomsList.filter((r) => r.status === 'maintenance').length,
-      updatedAt: new Date().toISOString(),
-      lastActive: new Date().toISOString(),
+      isOnline: true,
+      updatedAt: nowIso,
+      lastActive: nowIso,
+      lastActiveAt: nowIso,
+      lastSeen: nowIso,
       ...(ownerEmail ? { ownerEmail: ownerEmail.toLowerCase().trim(), email: ownerEmail.toLowerCase().trim() } : {}),
     };
 

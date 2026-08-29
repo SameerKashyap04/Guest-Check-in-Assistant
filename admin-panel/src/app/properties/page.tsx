@@ -121,14 +121,17 @@ export default function PropertiesPage() {
   useEffect(() => {
     const unsub = adminDataService.subscribeProperties((props) => {
       setProperties(props);
-      // Update selected property if currently open
-      if (selectedProperty) {
-        const found = props.find((p) => p.id === selectedProperty.id || (p.ownerEmail && p.ownerEmail === selectedProperty.ownerEmail));
-        if (found) setSelectedProperty(found);
-      }
+      // Automatically keep selected property updated in real-time
+      setSelectedProperty((currentSelected) => {
+        if (!currentSelected) return null;
+        const found = props.find(
+          (p) => p.id === currentSelected.id || (p.ownerEmail && p.ownerEmail === currentSelected.ownerEmail)
+        );
+        return found || currentSelected;
+      });
     });
     return () => unsub();
-  }, [selectedProperty]);
+  }, []);
 
   const maskPhone = (p?: string) => {
     if (!p) return "Not provided";

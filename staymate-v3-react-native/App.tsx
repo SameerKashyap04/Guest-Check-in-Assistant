@@ -6,6 +6,7 @@ import {
   syncRoomsToFirestore,
   updateGuestInFirestore,
   syncReportGeneratedToFirestore,
+  pingPresenceToFirestore,
 } from './src/services/firebaseAuth';
 import React, {useState, useEffect, useRef} from 'react';
 import {
@@ -430,6 +431,38 @@ function MainApp() {
       );
     }
   }, [roomsList, currentUser?.propertyId, currentUser?.email, currentUser?.uid]);
+
+  // Instant Presence & Last Active live ping as fast as the user opens the app or interacts
+  useEffect(() => {
+    const triggerPresence = (online = true) => {
+      const propId = currentUser?.propertyId || 'HS-4821';
+      const email = currentUser?.email;
+      const uid = currentUser?.uid;
+      pingPresenceToFirestore(propId, email, uid, online);
+    };
+
+    // 1. Immediate instant ping on app launch / user load
+    triggerPresence(true);
+
+    // 2. High-frequency live heartbeat (every 15s) while app is open in foreground
+    const heartbeat = setInterval(() => {
+      triggerPresence(true);
+    }, 15000);
+
+    // 3. React instantly to AppState foreground/background changes
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') {
+        triggerPresence(true);
+      } else if (nextState === 'background' || nextState === 'inactive') {
+        triggerPresence(false);
+      }
+    });
+
+    return () => {
+      clearInterval(heartbeat);
+      appStateSub.remove();
+    };
+  }, [currentUser?.propertyId, currentUser?.email, currentUser?.uid]);
 
   // Real-time synchronization of Owner Profile & Plan Changes from Firestore (Admin Panel)
   useEffect(() => {

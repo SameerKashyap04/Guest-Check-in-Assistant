@@ -243,13 +243,20 @@ function resolveLastActive(data: any, seedId: string): {
   daysOffline: number;
 } {
   const now = Date.now();
-  let ts: number;
+  let ts: number = 0;
 
-  if (data.lastActiveAt) {
-    ts = new Date(data.lastActiveAt).getTime();
-  } else if (data.updatedAt) {
-    ts = new Date(data.updatedAt).getTime();
-  } else {
+  const rawDate = data.lastActiveAt || data.lastActive || data.lastSeen || data.lastPingTimestamp || data.updatedAt;
+  if (rawDate) {
+    if (typeof rawDate === 'number') {
+      ts = rawDate;
+    } else if (rawDate?.toDate) {
+      ts = rawDate.toDate().getTime();
+    } else if (typeof rawDate === 'string') {
+      ts = new Date(rawDate).getTime();
+    }
+  }
+
+  if (!ts || isNaN(ts)) {
     // Deterministic realistic activity timestamp derived from seedId
     let hash = 0;
     for (let i = 0; i < seedId.length; i++) {
@@ -263,13 +270,25 @@ function resolveLastActive(data: any, seedId: string): {
   }
 
   const diffMs = Math.max(0, now - ts);
-  const daysOffline = Math.floor(diffMs / 86400000);
+  const diffMins = Math.floor(diffMs / 60000);
   const hoursOffline = Math.floor(diffMs / 3600000);
-  const isOfflineWeekPlus = daysOffline >= 7;
+  const daysOffline = Math.floor(diffMs / 86400000);
+
+  // Fast live presence: online flag or recent heartbeat within last 3 minutes
+  const isOnlineActive = data.isOnline === true || diffMins < 3;
+
+  if (isOnlineActive) {
+    return {
+      lastActive: 'Online Now',
+      lastActiveTimestamp: ts || now,
+      isOfflineWeekPlus: false,
+      daysOffline: 0,
+    };
+  }
 
   let lastActiveStr = 'Online Now';
-  if (hoursOffline < 1) {
-    lastActiveStr = 'Online Now';
+  if (diffMins < 60) {
+    lastActiveStr = `${Math.max(1, diffMins)}m ago`;
   } else if (daysOffline === 0) {
     const timeStr = new Date(ts).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     lastActiveStr = `Today, ${timeStr}`;
@@ -286,7 +305,7 @@ function resolveLastActive(data: any, seedId: string): {
   return {
     lastActive: lastActiveStr,
     lastActiveTimestamp: ts,
-    isOfflineWeekPlus,
+    isOfflineWeekPlus: daysOffline >= 7,
     daysOffline,
   };
 }
