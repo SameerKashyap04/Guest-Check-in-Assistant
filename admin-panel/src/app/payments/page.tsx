@@ -82,9 +82,14 @@ export default function PaymentsPage() {
           formattedDate = new Date(data.createdAt).toISOString().replace("T", " ").substring(0, 16);
         }
 
+        const userEmail = data.userEmail || data.ownerEmail || data.customerEmail || '';
+        const userId = data.userId || data.propertyId || '';
+        const userDisplayName = userEmail || userId || 'Property Owner';
+
         return {
           txId: data.paymentId || data.orderId || doc.id,
-          property: data.userEmail ? `${data.userEmail}` : "Property Owner",
+          property: userDisplayName,
+          userId: userId && userId !== userDisplayName ? userId : undefined,
           amount: data.amountPaise ? `₹ ${(data.amountPaise / 100).toLocaleString("en-IN")}` : "₹ 0",
           plan: `${data.planId || "Starter"} (${data.billingCycle || "monthly"})`,
           status:
@@ -244,7 +249,14 @@ export default function PaymentsPage() {
               filteredTx.map((tx, idx) => (
                 <tr key={`${tx.txId}-${idx}`} className="hover:bg-slate-50/80 transition-colors">
                   <td className="px-6 py-4 font-mono text-xs font-bold text-slate-500">{tx.txId}</td>
-                  <td className="px-6 py-4 font-extrabold text-slate-900">{tx.property}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="font-extrabold text-slate-900">{tx.property}</span>
+                      {tx.userId && (
+                        <span className="text-[11px] font-mono text-slate-400 font-semibold">{tx.userId}</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-xs font-semibold text-slate-700">{tx.plan}</td>
                   <td className="px-6 py-4 font-extrabold text-emerald-600">{tx.amount}</td>
                   <td className="px-6 py-4">

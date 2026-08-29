@@ -440,7 +440,8 @@ function MainApp() {
       currentUser.propertyId,
       (cloudProfile) => {
         if (!cloudProfile) return;
-        const newPlan = cloudProfile.plan || cloudProfile.subscriptionPlan;
+        const profileAny = cloudProfile as any;
+        const newPlan = profileAny.plan || profileAny.subscriptionPlan;
         if (newPlan && newPlan !== activePlan) {
           AsyncStorage.setItem('@staymate_active_plan', newPlan).catch(() => {});
           setCurrentUser((prev: any) => {
@@ -495,16 +496,18 @@ function MainApp() {
     });
   }, [activePlan]);
 
-  // Subscribe to real-time online self check-in submissions from Firestore
+  // Cloud Live Sync: Real-time listener for self-check-ins from web portal
   useEffect(() => {
     const propId = currentUser?.propertyId || 'HS-4821';
-    const unsub = subscribeToPropertyCheckins(propId, (cloudCheckin) => {
-      const formatted = {
+    const unsub = subscribeToPropertyCheckins(propId, (cloudCheckin: any) => {
+      const formatted: any = {
         ...cloudCheckin,
-        id: cloudCheckin.id || `chk_${Date.now()}`,
-        status: cloudCheckin.status || 'active',
+        id: cloudCheckin?.id || `chk_${Date.now()}`,
+        status: cloudCheckin?.status || 'active',
+        name: cloudCheckin?.name || cloudCheckin?.full_name || 'Guest',
+        room: cloudCheckin?.room || cloudCheckin?.room_number || '101',
       };
-      setGuestsList((prev) => [formatted, ...prev.filter((g) => g.id !== formatted.id)]);
+      setGuestsList((prev: any[]) => [formatted, ...prev.filter((g) => g.id !== formatted.id)]);
       notify(`🛎️ New Self Check-in from ${formatted.name} (Room ${formatted.room})!`);
     });
     return () => unsub?.();
@@ -945,6 +948,7 @@ function MainApp() {
       {overlay === 'checkout' && (
         <Modal visible animationType="slide" onRequestClose={() => setOverlay(null)}>
           <CheckoutScreen
+            userProfile={currentUser}
             initialPlan={checkoutPlan.plan}
             initialDuration={checkoutPlan.duration}
             onClose={() => setOverlay(null)}
@@ -962,6 +966,7 @@ function MainApp() {
       {overlay === 'refer-earn' && (
         <Modal visible animationType="slide" onRequestClose={() => setOverlay(null)}>
           <ReferEarnScreen
+            userProfile={currentUser}
             onClose={() => setOverlay(null)}
             onToast={notify}
           />

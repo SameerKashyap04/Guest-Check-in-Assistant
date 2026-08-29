@@ -59,8 +59,8 @@ export const SERVER_PLANS: Record<SubscriptionPlan, ServerPlanPricing> = {
   },
   MULTI_PROPERTY: {
     name: 'Multi-Property',
-    monthlyPrice: 1799,
-    yearlyPrice: 17999,
+    monthlyPrice: 1999,
+    yearlyPrice: 19999,
   },
   ENTERPRISE: {
     name: 'Enterprise',

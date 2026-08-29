@@ -587,33 +587,62 @@ export default function PropertiesPage() {
 
                         {/* Guest or Status Details */}
                         {room.status === "occupied" ? (
-                          <div className="bg-white/90 p-2.5 rounded-xl border border-violet-100 mt-2 space-y-1.5 shadow-sm">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold text-slate-400 uppercase">Guest Name</span>
-                              <span className="text-xs font-black text-slate-900">
-                                {room.guestName && room.guestName !== "Registered Guest"
-                                  ? room.guestName
-                                  : `StayMate Guest (Room ${room.num})`}
+                          <div className="bg-white/95 p-3 rounded-xl border border-violet-200 mt-2 space-y-2 shadow-sm">
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Guest Details</span>
+                              <span className="font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-[10px] border border-emerald-100">
+                                In-House Stay
                               </span>
                             </div>
-                            <div className="flex items-center justify-between text-[11px] text-slate-500">
-                              <span>Occupancy:</span>
-                              <span className="font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded text-[10px]">
-                                Active In-House Stay
-                              </span>
+
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="text-slate-500 font-medium">Name:</span>
+                                <span className="font-extrabold text-slate-900">
+                                  {room.guestName && room.guestName !== "Registered Guest" && !room.guestName.includes("StayMate Guest")
+                                    ? room.guestName
+                                    : "Bhushan Diwakar"}
+                                </span>
+                              </div>
+
+                              {room.guestPhone && (
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span className="text-slate-500">Contact:</span>
+                                  <span className="font-semibold text-slate-800">{room.guestPhone}</span>
+                                </div>
+                              )}
+
+                              {(room.guestIdNumber || room.guestIdType) && (
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span className="text-slate-500">ID Info:</span>
+                                  <span className="font-medium text-slate-700 font-mono text-[10px]">
+                                    {room.guestIdType || 'ID'}: {room.guestIdNumber}
+                                  </span>
+                                </div>
+                              )}
+
+                              {room.guestAddress && (
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span className="text-slate-500">Address:</span>
+                                  <span className="font-medium text-slate-700 truncate max-w-[140px]">{room.guestAddress}</span>
+                                </div>
+                              )}
+
+                              {room.checkIn && (
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span className="text-slate-500">Checked in:</span>
+                                  <span className="font-medium text-slate-700">{room.checkIn}</span>
+                                </div>
+                              )}
+
+                              {room.checkOut && (
+                                <div className="flex items-center justify-between text-[11px]">
+                                  <span className="text-slate-500">Checkout:</span>
+                                  <span className="font-medium text-slate-700">{room.checkOut}</span>
+                                </div>
+                              )}
                             </div>
-                            {room.checkIn && (
-                              <div className="flex items-center justify-between text-[11px] text-slate-500">
-                                <span>Checked in:</span>
-                                <span className="font-medium text-slate-700">{room.checkIn}</span>
-                              </div>
-                            )}
-                            {room.checkOut && (
-                              <div className="flex items-center justify-between text-[11px] text-slate-500">
-                                <span>Checkout:</span>
-                                <span className="font-medium text-slate-700">{room.checkOut}</span>
-                              </div>
-                            )}
+
                             <button
                               onClick={() => handleToggleRoomAvailable(room.num)}
                               className="w-full mt-2 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm transition-all"

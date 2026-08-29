@@ -364,22 +364,22 @@ export function SettingsScreen({
       <View style={[s.planCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
         <View style={s.planTop}>
           <View>
-            <Text style={[s.planTitle, { color: colors.ink }]}>{currentPlan} plan</Text>
+            <Text style={[s.planTitle, { color: colors.ink }]}>{currentPlan || 'Professional'} plan</Text>
             <Text style={[s.planSub, isDark && { color: colors.muted }]}>
-              {currentPlan.toLowerCase().includes('free')
+              {(currentPlan || '').toLowerCase().includes('free')
                 ? 'Basic local-only tier'
-                : currentPlan.toLowerCase().includes('starter')
+                : (currentPlan || '').toLowerCase().includes('starter')
                 ? 'Active subscription (Local-first storage)'
                 : 'Active subscription (Cloud sync & OCR enabled)'}
             </Text>
           </View>
           <View style={s.proBadge}>
             <Text style={s.proBadgeText}>
-              {currentPlan.toUpperCase().includes('MULTI')
+              {(currentPlan || '').toUpperCase().includes('MULTI')
                 ? 'MULTI'
-                : currentPlan.toUpperCase().includes('START')
+                : (currentPlan || '').toUpperCase().includes('START')
                 ? 'START'
-                : currentPlan.toUpperCase().includes('FREE')
+                : (currentPlan || '').toUpperCase().includes('FREE')
                 ? 'FREE'
                 : 'PRO'}
             </Text>
@@ -389,24 +389,24 @@ export function SettingsScreen({
         <UsageBar
           label="Check-ins"
           value={
-            currentPlan.toUpperCase().includes('STARTER')
+            (currentPlan || '').toUpperCase().includes('STARTER')
               ? '84 / 100'
-              : currentPlan.toUpperCase().includes('FREE')
+              : (currentPlan || '').toUpperCase().includes('FREE')
               ? '12 / 15'
               : '84 / Unlimited'
           }
-          pct={currentPlan.toUpperCase().includes('STARTER') ? 84 : currentPlan.toUpperCase().includes('FREE') ? 80 : 25}
+          pct={(currentPlan || '').toUpperCase().includes('STARTER') ? 84 : (currentPlan || '').toUpperCase().includes('FREE') ? 80 : 25}
         />
         <UsageBar
           label="Reports & exports"
           value={
-            currentPlan.toUpperCase().includes('STARTER')
+            (currentPlan || '').toUpperCase().includes('STARTER')
               ? '6 / 10'
-              : currentPlan.toUpperCase().includes('FREE')
+              : (currentPlan || '').toUpperCase().includes('FREE')
               ? '2 / 3'
               : '6 / Unlimited'
           }
-          pct={currentPlan.toUpperCase().includes('STARTER') ? 60 : currentPlan.toUpperCase().includes('FREE') ? 66 : 15}
+          pct={(currentPlan || '').toUpperCase().includes('STARTER') ? 60 : (currentPlan || '').toUpperCase().includes('FREE') ? 66 : 15}
           dark
         />
 

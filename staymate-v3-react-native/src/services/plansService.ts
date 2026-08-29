@@ -67,8 +67,8 @@ export const DEFAULT_DISPLAY_PLANS: ClientDisplayPlan[] = [
   {
     id: SubscriptionPlan.MULTI_PROPERTY,
     name: 'Multi-Property',
-    priceM: 1799,
-    priceY: 17999,
+    priceM: 1999,
+    priceY: 19999,
     rooms: 'Unlimited rooms · 5 properties',
     checkins: 'Unlimited check-ins',
     exports: 'Unlimited reports & exports',

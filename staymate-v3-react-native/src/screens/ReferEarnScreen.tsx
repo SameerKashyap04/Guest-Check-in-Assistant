@@ -18,10 +18,14 @@ import { useTheme } from '../theme/ThemeContext';
 import { referralService } from '../services/referralService';
 import type { ReferralStats } from '../types/subscription';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
 export function ReferEarnScreen({
+  userProfile,
   onClose,
   onToast,
 }: {
+  userProfile?: any;
   onClose: () => void;
   onToast?: (msg: string) => void;
 }) {
@@ -30,8 +34,8 @@ export function ReferEarnScreen({
 
   const [copied, setCopied] = useState(false);
   const [stats, setStats] = useState<ReferralStats>({
-    referralCode: 'STAYMATE82',
-    shareUrl: 'https://staymate.in/referral?code=STAYMATE82',
+    referralCode: 'STAY4821',
+    shareUrl: 'https://staymate.in/referral?code=STAY4821',
     successfulReferralsCount: 0,
     pendingReferralsCount: 0,
     totalEarnedCredits: 0,
@@ -48,14 +52,22 @@ export function ReferEarnScreen({
     (async () => {
       setLoading(true);
       try {
-        const data = await referralService.getReferralOverview('HS-4821');
+        let activeUserId = userProfile?.propertyId || userProfile?.uid;
+        if (!activeUserId) {
+          const raw = await AsyncStorage.getItem('staymate_user_profile');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            activeUserId = parsed.propertyId || parsed.uid;
+          }
+        }
+        const data = await referralService.getReferralOverview(activeUserId || 'HS-4821');
         if (data) {
           setStats(data);
         }
       } catch (_) {}
       setLoading(false);
     })();
-  }, []);
+  }, [userProfile]);
 
   const handleCopy = async () => {
     const ok = await referralService.copyCode(stats.referralCode);
@@ -169,19 +181,19 @@ export function ReferEarnScreen({
         <Text style={[s.sectionHeading, isDark && { color: colors.muted }]}>REFERRAL STATISTICS</Text>
         <View style={s.statsGrid}>
           <View style={[s.statBox, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
-            <Text style={[s.statVal, isDark && { color: colors.ink }]}>{stats.successfulReferralsCount}</Text>
+            <Text style={[s.statVal, isDark && { color: colors.ink }]}>{stats.successfulReferralsCount ?? 0}</Text>
             <Text style={[s.statLbl, isDark && { color: colors.muted }]}>Successful</Text>
           </View>
           <View style={[s.statBox, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
-            <Text style={[s.statVal, isDark && { color: colors.ink }]}>{stats.pendingReferralsCount}</Text>
+            <Text style={[s.statVal, isDark && { color: colors.ink }]}>{stats.pendingReferralsCount ?? 0}</Text>
             <Text style={[s.statLbl, isDark && { color: colors.muted }]}>Pending</Text>
           </View>
           <View style={[s.statBox, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
-            <Text style={[s.statVal, isDark && { color: colors.ink }]}>₹{stats.totalEarnedCredits}</Text>
+            <Text style={[s.statVal, isDark && { color: colors.ink }]}>₹{stats.totalEarnedCredits ?? 0}</Text>
             <Text style={[s.statLbl, isDark && { color: colors.muted }]}>Total earned</Text>
           </View>
           <View style={[s.statBox, s.statBoxHighlight, isDark && { backgroundColor: '#2E1065', borderColor: colors.primary }]}>
-            <Text style={[s.statVal, { color: colors.primary }]}>₹{stats.availableCredits}</Text>
+            <Text style={[s.statVal, { color: colors.primary }]}>₹{stats.availableCredits ?? 0}</Text>
             <Text style={[s.statLbl, { color: colors.primary }]}>Available</Text>
           </View>
         </View>

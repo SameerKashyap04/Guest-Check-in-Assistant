@@ -188,10 +188,10 @@ export const PLANS: Record<SubscriptionPlan, PlanDefinition> = {
     name: 'Multi-Property',
     description: 'Manage up to 10 properties from a centralized dashboard',
     pricing: {
-      monthlyPrice: 1799,
-      yearlyPrice: 17999,
+      monthlyPrice: 1999,
+      yearlyPrice: 19999,
       currency: 'INR',
-      yearlySavings: 1799 * 12 - 17999,
+      yearlySavings: 1999 * 12 - 19999,
     },
     entitlements: MULTI_PROPERTY_ENTITLEMENTS,
     isRecommended: false,

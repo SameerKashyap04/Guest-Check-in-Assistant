@@ -65,10 +65,17 @@ const DEFAULT_FRIEND_DISCOUNT = 100; // ₹100
  * e.g. STAYMATE82 or STAY + last 4 chars of user ID
  */
 export function generateUserReferralCode(userId: string): string {
-  if (!userId) return 'STAYMATE82';
-  const clean = userId.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
-  const suffix = clean.length >= 4 ? clean.slice(-4) : clean.padStart(4, '8');
-  return `STAY${suffix}`;
+  if (!userId) return 'STAY4821';
+  const digits = userId.replace(/[^0-9]/g, '');
+  if (digits.length >= 4) {
+    return `STAY${digits.slice(0, 4)}`;
+  }
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) % 9000;
+  }
+  const num = 1000 + Math.abs(hash);
+  return `STAY${num}`;
 }
 
 /**
@@ -396,6 +403,9 @@ export async function getReferralOverview(userId: string) {
 
   return {
     referralCode,
+    shareUrl: `https://staymate.in/referral?code=${referralCode}`,
+    successfulReferralsCount: successfulCount,
+    pendingReferralsCount: pendingCount,
     successfulCount,
     pendingCount,
     totalEarnedCredits,

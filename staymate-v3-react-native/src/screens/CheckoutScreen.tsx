@@ -36,16 +36,20 @@ import {
 import { couponService } from '../services/couponService';
 import { referralService } from '../services/referralService';
 import { devifyPay, type DevifyCheckoutResult } from '../services/devifyPay';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { updateOwnerProfile } from '../services/firebaseAuth';
 
 export function CheckoutScreen({
   initialPlan = 'Professional',
   initialDuration = 6,
+  userProfile,
   onClose,
   onPaymentSuccess,
   onToast,
 }: {
   initialPlan?: string;
   initialDuration?: BillingDurationMonths;
+  userProfile?: any;
   onClose: () => void;
   onPaymentSuccess: (plan: string) => void;
   onToast?: (msg: string) => void;
@@ -85,18 +89,28 @@ export function CheckoutScreen({
   const [isProcessing, setIsProcessing] = useState(false);
   const [activeCheckout, setActiveCheckout] = useState<DevifyCheckoutResult | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [effectiveUser, setEffectiveUser] = useState<any>(userProfile || null);
 
-  // Fetch available credits on mount
+  // Load user profile from props or AsyncStorage
   useEffect(() => {
     (async () => {
       try {
-        const stats = await referralService.getReferralOverview('HS-4821');
-        if (stats?.availableCredits) {
-          setAvailableCredits(stats.availableCredits);
+        if (userProfile && (userProfile.email || userProfile.uid)) {
+          setEffectiveUser(userProfile);
+          const stats = await referralService.getReferralOverview(userProfile.propertyId || userProfile.uid || 'HS-4821');
+          if (stats?.availableCredits) setAvailableCredits(stats.availableCredits);
+        } else {
+          const raw = await AsyncStorage.getItem('staymate_user_profile');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            setEffectiveUser(parsed);
+            const stats = await referralService.getReferralOverview(parsed.propertyId || parsed.uid || 'HS-4821');
+            if (stats?.availableCredits) setAvailableCredits(stats.availableCredits);
+          }
         }
       } catch (_) {}
     })();
-  }, []);
+  }, [userProfile]);
 
   const plan = PLANS[selectedPlanId] || PLANS[SubscriptionPlan.PROFESSIONAL];
 
@@ -133,7 +147,7 @@ export function CheckoutScreen({
         code,
         selectedPlanId,
         selectedDuration,
-        'HS-4821'
+        effectiveUser?.propertyId || effectiveUser?.uid || 'HS-4821'
       );
 
       if (result.valid) {
@@ -143,11 +157,15 @@ export function CheckoutScreen({
         if (onToast && !silent) onToast(`✓ Coupon ${result.code} applied!`);
       } else {
         setAppliedCoupon(null);
-        setCouponError(result.errorMessage || 'Invalid coupon code');
+        if (!silent) {
+          setCouponError(result.errorMessage || 'Invalid coupon code');
+        }
       }
     } catch (e: any) {
       setAppliedCoupon(null);
-      setCouponError(e.message || 'Failed to validate coupon');
+      if (!silent) {
+        setCouponError(e.message || 'Failed to validate coupon');
+      }
     } finally {
       setIsValidatingCoupon(false);
     }
@@ -170,13 +188,16 @@ export function CheckoutScreen({
 
     try {
       const billingCycle = selectedDuration === 12 ? 'yearly' : 'monthly';
+      const resolvedEmail = (effectiveUser?.email || userProfile?.email || 'host@staymate.in').trim().toLowerCase();
+      const resolvedUserId = (effectiveUser?.propertyId || effectiveUser?.uid || userProfile?.propertyId || userProfile?.uid || 'HS-4821').trim();
+
       const checkout = await devifyPay.createCheckout({
         planName: plan.name,
         billingCycle,
         durationMonths: selectedDuration,
         amount: bill.finalPayableAmount,
-        userEmail: 'owner@sunrisehomestay.com',
-        userId: 'HS-4821',
+        userEmail: resolvedEmail,
+        userId: resolvedUserId,
         couponCode: appliedCoupon?.valid ? appliedCoupon.code : undefined,
         appliedCreditsPaise: usableCredits * 100,
       });
@@ -233,13 +254,29 @@ export function CheckoutScreen({
 
       if (orderStatus.status === 'PAID') {
         const planName = plan.name;
+        const uid = effectiveUser?.uid || userProfile?.uid || '';
+        const propId = effectiveUser?.propertyId || userProfile?.propertyId || (uid ? `HS-${uid.slice(0, 4).toUpperCase()}` : 'HS-4821');
+        const email = effectiveUser?.email || userProfile?.email || '';
+
+        // Proactively sync upgraded plan to Firestore for instant real-time reflection in Admin Panel
+        try {
+          await updateOwnerProfile(uid, {
+            email,
+            propertyId: propId,
+            plan: planName,
+            subscriptionPlan: planName,
+            planStatus: 'active',
+            updatedAt: new Date().toISOString(),
+          } as any);
+        } catch (_) {}
+
         setActiveCheckout(null);
         setVerifying(false);
         onPaymentSuccess(planName);
         onClose();
         Alert.alert(
-          'Subscription Activated',
-          `Your payment of ₹${bill.finalPayableAmount.toLocaleString('en-IN')} via Devify Pay has been verified successfully.\n\nWelcome to StayMate ${planName} plan!`,
+          'Subscription Activated! 🎉',
+          `Your payment via Devify Pay has been verified successfully.\n\nWelcome to StayMate ${planName} plan!`,
           [{ text: 'Continue', style: 'default' }]
         );
         return;

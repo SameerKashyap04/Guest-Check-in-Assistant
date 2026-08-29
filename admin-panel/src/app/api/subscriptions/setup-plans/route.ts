@@ -71,7 +71,7 @@ const PLANS_TO_CREATE = [
   {
     key: 'MULTI_PROPERTY_MONTHLY',
     name: 'StayMate Multi-Property Monthly',
-    amount: 179900,  // ₹1799 in paise
+    amount: 199900,  // ₹1999 in paise
     currency: 'INR',
     interval: 'MONTH',
     interval_count: 1,
@@ -79,7 +79,7 @@ const PLANS_TO_CREATE = [
   {
     key: 'MULTI_PROPERTY_YEARLY',
     name: 'StayMate Multi-Property Yearly',
-    amount: 1799900, // ₹17999 in paise
+    amount: 1999900, // ₹19999 in paise
     currency: 'INR',
     interval: 'YEAR',
     interval_count: 1,

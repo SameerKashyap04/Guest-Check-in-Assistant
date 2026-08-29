@@ -147,22 +147,22 @@ export function ManualEntryScreen({
           if (ocrResult) {
             if (side === 'front') {
               // Front side: populate fields only if they are not already filled by user
-              setName((prev) => (prev.trim() ? prev : ocrResult.name || ''));
-              setIdNum((prev) => (prev.trim() ? prev : ocrResult.idNum || ''));
-              setDob((prev) => (prev.trim() ? prev : ocrResult.dob || ''));
-              setGender((prev) => (prev.trim() ? prev : ocrResult.gender || ''));
-              setAddress((prev) => (prev.trim() ? prev : ocrResult.address || ''));
+              setName((prev: string) => (prev.trim() ? prev : ocrResult.name || ''));
+              setIdNum((prev: string) => (prev.trim() ? prev : ocrResult.idNum || ''));
+              setDob((prev: string) => (prev.trim() ? prev : ocrResult.dob || ''));
+              setGender((prev: string) => (prev.trim() ? prev : ocrResult.gender || ''));
+              setAddress((prev: string) => (prev.trim() ? prev : ocrResult.address || ''));
               if (ocrResult.docType && ocrResult.docType !== 'Unknown') {
-                setDocType((prev) => (prev && prev !== 'Select' ? prev : ocrResult.docType));
+                setDocType((prev: string) => (prev && prev !== 'Select' ? prev : ocrResult.docType));
               }
             } else {
               // Back side: NEVER touch or overwrite Name! Only populate Address and empty fields
               if (ocrResult.address) {
-                setAddress((prev) => (prev.trim() ? prev : ocrResult.address));
+                setAddress((prev: string) => (prev.trim() ? prev : ocrResult.address));
               }
-              setIdNum((prev) => (prev.trim() ? prev : ocrResult.idNum || ''));
-              setDob((prev) => (prev.trim() ? prev : ocrResult.dob || ''));
-              setGender((prev) => (prev.trim() ? prev : ocrResult.gender || ''));
+              setIdNum((prev: string) => (prev.trim() ? prev : ocrResult.idNum || ''));
+              setDob((prev: string) => (prev.trim() ? prev : ocrResult.dob || ''));
+              setGender((prev: string) => (prev.trim() ? prev : ocrResult.gender || ''));
             }
           }
         } catch (ocrErr) {

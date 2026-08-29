@@ -162,6 +162,7 @@ export function AccountPortalScreen({
     setIsSavingProfile(true);
     try {
       const updates = {
+        username: username.trim(),
         ownerName: username.trim(),
         name: username.trim(),
         email: originalEmail,
@@ -216,6 +217,7 @@ export function AccountPortalScreen({
       setIsSavingProfile(true);
       try {
         const updates = {
+          username: username.trim(),
           ownerName: username.trim(),
           name: username.trim(),
           email: pendingEmail,
@@ -386,7 +388,7 @@ export function AccountPortalScreen({
   const initials =
     username
       .split(' ')
-      .map((n) => n[0])
+      .map((n: string) => n[0])
       .join('')
       .toUpperCase()
       .slice(0, 2) || 'MS';

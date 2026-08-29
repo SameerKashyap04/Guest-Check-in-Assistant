@@ -1,11 +1,22 @@
-// ============================================================
-// StayMate — Client Referral & Credits Service
-// ============================================================
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Share, Alert } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { DEVIFY_CONFIG } from '../config/devify';
 import type { ReferralStats } from '../types/subscription';
+
+export function derivePermanentReferralCode(userId?: string): string {
+  if (!userId) return 'STAY4821';
+  const digits = userId.replace(/[^0-9]/g, '');
+  if (digits.length >= 4) {
+    return `STAY${digits.slice(0, 4)}`;
+  }
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    hash = (hash * 31 + userId.charCodeAt(i)) % 9000;
+  }
+  const num = 1000 + Math.abs(hash);
+  return `STAY${num}`;
+}
 
 export class ReferralService {
   private candidateUrls: string[];
@@ -17,9 +28,29 @@ export class ReferralService {
   }
 
   /**
+   * Returns a permanent, persistent referral code for the user.
+   */
+  async getPermanentCode(userId: string): Promise<string> {
+    const cleanId = userId || 'HS-4821';
+    const storageKey = `@staymate_permanent_referral_${cleanId}`;
+    try {
+      const cached = await AsyncStorage.getItem(storageKey);
+      if (cached && cached.startsWith('STAY')) return cached;
+    } catch (_) {}
+
+    const derived = derivePermanentReferralCode(cleanId);
+    try {
+      await AsyncStorage.setItem(storageKey, derived);
+    } catch (_) {}
+    return derived;
+  }
+
+  /**
    * Fetch referral overview, statistics, and transaction ledger.
    */
   async getReferralOverview(userId: string): Promise<ReferralStats | null> {
+    const fallbackCode = await this.getPermanentCode(userId);
+
     for (const url of this.candidateUrls) {
       try {
         const controller = new AbortController();
@@ -32,14 +63,37 @@ export class ReferralService {
 
         if (res.ok) {
           const data = await res.json();
-          return data;
+          const permanentCode = data.referralCode || fallbackCode;
+          return {
+            referralCode: permanentCode,
+            shareUrl: data.shareUrl || `https://staymate.in/referral?code=${permanentCode}`,
+            successfulReferralsCount: Number(data.successfulReferralsCount ?? data.successfulCount ?? 0),
+            pendingReferralsCount: Number(data.pendingReferralsCount ?? data.pendingCount ?? 0),
+            totalEarnedCredits: Number(data.totalEarnedCredits ?? 0),
+            availableCredits: Number(data.availableCredits ?? 0),
+            referralRewardAmount: Number(data.referralRewardAmount || 100),
+            friendDiscountAmount: Number(data.friendDiscountAmount || 100),
+            history: data.history || [],
+            transactions: data.transactions || [],
+          };
         }
       } catch (err) {
         // continue to next url
       }
     }
 
-    return null;
+    return {
+      referralCode: fallbackCode,
+      shareUrl: `https://staymate.in/referral?code=${fallbackCode}`,
+      successfulReferralsCount: 0,
+      pendingReferralsCount: 0,
+      totalEarnedCredits: 0,
+      availableCredits: 0,
+      referralRewardAmount: 100,
+      friendDiscountAmount: 100,
+      history: [],
+      transactions: [],
+    };
   }
 
   /**
