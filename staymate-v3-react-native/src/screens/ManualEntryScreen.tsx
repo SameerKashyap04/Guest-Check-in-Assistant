@@ -141,11 +141,11 @@ export function ManualEntryScreen({
           return;
         }
 
-        // On Paid Plans: Run ML Kit OCR on uploaded/captured document
+        // On Paid Plans: Run ML Kit OCR on uploaded/captured document with full resolution
         try {
-          const ocrResult = await OCRPipeline.processImage(uri, docType);
+          const ocrResult = await OCRPipeline.processImage(originalUri, docType);
           if (ocrResult) {
-            if (ocrResult.name && (!name || name === 'Guest' || name === 'Ananya Patel')) setName(ocrResult.name);
+            if (ocrResult.name) setName(ocrResult.name);
             if (ocrResult.idNum) setIdNum(ocrResult.idNum);
             if (ocrResult.dob) setDob(ocrResult.dob);
             if (ocrResult.gender) setGender(ocrResult.gender);

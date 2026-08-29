@@ -112,12 +112,30 @@ export class DocumentParser {
         result.pinCode = {value: pinMatch[1], confidence: 95};
       }
 
-      for (let i = 0; i < textLines.length; i++) {
-        if (textLines[i].toLowerCase().includes('dob') || textLines[i].match(/\d{2}\/\d{2}\/\d{4}/)) {
-          if (i > 0 && textLines[i - 1].split(' ').length <= 4 && !/\d/.test(textLines[i - 1])) {
-            result.fullName = {value: textLines[i - 1], confidence: 80};
+      // 1. Check for explicit "Name:" or "Name :"
+      const explicitNameMatch = fullText.match(/(?:Name|Full Name)[\s:]+([A-Za-z\s]{3,30})/i);
+      if (explicitNameMatch && !/government|india|unique|authority/i.test(explicitNameMatch[1])) {
+        result.fullName = {value: explicitNameMatch[1].trim(), confidence: 90};
+      } else {
+        // 2. Search candidate lines above DOB / Year of Birth
+        for (let i = 0; i < textLines.length; i++) {
+          const line = textLines[i].toLowerCase();
+          if (line.includes('dob') || line.includes('birth') || line.includes('year') || textLines[i].match(/\d{2}[\/\-]\d{2}[\/\-]\d{4}/)) {
+            // Check lines i-1, i-2, i-3 for English name
+            for (let j = 1; j <= 3; j++) {
+              if (i - j >= 0) {
+                const cand = textLines[i - j].trim();
+                const isEnglishWords = /^[A-Za-z\s.'-]+$/.test(cand);
+                const words = cand.split(/\s+/).filter(Boolean);
+                const isNotHeader = !/government|india|unique|identification|authority|uidai|aadhaar|enrollment|father|husband|mother|male|female|help|portal/i.test(cand);
+                if (isEnglishWords && words.length >= 1 && words.length <= 4 && isNotHeader && cand.length >= 3) {
+                  result.fullName = {value: cand, confidence: 85};
+                  break;
+                }
+              }
+            }
+            break;
           }
-          break;
         }
       }
     } else if (docType === 'PAN') {
@@ -126,13 +144,13 @@ export class DocumentParser {
         result.idNumber = {value: idMatch[1].toUpperCase(), confidence: 99};
       }
 
-      const nameCandidates = fullText.match(/\b([A-Z]{3,}\s+[A-Z]{3,}(?:\s+[A-Z]{3,})?)\b/g);
+      const nameCandidates = fullText.match(/\b([A-Z]{2,}\s+[A-Z]{2,}(?:\s+[A-Z]{2,})?)\b/g);
       if (nameCandidates) {
         const validNames = nameCandidates.filter(
-          (n) => !/INCOME|TAX|DEPARTMENT|DEPAKT|PERMAN|ACCOUNT|NUMBER|CARD|GOVT|INDIA|FATHER|SIGNATURE|NAME/i.test(n)
+          (n) => !/INCOME|TAX|DEPARTMENT|DEPAKT|DERRT|PERMAN|ACCOUNT|AOUT|NUMBER|UMIBER|CARD|CART|GOVT|GOVE|INDIA|INDLA|FATHER|FAHES|SIGNATURE|NAME|NOUNL/i.test(n)
         );
         if (validNames.length > 0) {
-          result.fullName = {value: validNames[0].trim(), confidence: 85};
+          result.fullName = {value: validNames[0].trim(), confidence: 88};
           if (validNames.length > 1) {
             result.fatherName = {value: validNames[1].trim(), confidence: 75};
           }
@@ -142,6 +160,10 @@ export class DocumentParser {
       const idMatch = fullText.match(/\b([A-Z]{2}[-\s]?\d{2,14})\b/i);
       if (idMatch) {
         result.idNumber = {value: idMatch[1].toUpperCase(), confidence: 90};
+      }
+      const dlNameMatch = fullText.match(/(?:Name|Holder Name)[\s:]+([A-Za-z\s]{3,30})/i);
+      if (dlNameMatch) {
+        result.fullName = {value: dlNameMatch[1].trim(), confidence: 90};
       }
     } else if (docType === 'PASSPORT') {
       const idMatch = fullText.match(/\b([A-Z][0-9]{7})\b/i);
@@ -158,7 +180,7 @@ export class DocumentParser {
           if (names.length >= 2) {
             const surname = names[0].replace(/</g, ' ').trim();
             const givenName = names[1].replace(/</g, ' ').trim();
-            result.fullName = {value: `${givenName} ${surname}`, confidence: 99};
+            result.fullName = {value: `${givenName} ${surname}`.trim(), confidence: 99};
           }
           if (mrz2.length >= 28) {
             result.idNumber = {value: mrz2.substring(0, 8), confidence: 99};
@@ -169,6 +191,10 @@ export class DocumentParser {
       const idMatch = fullText.match(/\b([A-Z]{3}[0-9]{7})\b/i);
       if (idMatch) {
         result.idNumber = {value: idMatch[1].toUpperCase(), confidence: 95};
+      }
+      const voterNameMatch = fullText.match(/(?:Elector's Name|Name)[\s:]+([A-Za-z\s]{3,30})/i);
+      if (voterNameMatch) {
+        result.fullName = {value: voterNameMatch[1].trim(), confidence: 90};
       }
     }
 

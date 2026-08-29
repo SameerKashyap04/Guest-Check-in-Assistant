@@ -430,14 +430,39 @@ function MainApp() {
         if (!cloudProfile) return;
         const newPlan = cloudProfile.plan || cloudProfile.subscriptionPlan;
         if (newPlan && newPlan !== activePlan) {
-          setActivePlan(newPlan);
-          notify(`✓ Plan updated to ${newPlan} by Admin`);
+          AsyncStorage.setItem('@staymate_active_plan', newPlan).catch(() => {});
+          setCurrentUser((prev: any) => {
+            const merged = { ...(prev || {}), ...cloudProfile, plan: newPlan, subscriptionPlan: newPlan };
+            AsyncStorage.setItem('@staymate_user_profile', JSON.stringify(merged)).catch(() => {});
+            return merged;
+          });
+
+          // Show restart prompt modal to avoid mid-session glitching
+          show(
+            '🚀 Subscription Plan Updated',
+            `The administrator has updated your subscription tier to ${newPlan}. Please restart the app now to apply your updated room capacity and plan entitlements.`,
+            'Restart App Now',
+            () => {
+              setActivePlan(newPlan);
+              const maxAllowed = getMaxRoomsForPlan(newPlan);
+              const fullRooms = (ROOMS as any);
+              const newRooms = fullRooms.slice(0, Math.min(maxAllowed, fullRooms.length));
+              setRoomsList(newRooms);
+              syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', newRooms);
+              setSheet(null);
+              setOverlay(null);
+              setManual(false);
+              setTab('dashboard');
+              notify(`✓ App refreshed with ${newPlan} plan!`);
+            }
+          );
+        } else {
+          setCurrentUser((prev: any) => {
+            const merged = { ...(prev || {}), ...cloudProfile };
+            AsyncStorage.setItem('@staymate_user_profile', JSON.stringify(merged)).catch(() => {});
+            return merged;
+          });
         }
-        setCurrentUser((prev: any) => {
-          const merged = { ...(prev || {}), ...cloudProfile, ...(newPlan ? { plan: newPlan } : {}) };
-          AsyncStorage.setItem('@staymate_user_profile', JSON.stringify(merged)).catch(() => {});
-          return merged;
-        });
       }
     );
     return () => unsub?.();
@@ -463,33 +488,15 @@ function MainApp() {
     const propId = currentUser?.propertyId || 'HS-4821';
     const unsub = subscribeToPropertyCheckins(propId, (cloudCheckin) => {
       const formatted = {
-        id: cloudCheckin.id || `cloud_${Date.now()}`,
-        name: cloudCheckin.full_name,
-        room: cloudCheckin.room_number || '101',
-        submitted: 'Just now',
-        doc: `${cloudCheckin.id_type || 'ID'} · ${cloudCheckin.id_number || 'Submitted'}`,
-        phone: cloudCheckin.phone,
-        address: cloudCheckin.address,
-        dob: cloudCheckin.dob,
-        gender: cloudCheckin.gender,
-        photoUri: cloudCheckin.photo_uri || '',
-        frontPhotoUri: cloudCheckin.photo_uri || '',
-        backPhotoUri: cloudCheckin.back_photo_uri || '',
-        selfieUri: cloudCheckin.selfie_uri || '',
-        additionalGuests: cloudCheckin.additional_guests || [],
-        raw: cloudCheckin,
+        ...cloudCheckin,
+        id: cloudCheckin.id || `chk_${Date.now()}`,
+        status: cloudCheckin.status || 'active',
       };
-      setPendingCheckins((prev) => {
-        if (prev.some((p) => p.id === formatted.id)) return prev;
-        return [formatted, ...prev];
-      });
-      notify(`New online check-in received from ${cloudCheckin.full_name}!`);
+      setGuestsList((prev) => [formatted, ...prev.filter((g) => g.id !== formatted.id)]);
+      notify(`🛎️ New Self Check-in from ${formatted.name} (Room ${formatted.room})!`);
     });
-
-    return () => {
-      unsub();
-    };
-  }, []);
+    return () => unsub?.();
+  }, [currentUser?.propertyId]);
 
   const notify = (m: string) => {
     setToast(m);
@@ -559,30 +566,47 @@ function MainApp() {
 
   // Checkout guest from room and set room to cleaning (NEVER deletes guest details)
   const handleCheckoutGuest = (roomNum: string, guestName?: string) => {
-    // 1. Update room status to cleaning
-    const updatedRooms = roomsList.map((r) => (r.num === roomNum ? {...r, status: 'cleaning' as RoomStatus} : r));
-    setRoomsList(updatedRooms);
-
-    // 2. Mark guest as checked out with timestamp instead of deleting their record
     const now = new Date();
     const formattedCheckOut = `${now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}, ${now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
 
+    // 1. Update room status to cleaning and clear guest info from live room
+    const updatedRooms = roomsList.map((r) =>
+      r.num === roomNum
+        ? {
+            ...r,
+            status: 'cleaning' as RoomStatus,
+            guestName: undefined,
+            checkIn: undefined,
+            checkOut: formattedCheckOut,
+          }
+        : r
+    );
+    setRoomsList(updatedRooms);
+
+    // 2. Mark guest as checked out with timestamp instead of deleting their record
+    let checkedOutGuestObj: any = null;
     setGuestsList((prev) =>
       prev.map((g) => {
         if (g.room === roomNum && (g.status === 'active' || (!g.status && !g.checkedOut))) {
-          return {
+          checkedOutGuestObj = {
             ...g,
             status: 'checked_out',
             checkedOut: true,
             checkOut: formattedCheckOut,
             time: 'Checked out',
           };
+          return checkedOutGuestObj;
         }
         return g;
       })
     );
 
-    // Sync updated room occupancy to Firestore
+    // 3. Persist checkout status to Firestore checkins collection
+    if (checkedOutGuestObj) {
+      updateGuestInFirestore(currentUser?.propertyId || 'HS-4821', checkedOutGuestObj).catch(() => {});
+    }
+
+    // 4. Sync updated room occupancy to Firestore immediately
     syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updatedRooms);
 
     setSheet(null);
