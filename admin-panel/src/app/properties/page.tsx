@@ -642,14 +642,6 @@ export default function PropertiesPage() {
                                 </div>
                               )}
                             </div>
-
-                            <button
-                              onClick={() => handleToggleRoomAvailable(room.num)}
-                              className="w-full mt-2 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm transition-all"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Mark Available (Checkout)</span>
-                            </button>
                           </div>
                         ) : room.status === "cleaning" ? (
                           <div className="bg-white/80 p-2.5 rounded-xl border border-amber-100 mt-2 space-y-1.5 text-xs text-amber-800 font-medium">
