@@ -145,12 +145,25 @@ export function ManualEntryScreen({
         try {
           const ocrResult = await OCRPipeline.processImage(originalUri, docType);
           if (ocrResult) {
-            if (ocrResult.name) setName(ocrResult.name);
-            if (ocrResult.idNum) setIdNum(ocrResult.idNum);
-            if (ocrResult.dob) setDob(ocrResult.dob);
-            if (ocrResult.gender) setGender(ocrResult.gender);
-            if (ocrResult.address) setAddress(ocrResult.address);
-            if (ocrResult.docType && ocrResult.docType !== 'Unknown') setDocType(ocrResult.docType);
+            if (side === 'front') {
+              // Front side: populate fields only if they are not already filled by user
+              setName((prev) => (prev.trim() ? prev : ocrResult.name || ''));
+              setIdNum((prev) => (prev.trim() ? prev : ocrResult.idNum || ''));
+              setDob((prev) => (prev.trim() ? prev : ocrResult.dob || ''));
+              setGender((prev) => (prev.trim() ? prev : ocrResult.gender || ''));
+              setAddress((prev) => (prev.trim() ? prev : ocrResult.address || ''));
+              if (ocrResult.docType && ocrResult.docType !== 'Unknown') {
+                setDocType((prev) => (prev && prev !== 'Select' ? prev : ocrResult.docType));
+              }
+            } else {
+              // Back side: NEVER touch or overwrite Name! Only populate Address and empty fields
+              if (ocrResult.address) {
+                setAddress((prev) => (prev.trim() ? prev : ocrResult.address));
+              }
+              setIdNum((prev) => (prev.trim() ? prev : ocrResult.idNum || ''));
+              setDob((prev) => (prev.trim() ? prev : ocrResult.dob || ''));
+              setGender((prev) => (prev.trim() ? prev : ocrResult.gender || ''));
+            }
           }
         } catch (ocrErr) {
           console.warn('Manual Entry OCR parse notice:', ocrErr);
