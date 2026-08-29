@@ -501,7 +501,19 @@ function MainApp() {
 
   // Update room status reactively across the entire application
   const handleUpdateRoomStatus = (roomNum: string, newStatus: RoomStatus) => {
-    const updated = roomsList.map((r) => (r.num === roomNum ? {...r, status: newStatus} : r));
+    const isOccupied = newStatus === 'occupied';
+    const updated = roomsList.map((r) => {
+      if (r.num === roomNum) {
+        return {
+          ...r,
+          status: newStatus,
+          guestName: isOccupied ? r.guestName : undefined,
+          checkIn: isOccupied ? r.checkIn : undefined,
+          checkOut: isOccupied ? r.checkOut : undefined,
+        };
+      }
+      return r;
+    });
     setRoomsList(updated);
     syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updated);
     const meta = STATUS_META[newStatus];
