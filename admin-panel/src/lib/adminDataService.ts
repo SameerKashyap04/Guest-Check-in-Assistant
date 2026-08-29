@@ -139,17 +139,19 @@ export function resolveSubscriptionAmount(sub: any): number {
 function attachGuestDetailsToRooms(rooms: AdminRoom[], propCheckins: any[]) {
   const activeCheckins = propCheckins.filter(c => (c as any).status !== 'checked_out' && (c as any).status !== 'completed');
   rooms.forEach((r) => {
-    const match = activeCheckins.find((c: any) => String(c.room || c.room_number || '') === String(r.num));
-    if (match) {
-      r.status = 'occupied';
-      r.guestName = match.name || match.full_name || match.guestName || r.guestName;
-      r.guestPhone = match.phone || match.mobile || match.contactNumber || match.contact;
-      r.guestIdType = match.idType || match.id_type || (match.idNumber ? 'Aadhaar' : undefined);
-      r.guestIdNumber = match.idNumber || match.id_number || match.idNum;
-      r.guestAddress = match.address || match.city || match.state;
-      r.guestCount = match.guestsCount || match.guestCount || (match.coGuests ? match.coGuests.length + 1 : 1);
-      r.checkIn = match.checkIn || match.checkin || match.createdAt || r.checkIn || 'Active';
-      r.checkOut = match.checkOut || match.checkout || match.expectedCheckout || r.checkOut;
+    // Only attach guest details if the room is currently marked as occupied in the app
+    if (r.status === 'occupied') {
+      const match = activeCheckins.find((c: any) => String(c.room || c.room_number || '') === String(r.num));
+      if (match) {
+        r.guestName = match.name || match.full_name || match.guestName || r.guestName;
+        r.guestPhone = match.phone || match.mobile || match.contactNumber || match.contact;
+        r.guestIdType = match.idType || match.id_type || (match.idNumber ? 'Aadhaar' : undefined);
+        r.guestIdNumber = match.idNumber || match.id_number || match.idNum;
+        r.guestAddress = match.address || match.city || match.state;
+        r.guestCount = match.guestsCount || match.guestCount || (match.coGuests ? match.coGuests.length + 1 : 1);
+        r.checkIn = match.checkIn || match.checkin || match.createdAt || r.checkIn || 'Active';
+        r.checkOut = match.checkOut || match.checkout || match.expectedCheckout || r.checkOut;
+      }
     }
   });
 }
@@ -446,11 +448,24 @@ export const adminDataService = {
         const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || (liveRoomsData ? liveRoomsData.length : planMax));
         const roomMeta = generatePropertyRooms(propId, rCount, liveRoomsData, plan);
         const propCheckins = checkinsList.filter((c: any) => c.propertyId === propId || c.property_id === propId);
+
+        if (!liveRoomsData) {
+          const activeCheckins = propCheckins.filter((c: any) => c.status !== 'checked_out' && c.status !== 'completed');
+          activeCheckins.forEach((c: any) => {
+            const roomNum = String(c.room || c.room_number || '');
+            const match = roomMeta.roomsList.find(r => r.num === roomNum);
+            if (match) {
+              match.status = 'occupied';
+              match.guestName = c.name || c.full_name || 'Guest';
+              match.checkIn = c.checkIn || c.checkin || c.createdAt || 'Recent';
+            }
+          });
+          roomMeta.occupiedRooms = roomMeta.roomsList.filter(r => r.status === 'occupied').length;
+          roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
+        }
+
+        // Attach full real guest metadata for all occupied rooms
         attachGuestDetailsToRooms(roomMeta.roomsList, propCheckins);
-        roomMeta.occupiedRooms = roomMeta.roomsList.filter(r => r.status === 'occupied').length;
-        roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
-        roomMeta.cleaningRooms = roomMeta.roomsList.filter(r => r.status === 'cleaning').length;
-        roomMeta.maintenanceRooms = roomMeta.roomsList.filter(r => r.status === 'maintenance').length;
 
         const activeMeta = resolveLastActive({ ...ownerDoc, ...data }, propId);
         const p: AdminProperty = {
@@ -488,11 +503,22 @@ export const adminDataService = {
           const roomMeta = generatePropertyRooms(propId, rCount, liveRoomsData, plan);
 
           const propCheckins = checkinsList.filter(c => (c as any).propertyId === propId || (c as any).property_id === propId);
+          if (!liveRoomsData) {
+            const activeCheckins = propCheckins.filter(c => (c as any).status !== 'checked_out' && (c as any).status !== 'completed');
+            activeCheckins.forEach((c: any) => {
+              const roomNum = String(c.room || c.room_number || '');
+              const match = roomMeta.roomsList.find(r => r.num === roomNum);
+              if (match) {
+                match.status = 'occupied';
+                match.guestName = c.name || c.full_name || 'Guest';
+                match.checkIn = c.checkIn || c.checkin || c.createdAt || 'Recent';
+              }
+            });
+            roomMeta.occupiedRooms = roomMeta.roomsList.filter(r => r.status === 'occupied').length;
+            roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
+          }
+
           attachGuestDetailsToRooms(roomMeta.roomsList, propCheckins);
-          roomMeta.occupiedRooms = roomMeta.roomsList.filter(r => r.status === 'occupied').length;
-          roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
-          roomMeta.cleaningRooms = roomMeta.roomsList.filter(r => r.status === 'cleaning').length;
-          roomMeta.maintenanceRooms = roomMeta.roomsList.filter(r => r.status === 'maintenance').length;
 
           const activeMeta = resolveLastActive(data, propId);
           const p: AdminProperty = {
@@ -549,11 +575,22 @@ export const adminDataService = {
           const roomMeta = generatePropertyRooms(propId, rCount, liveRoomsData, plan);
 
           const propCheckins = currentCheckinsList.filter(c => c.propertyId === propId || c.property_id === propId);
+          if (!liveRoomsData) {
+            const activeCheckins = propCheckins.filter(c => c.status !== 'checked_out' && c.status !== 'completed');
+            activeCheckins.forEach((c: any) => {
+              const roomNum = String(c.room || c.room_number || '');
+              const match = roomMeta.roomsList.find(r => r.num === roomNum);
+              if (match) {
+                match.status = 'occupied';
+                match.guestName = c.name || c.full_name || 'Guest';
+                match.checkIn = c.checkIn || c.checkin || c.createdAt || 'Recent';
+              }
+            });
+            roomMeta.occupiedRooms = roomMeta.roomsList.filter(r => r.status === 'occupied').length;
+            roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
+          }
+
           attachGuestDetailsToRooms(roomMeta.roomsList, propCheckins);
-          roomMeta.occupiedRooms = roomMeta.roomsList.filter(r => r.status === 'occupied').length;
-          roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
-          roomMeta.cleaningRooms = roomMeta.roomsList.filter(r => r.status === 'cleaning').length;
-          roomMeta.maintenanceRooms = roomMeta.roomsList.filter(r => r.status === 'maintenance').length;
 
           const activeMeta = resolveLastActive({ ...ownerDoc, ...data }, propId);
           const p: AdminProperty = {
@@ -591,11 +628,22 @@ export const adminDataService = {
             const roomMeta = generatePropertyRooms(propId, rCount, liveRoomsData, plan);
 
             const propCheckins = currentCheckinsList.filter(c => c.propertyId === propId || c.property_id === propId);
+            if (!liveRoomsData) {
+              const activeCheckins = propCheckins.filter(c => c.status !== 'checked_out' && c.status !== 'completed');
+              activeCheckins.forEach((c: any) => {
+                const roomNum = String(c.room || c.room_number || '');
+                const match = roomMeta.roomsList.find(r => r.num === roomNum);
+                if (match) {
+                  match.status = 'occupied';
+                  match.guestName = c.name || c.full_name || 'Guest';
+                  match.checkIn = c.checkIn || c.checkin || c.createdAt || 'Recent';
+                }
+              });
+              roomMeta.occupiedRooms = roomMeta.roomsList.filter(r => r.status === 'occupied').length;
+              roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
+            }
+
             attachGuestDetailsToRooms(roomMeta.roomsList, propCheckins);
-            roomMeta.occupiedRooms = roomMeta.roomsList.filter(r => r.status === 'occupied').length;
-            roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
-            roomMeta.cleaningRooms = roomMeta.roomsList.filter(r => r.status === 'cleaning').length;
-            roomMeta.maintenanceRooms = roomMeta.roomsList.filter(r => r.status === 'maintenance').length;
 
             const activeMeta = resolveLastActive(data, propId);
             const p: AdminProperty = {
