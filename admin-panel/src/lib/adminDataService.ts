@@ -146,41 +146,30 @@ export function generatePropertyRooms(
     };
   }
 
-  const templates = [
-    { num: '101', type: 'Standard AC', price: 1800, status: 'available' as const },
-    { num: '102', type: 'Standard AC', price: 1800, status: 'available' as const },
-    { num: '108', type: 'Executive Suite', price: 4200, status: 'occupied' as const, guestName: 'Priya Nair', checkIn: '25 Aug, 08:15 AM', checkOut: '28 Aug, 11:00 AM' },
-    { num: '204', type: 'Deluxe Double', price: 2600, status: 'occupied' as const, guestName: 'Arjun Verma', checkIn: '25 Aug, 02:30 PM', checkOut: '26 Aug, 11:00 AM' },
-    { num: '205', type: 'Deluxe Double', price: 2600, status: 'cleaning' as const },
-    { num: '301', type: 'Family Suite', price: 3400, status: 'available' as const },
-    { num: '302', type: 'Mountain Cottage', price: 3600, status: 'maintenance' as const },
-    { num: '303', type: 'Mountain Cottage', price: 3600, status: 'available' as const },
-  ];
-
   const total = Math.max(1, Math.min(effectiveCount, 50));
   const list: AdminRoom[] = [];
+  const roomTypes = ['Standard AC', 'Deluxe Double', 'Executive Suite', 'Family Suite'];
+  const roomPrices = [1800, 2400, 3200, 4200];
 
   for (let i = 0; i < total; i++) {
-    const t = templates[i % templates.length];
-    const roomNum = i < templates.length ? t.num : `${100 + i + 1}`;
+    const roomNum = i < 9 ? `${101 + i}` : `${201 + (i - 9)}`;
+    const type = roomTypes[i % roomTypes.length];
+    const price = roomPrices[i % roomPrices.length];
     list.push({
       id: `rm_${propertyId}_${roomNum}`,
       num: roomNum,
-      type: t.type,
-      price: t.price,
-      status: t.status,
-      guestName: t.status === 'occupied' ? t.guestName : undefined,
-      checkIn: t.status === 'occupied' ? t.checkIn : undefined,
-      checkOut: t.status === 'occupied' ? t.checkOut : undefined,
+      type: type,
+      price: price,
+      status: 'available',
     });
   }
 
   return {
     roomsList: list,
-    occupiedRooms: list.filter(r => r.status === 'occupied').length,
-    availableRooms: list.filter(r => r.status === 'available').length,
-    cleaningRooms: list.filter(r => r.status === 'cleaning').length,
-    maintenanceRooms: list.filter(r => r.status === 'maintenance').length,
+    occupiedRooms: 0,
+    availableRooms: list.length,
+    cleaningRooms: 0,
+    maintenanceRooms: 0,
   };
 }
 

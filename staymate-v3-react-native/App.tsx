@@ -225,7 +225,7 @@ function MainApp() {
           : r
       );
       setRoomsList(updatedRooms);
-      syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updatedRooms);
+      syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updatedRooms, currentUser?.email, currentUser?.uid);
     }
 
     // 3. Sync updated guest to Firestore
@@ -448,7 +448,7 @@ function MainApp() {
               const fullRooms = (ROOMS as any);
               const newRooms = fullRooms.slice(0, Math.min(maxAllowed, fullRooms.length));
               setRoomsList(newRooms);
-              syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', newRooms);
+              syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', newRooms, currentUser?.email, currentUser?.uid);
               setSheet(null);
               setOverlay(null);
               setManual(false);
@@ -522,7 +522,7 @@ function MainApp() {
       return r;
     });
     setRoomsList(updated);
-    syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updated);
+    syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updated, currentUser?.email, currentUser?.uid);
     const meta = STATUS_META[newStatus];
     notify(`Room ${roomNum} marked as ${meta.label}`);
   };
@@ -550,7 +550,7 @@ function MainApp() {
 
     const updated = [newRoom, ...roomsList];
     setRoomsList(updated);
-    syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updated);
+    syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updated, currentUser?.email, currentUser?.uid);
     notify(`✓ Room ${newRoom.num} (${newRoom.type}) added to property!`);
   };
 
@@ -558,7 +558,7 @@ function MainApp() {
   const handleDeleteRoom = (roomNum: string) => {
     const updated = roomsList.filter((r) => r.num !== roomNum);
     setRoomsList(updated);
-    syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updated);
+    syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updated, currentUser?.email, currentUser?.uid);
     setSheet(null);
     setSelectedRoom(null);
     notify(`Room ${roomNum} deleted from property`);
@@ -607,7 +607,7 @@ function MainApp() {
     }
 
     // 4. Sync updated room occupancy to Firestore immediately
-    syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updatedRooms);
+    syncRoomsToFirestore(currentUser?.propertyId || 'HS-4821', updatedRooms, currentUser?.email, currentUser?.uid);
 
     setSheet(null);
     setSelectedRoom(null);
@@ -847,7 +847,10 @@ function MainApp() {
 
       {/* Manual entry modal */}
       {manual && (
-        <Modal visible animationType="slide">
+        <Modal visible animationType="slide" onRequestClose={() => {
+          setManual(false);
+          setManualInitialData(null);
+        }}>
           <ManualEntryScreen
             initialData={manualInitialData}
             roomsList={roomsList}
@@ -863,7 +866,7 @@ function MainApp() {
 
       {/* Account portal modal */}
       {account && (
-        <Modal visible animationType="slide">
+        <Modal visible animationType="slide" onRequestClose={() => setAccount(false)}>
           <AccountPortalScreen
             userProfile={currentUser}
             onClose={() => setAccount(false)}
@@ -876,7 +879,7 @@ function MainApp() {
 
       {/* Search overlay */}
       {overlay === 'search' && (
-        <Modal visible animationType="slide">
+        <Modal visible animationType="slide" onRequestClose={() => setOverlay(null)}>
           <SearchOverlay
             guests={guestsList}
             onClose={() => setOverlay(null)}
@@ -891,7 +894,7 @@ function MainApp() {
 
       {/* Reports overlay */}
       {overlay === 'reports' && (
-        <Modal visible animationType="slide">
+        <Modal visible animationType="slide" onRequestClose={() => setOverlay(null)}>
           <ReportsOverlay
             guests={guestsList}
             rooms={roomsList}
@@ -908,7 +911,7 @@ function MainApp() {
 
       {/* Pricing overlay */}
       {overlay === 'pricing' && (
-        <Modal visible animationType="slide">
+        <Modal visible animationType="slide" onRequestClose={() => setOverlay(null)}>
           <PricingOverlay
             billing={billing}
             setBilling={setBilling}
@@ -928,7 +931,7 @@ function MainApp() {
 
       {/* Dedicated Checkout overlay */}
       {overlay === 'checkout' && (
-        <Modal visible animationType="slide">
+        <Modal visible animationType="slide" onRequestClose={() => setOverlay(null)}>
           <CheckoutScreen
             initialPlan={checkoutPlan.plan}
             initialDuration={checkoutPlan.duration}
@@ -945,7 +948,7 @@ function MainApp() {
 
       {/* Refer & Earn overlay */}
       {overlay === 'refer-earn' && (
-        <Modal visible animationType="slide">
+        <Modal visible animationType="slide" onRequestClose={() => setOverlay(null)}>
           <ReferEarnScreen
             onClose={() => setOverlay(null)}
             onToast={notify}
@@ -955,7 +958,7 @@ function MainApp() {
 
       {/* Room details sheet */}
       {sheet === 'room' && selectedRoom ? (
-        <Modal visible transparent animationType="slide">
+        <Modal visible transparent animationType="slide" onRequestClose={() => setSheet(null)}>
           <Sheet onClose={() => setSheet(null)} showClose={false}>
             <RoomSheet
               room={roomsList.find((r) => r.num === selectedRoom) || {num: selectedRoom, type: 'Standard', price: 1800, status: 'available'}}
@@ -1000,7 +1003,7 @@ function MainApp() {
 
       {/* Guest details sheet */}
       {sheet === 'guest' && (guestId || selectedGuestObj) ? (
-        <Modal visible transparent animationType="slide">
+        <Modal visible transparent animationType="slide" onRequestClose={() => { setSheet(null); setSelectedGuestObj(null); }}>
           <Sheet onClose={() => { setSheet(null); setSelectedGuestObj(null); }} showClose={false}>
             <GuestSheet
               id={guestId}
@@ -1020,7 +1023,7 @@ function MainApp() {
 
       {/* Web self check-ins sheet */}
       {sheet === 'self' ? (
-        <Modal visible transparent animationType="slide">
+        <Modal visible transparent animationType="slide" onRequestClose={() => setSheet(null)}>
           <Sheet onClose={() => setSheet(null)} showClose={false}>
             <SelfCheckins
               pendingList={pendingCheckins}
@@ -1036,7 +1039,7 @@ function MainApp() {
 
       {/* App modal / confirmation dialog */}
       {modal && (
-        <Modal visible transparent animationType="fade">
+        <Modal visible transparent animationType="fade" onRequestClose={() => setModal(null)}>
           <View style={ms.scrim}>
             <View style={[ms.modalCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A', borderWidth: 1 }]}>
               <View style={[ms.modalIcon, isDark && { backgroundColor: '#2E1065' }]}>

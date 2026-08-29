@@ -186,7 +186,7 @@ export function CalendarPicker({
       </TouchableOpacity>
 
       {/* Calendar Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
+      <Modal visible={modalVisible} transparent animationType="slide" onRequestClose={() => setModalVisible(false)}>
         <View style={s.scrim}>
           <View style={[s.sheet, isDark && {backgroundColor: '#18181B'}]}>
             {/* Sheet Handle */}

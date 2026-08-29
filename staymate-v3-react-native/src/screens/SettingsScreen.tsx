@@ -584,7 +584,7 @@ export function SettingsScreen({
       {/* 1. PROPERTY PROFILE MODAL SHEET                              */}
       {/* ============================================================ */}
       {activeModal === 'profile' && (
-        <Modal visible transparent animationType="slide">
+        <Modal visible transparent animationType="slide" onRequestClose={() => setActiveModal(null)}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={ms.sheetScrim}
@@ -700,7 +700,7 @@ export function SettingsScreen({
       {/* 2. LANGUAGE SELECTOR MODAL SHEET                             */}
       {/* ============================================================ */}
       {activeModal === 'language' && (
-        <Modal visible transparent animationType="slide">
+        <Modal visible transparent animationType="slide" onRequestClose={() => setActiveModal(null)}>
           <View style={ms.sheetScrim}>
             <View style={[ms.sheet, isDark && { backgroundColor: '#18181B' }]}>
               <View style={[ms.handle, isDark && { backgroundColor: '#3F3F46' }]}/>
@@ -780,7 +780,7 @@ export function SettingsScreen({
       {/* 3. THEME SELECTOR MODAL SHEET                                */}
       {/* ============================================================ */}
       {activeModal === 'theme' && (
-        <Modal visible transparent animationType="slide">
+        <Modal visible transparent animationType="slide" onRequestClose={() => setActiveModal(null)}>
           <View style={ms.sheetScrim}>
             <View style={[ms.sheet, isDark && { backgroundColor: '#18181B' }]}>
               <View style={[ms.handle, isDark && { backgroundColor: '#3F3F46' }]}/>
@@ -860,7 +860,13 @@ export function SettingsScreen({
       {/* 4. CHANGE SECURITY PIN MODAL SHEET                           */}
       {/* ============================================================ */}
       {activeModal === 'pin' && (
-        <Modal visible animationType="slide">
+        <Modal visible animationType="slide" onRequestClose={() => {
+          setActiveModal(null);
+          setChangePinStep('current');
+          setChangePinDigits('');
+          setTempNewPin('');
+          setChangePinError('');
+        }}>
           <SafeAreaView style={{flex: 1, backgroundColor: isDark ? colors.canvas : '#fff', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 30}}>
             {/* Close button on top right */}
             <TouchableOpacity
@@ -1060,7 +1066,7 @@ export function SettingsScreen({
       {/* 5. AUTO-LOCK DURATION MODAL SHEET                            */}
       {/* ============================================================ */}
       {activeModal === 'autolock' && (
-        <Modal visible transparent animationType="slide">
+        <Modal visible transparent animationType="slide" onRequestClose={() => setActiveModal(null)}>
           <View style={ms.sheetScrim}>
             <View style={[ms.sheet, isDark && { backgroundColor: '#18181B' }]}>
               <View style={[ms.handle, isDark && { backgroundColor: '#3F3F46' }]}/>
@@ -1139,7 +1145,7 @@ export function SettingsScreen({
       {/* 6. HELP CENTER & FAQS MODAL SHEET                            */}
       {/* ============================================================ */}
       {activeModal === 'help' && (
-        <Modal visible transparent animationType="slide">
+        <Modal visible transparent animationType="slide" onRequestClose={() => setActiveModal(null)}>
           <View style={ms.sheetScrim}>
             <View style={[ms.sheet, isDark && { backgroundColor: '#18181B' }]}>
               <View style={[ms.handle, isDark && { backgroundColor: '#3F3F46' }]}/>

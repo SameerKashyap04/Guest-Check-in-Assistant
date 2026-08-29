@@ -331,30 +331,44 @@ export async function syncCheckinToFirestore(
 }
 
 /**
- * Syncs live room inventory to Firestore properties collection
+ * Syncs live room inventory to Firestore properties and owners collections
  */
-export async function syncRoomsToFirestore(propertyId: string, roomsList: any[]) {
+export async function syncRoomsToFirestore(propertyId: string, roomsList: any[], ownerEmail?: string, ownerUid?: string) {
   try {
     const app = getFirebaseApp();
     const db = getFirestore(app);
     const propId = propertyId || 'HS-4821';
     const cleanedRooms = cleanFirestoreData(roomsList);
-    await setDoc(
-      doc(db, 'properties', propId),
-      {
-        id: propId,
-        propertyId: propId,
-        roomsList: cleanedRooms,
-        rooms: roomsList.length,
-        occupiedRooms: roomsList.filter((r) => r.status === 'occupied').length,
-        availableRooms: roomsList.filter((r) => r.status === 'available').length,
-        cleaningRooms: roomsList.filter((r) => r.status === 'cleaning').length,
-        maintenanceRooms: roomsList.filter((r) => r.status === 'maintenance').length,
-        updatedAt: new Date().toISOString(),
-        lastActive: new Date().toISOString(),
-      },
-      { merge: true }
-    );
+    const roomPayload = {
+      id: propId,
+      propertyId: propId,
+      roomsList: cleanedRooms,
+      roomsData: cleanedRooms,
+      rooms: roomsList.length,
+      roomCount: roomsList.length,
+      occupiedRooms: roomsList.filter((r) => r.status === 'occupied').length,
+      availableRooms: roomsList.filter((r) => r.status === 'available').length,
+      cleaningRooms: roomsList.filter((r) => r.status === 'cleaning').length,
+      maintenanceRooms: roomsList.filter((r) => r.status === 'maintenance').length,
+      updatedAt: new Date().toISOString(),
+      lastActive: new Date().toISOString(),
+      ...(ownerEmail ? { ownerEmail: ownerEmail.toLowerCase().trim(), email: ownerEmail.toLowerCase().trim() } : {}),
+    };
+
+    // 1. Write to properties/{propId}
+    await setDoc(doc(db, 'properties', propId), roomPayload, { merge: true });
+
+    // 2. Also write to owners/{ownerUid} and owners/{ownerEmail} if available
+    if (ownerUid) {
+      try {
+        await setDoc(doc(db, 'owners', ownerUid), { ...roomPayload, propertyId: propId }, { merge: true });
+      } catch (_) {}
+    }
+    if (ownerEmail) {
+      try {
+        await setDoc(doc(db, 'owners', ownerEmail.toLowerCase().trim()), { ...roomPayload, propertyId: propId }, { merge: true });
+      } catch (_) {}
+    }
   } catch (e) {
     console.warn('Failed to sync rooms to Firestore:', e);
   }
