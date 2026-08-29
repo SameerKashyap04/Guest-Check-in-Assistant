@@ -42,6 +42,7 @@ export function ManualEntryScreen({
   const insets = useSafeAreaInsets();
   const activeRooms = roomsList && roomsList.length > 0 ? roomsList : (ROOMS as any);
   const isFreePlan = (currentPlan || 'Free').toUpperCase().includes('FREE');
+  const availableRooms = activeRooms.filter((r: any) => r.status === 'available');
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [isOcrProcessing, setIsOcrProcessing] = useState(false);
   const [name, setName] = useState(initialData?.name || '');
@@ -50,10 +51,15 @@ export function ManualEntryScreen({
   const [dob, setDob] = useState(initialData?.dob || '');
   const [gender, setGender] = useState(initialData?.gender || '');
   const [phone, setPhone] = useState(initialData?.phone || '');
+  const [email, setEmail] = useState(initialData?.email || '');
   const [address, setAddress] = useState(initialData?.address || '');
   const [photoUri, setPhotoUri] = useState<string | null>(initialData?.photoUri || initialData?.photo_uri || null);
   const [backPhotoUri, setBackPhotoUri] = useState<string | null>(initialData?.backPhotoUri || initialData?.back_photo_uri || null);
-  const [room, setRoom] = useState(initialData?.room || activeRooms[0]?.num || '101');
+  const [room, setRoom] = useState(
+    initialData?.room && activeRooms.some((r: any) => r.num === initialData.room && r.status === 'available')
+      ? initialData.room
+      : availableRooms[0]?.num || activeRooms[0]?.num || '101'
+  );
   const [checkin, setCheckin] = useState('2026-08-20');
   const [checkout, setCheckout] = useState('2026-08-22');
   const [coGuests, setCoGuests] = useState<CoGuestItem[]>([]);
@@ -68,12 +74,23 @@ export function ManualEntryScreen({
       if (initialData.dob) setDob(initialData.dob);
       if (initialData.gender) setGender(initialData.gender);
       if (initialData.phone) setPhone(initialData.phone);
+      if (initialData.email) setEmail(initialData.email);
       if (initialData.address) setAddress(initialData.address);
-      if (initialData.room) setRoom(initialData.room);
+      if (initialData.room && availableRooms.some((r: any) => r.num === initialData.room)) {
+        setRoom(initialData.room);
+      }
       if (initialData.photoUri || initialData.photo_uri) setPhotoUri(initialData.photoUri || initialData.photo_uri);
       if (initialData.backPhotoUri || initialData.back_photo_uri) setBackPhotoUri(initialData.backPhotoUri || initialData.back_photo_uri);
     }
   }, [initialData]);
+
+  // Ensure selected room is always an available room
+  useEffect(() => {
+    const isCurrentAvailable = availableRooms.some((r: any) => r.num === room);
+    if (!isCurrentAvailable && availableRooms.length > 0) {
+      setRoom(availableRooms[0].num);
+    }
+  }, [roomsList, activeRooms]);
 
   const handleUploadPhoto = async (side: 'front' | 'back', useCamera: boolean) => {
     try {
@@ -530,20 +547,31 @@ export function ManualEntryScreen({
         {/* Step 2: Stay details */}
         {step === 2 && (
           <View>
-            <Text style={[s.sectionHeader, {color: colors.muted}]}>SELECT ROOM</Text>
-            <View style={s.stayRoomGrid}>
-              {activeRooms.filter((r: any) => r.status === 'available' || r.num === room)
-                .map((r: any) => (
-                  <View key={r.num} style={{width: '48.2%'}}>
-                    <RoomCard
-                      room={r}
-                      compact
-                      selected={room === r.num}
-                      onPress={() => setRoom(r.num)}
-                    />
-                  </View>
-                ))}
-            </View>
+            <Text style={[s.sectionHeader, {color: colors.muted}]}>SELECT ROOM (AVAILABLE ONLY)</Text>
+            {activeRooms.filter((r: any) => r.status === 'available').length === 0 ? (
+              <View style={[s.noRoomsCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
+                <Icon name="alert-circle" size={24} color="#EF4444" />
+                <Text style={[s.noRoomsTitle, {color: colors.ink}]}>No Available Rooms</Text>
+                <Text style={[s.noRoomsSub, {color: colors.muted}]}>
+                  All {activeRooms.length} room(s) for your property are currently occupied or being cleaned.
+                </Text>
+              </View>
+            ) : (
+              <View style={s.stayRoomGrid}>
+                {activeRooms
+                  .filter((r: any) => r.status === 'available')
+                  .map((r: any) => (
+                    <View key={r.num} style={{width: '48.2%'}}>
+                      <RoomCard
+                        room={r}
+                        compact
+                        selected={room === r.num}
+                        onPress={() => setRoom(r.num)}
+                      />
+                    </View>
+                  ))}
+              </View>
+            )}
 
             <View style={[s.datesCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
               <Text style={[s.cardSectionTitle, {color: colors.muted}]}>DATES & RATE</Text>
@@ -1237,5 +1265,29 @@ const s = StyleSheet.create({
     backgroundColor: '#fff',
     borderTopWidth: 1,
     borderTopColor: '#ECEAF0',
+  },
+  noRoomsCard: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginVertical: 12,
+  },
+  noRoomsTitle: {
+    fontFamily: 'Inter',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#991B1B',
+  },
+  noRoomsSub: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    color: '#7F1D1D',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

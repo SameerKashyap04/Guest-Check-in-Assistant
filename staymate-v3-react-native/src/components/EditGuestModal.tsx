@@ -203,7 +203,7 @@ export function EditGuestModal({
                   value={phone}
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
-                  placeholder="+91 98765 00000"
+                  placeholder="Enter phone number"
                   placeholderTextColor={colors.mutedSoft}
                   style={[s.input, {backgroundColor: isDark ? '#18181B' : '#FAFAFA', borderColor: isDark ? '#27272A' : '#E2E8F0', color: colors.ink}]}
                 />
@@ -254,7 +254,7 @@ export function EditGuestModal({
               <TextInput
                 value={idNum}
                 onChangeText={setIdNum}
-                placeholder="4821 9012 3456"
+                placeholder="Enter ID number"
                 placeholderTextColor={colors.mutedSoft}
                 style={[s.input, {backgroundColor: isDark ? '#18181B' : '#FAFAFA', borderColor: isDark ? '#27272A' : '#E2E8F0', color: colors.ink}]}
               />
