@@ -644,26 +644,18 @@ export default function PropertiesPage() {
                             </div>
                           </div>
                         ) : room.status === "cleaning" ? (
-                          <div className="bg-white/80 p-2.5 rounded-xl border border-amber-100 mt-2 space-y-1.5 text-xs text-amber-800 font-medium">
-                            <p>🧹 Housekeeping in progress</p>
-                            <button
-                              onClick={() => handleToggleRoomAvailable(room.num)}
-                              className="w-full mt-1.5 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm transition-all"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Finish Cleaning (Available)</span>
-                            </button>
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-amber-100 mt-2 text-xs text-amber-800 font-medium flex items-center justify-between">
+                            <span>🧹 Housekeeping in progress</span>
+                            <span className="text-[10px] font-bold text-amber-600 uppercase bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                              Cleaning
+                            </span>
                           </div>
                         ) : room.status === "maintenance" ? (
-                          <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100 mt-2 space-y-1.5 text-xs text-rose-800 font-medium">
-                            <p>🔧 Under maintenance / Blocked</p>
-                            <button
-                              onClick={() => handleToggleRoomAvailable(room.num)}
-                              className="w-full mt-1.5 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm transition-all"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>Unblock Room (Available)</span>
-                            </button>
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100 mt-2 text-xs text-rose-800 font-medium flex items-center justify-between">
+                            <span>🔧 Under maintenance / Blocked</span>
+                            <span className="text-[10px] font-bold text-rose-600 uppercase bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                              Blocked
+                            </span>
                           </div>
                         ) : (
                           <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100 mt-2 text-xs text-emerald-800 font-medium flex items-center justify-between">
