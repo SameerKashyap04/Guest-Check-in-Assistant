@@ -8,6 +8,7 @@ import {
   updateDoc,
   addDoc,
   query,
+  where,
   orderBy,
   limit,
   onSnapshot,
@@ -354,22 +355,30 @@ export const adminDataService = {
       const checkinSnap = await getDocs(collection(db, 'checkins'));
 
       const propMap = new Map<string, AdminProperty>();
-      const checkinsList = checkinSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const checkinsList: any[] = checkinSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      const ownersList: any[] = ownerSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
       // 1. Process properties collection first
       propSnap.docs.forEach(d => {
-        const data = d.data();
+        const data: any = d.data();
         const propId = data.propertyId || d.id || 'HS-4821';
         const plan = data.plan || data.subscriptionPlan || 'Free';
         const planMax = getMaxRoomsForPlan(plan);
-        const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || planMax);
-        const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData, plan);
 
-        const propCheckins = checkinsList.filter(c => (c as any).propertyId === propId || (c as any).property_id === propId);
-        
-        // If the property has NOT synced roomsList from the mobile app, only then populate from active checkins
-        if (!data.roomsList && !data.roomsData) {
-          const activeCheckins = propCheckins.filter(c => (c as any).status !== 'checked_out' && (c as any).status !== 'completed');
+        // Find matching owner doc if any
+        const ownerDoc = ownersList.find((o: any) => 
+          (o.email && (o.email.toLowerCase() === (data.ownerEmail || data.email || '').toLowerCase())) ||
+          (o.propertyId && (o.propertyId === propId || o.id === propId))
+        );
+
+        const liveRoomsData = data.roomsList || data.roomsData || ownerDoc?.roomsList || ownerDoc?.roomsData;
+        const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || (liveRoomsData ? liveRoomsData.length : planMax));
+        const roomMeta = generatePropertyRooms(propId, rCount, liveRoomsData, plan);
+
+        const propCheckins = checkinsList.filter((c: any) => c.propertyId === propId || c.property_id === propId);
+        if (!liveRoomsData) {
+          const activeCheckins = propCheckins.filter((c: any) => c.status !== 'checked_out' && c.status !== 'completed');
           activeCheckins.forEach((c: any) => {
             const roomNum = String(c.room || c.room_number || '');
             const match = roomMeta.roomsList.find(r => r.num === roomNum);
@@ -383,40 +392,43 @@ export const adminDataService = {
           roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
         }
 
-        const activeMeta = resolveLastActive(data, propId);
+        const activeMeta = resolveLastActive({ ...ownerDoc, ...data }, propId);
         const p: AdminProperty = {
           id: propId,
-          name: data.name || data.businessName || 'Homestay',
-          location: data.location || data.address || data.city || 'India',
+          name: data.name || data.businessName || ownerDoc?.businessName || ownerDoc?.name || 'Homestay',
+          location: data.location || data.address || data.city || ownerDoc?.location || ownerDoc?.address || 'India',
           rooms: roomMeta.roomsList.length,
-          checkIns: Math.max(Number(data.checkIns) || 0, propCheckins.length),
-          status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
+          checkIns: Math.max(Number(data.checkIns) || 0, Number(ownerDoc?.checkIns) || 0, propCheckins.length),
+          status: (data.status === 'Trialing' || ownerDoc?.status === 'Trialing' ? 'Trialing' : 'Active') as any,
           plan: plan as any,
-          ownerEmail: data.ownerEmail || data.email,
-          ownerName: data.ownerName || data.name || data.businessName,
-          ownerPhone: resolvePhone(data),
-          phone: resolvePhone(data),
-          createdAt: data.createdAt,
+          ownerEmail: data.ownerEmail || data.email || ownerDoc?.email,
+          ownerName: data.ownerName || data.name || data.businessName || ownerDoc?.ownerName || ownerDoc?.name || ownerDoc?.businessName,
+          ownerPhone: resolvePhone(data) !== '—' ? resolvePhone(data) : resolvePhone(ownerDoc),
+          phone: resolvePhone(data) !== '—' ? resolvePhone(data) : resolvePhone(ownerDoc),
+          createdAt: data.createdAt || ownerDoc?.createdAt,
           ...roomMeta,
           ...activeMeta,
         };
-        const key = (data.ownerEmail || data.email || propId).toLowerCase().trim();
+        const key = (data.ownerEmail || data.email || ownerDoc?.email || propId).toLowerCase().trim();
         propMap.set(key, p);
+        if (propId) propMap.set(propId.toLowerCase().trim(), p);
       });
 
       // 2. Process owners collection and merge without duplicating
-      ownerSnap.docs.forEach(d => {
-        const data = d.data();
-        const propId = data.propertyId || d.id;
-        const key = (data.email || propId).toLowerCase().trim();
-        if (!propMap.has(key)) {
+      ownersList.forEach((data: any) => {
+        const propId = data.propertyId || data.id;
+        const emailKey = (data.email || '').toLowerCase().trim();
+        const propKey = (propId || '').toLowerCase().trim();
+
+        if (!propMap.has(emailKey) && !propMap.has(propKey)) {
           const plan = data.plan || data.subscriptionPlan || 'Free';
           const planMax = getMaxRoomsForPlan(plan);
-          const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || planMax);
-          const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData, plan);
+          const liveRoomsData = data.roomsList || data.roomsData;
+          const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || (liveRoomsData ? liveRoomsData.length : planMax));
+          const roomMeta = generatePropertyRooms(propId, rCount, liveRoomsData, plan);
 
           const propCheckins = checkinsList.filter(c => (c as any).propertyId === propId || (c as any).property_id === propId);
-          if (!data.roomsList && !data.roomsData) {
+          if (!liveRoomsData) {
             const activeCheckins = propCheckins.filter(c => (c as any).status !== 'checked_out' && (c as any).status !== 'completed');
             activeCheckins.forEach((c: any) => {
               const roomNum = String(c.room || c.room_number || '');
@@ -432,7 +444,7 @@ export const adminDataService = {
           }
 
           const activeMeta = resolveLastActive(data, propId);
-          propMap.set(key, {
+          const p: AdminProperty = {
             id: propId,
             name: data.businessName || data.name || 'Homestay',
             location: data.location || data.address || data.city || 'India',
@@ -447,11 +459,13 @@ export const adminDataService = {
             createdAt: data.createdAt,
             ...roomMeta,
             ...activeMeta,
-          });
+          };
+          if (emailKey) propMap.set(emailKey, p);
+          if (propKey) propMap.set(propKey, p);
         }
       });
 
-      return Array.from(propMap.values());
+      return Array.from(new Set(Array.from(propMap.values())).values());
     } catch (e) {
       console.warn('Properties query error:', e);
       return [];
@@ -472,11 +486,19 @@ export const adminDataService = {
           const propId = data.propertyId || data.id || 'HS-4821';
           const plan = data.plan || data.subscriptionPlan || 'Free';
           const planMax = getMaxRoomsForPlan(plan);
-          const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || (data.roomsList ? data.roomsList.length : planMax));
-          const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData, plan);
+
+          // Find matching owner doc if any
+          const ownerDoc = currentOwnersList.find(o => 
+            (o.email && (o.email.toLowerCase() === (data.ownerEmail || data.email || '').toLowerCase())) ||
+            (o.propertyId && (o.propertyId === propId || o.id === propId))
+          );
+
+          const liveRoomsData = data.roomsList || data.roomsData || ownerDoc?.roomsList || ownerDoc?.roomsData;
+          const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || (liveRoomsData ? liveRoomsData.length : planMax));
+          const roomMeta = generatePropertyRooms(propId, rCount, liveRoomsData, plan);
 
           const propCheckins = currentCheckinsList.filter(c => c.propertyId === propId || c.property_id === propId);
-          if (!data.roomsList && !data.roomsData) {
+          if (!liveRoomsData) {
             const activeCheckins = propCheckins.filter(c => c.status !== 'checked_out' && c.status !== 'completed');
             activeCheckins.forEach((c: any) => {
               const roomNum = String(c.room || c.room_number || '');
@@ -491,39 +513,43 @@ export const adminDataService = {
             roomMeta.availableRooms = roomMeta.roomsList.filter(r => r.status === 'available').length;
           }
 
-          const activeMeta = resolveLastActive(data, propId);
+          const activeMeta = resolveLastActive({ ...ownerDoc, ...data }, propId);
           const p: AdminProperty = {
             id: propId,
-            name: data.name || data.businessName || 'Homestay',
-            location: data.location || data.address || data.city || 'India',
+            name: data.name || data.businessName || ownerDoc?.businessName || ownerDoc?.name || 'Homestay',
+            location: data.location || data.address || data.city || ownerDoc?.location || ownerDoc?.address || 'India',
             rooms: roomMeta.roomsList.length,
-            checkIns: Math.max(Number(data.checkIns) || 0, propCheckins.length),
-            status: (data.status === 'Trialing' ? 'Trialing' : 'Active') as any,
+            checkIns: Math.max(Number(data.checkIns) || 0, Number(ownerDoc?.checkIns) || 0, propCheckins.length),
+            status: (data.status === 'Trialing' || ownerDoc?.status === 'Trialing' ? 'Trialing' : 'Active') as any,
             plan: plan as any,
-            ownerEmail: data.ownerEmail || data.email,
-            ownerName: data.ownerName || data.name || data.businessName,
-            ownerPhone: resolvePhone(data),
-            phone: resolvePhone(data),
-            createdAt: data.createdAt,
+            ownerEmail: data.ownerEmail || data.email || ownerDoc?.email,
+            ownerName: data.ownerName || data.name || data.businessName || ownerDoc?.ownerName || ownerDoc?.name || ownerDoc?.businessName,
+            ownerPhone: resolvePhone(data) !== '—' ? resolvePhone(data) : resolvePhone(ownerDoc),
+            phone: resolvePhone(data) !== '—' ? resolvePhone(data) : resolvePhone(ownerDoc),
+            createdAt: data.createdAt || ownerDoc?.createdAt,
             ...roomMeta,
             ...activeMeta,
           };
-          const key = (data.ownerEmail || data.email || propId).toLowerCase().trim();
+          const key = (data.ownerEmail || data.email || ownerDoc?.email || propId).toLowerCase().trim();
           propMap.set(key, p);
+          if (propId) propMap.set(propId.toLowerCase().trim(), p);
         });
 
         // Process owners collection without creating duplicates
         currentOwnersList.forEach(data => {
           const propId = data.propertyId || data.id;
-          const key = (data.email || propId).toLowerCase().trim();
-          if (!propMap.has(key)) {
+          const emailKey = (data.email || '').toLowerCase().trim();
+          const propKey = (propId || '').toLowerCase().trim();
+
+          if (!propMap.has(emailKey) && !propMap.has(propKey)) {
             const plan = data.plan || data.subscriptionPlan || 'Free';
             const planMax = getMaxRoomsForPlan(plan);
-            const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || planMax);
-            const roomMeta = generatePropertyRooms(propId, rCount, data.roomsList || data.roomsData, plan);
+            const liveRoomsData = data.roomsList || data.roomsData;
+            const rCount = Math.min(planMax, Number(data.rooms) || Number(data.roomCount) || (liveRoomsData ? liveRoomsData.length : planMax));
+            const roomMeta = generatePropertyRooms(propId, rCount, liveRoomsData, plan);
 
             const propCheckins = currentCheckinsList.filter(c => c.propertyId === propId || c.property_id === propId);
-            if (!data.roomsList && !data.roomsData) {
+            if (!liveRoomsData) {
               const activeCheckins = propCheckins.filter(c => c.status !== 'checked_out' && c.status !== 'completed');
               activeCheckins.forEach((c: any) => {
                 const roomNum = String(c.room || c.room_number || '');
@@ -539,7 +565,7 @@ export const adminDataService = {
             }
 
             const activeMeta = resolveLastActive(data, propId);
-            propMap.set(key, {
+            const p: AdminProperty = {
               id: propId,
               name: data.businessName || data.name || 'Homestay',
               location: data.location || data.address || data.city || 'India',
@@ -554,11 +580,15 @@ export const adminDataService = {
               createdAt: data.createdAt,
               ...roomMeta,
               ...activeMeta,
-            });
+            };
+            if (emailKey) propMap.set(emailKey, p);
+            if (propKey) propMap.set(propKey, p);
           }
         });
 
-        callback(Array.from(propMap.values()));
+        // Deduplicate values
+        const unique = Array.from(new Set(Array.from(propMap.values())).values());
+        callback(unique);
       };
 
       const unsubProperties = onSnapshot(
@@ -596,6 +626,74 @@ export const adminDataService = {
     } catch {
       callback([]);
       return () => {};
+    }
+  },
+
+  async updatePropertyRoomStatus(propertyId: string, ownerEmail: string | undefined, roomNum: string, newStatus: 'available' | 'occupied' | 'cleaning' | 'maintenance') {
+    try {
+      const propRef = doc(db, 'properties', propertyId);
+      const propSnap = await getDoc(propRef);
+      let currentRooms: AdminRoom[] = [];
+      if (propSnap.exists()) {
+        const data = propSnap.data();
+        currentRooms = data.roomsList || data.roomsData || [];
+      }
+      
+      if (currentRooms.length === 0 && ownerEmail) {
+        const ownerQuery = query(collection(db, 'owners'), where('email', '==', ownerEmail));
+        const ownerSnap = await getDocs(ownerQuery);
+        if (!ownerSnap.empty) {
+          const oData = ownerSnap.docs[0].data();
+          currentRooms = oData.roomsList || oData.roomsData || [];
+        }
+      }
+
+      if (currentRooms.length > 0) {
+        currentRooms = currentRooms.map(r => {
+          if (String(r.num) === String(roomNum)) {
+            return {
+              ...r,
+              status: newStatus,
+              guestName: newStatus === 'available' ? undefined : r.guestName,
+              checkIn: newStatus === 'available' ? undefined : r.checkIn,
+            };
+          }
+          return r;
+        });
+
+        const occupied = currentRooms.filter(r => r.status === 'occupied').length;
+        const available = currentRooms.filter(r => r.status === 'available').length;
+        const cleaning = currentRooms.filter(r => r.status === 'cleaning').length;
+        const maintenance = currentRooms.filter(r => r.status === 'maintenance').length;
+
+        const payload = {
+          roomsList: currentRooms,
+          roomsData: currentRooms,
+          occupiedRooms: occupied,
+          availableRooms: available,
+          cleaningRooms: cleaning,
+          maintenanceRooms: maintenance,
+          updatedAt: new Date().toISOString(),
+        };
+
+        await setDoc(propRef, payload, { merge: true });
+
+        // If marked available, also update any active checkins in that room to checked_out
+        if (newStatus === 'available') {
+          const checkinQuery = query(collection(db, 'checkins'), where('propertyId', '==', propertyId));
+          const cSnap = await getDocs(checkinQuery);
+          for (const cDoc of cSnap.docs) {
+            const cData = cDoc.data();
+            if (String(cData.room || cData.room_number) === String(roomNum) && cData.status !== 'checked_out') {
+              await setDoc(doc(db, 'checkins', cDoc.id), { status: 'checked_out', checkedOut: true }, { merge: true });
+            }
+          }
+        }
+      }
+      return true;
+    } catch (e) {
+      console.error('Error updating room status:', e);
+      return false;
     }
   },
 

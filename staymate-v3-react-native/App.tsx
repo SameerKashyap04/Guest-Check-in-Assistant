@@ -419,6 +419,18 @@ function MainApp() {
     };
   }, []);
 
+  // Proactively sync live room list to Firestore whenever roomsList or currentUser changes
+  useEffect(() => {
+    if (currentUser?.email || currentUser?.propertyId) {
+      syncRoomsToFirestore(
+        currentUser?.propertyId || 'HS-4821',
+        roomsList,
+        currentUser?.email,
+        currentUser?.uid
+      );
+    }
+  }, [roomsList, currentUser?.propertyId, currentUser?.email, currentUser?.uid]);
+
   // Real-time synchronization of Owner Profile & Plan Changes from Firestore (Admin Panel)
   useEffect(() => {
     if (!currentUser?.uid && !currentUser?.email) return;

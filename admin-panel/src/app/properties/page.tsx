@@ -18,7 +18,9 @@ import {
   MessageCircle,
   Sparkles,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  Check
 } from "lucide-react";
 import { adminDataService, AdminProperty, AdminRoom } from "@/lib/adminDataService";
 
@@ -56,13 +58,72 @@ export default function PropertiesPage() {
   const [properties, setProperties] = useState<AdminProperty[]>([]);
   const [selectedProperty, setSelectedProperty] = useState<AdminProperty | null>(null);
   const [roomFilter, setRoomFilter] = useState<"ALL" | "available" | "occupied" | "cleaning" | "maintenance">("ALL");
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3000);
+  };
+
+  const handleRefreshData = async () => {
+    setIsRefreshing(true);
+    try {
+      const fresh = await adminDataService.getProperties();
+      setProperties(fresh);
+      if (selectedProperty) {
+        const updatedSelected = fresh.find((p) => p.id === selectedProperty.id || (p.ownerEmail && p.ownerEmail === selectedProperty.ownerEmail));
+        if (updatedSelected) {
+          setSelectedProperty(updatedSelected);
+        }
+      }
+      showToast("✓ Live room inventory synced from mobile app");
+    } catch {
+      showToast("Failed to sync live data");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleToggleRoomAvailable = async (roomNum: string) => {
+    if (!selectedProperty) return;
+    showToast(`Updating Room ${roomNum} to Available...`);
+    const ok = await adminDataService.updatePropertyRoomStatus(
+      selectedProperty.id,
+      selectedProperty.ownerEmail,
+      roomNum,
+      'available'
+    );
+    if (ok) {
+      // Optimistically update local selectedProperty state
+      setSelectedProperty(prev => {
+        if (!prev) return null;
+        const updatedList = (prev.roomsList || []).map(r => 
+          String(r.num) === String(roomNum) 
+            ? { ...r, status: 'available' as const, guestName: undefined, checkIn: undefined }
+            : r
+        );
+        const occupied = updatedList.filter(r => r.status === 'occupied').length;
+        const available = updatedList.filter(r => r.status === 'available').length;
+        return {
+          ...prev,
+          roomsList: updatedList,
+          occupiedRooms: occupied,
+          availableRooms: available,
+        };
+      });
+      showToast(`✓ Room ${roomNum} marked Available & check-in cleared`);
+    } else {
+      showToast("Error updating room status");
+    }
+  };
 
   useEffect(() => {
     const unsub = adminDataService.subscribeProperties((props) => {
       setProperties(props);
       // Update selected property if currently open
       if (selectedProperty) {
-        const found = props.find((p) => p.id === selectedProperty.id);
+        const found = props.find((p) => p.id === selectedProperty.id || (p.ownerEmail && p.ownerEmail === selectedProperty.ownerEmail));
         if (found) setSelectedProperty(found);
       }
     });
@@ -107,6 +168,14 @@ export default function PropertiesPage() {
 
   return (
     <AdminLayout>
+      {/* Toast Notification */}
+      {toastMsg && (
+        <div className="fixed top-6 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-2xl flex items-center gap-2 border border-slate-700 animate-in fade-in slide-in-from-top-2 text-xs font-bold">
+          <Check className="w-4 h-4 text-emerald-400" />
+          <span>{toastMsg}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
         <div>
@@ -115,6 +184,15 @@ export default function PropertiesPage() {
             Live homestay inventory, owner contact numbers, last active heartbeat, and real-time room status.
           </p>
         </div>
+
+        <button
+          onClick={handleRefreshData}
+          disabled={isRefreshing}
+          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-violet-600 hover:bg-violet-700 active:scale-95 text-white font-bold text-xs shadow-md transition-all self-start sm:self-auto"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+          <span>{isRefreshing ? "Syncing App Data..." : "Refresh Live Data"}</span>
+        </button>
       </div>
 
       {/* Filter and Search Bar */}
@@ -316,12 +394,23 @@ export default function PropertiesPage() {
                 </p>
               </div>
 
-              <button
-                onClick={() => setSelectedProperty(null)}
-                className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleRefreshData}
+                  disabled={isRefreshing}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-violet-50 hover:bg-violet-100 text-violet-700 border border-violet-200 font-bold text-xs transition-colors"
+                  title="Fetch latest room status from mobile app"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
+                  <span>{isRefreshing ? "Syncing..." : "Sync App Data"}</span>
+                </button>
+                <button
+                  onClick={() => setSelectedProperty(null)}
+                  className="w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Scrollable Body */}
@@ -498,7 +587,7 @@ export default function PropertiesPage() {
 
                         {/* Guest or Status Details */}
                         {room.status === "occupied" ? (
-                          <div className="bg-white/80 p-2.5 rounded-xl border border-violet-100 mt-2 space-y-1">
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-violet-100 mt-2 space-y-1.5">
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] font-bold text-slate-400 uppercase">Guest</span>
                               <span className="text-xs font-black text-slate-900">{room.guestName || "Registered Guest"}</span>
@@ -515,18 +604,42 @@ export default function PropertiesPage() {
                                 <span className="font-medium text-slate-700">{room.checkOut}</span>
                               </div>
                             )}
+                            <button
+                              onClick={() => handleToggleRoomAvailable(room.num)}
+                              className="w-full mt-2 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Mark Available (Checkout)</span>
+                            </button>
                           </div>
                         ) : room.status === "cleaning" ? (
-                          <div className="bg-white/80 p-2.5 rounded-xl border border-amber-100 mt-2 text-xs text-amber-800 font-medium">
-                            🧹 Housekeeping in progress
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-amber-100 mt-2 space-y-1.5 text-xs text-amber-800 font-medium">
+                            <p>🧹 Housekeeping in progress</p>
+                            <button
+                              onClick={() => handleToggleRoomAvailable(room.num)}
+                              className="w-full mt-1.5 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Finish Cleaning (Available)</span>
+                            </button>
                           </div>
                         ) : room.status === "maintenance" ? (
-                          <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100 mt-2 text-xs text-rose-800 font-medium">
-                            🔧 Under maintenance / Blocked
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-rose-100 mt-2 space-y-1.5 text-xs text-rose-800 font-medium">
+                            <p>🔧 Under maintenance / Blocked</p>
+                            <button
+                              onClick={() => handleToggleRoomAvailable(room.num)}
+                              className="w-full mt-1.5 py-1.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-bold text-[11px] flex items-center justify-center gap-1.5 shadow-sm transition-all"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Unblock Room (Available)</span>
+                            </button>
                           </div>
                         ) : (
-                          <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100 mt-2 text-xs text-emerald-800 font-medium">
-                            ✨ Ready for instant check-in
+                          <div className="bg-white/80 p-2.5 rounded-xl border border-emerald-100 mt-2 text-xs text-emerald-800 font-medium flex items-center justify-between">
+                            <span>✨ Ready for instant check-in</span>
+                            <span className="text-[10px] font-bold text-emerald-600 uppercase bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                              Free
+                            </span>
                           </div>
                         )}
                       </div>
