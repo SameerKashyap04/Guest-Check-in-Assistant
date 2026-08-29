@@ -18,6 +18,8 @@ export interface ClientDisplayPlan {
   rooms: string;
   checkins: string;
   exports: string;
+  maxProperties?: string | number;
+  maxStaff?: number;
   ocr: boolean;
   cloud: boolean;
   tag: string;
@@ -33,6 +35,8 @@ export const DEFAULT_DISPLAY_PLANS: ClientDisplayPlan[] = [
     rooms: '2 rooms',
     checkins: '15 check-ins / mo',
     exports: '3 reports & exports / mo',
+    maxProperties: '1',
+    maxStaff: 0,
     ocr: false,
     cloud: false,
     tag: '',
@@ -46,6 +50,8 @@ export const DEFAULT_DISPLAY_PLANS: ClientDisplayPlan[] = [
     rooms: '8 rooms',
     checkins: '100 check-ins / mo',
     exports: '10 reports & exports / mo',
+    maxProperties: '1',
+    maxStaff: 0,
     ocr: true,
     cloud: false,
     tag: '',
@@ -59,6 +65,8 @@ export const DEFAULT_DISPLAY_PLANS: ClientDisplayPlan[] = [
     rooms: '25 rooms',
     checkins: 'Unlimited check-ins',
     exports: 'Unlimited reports & exports',
+    maxProperties: '1',
+    maxStaff: 5,
     ocr: true,
     cloud: true,
     tag: 'Most popular',
@@ -69,9 +77,11 @@ export const DEFAULT_DISPLAY_PLANS: ClientDisplayPlan[] = [
     name: 'Multi-Property',
     priceM: 1999,
     priceY: 19999,
-    rooms: 'Unlimited rooms · 5 properties',
+    rooms: '30 rooms / prop · 10 properties',
     checkins: 'Unlimited check-ins',
     exports: 'Unlimited reports & exports',
+    maxProperties: '10',
+    maxStaff: 20,
     ocr: true,
     cloud: true,
     tag: '',
@@ -85,6 +95,8 @@ export const DEFAULT_DISPLAY_PLANS: ClientDisplayPlan[] = [
     rooms: 'Unlimited everything',
     checkins: 'Dedicated support',
     exports: 'Unlimited reports & exports',
+    maxProperties: 'Unlimited',
+    maxStaff: 9999,
     ocr: true,
     cloud: true,
     tag: '',
@@ -129,14 +141,18 @@ class PlansService {
               .map((p: any) => {
                 const planId = (p.id || '').toUpperCase() as SubscriptionPlan;
                 const isRec = Boolean(p.isRecommended);
+                const maxProps = p.maxProperties ? String(p.maxProperties) : (planId === SubscriptionPlan.MULTI_PROPERTY ? '10' : planId === SubscriptionPlan.ENTERPRISE ? 'Unlimited' : '1');
+                const maxStaff = typeof p.maxStaff === 'number' ? p.maxStaff : (planId === SubscriptionPlan.MULTI_PROPERTY ? 20 : planId === SubscriptionPlan.PROFESSIONAL ? 5 : 0);
                 return {
                   id: planId,
                   name: p.name || planId,
                   priceM: typeof p.monthlyPrice === 'number' ? p.monthlyPrice : 0,
                   priceY: typeof p.yearlyPrice === 'number' ? p.yearlyPrice : 0,
-                  rooms: p.maxRooms ? `${p.maxRooms} rooms` : '2 rooms',
+                  rooms: p.maxRooms ? `${p.maxRooms} rooms` : (planId === SubscriptionPlan.MULTI_PROPERTY ? `30 rooms / prop · ${maxProps} properties` : '2 rooms'),
                   checkins: p.maxCheckIns ? `${p.maxCheckIns} check-ins / mo` : 'Unlimited check-ins',
                   exports: p.maxExports ? `${p.maxExports} reports & exports` : 'Unlimited reports & exports',
+                  maxProperties: maxProps,
+                  maxStaff: maxStaff,
                   ocr: Boolean(p.ocrScanning),
                   cloud: Boolean(p.cloudSync),
                   isRecommended: isRec,

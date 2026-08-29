@@ -36,6 +36,7 @@ import {
 import { couponService } from '../services/couponService';
 import { referralService } from '../services/referralService';
 import { devifyPay, type DevifyCheckoutResult } from '../services/devifyPay';
+import { plansService, DEFAULT_DISPLAY_PLANS, ClientDisplayPlan } from '../services/plansService';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { updateOwnerProfile } from '../services/firebaseAuth';
 
@@ -90,6 +91,16 @@ export function CheckoutScreen({
   const [activeCheckout, setActiveCheckout] = useState<DevifyCheckoutResult | null>(null);
   const [verifying, setVerifying] = useState(false);
   const [effectiveUser, setEffectiveUser] = useState<any>(userProfile || null);
+  const [livePlans, setLivePlans] = useState<ClientDisplayPlan[]>(DEFAULT_DISPLAY_PLANS);
+
+  // Fetch live plan definitions from Admin Panel
+  useEffect(() => {
+    plansService.fetchLivePlans().then((res) => {
+      if (res && res.length > 0) {
+        setLivePlans(res);
+      }
+    });
+  }, []);
 
   // Load user profile from props or AsyncStorage
   useEffect(() => {
@@ -337,55 +348,67 @@ export function CheckoutScreen({
             </View>
           </View>
 
-          <View style={s.featuresList}>
-            <View style={s.featureItem}>
-              <Icon name="check" size={14} color={colors.primary} />
-              <Text style={[s.featureText, isDark && { color: colors.ink }]}>
-                {plan.id === SubscriptionPlan.STARTER
-                  ? '8 rooms capacity'
-                  : plan.id === SubscriptionPlan.PROFESSIONAL
-                  ? '25 rooms capacity'
-                  : plan.id === SubscriptionPlan.MULTI_PROPERTY
-                  ? 'Unlimited rooms · 5 properties'
-                  : 'Unlimited capacity'}
-              </Text>
-            </View>
-            <View style={s.featureItem}>
-              <Icon name="check" size={14} color={colors.primary} />
-              <Text style={[s.featureText, isDark && { color: colors.ink }]}>
-                {plan.id === SubscriptionPlan.STARTER
-                  ? '100 check-ins / mo'
-                  : plan.id === SubscriptionPlan.FREE
-                  ? '15 check-ins / mo'
-                  : 'Unlimited guest check-ins'}
-              </Text>
-            </View>
-            <View style={s.featureItem}>
-              <Icon name="check" size={14} color={colors.primary} />
-              <Text style={[s.featureText, isDark && { color: colors.ink }]}>
-                {plan.id === SubscriptionPlan.STARTER
-                  ? '10 reports & exports / mo'
-                  : plan.id === SubscriptionPlan.FREE
-                  ? '3 reports & exports / mo'
-                  : 'Unlimited reports & exports'}
-              </Text>
-            </View>
-            <View style={s.featureItem}>
-              <Icon name="check" size={14} color={colors.primary} />
-              <Text style={[s.featureText, isDark && { color: colors.ink }]}>AI Document OCR scanning included</Text>
-            </View>
-            {plan.id !== SubscriptionPlan.STARTER && plan.id !== SubscriptionPlan.FREE ? (
-              <View style={s.featureItem}>
-                <Icon name="check" size={14} color={colors.primary} />
-                <Text style={[s.featureText, isDark && { color: colors.ink }]}>Live cloud sync & automated backup</Text>
+          {(() => {
+            const currentLive = livePlans.find(
+              (lp) =>
+                lp.id === plan.id ||
+                lp.name.toLowerCase() === plan.name.toLowerCase()
+            );
+            const liveMaxProps = currentLive?.maxProperties || (plan.id === SubscriptionPlan.MULTI_PROPERTY ? '10' : '1');
+            const liveMaxStaff = currentLive?.maxStaff || (plan.id === SubscriptionPlan.MULTI_PROPERTY ? 20 : plan.id === SubscriptionPlan.PROFESSIONAL ? 5 : 0);
+
+            return (
+              <View style={s.featuresList}>
+                <View style={s.featureItem}>
+                  <Icon name="check" size={14} color={colors.primary} />
+                  <Text style={[s.featureText, isDark && { color: colors.ink }]}>
+                    {plan.id === SubscriptionPlan.STARTER
+                      ? '8 rooms capacity · 1 property'
+                      : plan.id === SubscriptionPlan.PROFESSIONAL
+                      ? '25 rooms capacity · 1 property · 5 staff'
+                      : plan.id === SubscriptionPlan.MULTI_PROPERTY
+                      ? `Up to 30 rooms / prop · ${liveMaxProps} properties · ${liveMaxStaff} staff`
+                      : 'Unlimited capacity & properties'}
+                  </Text>
+                </View>
+                <View style={s.featureItem}>
+                  <Icon name="check" size={14} color={colors.primary} />
+                  <Text style={[s.featureText, isDark && { color: colors.ink }]}>
+                    {plan.id === SubscriptionPlan.STARTER
+                      ? '100 check-ins / mo'
+                      : plan.id === SubscriptionPlan.FREE
+                      ? '15 check-ins / mo'
+                      : 'Unlimited guest check-ins'}
+                  </Text>
+                </View>
+                <View style={s.featureItem}>
+                  <Icon name="check" size={14} color={colors.primary} />
+                  <Text style={[s.featureText, isDark && { color: colors.ink }]}>
+                    {plan.id === SubscriptionPlan.STARTER
+                      ? '10 reports & exports / mo'
+                      : plan.id === SubscriptionPlan.FREE
+                      ? '3 reports & exports / mo'
+                      : 'Unlimited reports & exports'}
+                  </Text>
+                </View>
+                <View style={s.featureItem}>
+                  <Icon name="check" size={14} color={colors.primary} />
+                  <Text style={[s.featureText, isDark && { color: colors.ink }]}>AI Document OCR scanning included</Text>
+                </View>
+                {plan.id !== SubscriptionPlan.STARTER && plan.id !== SubscriptionPlan.FREE ? (
+                  <View style={s.featureItem}>
+                    <Icon name="check" size={14} color={colors.primary} />
+                    <Text style={[s.featureText, isDark && { color: colors.ink }]}>Live cloud sync & automated backup</Text>
+                  </View>
+                ) : (
+                  <View style={s.featureItem}>
+                    <Icon name="check" size={14} color={colors.mutedSoft} />
+                    <Text style={[s.featureText, { color: colors.muted }]}>Local storage only (No cloud sync)</Text>
+                  </View>
+                )}
               </View>
-            ) : (
-              <View style={s.featureItem}>
-                <Icon name="check" size={14} color={colors.mutedSoft} />
-                <Text style={[s.featureText, { color: colors.muted }]}>Local storage only (No cloud sync)</Text>
-              </View>
-            )}
-          </View>
+            );
+          })()}
         </View>
 
         {/* 4 Duration Billing Selector */}

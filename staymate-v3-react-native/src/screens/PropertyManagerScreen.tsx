@@ -14,6 +14,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../theme/ThemeContext';
 import { Icon } from '../components/Icon';
 import { propertyService, ManagedProperty } from '../services/propertyService';
+import { plansService } from '../services/plansService';
+import { SubscriptionPlan } from '../types/subscription';
 
 interface PropertyManagerScreenProps {
   ownerUid: string;
@@ -55,12 +57,31 @@ export function PropertyManagerScreen({
   const [roomsCount, setRoomsCount] = useState('10');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const planKey = activePlan.toUpperCase();
-  const maxPropertiesAllowed = planKey.includes('ENTERPRISE')
-    ? 9999
-    : planKey.includes('MULTI')
-    ? 10
-    : 1;
+  const [maxPropertiesAllowed, setMaxPropertiesAllowed] = useState<number>(() => {
+    const planKey = activePlan.toUpperCase();
+    return planKey.includes('ENTERPRISE') ? 9999 : planKey.includes('MULTI') ? 10 : 1;
+  });
+
+  useEffect(() => {
+    plansService.fetchLivePlans().then((res) => {
+      if (res && res.length > 0) {
+        const planKey = activePlan.toUpperCase();
+        if (planKey.includes('ENTERPRISE')) {
+          setMaxPropertiesAllowed(9999);
+        } else if (planKey.includes('MULTI')) {
+          const mp = res.find((p) => p.id === SubscriptionPlan.MULTI_PROPERTY || p.name.toUpperCase().includes('MULTI'));
+          if (mp && mp.maxProperties) {
+            const parsed = parseInt(String(mp.maxProperties), 10);
+            if (!isNaN(parsed) && parsed > 0) {
+              setMaxPropertiesAllowed(parsed);
+            }
+          }
+        } else {
+          setMaxPropertiesAllowed(1);
+        }
+      }
+    });
+  }, [activePlan]);
 
   const isLimitReached = properties.length >= maxPropertiesAllowed;
   const isMultiPropertyPlan = maxPropertiesAllowed > 1;
