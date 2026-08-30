@@ -453,90 +453,98 @@ export function SettingsScreen({
         <Icon name="arrowRight" size={16} color={isDark ? '#A78BFA' : '#7C3AED'} />
       </TouchableOpacity>
 
-      {/* ── Category grid ── */}
+      {/* ── Category list ── */}
       <Text style={[s.sectionHeader, {marginTop: 22, color: colors.muted}]}>MANAGE</Text>
 
-      <View style={s.categoryGrid}>
+      <View style={[s.categoryList, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
         {/* General */}
         <TouchableOpacity
-          activeOpacity={0.85}
-          style={[s.categoryCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}
+          activeOpacity={0.8}
+          style={s.categoryRow}
           onPress={() => setActiveModal('general')}
         >
-          <View style={[s.categoryIconBg, {backgroundColor: '#EEF2FF'}]}>
-            <Icon name="settings" size={20} color="#4F46E5" />
+          <View style={[s.catIconPill, {backgroundColor: '#EEF2FF'}]}>
+            <Icon name="settings" size={18} color="#4F46E5" />
           </View>
-          <Text style={[s.categoryCardTitle, {color: colors.ink}]}>General</Text>
-          <Text style={[s.categoryCardSub, {color: colors.muted}]}>Account, language & theme</Text>
-          <View style={[s.categoryArrow, {backgroundColor: isDark ? '#27272A' : '#F8FAFC'}]}>
-            <Icon name="chevronRight" size={13} color={colors.muted} />
+          <View style={s.catRowBody}>
+            <Text style={[s.catRowTitle, {color: colors.ink}]}>General</Text>
+            <Text style={[s.catRowSub, {color: colors.muted}]}>Account, language & theme</Text>
           </View>
+          <Icon name="chevronRight" size={16} color={isDark ? '#52525B' : '#CBD5E1'} />
         </TouchableOpacity>
+
+        <View style={[s.catDivider, isDark && {backgroundColor: '#27272A'}]} />
 
         {/* Security */}
         <TouchableOpacity
-          activeOpacity={0.85}
-          style={[s.categoryCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}
+          activeOpacity={0.8}
+          style={s.categoryRow}
           onPress={() => setActiveModal('security')}
         >
-          <View style={[s.categoryIconBg, {backgroundColor: '#ECFDF5'}]}>
-            <Icon name="shield" size={20} color="#059669" />
+          <View style={[s.catIconPill, {backgroundColor: '#ECFDF5'}]}>
+            <Icon name="shield" size={18} color="#059669" />
           </View>
-          <Text style={[s.categoryCardTitle, {color: colors.ink}]}>Security</Text>
-          <Text style={[s.categoryCardSub, {color: colors.muted}]}>PIN, biometric & lock</Text>
-          <View style={[s.categoryArrow, {backgroundColor: isDark ? '#27272A' : '#F8FAFC'}]}>
-            <Icon name="chevronRight" size={13} color={colors.muted} />
+          <View style={s.catRowBody}>
+            <Text style={[s.catRowTitle, {color: colors.ink}]}>Security & Access</Text>
+            <Text style={[s.catRowSub, {color: colors.muted}]}>PIN, biometric & auto-lock</Text>
           </View>
+          <Icon name="chevronRight" size={16} color={isDark ? '#52525B' : '#CBD5E1'} />
         </TouchableOpacity>
+
+        <View style={[s.catDivider, isDark && {backgroundColor: '#27272A'}]} />
 
         {/* Team */}
         <TouchableOpacity
-          activeOpacity={0.85}
-          style={[s.categoryCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}
+          activeOpacity={0.8}
+          style={s.categoryRow}
           onPress={() => setActiveModal('team')}
         >
-          <View style={[s.categoryIconBg, {backgroundColor: '#FFF7ED'}]}>
-            <Icon name="users" size={20} color="#EA580C" />
+          <View style={[s.catIconPill, {backgroundColor: '#FFF7ED'}]}>
+            <Icon name="users" size={18} color="#EA580C" />
           </View>
-          <Text style={[s.categoryCardTitle, {color: colors.ink}]}>Team</Text>
-          <Text style={[s.categoryCardSub, {color: colors.muted}]}>Staff & properties</Text>
-          <View style={[s.categoryArrow, {backgroundColor: isDark ? '#27272A' : '#F8FAFC'}]}>
-            <Icon name="chevronRight" size={13} color={colors.muted} />
+          <View style={s.catRowBody}>
+            <Text style={[s.catRowTitle, {color: colors.ink}]}>Team & Properties</Text>
+            <Text style={[s.catRowSub, {color: colors.muted}]}>Staff accounts & branches</Text>
           </View>
+          <Icon name="chevronRight" size={16} color={isDark ? '#52525B' : '#CBD5E1'} />
         </TouchableOpacity>
+
+        <View style={[s.catDivider, isDark && {backgroundColor: '#27272A'}]} />
 
         {/* Storage */}
         <TouchableOpacity
-          activeOpacity={0.85}
-          style={[s.categoryCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}
+          activeOpacity={0.8}
+          style={s.categoryRow}
           onPress={() => setActiveModal('storage')}
         >
-          <View style={[s.categoryIconBg, {backgroundColor: '#F0F9FF'}]}>
-            <Icon name="cloud" size={20} color="#0284C7" />
+          <View style={[s.catIconPill, {backgroundColor: '#F0F9FF'}]}>
+            <Icon name="cloud" size={18} color="#0284C7" />
           </View>
-          <Text style={[s.categoryCardTitle, {color: colors.ink}]}>Storage</Text>
-          <Text style={[s.categoryCardSub, {color: colors.muted}]}>Cloud & offline mode</Text>
-          <View style={[s.categoryArrow, {backgroundColor: isDark ? '#27272A' : '#F8FAFC'}]}>
-            <Icon name="chevronRight" size={13} color={colors.muted} />
+          <View style={s.catRowBody}>
+            <Text style={[s.catRowTitle, {color: colors.ink}]}>Data & Storage</Text>
+            <Text style={[s.catRowSub, {color: colors.muted}]}>Cloud sync & offline mode</Text>
           </View>
+          <Icon name="chevronRight" size={16} color={isDark ? '#52525B' : '#CBD5E1'} />
+        </TouchableOpacity>
+
+        <View style={[s.catDivider, isDark && {backgroundColor: '#27272A'}]} />
+
+        {/* Help */}
+        <TouchableOpacity
+          activeOpacity={0.8}
+          style={s.categoryRow}
+          onPress={() => setActiveModal('help')}
+        >
+          <View style={[s.catIconPill, {backgroundColor: '#FFF1F2'}]}>
+            <Icon name="info" size={18} color="#E11D48" />
+          </View>
+          <View style={s.catRowBody}>
+            <Text style={[s.catRowTitle, {color: colors.ink}]}>Help & Support</Text>
+            <Text style={[s.catRowSub, {color: colors.muted}]}>FAQs, email & WhatsApp</Text>
+          </View>
+          <Icon name="chevronRight" size={16} color={isDark ? '#52525B' : '#CBD5E1'} />
         </TouchableOpacity>
       </View>
-
-      {/* Help & Support — full width */}
-      <TouchableOpacity
-        activeOpacity={0.85}
-        style={[s.helpCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}
-        onPress={() => setActiveModal('help')}
-      >
-        <View style={[s.categoryIconBg, {backgroundColor: '#FFF1F2'}]}>
-          <Icon name="info" size={20} color="#E11D48" />
-        </View>
-        <View style={{flex: 1, marginLeft: 12}}>
-          <Text style={[s.categoryCardTitle, {color: colors.ink}]}>Help & Support</Text>
-          <Text style={[s.categoryCardSub, {color: colors.muted}]}>FAQs, email & WhatsApp helpline</Text>
-        </View>
-        <Icon name="chevronRight" size={16} color={colors.muted} />
-      </TouchableOpacity>
 
       {/* About row */}
       <View style={[s.aboutRow, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
@@ -1494,70 +1502,53 @@ const s = StyleSheet.create({
     color: '#7C3AED',
     marginTop: 1,
   },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
+  categoryList: {
     marginTop: 8,
-  },
-  categoryCard: {
-    width: '47%',
     backgroundColor: '#fff',
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#ebebeb',
-    borderRadius: 16,
-    padding: 14,
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOpacity: 0.04,
-    shadowRadius: 6,
+    shadowRadius: 8,
     shadowOffset: {width: 0, height: 3},
     elevation: 2,
   },
-  categoryIconBg: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+  categoryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    gap: 12,
+  },
+  catIconPill: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
   },
-  categoryCardTitle: {
+  catRowBody: {
+    flex: 1,
+  },
+  catRowTitle: {
     fontFamily: 'Inter',
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 14.5,
+    fontWeight: '600',
     color: '#1E293B',
   },
-  categoryCardSub: {
+  catRowSub: {
     fontFamily: 'Inter',
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '400',
     color: '#64748B',
-    marginTop: 2,
-    lineHeight: 16,
+    marginTop: 1,
   },
-  categoryArrow: {
-    alignSelf: 'flex-end',
-    marginTop: 10,
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  helpCard: {
-    marginTop: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ebebeb',
-    borderRadius: 16,
-    padding: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    shadowOffset: {width: 0, height: 3},
-    elevation: 2,
+  catDivider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginLeft: 66,
   },
   aboutRow: {
     marginTop: 12,
