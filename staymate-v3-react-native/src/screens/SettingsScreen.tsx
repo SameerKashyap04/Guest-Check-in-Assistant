@@ -148,7 +148,9 @@ export function SettingsScreen({
 
   // Modal Sheet State
   const [activeModal, setActiveModal] = useState<
-    'profile' | 'language' | 'theme' | 'pin' | 'autolock' | 'help' | null
+    | 'profile' | 'language' | 'theme' | 'pin' | 'autolock' | 'help'
+    | 'general' | 'security' | 'team' | 'storage'
+    | null
   >(null);
 
   // Form Temp States
@@ -338,403 +340,236 @@ export function SettingsScreen({
       ? 'Light mode'
       : 'System default';
 
-  type SettingsCategory = 'all' | 'property' | 'security' | 'appearance' | 'support';
-  const [activeCategory, setActiveCategory] = useState<SettingsCategory>('all');
-
   return (
     <ScrollView
       style={{flex: 1, backgroundColor: colors.canvas}}
       contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 130}}
       showsVerticalScrollIndicator={false}
     >
-      <Text style={[s.h1, { color: colors.ink }]}>Settings & Preferences</Text>
-      <Text style={[s.headerSubtitle, isDark && { color: colors.muted }]}>
-        Manage property details, security PIN, staff & regional preferences
-      </Text>
+      <Text style={[s.h1, {color: colors.ink, marginTop: 4}]}>Settings</Text>
+      <Text style={[s.pageSub, {color: colors.muted}]}>Manage your property, security & preferences</Text>
 
-      {/* Profile & Subscription Summary Card */}
-      <View style={[s.mainHeaderCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={s.profileHeaderRow}
-          onPress={handleOpenProfile}
-        >
-          <View style={s.profileMark}>
-            <Text style={s.profileMarkText}>{initials}</Text>
-          </View>
-          <View style={{flex: 1}}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={[s.profileTitle, { color: colors.ink }]}>{profile.name}</Text>
-              <View style={s.codeBadge}>
-                <Text style={s.codeBadgeText}>{profile.code}</Text>
-              </View>
-            </View>
-            <Text style={[s.profileSub, isDark && { color: colors.muted }]}>
-              Host: {profile.owner} {profile.phone ? `• ${profile.phone}` : ''}
+      {/* Profile card */}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={[s.profileCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}
+        onPress={handleOpenProfile}
+      >
+        <View style={s.profileMark}>
+          <Text style={s.profileMarkText}>{initials}</Text>
+        </View>
+        <View style={{flex: 1}}>
+          <Text style={[s.profileTitle, {color: colors.ink}]}>{profile.name}</Text>
+          <Text style={[s.profileSub, isDark && {color: colors.muted}]}>
+            {profile.code} · {profile.owner}
+          </Text>
+        </View>
+        <View style={[s.editBadge, {backgroundColor: isDark ? '#27272A' : '#F1F5F9'}]}>
+          <Icon name="edit" size={14} color={colors.muted} />
+        </View>
+      </TouchableOpacity>
+
+      {/* Plan & Usage card */}
+      <View style={[s.planCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
+        <View style={s.planTop}>
+          <View>
+            <Text style={[s.planTitle, { color: colors.ink }]}>{currentPlan || 'Professional'} plan</Text>
+            <Text style={[s.planSub, isDark && { color: colors.muted }]}>
+              {(currentPlan || '').toLowerCase().includes('free')
+                ? 'Basic local-only tier'
+                : (currentPlan || '').toLowerCase().includes('starter')
+                ? 'Active subscription (Local-first storage)'
+                : 'Active subscription (Cloud sync & OCR enabled)'}
             </Text>
           </View>
-          <Icon name="chevronRight" size={18} color={colors.mutedSoft}/>
-        </TouchableOpacity>
-
-        {/* Plan & Usage Summary */}
-        <View style={[s.planSubSection, isDark && { borderTopColor: '#27272A' }]}>
-          <View style={s.planTop}>
-            <View>
-              <Text style={[s.planTitle, { color: colors.ink }]}>{currentPlan || 'Professional'} Plan</Text>
-              <Text style={[s.planSub, isDark && { color: colors.muted }]}>
-                {(currentPlan || '').toLowerCase().includes('free')
-                  ? 'Basic local-only tier'
-                  : (currentPlan || '').toLowerCase().includes('starter')
-                  ? 'Active tier (Local storage + OCR)'
-                  : 'Active subscription (Cloud sync & OCR enabled)'}
-              </Text>
-            </View>
-            <View style={[s.proBadge, { backgroundColor: '#EDE9FE' }]}>
-              <Text style={[s.proBadgeText, { color: '#7C3AED' }]}>
-                {(currentPlan || '').toUpperCase().includes('MULTI')
-                  ? 'MULTI-PROPERTY'
-                  : (currentPlan || '').toUpperCase().includes('START')
-                  ? 'STARTER'
-                  : (currentPlan || '').toUpperCase().includes('FREE')
-                  ? 'FREE'
-                  : 'PRO'}
-              </Text>
-            </View>
-          </View>
-
-          <UsageBar
-            label="Monthly Check-ins"
-            value={
-              (currentPlan || '').toUpperCase().includes('STARTER')
-                ? '84 / 100'
+          <View style={s.proBadge}>
+            <Text style={s.proBadgeText}>
+              {(currentPlan || '').toUpperCase().includes('MULTI')
+                ? 'MULTI'
+                : (currentPlan || '').toUpperCase().includes('START')
+                ? 'START'
                 : (currentPlan || '').toUpperCase().includes('FREE')
-                ? '12 / 15'
-                : '84 / Unlimited'
-            }
-            pct={(currentPlan || '').toUpperCase().includes('STARTER') ? 84 : (currentPlan || '').toUpperCase().includes('FREE') ? 80 : 25}
-          />
-
-          <PrimaryButton
-            label="Manage Plan & Upgrades →"
-            onPress={onPricing}
-            style={{ marginTop: 14 }}
-          />
+                ? 'FREE'
+                : 'PRO'}
+            </Text>
+          </View>
         </View>
+
+        <UsageBar
+          label="Check-ins"
+          value={
+            (currentPlan || '').toUpperCase().includes('STARTER')
+              ? '84 / 100'
+              : (currentPlan || '').toUpperCase().includes('FREE')
+              ? '12 / 15'
+              : '84 / Unlimited'
+          }
+          pct={(currentPlan || '').toUpperCase().includes('STARTER') ? 84 : (currentPlan || '').toUpperCase().includes('FREE') ? 80 : 25}
+        />
+        <UsageBar
+          label="Reports & exports"
+          value={
+            (currentPlan || '').toUpperCase().includes('STARTER')
+              ? '6 / 10'
+              : (currentPlan || '').toUpperCase().includes('FREE')
+              ? '2 / 3'
+              : '6 / Unlimited'
+          }
+          pct={(currentPlan || '').toUpperCase().includes('STARTER') ? 60 : (currentPlan || '').toUpperCase().includes('FREE') ? 66 : 15}
+          dark
+        />
+
+        <View style={s.ocrRow}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Icon name="scanText" size={16} color={colors.primary} />
+            <Text style={[s.ocrText, isDark && { color: colors.ink }]}>AI Document OCR</Text>
+          </View>
+          <View style={s.activeBadge}>
+            <Text style={s.activeBadgeText}>Active</Text>
+          </View>
+        </View>
+
+        <PrimaryButton
+          label="View plans & upgrade"
+          onPress={onPricing}
+          style={{marginTop: 14}}
+        />
       </View>
 
-      {/* Category Filter Pills Bar */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.categoryPillsContainer}
-        style={{ marginVertical: 14 }}
+
+      {/* ── Refer & Earn banner ── */}
+      <TouchableOpacity
+        activeOpacity={0.87}
+        onPress={onReferEarn}
+        style={[s.referBanner, isDark && {backgroundColor: '#2E1065', borderColor: '#5B21B6'}]}
       >
-        {[
-          { id: 'all', label: 'All Settings', icon: 'grid' },
-          { id: 'property', label: 'Property & Team', icon: 'building' },
-          { id: 'security', label: 'Security & PIN', icon: 'lock' },
-          { id: 'appearance', label: 'Display & Languages', icon: 'moon' },
-          { id: 'support', label: 'Support & Help', icon: 'info' },
-        ].map((tab) => {
-          const isActive = activeCategory === tab.id;
-          return (
-            <TouchableOpacity
-              key={tab.id}
-              activeOpacity={0.8}
-              onPress={() => setActiveCategory(tab.id as SettingsCategory)}
-              style={[
-                s.categoryPill,
-                isActive ? s.categoryPillActive : isDark ? s.categoryPillDark : s.categoryPillLight,
-              ]}
-            >
-              <Icon
-                name={tab.icon as any}
-                size={14}
-                color={isActive ? '#FFFFFF' : isDark ? colors.muted : '#475569'}
-              />
-              <Text
-                style={[
-                  s.categoryPillText,
-                  isActive ? s.categoryPillTextActive : { color: isDark ? colors.ink : '#334155' },
-                ]}
-              >
-                {tab.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      {/* ============================================================ */}
-      {/* 1. PROPERTY & TEAM HUB                                       */}
-      {/* ============================================================ */}
-      {(activeCategory === 'all' || activeCategory === 'property') && (
-        <View style={[s.categoryCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
-          <View style={s.categoryHeaderRow}>
-            <View style={[s.catIconBg, { backgroundColor: '#EDE9FE' }]}>
-              <Icon name="building" size={20} color="#7C3AED" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.categoryTitle, { color: colors.ink }]}>Property & Team</Text>
-              <Text style={[s.categorySub, isDark && { color: colors.muted }]}>
-                Homestay details, multi-property branches & staff accounts
-              </Text>
-            </View>
-          </View>
-
-          {/* Primary Action Button for Property & Team */}
-          <TouchableOpacity
-            style={s.catPrimaryBtn}
-            onPress={() => (onProperties ? onProperties() : onStaff && onStaff())}
-          >
-            <Text style={s.catPrimaryBtnText}>Manage Branches & Staff Accounts</Text>
-            <Icon name="arrowRight" size={14} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <View style={[s.categoryRowsContainer, isDark && { borderTopColor: '#27272A' }]}>
-            <SettingRow
-              icon="mapPin"
-              label="Property details & address"
-              subtitle={`${profile.name} · Tap to edit address & phone`}
-              onPress={handleOpenProfile}
-            />
-            <SettingRow
-              icon="building"
-              label="Properties & branches"
-              subtitle={`Active: ${profile.name} (${profile.code}) · Switch or add`}
-              onPress={() => onProperties && onProperties()}
-            />
-            <SettingRow
-              icon="users"
-              label="Staff & team accounts"
-              subtitle={
-                (currentPlan || '').toUpperCase().includes('ENTERPRISE')
-                  ? 'Manage managers & front desk (Unlimited)'
-                  : (currentPlan || '').toUpperCase().includes('MULTI')
-                  ? 'Manage managers & front desk (Up to 20 accounts)'
-                  : (currentPlan || '').toUpperCase().includes('PRO')
-                  ? 'Manage managers & front desk (Up to 5 accounts)'
-                  : 'Role-based staff accounts (Upgrade to Pro)'
-              }
-              onPress={() => onStaff && onStaff()}
-            />
-            <SettingRow
-              icon="cloud"
-              label="Cloud live sync"
-              subtitle={
-                isCloudAllowed
-                  ? cloudSync
-                    ? 'Synced live across staff & admin panel'
-                    : 'Offline mode active (Local-first storage)'
-                  : 'Requires Professional plan or higher'
-              }
-              onPress={handleToggleCloud}
-              right={
-                <TouchableOpacity activeOpacity={0.9} onPress={handleToggleCloud}>
-                  <Switch on={isCloudAllowed && cloudSync} />
-                </TouchableOpacity>
-              }
-            />
-          </View>
+        <View style={[s.referBannerIcon, {backgroundColor: isDark ? '#5B21B6' : '#7C3AED'}]}>
+          <Icon name="gift" size={18} color="#fff" />
         </View>
-      )}
-
-      {/* ============================================================ */}
-      {/* 2. SECURITY & CREDENTIALS HUB                                */}
-      {/* ============================================================ */}
-      {(activeCategory === 'all' || activeCategory === 'security') && (
-        <View style={[s.categoryCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
-          <View style={s.categoryHeaderRow}>
-            <View style={[s.catIconBg, { backgroundColor: '#FEF3C7' }]}>
-              <Icon name="lock" size={20} color="#D97706" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.categoryTitle, { color: colors.ink }]}>Security & Access</Text>
-              <Text style={[s.categorySub, isDark && { color: colors.muted }]}>
-                4-digit PIN lock, biometrics, credentials & auto-lock timer
-              </Text>
-            </View>
-          </View>
-
-          {/* Primary Action Button for Security */}
-          <TouchableOpacity style={s.catPrimaryBtn} onPress={handleOpenPin}>
-            <Text style={s.catPrimaryBtnText}>Change 4-Digit Security PIN</Text>
-            <Icon name="arrowRight" size={14} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <View style={[s.categoryRowsContainer, isDark && { borderTopColor: '#27272A' }]}>
-            <SettingRow
-              icon="users"
-              label="Master credentials & password"
-              subtitle="Manage login email & master password"
-              onPress={onAccount}
-            />
-            <SettingRow
-              icon="lock"
-              label="Security PIN"
-              subtitle="4-digit quick unlock PIN for front-desk"
-              onPress={handleOpenPin}
-            />
-            <SettingRow
-              icon="fingerprint"
-              label="Biometric unlock"
-              subtitle="Face ID / Fingerprint fast login"
-              onPress={handleToggleBiometric}
-              right={
-                <TouchableOpacity activeOpacity={0.9} onPress={handleToggleBiometric}>
-                  <Switch on={biometric} />
-                </TouchableOpacity>
-              }
-            />
-            <SettingRow
-              icon="clock"
-              label={`Auto-lock — ${autoLock}`}
-              subtitle="Lock app after period of inactivity"
-              onPress={() => setActiveModal('autolock')}
-            />
-          </View>
+        <View style={{flex: 1}}>
+          <Text style={[s.referBannerTitle, {color: isDark ? '#E9D5FF' : '#4C1D95'}]}>Refer & Earn</Text>
+          <Text style={[s.referBannerSub, {color: isDark ? '#A78BFA' : '#7C3AED'}]}>Invite owners · Give ₹100, Earn ₹100</Text>
         </View>
-      )}
+        <Icon name="arrowRight" size={16} color={isDark ? '#A78BFA' : '#7C3AED'} />
+      </TouchableOpacity>
 
-      {/* ============================================================ */}
-      {/* 3. DISPLAY & REGIONAL HUB                                    */}
-      {/* ============================================================ */}
-      {(activeCategory === 'all' || activeCategory === 'appearance') && (
-        <View style={[s.categoryCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
-          <View style={s.categoryHeaderRow}>
-            <View style={[s.catIconBg, { backgroundColor: '#E0E7FF' }]}>
-              <Icon name="moon" size={20} color="#4F46E5" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.categoryTitle, { color: colors.ink }]}>Display & Regional</Text>
-              <Text style={[s.categorySub, isDark && { color: colors.muted }]}>
-                Theme customization & 10 Indian Regional Languages
-              </Text>
-            </View>
+      {/* ── Category grid ── */}
+      <Text style={[s.sectionHeader, {marginTop: 22, color: colors.muted}]}>MANAGE</Text>
+
+      <View style={s.categoryGrid}>
+        {/* General */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[s.categoryCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}
+          onPress={() => setActiveModal('general')}
+        >
+          <View style={[s.categoryIconBg, {backgroundColor: '#EEF2FF'}]}>
+            <Icon name="settings" size={20} color="#4F46E5" />
           </View>
-
-          {/* Primary Action Button for Display */}
-          <TouchableOpacity
-            style={s.catPrimaryBtn}
-            onPress={() => setActiveModal('language')}
-          >
-            <Text style={s.catPrimaryBtnText}>Switch Language ({language})</Text>
-            <Icon name="arrowRight" size={14} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <View style={[s.categoryRowsContainer, isDark && { borderTopColor: '#27272A' }]}>
-            <SettingRow
-              icon="globe"
-              label={`Language — ${language}`}
-              subtitle="English, Hindi, Tamil, Telugu, Kannada, etc."
-              onPress={() => setActiveModal('language')}
-            />
-            <SettingRow
-              icon="moon"
-              label={`Theme — ${currentThemeLabel}`}
-              subtitle="Light mode, Dark mode, or System default"
-              onPress={() => setActiveModal('theme')}
-            />
+          <Text style={[s.categoryCardTitle, {color: colors.ink}]}>General</Text>
+          <Text style={[s.categoryCardSub, {color: colors.muted}]}>Account, language & theme</Text>
+          <View style={[s.categoryArrow, {backgroundColor: isDark ? '#27272A' : '#F8FAFC'}]}>
+            <Icon name="chevronRight" size={13} color={colors.muted} />
           </View>
+        </TouchableOpacity>
+
+        {/* Security */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[s.categoryCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}
+          onPress={() => setActiveModal('security')}
+        >
+          <View style={[s.categoryIconBg, {backgroundColor: '#ECFDF5'}]}>
+            <Icon name="shield" size={20} color="#059669" />
+          </View>
+          <Text style={[s.categoryCardTitle, {color: colors.ink}]}>Security</Text>
+          <Text style={[s.categoryCardSub, {color: colors.muted}]}>PIN, biometric & lock</Text>
+          <View style={[s.categoryArrow, {backgroundColor: isDark ? '#27272A' : '#F8FAFC'}]}>
+            <Icon name="chevronRight" size={13} color={colors.muted} />
+          </View>
+        </TouchableOpacity>
+
+        {/* Team */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[s.categoryCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}
+          onPress={() => setActiveModal('team')}
+        >
+          <View style={[s.categoryIconBg, {backgroundColor: '#FFF7ED'}]}>
+            <Icon name="users" size={20} color="#EA580C" />
+          </View>
+          <Text style={[s.categoryCardTitle, {color: colors.ink}]}>Team</Text>
+          <Text style={[s.categoryCardSub, {color: colors.muted}]}>Staff & properties</Text>
+          <View style={[s.categoryArrow, {backgroundColor: isDark ? '#27272A' : '#F8FAFC'}]}>
+            <Icon name="chevronRight" size={13} color={colors.muted} />
+          </View>
+        </TouchableOpacity>
+
+        {/* Storage */}
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={[s.categoryCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}
+          onPress={() => setActiveModal('storage')}
+        >
+          <View style={[s.categoryIconBg, {backgroundColor: '#F0F9FF'}]}>
+            <Icon name="cloud" size={20} color="#0284C7" />
+          </View>
+          <Text style={[s.categoryCardTitle, {color: colors.ink}]}>Storage</Text>
+          <Text style={[s.categoryCardSub, {color: colors.muted}]}>Cloud & offline mode</Text>
+          <View style={[s.categoryArrow, {backgroundColor: isDark ? '#27272A' : '#F8FAFC'}]}>
+            <Icon name="chevronRight" size={13} color={colors.muted} />
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* Help & Support — full width */}
+      <TouchableOpacity
+        activeOpacity={0.85}
+        style={[s.helpCard, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}
+        onPress={() => setActiveModal('help')}
+      >
+        <View style={[s.categoryIconBg, {backgroundColor: '#FFF1F2'}]}>
+          <Icon name="info" size={20} color="#E11D48" />
         </View>
-      )}
-
-      {/* ============================================================ */}
-      {/* 4. REFERRALS & REWARDS HUB                                   */}
-      {/* ============================================================ */}
-      {(activeCategory === 'all' || activeCategory === 'support') && (
-        <View style={[s.categoryCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
-          <View style={s.categoryHeaderRow}>
-            <View style={[s.catIconBg, { backgroundColor: '#FCE7F3' }]}>
-              <Icon name="gift" size={20} color="#DB2777" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.categoryTitle, { color: colors.ink }]}>Refer & Earn Rewards</Text>
-              <Text style={[s.categorySub, isDark && { color: colors.muted }]}>
-                Give ₹100 discount, Earn ₹100 for each homestay host invited
-              </Text>
-            </View>
-          </View>
-
-          <TouchableOpacity style={s.catPrimaryBtn} onPress={onReferEarn}>
-            <Text style={s.catPrimaryBtnText}>Open Referral & Earnings Portal</Text>
-            <Icon name="arrowRight" size={14} color="#FFFFFF" />
-          </TouchableOpacity>
+        <View style={{flex: 1, marginLeft: 12}}>
+          <Text style={[s.categoryCardTitle, {color: colors.ink}]}>Help & Support</Text>
+          <Text style={[s.categoryCardSub, {color: colors.muted}]}>FAQs, email & WhatsApp helpline</Text>
         </View>
-      )}
+        <Icon name="chevronRight" size={16} color={colors.muted} />
+      </TouchableOpacity>
 
-      {/* ============================================================ */}
-      {/* 5. HELP, SUPPORT & ABOUT HUB                                 */}
-      {/* ============================================================ */}
-      {(activeCategory === 'all' || activeCategory === 'support') && (
-        <View style={[s.categoryCard, isDark && { backgroundColor: '#18181B', borderColor: '#27272A' }]}>
-          <View style={s.categoryHeaderRow}>
-            <View style={[s.catIconBg, { backgroundColor: '#ECFDF5' }]}>
-              <Icon name="info" size={20} color="#059669" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={[s.categoryTitle, { color: colors.ink }]}>Support & FAQs</Text>
-              <Text style={[s.categorySub, isDark && { color: colors.muted }]}>
-                Guides, 24/7 WhatsApp helpline & official Devify links
-              </Text>
-            </View>
-          </View>
-
-          {/* Primary Action Button for Support */}
-          <TouchableOpacity
-            style={s.catPrimaryBtn}
-            onPress={() => Linking.openURL('https://wa.me/918471897293?text=Hi%20Devify%20Team%2C%20I%20need%20help%20with%20StayMate.')}
-          >
-            <Text style={s.catPrimaryBtnText}>Chat on WhatsApp Helpline (+91 84718 97293)</Text>
-            <Icon name="arrowRight" size={14} color="#FFFFFF" />
-          </TouchableOpacity>
-
-          <View style={[s.categoryRowsContainer, isDark && { borderTopColor: '#27272A' }]}>
-            <SettingRow
-              icon="info"
-              label="Help Center & FAQs"
-              subtitle="Guides on scanning, sync & check-ins"
-              onPress={() => setActiveModal('help')}
-            />
-            <SettingRow
-              icon="mail"
-              label="Email Devify Support"
-              subtitle="support@devify.co.in · Fast resolution"
-              onPress={() => Linking.openURL('mailto:support@devify.co.in?subject=StayMate%20Support%20Request')}
-            />
-            <SettingRow
-              icon="shield"
-              label="StayMate Version"
-              subtitle="v3.0.0 (Production Release)"
-            />
-            <SettingRow
-              icon="external"
-              label="Developed by Devify"
-              subtitle="www.devify.co.in — Tap to visit website"
-              onPress={() => Linking.openURL('https://www.devify.co.in')}
-            />
-          </View>
+      {/* About row */}
+      <View style={[s.aboutRow, isDark && {backgroundColor: '#18181B', borderColor: '#27272A'}]}>
+        <View style={{flex: 1}}>
+          <Text style={{fontFamily: 'Inter', fontSize: 13, fontWeight: '600', color: colors.ink}}>StayMate v3.0.0</Text>
+          <Text style={{fontFamily: 'Inter', fontSize: 12, color: colors.muted, marginTop: 1}}>Developed by Devify</Text>
         </View>
-      )}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => Linking.openURL('https://www.devify.co.in')}
+          style={{paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: isDark ? '#27272A' : '#F1F5F9'}}
+        >
+          <Text style={{fontFamily: 'Inter', fontSize: 12, fontWeight: '700', color: colors.muted}}>Visit</Text>
+        </TouchableOpacity>
+      </View>
 
-      {/* Actions: Lock App & Log Out */}
+      {/* Lock & Logout */}
       <View style={s.bottomActions}>
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={onLock}
-          style={[s.lockBtn, isDark && { backgroundColor: '#27272A' }]}
+          style={[s.lockBtn, isDark && {backgroundColor: '#27272A'}]}
         >
           <Icon name="lock" size={16} color={colors.ink} />
-          <Text style={[s.lockBtnText, isDark && { color: colors.ink }]}>Lock App</Text>
+          <Text style={[s.lockBtnText, isDark && {color: colors.ink}]}>Lock app</Text>
         </TouchableOpacity>
-
         <TouchableOpacity
           activeOpacity={0.85}
           onPress={onLogout}
-          style={[s.logoutBtn, isDark && { backgroundColor: '#18181B', borderColor: colors.primary }]}
+          style={[s.logoutBtn, isDark && {backgroundColor: '#18181B', borderColor: colors.primary}]}
         >
           <Icon name="logout" size={16} color={colors.primary} />
-          <Text style={[s.logoutBtnText, { color: colors.primary }]}>Log Out</Text>
+          <Text style={[s.logoutBtnText, {color: colors.primary}]}>Log out</Text>
         </TouchableOpacity>
       </View>
 
@@ -745,16 +580,165 @@ export function SettingsScreen({
         style={s.devifyFooter}
       >
         <View style={s.footerContentRow}>
-          <Image
-            source={isDark ? StayMateLogoDark : StayMateLogo}
-            style={s.footerLogo}
-            resizeMode="contain"
-          />
+          <Image source={isDark ? StayMateLogoDark : StayMateLogo} style={s.footerLogo} resizeMode="contain" />
           <Text style={s.devifyText}>
-            Engineered by <Text style={[s.devifyBrand, isDark && { color: colors.ink }]}>Devify</Text> · www.devify.co.in
+            Engineered by <Text style={[s.devifyBrand, isDark && {color: colors.ink}]}>Devify</Text> · www.devify.co.in
           </Text>
         </View>
       </TouchableOpacity>
+
+      {/* SUB-SHEET: GENERAL */}
+      {activeModal === 'general' && (
+        <Modal visible transparent animationType="slide" onRequestClose={() => setActiveModal(null)}>
+          <View style={ms.sheetScrim}>
+            <View style={[ms.sheet, isDark && {backgroundColor: '#18181B'}]}>
+              <View style={[ms.handle, isDark && {backgroundColor: '#3F3F46'}]} />
+              <View style={[ms.sheetHeaderBar, isDark && {borderBottomColor: '#27272A'}]}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setActiveModal(null)} style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}>
+                  <Icon name="chevronLeft" size={18} color={colors.ink} />
+                </TouchableOpacity>
+                <Text style={[ms.sheetHeaderTitle, isDark && {color: colors.ink}]}>General</Text>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setActiveModal(null)} style={[ms.sheetCloseBtnRelative, isDark && {backgroundColor: '#27272A'}]}>
+                  <Icon name="x" size={16} color={colors.ink} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 40}} showsVerticalScrollIndicator={false}>
+                <SettingRow icon="users" label="Username & password" subtitle="Manage credentials & master password" onPress={() => { setActiveModal(null); onAccount(); }} />
+                <SettingRow icon="mapPin" label="Property name & address" subtitle={profile.name} onPress={() => { setActiveModal(null); setTimeout(handleOpenProfile, 350); }} />
+                <SettingRow icon="globe" label="Language" subtitle={language} onPress={() => { setActiveModal(null); setTimeout(() => setActiveModal('language'), 350); }} />
+                <SettingRow icon="moon" label="Theme" subtitle={currentThemeLabel} onPress={() => { setActiveModal(null); setTimeout(() => setActiveModal('theme'), 350); }} />
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* SUB-SHEET: SECURITY */}
+      {activeModal === 'security' && (
+        <Modal visible transparent animationType="slide" onRequestClose={() => setActiveModal(null)}>
+          <View style={ms.sheetScrim}>
+            <View style={[ms.sheet, isDark && {backgroundColor: '#18181B'}]}>
+              <View style={[ms.handle, isDark && {backgroundColor: '#3F3F46'}]} />
+              <View style={[ms.sheetHeaderBar, isDark && {borderBottomColor: '#27272A'}]}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setActiveModal(null)} style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}>
+                  <Icon name="chevronLeft" size={18} color={colors.ink} />
+                </TouchableOpacity>
+                <Text style={[ms.sheetHeaderTitle, isDark && {color: colors.ink}]}>Security & Access</Text>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setActiveModal(null)} style={[ms.sheetCloseBtnRelative, isDark && {backgroundColor: '#27272A'}]}>
+                  <Icon name="x" size={16} color={colors.ink} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 40}} showsVerticalScrollIndicator={false}>
+                <SettingRow icon="lock" label="Change security PIN" subtitle="Update your 4-digit security PIN" onPress={() => { setActiveModal(null); setTimeout(handleOpenPin, 350); }} />
+                <SettingRow
+                  icon="fingerprint"
+                  label="Biometric unlock"
+                  subtitle={biometric ? 'Face ID / Fingerprint — Enabled' : 'Face ID / Fingerprint — Disabled'}
+                  onPress={handleToggleBiometric}
+                  right={
+                    <TouchableOpacity activeOpacity={0.9} onPress={handleToggleBiometric}>
+                      <Switch on={biometric} />
+                    </TouchableOpacity>
+                  }
+                />
+                <SettingRow
+                  icon="lock"
+                  label="App lock (PIN on launch)"
+                  subtitle={requirePin ? 'Enabled — PIN required to open' : 'Disabled'}
+                  onPress={handleToggleRequirePin}
+                  right={
+                    <TouchableOpacity activeOpacity={0.9} onPress={handleToggleRequirePin}>
+                      <Switch on={requirePin} />
+                    </TouchableOpacity>
+                  }
+                />
+                <SettingRow icon="clock" label="Auto-lock" subtitle={autoLock} onPress={() => { setActiveModal(null); setTimeout(() => setActiveModal('autolock'), 350); }} />
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* SUB-SHEET: TEAM */}
+      {activeModal === 'team' && (
+        <Modal visible transparent animationType="slide" onRequestClose={() => setActiveModal(null)}>
+          <View style={ms.sheetScrim}>
+            <View style={[ms.sheet, isDark && {backgroundColor: '#18181B'}]}>
+              <View style={[ms.handle, isDark && {backgroundColor: '#3F3F46'}]} />
+              <View style={[ms.sheetHeaderBar, isDark && {borderBottomColor: '#27272A'}]}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setActiveModal(null)} style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}>
+                  <Icon name="chevronLeft" size={18} color={colors.ink} />
+                </TouchableOpacity>
+                <Text style={[ms.sheetHeaderTitle, isDark && {color: colors.ink}]}>Team & Properties</Text>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setActiveModal(null)} style={[ms.sheetCloseBtnRelative, isDark && {backgroundColor: '#27272A'}]}>
+                  <Icon name="x" size={16} color={colors.ink} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 40}} showsVerticalScrollIndicator={false}>
+                <SettingRow
+                  icon="users"
+                  label="Staff & Team Accounts"
+                  subtitle={
+                    (currentPlan || '').toUpperCase().includes('ENTERPRISE')
+                      ? 'Manage managers & front desk (Unlimited)'
+                      : (currentPlan || '').toUpperCase().includes('MULTI')
+                      ? 'Manage managers & front desk (Up to 20 accounts)'
+                      : (currentPlan || '').toUpperCase().includes('PRO')
+                      ? 'Manage managers & front desk (Up to 5 accounts)'
+                      : 'Role-based staff accounts (Upgrade to Pro)'
+                  }
+                  onPress={() => { setActiveModal(null); if (onStaff) onStaff(); }}
+                />
+                <SettingRow
+                  icon="mapPin"
+                  label="Properties & Branches"
+                  subtitle={`Active: ${profile.name} (${profile.code}) · Switch or add`}
+                  onPress={() => { setActiveModal(null); if (onProperties) onProperties(); }}
+                />
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* SUB-SHEET: STORAGE */}
+      {activeModal === 'storage' && (
+        <Modal visible transparent animationType="slide" onRequestClose={() => setActiveModal(null)}>
+          <View style={ms.sheetScrim}>
+            <View style={[ms.sheet, isDark && {backgroundColor: '#18181B'}]}>
+              <View style={[ms.handle, isDark && {backgroundColor: '#3F3F46'}]} />
+              <View style={[ms.sheetHeaderBar, isDark && {borderBottomColor: '#27272A'}]}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setActiveModal(null)} style={[ms.sheetBackBtn, isDark && {backgroundColor: '#27272A'}]}>
+                  <Icon name="chevronLeft" size={18} color={colors.ink} />
+                </TouchableOpacity>
+                <Text style={[ms.sheetHeaderTitle, isDark && {color: colors.ink}]}>Data & Storage</Text>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setActiveModal(null)} style={[ms.sheetCloseBtnRelative, isDark && {backgroundColor: '#27272A'}]}>
+                  <Icon name="x" size={16} color={colors.ink} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={{paddingHorizontal: 20, paddingBottom: 40}} showsVerticalScrollIndicator={false}>
+                <SettingRow
+                  icon="cloud"
+                  label="Cloud mode"
+                  subtitle={
+                    isCloudAllowed
+                      ? cloudSync
+                        ? 'Synced live across staff devices'
+                        : 'Offline mode active (Local-first storage)'
+                      : 'Requires Professional plan or higher'
+                  }
+                  onPress={handleToggleCloud}
+                  right={
+                    <TouchableOpacity activeOpacity={0.9} onPress={handleToggleCloud}>
+                      <Switch on={isCloudAllowed && cloudSync} />
+                    </TouchableOpacity>
+                  }
+                />
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
 
       {/* ============================================================ */}
       {/* 1. PROPERTY PROFILE MODAL SHEET                              */}
@@ -1459,145 +1443,131 @@ const s = StyleSheet.create({
   h1: {
     fontFamily: 'Inter',
     fontSize: 22,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: -0.4,
     color: '#222222',
   },
-  headerSubtitle: {
+  pageSub: {
     fontFamily: 'Inter',
-    fontSize: 13,
-    color: '#64748B',
+    fontSize: 13.5,
+    fontWeight: '400',
+    color: '#6a6a6a',
     marginTop: 3,
-    marginBottom: 8,
+    marginBottom: 4,
   },
-  mainHeaderCard: {
-    marginTop: 8,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-  },
-  profileHeaderRow: {
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  codeBadge: {
-    backgroundColor: '#EDE9FE',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  codeBadgeText: {
-    fontFamily: 'Inter',
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#7C3AED',
-  },
-  planSubSection: {
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    backgroundColor: 'transparent',
-  },
-  categoryPillsContainer: {
-    gap: 8,
-    paddingVertical: 2,
-  },
-  categoryPill: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    gap: 6,
-    borderWidth: 1,
-  },
-  categoryPillActive: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#7C3AED',
-  },
-  categoryPillLight: {
-    backgroundColor: '#F8FAFC',
-    borderColor: '#E2E8F0',
-  },
-  categoryPillDark: {
-    backgroundColor: '#27272A',
-    borderColor: '#3F3F46',
-  },
-  categoryPillText: {
-    fontFamily: 'Inter',
-    fontSize: 12.5,
-    fontWeight: '600',
-  },
-  categoryPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '700',
-  },
-  categoryCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
-  },
-  categoryHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 12,
-  },
-  catIconBg: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  editBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  categoryTitle: {
-    fontFamily: 'Inter',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  categorySub: {
-    fontFamily: 'Inter',
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  catPrimaryBtn: {
+  referBanner: {
+    marginTop: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#7C3AED',
-    paddingVertical: 10,
+    gap: 12,
+    backgroundColor: '#FAF5FF',
+    borderWidth: 1,
+    borderColor: '#DDD6FE',
+    borderRadius: 14,
     paddingHorizontal: 14,
-    borderRadius: 12,
-    marginBottom: 14,
+    paddingVertical: 12,
   },
-  catPrimaryBtnText: {
+  referBannerIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  referBannerTitle: {
     fontFamily: 'Inter',
-    color: '#FFFFFF',
-    fontSize: 12.5,
+    fontSize: 14,
     fontWeight: '700',
+    color: '#4C1D95',
   },
-  categoryRowsContainer: {
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-    paddingTop: 4,
+  referBannerSub: {
+    fontFamily: 'Inter',
+    fontSize: 12.5,
+    fontWeight: '400',
+    color: '#7C3AED',
+    marginTop: 1,
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+    marginTop: 8,
+  },
+  categoryCard: {
+    width: '47%',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ebebeb',
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 3},
+    elevation: 2,
+  },
+  categoryIconBg: {
+    width: 42,
+    height: 42,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  categoryCardTitle: {
+    fontFamily: 'Inter',
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  categoryCardSub: {
+    fontFamily: 'Inter',
+    fontSize: 11.5,
+    fontWeight: '400',
+    color: '#64748B',
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  categoryArrow: {
+    alignSelf: 'flex-end',
+    marginTop: 10,
+    width: 26,
+    height: 26,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  helpCard: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ebebeb',
+    borderRadius: 16,
+    padding: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: {width: 0, height: 3},
+    elevation: 2,
+  },
+  aboutRow: {
+    marginTop: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#ebebeb',
+    borderRadius: 14,
+    padding: 14,
   },
   profileCard: {
     marginTop: 16,
