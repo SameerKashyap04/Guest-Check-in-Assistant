@@ -158,9 +158,9 @@ export function StaffManagementScreen({
 
       setStaffList((prev) => [created, ...prev]);
       setIsAddModalOpen(false);
-      if (onToast) onToast(`✓ Staff member ${created.name} added!`);
+      if (onToast) onToast(`Staff member ${created.name} added`);
       Alert.alert(
-        'Staff Account Created! 🎉',
+        'Staff Account Created',
         `Staff member "${created.name}" has been registered.\n\nAssigned Role: ${ROLE_META[created.role].label}\nAccess PIN: ${created.accessPin}\n\nShare this 4-digit PIN with your staff member for fast login.`,
         [{ text: 'Got It' }]
       );
@@ -287,9 +287,21 @@ export function StaffManagementScreen({
                         <Text style={[styles.roleBadgeText, { color: meta.color }]}>{meta.label}</Text>
                       </View>
                     </View>
-                    <Text style={[styles.staffContact, isDark && { color: colors.muted }]}>
-                      📱 {staff.phone} {staff.email ? `• ${staff.email}` : ''}
-                    </Text>
+                    <View style={styles.contactRow}>
+                      <Icon name="phone" size={12} color={colors.muted} />
+                      <Text style={[styles.staffContact, isDark && { color: colors.muted }]}>
+                        {staff.phone}
+                      </Text>
+                      {staff.email ? (
+                        <>
+                          <Text style={{ color: colors.muted }}>&bull;</Text>
+                          <Icon name="mail" size={12} color={colors.muted} />
+                          <Text style={[styles.staffContact, isDark && { color: colors.muted }]}>
+                            {staff.email}
+                          </Text>
+                        </>
+                      ) : null}
+                    </View>
                   </View>
                   <TouchableOpacity
                     style={styles.deleteBtn}
@@ -650,10 +662,15 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
   },
+  contactRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
   staffContact: {
     fontSize: 12,
     color: '#64748B',
-    marginTop: 2,
   },
   deleteBtn: {
     padding: 6,

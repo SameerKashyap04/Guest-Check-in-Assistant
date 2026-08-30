@@ -147,9 +147,9 @@ export function PropertyManagerScreen({
 
       setProperties((prev) => [...prev.filter((p) => p.code !== created.code), created]);
       setIsAddModalOpen(false);
-      if (onToast) onToast(`✓ Property ${created.name} registered!`);
+      if (onToast) onToast(`Property ${created.name} registered`);
       Alert.alert(
-        'Property Created! 🏡',
+        'Property Created',
         `"${created.name}" (${created.code}) has been added to your portfolio.\n\nWould you like to switch to this property now?`,
         [
           { text: 'Later', style: 'cancel' },
@@ -243,7 +243,7 @@ export function PropertyManagerScreen({
               >
                 <View style={styles.cardTopRow}>
                   <View style={[styles.propIconBg, isActive && { backgroundColor: '#EDE9FE' }]}>
-                    <Icon name="mapPin" size={20} color={isActive ? '#7C3AED' : '#64748B'} />
+                    <Icon name="building" size={20} color={isActive ? '#7C3AED' : '#64748B'} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -256,17 +256,23 @@ export function PropertyManagerScreen({
                       )}
                     </View>
                     <Text style={[styles.propCode, { color: '#7C3AED' }]}>ID: {p.code || p.id}</Text>
-                    <Text style={[styles.propAddress, isDark && { color: colors.muted }]}>
-                      📍 {p.address} {p.city ? `• ${p.city}` : ''}
-                    </Text>
+                    <View style={styles.addressRow}>
+                      <Icon name="mapPin" size={12} color={colors.muted} />
+                      <Text style={[styles.propAddress, isDark && { color: colors.muted }]}>
+                        {p.address} {p.city ? `• ${p.city}` : ''}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
                 {/* Footer Switcher */}
                 <View style={[styles.cardFooter, isDark && { borderTopColor: colors.cardBorder }]}>
-                  <Text style={[styles.roomsCountText, isDark && { color: colors.muted }]}>
-                    🚪 {p.roomsCount || 10} Rooms Configured
-                  </Text>
+                  <View style={styles.roomsCountBadge}>
+                    <Icon name="grid" size={13} color={colors.muted} />
+                    <Text style={[styles.roomsCountText, isDark && { color: colors.muted }]}>
+                      {p.roomsCount || 10} Rooms Configured
+                    </Text>
+                  </View>
                   {isActive ? (
                     <View style={styles.currentlySelectedPill}>
                       <Icon name="check" size={14} color="#059669" />
@@ -280,7 +286,8 @@ export function PropertyManagerScreen({
                         onClose();
                       }}
                     >
-                      <Text style={styles.switchBtnText}>Switch to this Branch →</Text>
+                      <Text style={styles.switchBtnText}>Switch Branch</Text>
+                      <Icon name="arrowRight" size={12} color="#FFFFFF" />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -544,10 +551,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     marginTop: 2,
   },
+  addressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 3,
+  },
   propAddress: {
     fontSize: 12,
     color: '#64748B',
-    marginTop: 2,
   },
   cardFooter: {
     flexDirection: 'row',
@@ -557,6 +569,11 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
+  },
+  roomsCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
   },
   roomsCountText: {
     fontSize: 12,
@@ -578,10 +595,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   switchBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#7C3AED',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
+    gap: 5,
   },
   switchBtnText: {
     color: '#FFFFFF',

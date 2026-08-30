@@ -33,6 +33,9 @@ const P:Record<string,React.ReactNode>={
  percent:<><Circle cx="6.5" cy="6.5" r="2.5"/><Circle cx="17.5" cy="17.5" r="2.5"/><Path d="m19 5-14 14"/></>,
  award:<><Circle cx="12" cy="8" r="6"/><Path d="m15.4 12.8 2.6 8.2-6-3-6 3 2.6-8.2"/></>,
  coins:<><Circle cx="8" cy="8" r="6"/><Path d="M18 8a6 6 0 0 1-6 6M18 12a6 6 0 0 1-6 6"/></>,
+ trash:<><Path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>,
+ building:<><Rect x="4" y="2" width="16" height="20" rx="2"/><Path d="M9 22v-4h6v4M8 6h.01M16 6h.01M8 10h.01M16 10h.01M8 14h.01M16 14h.01"/></>,
+ door:<><Path d="M18 20V6a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v14M2 20h20M14 12v.01"/></>,
 };
 export type IconName=keyof typeof P;
 export function Icon({name,size=22,color='#222222',strokeWidth=2}: {name:IconName,size?:number,color?:string,strokeWidth?:number}){return <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">{P[name]}</Svg>}
